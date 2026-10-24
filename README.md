@@ -78,11 +78,48 @@ Configuration is merged with defaults, so a small override is sufficient:
 }
 ```
 
+The control page’s **Character** selector switches between Okabe, Makise Kurisu, Pip, and your configuration default. It saves the selection in `state/profile.json`; both the controller and MCP process read it for subsequent turns. Changing characters starts a fresh chat on the next turn so the previous persona cannot override the new one; previous chats remain in Codex history. Switching is disabled during recording or a Codex turn. A saved voice override stays selected; otherwise Kurisu and Pip use the warm preset. Update the display Pi’s service and renderer files together when upgrading: older services do not recognize `kurisu`.
+
 Set `style` to `pip`, `name` to `Pip`, and `persona` to a friendly robot description for the original robot. The `character.persona` text controls the conversational character independently of its drawing; current preferences are included with every voice turn, including resumed chats. The `shell` color applies to Pip's body. The character supports neutral, happy, curious, concerned, and excited emotions, with idle, listening, thinking, and speaking activities. Mouth movement follows the synthesized audio amplitude rather than phoneme-level lip sync.
 
 Voice presets are `warm`, `calm`, and `robotic`. Map them to installed voices in `speech.mac_voices` or `speech.linux_voices`. `speech.engine: auto` selects macOS `say` or Linux eSpeak. These are generic system voices, not the character's actor. A voice selected through `set_character_voice` is saved in `state/character.json` and takes precedence over `default_voice`; remove that saved preference to use the config default again. Tool argument `voice: default` uses the selected voice (`pip` remains a compatibility alias).
 
 The Codex instruction interprets “wave” as a happy face plus **one SwitchBot press**. A durable request ID prevents a retry from pressing again. Different physical gestures can be implemented by changing the instruction and tool adapter together.
+
+## Response timing and voice engines
+
+The control page reports transcription, first model message, total Codex turn,
+and speech synthesis/stream timing. These overlap: total turn time includes
+hardware calls and playback. Playback launch is a device-clock estimate, not an
+acoustic measurement. Hardware RPC calls reuse per-process SSH tunnels and never
+automatically replay failed actions. Restart the controller after a tunnel fails.
+
+`speech.sync_lead_seconds` defaults to 0.5 seconds; increase it if audio and the
+face drift. `transcription.beam_size` (1–5, default 5) and `codex.effort`
+(`low`, `medium`, `high`; default `low`) allow latency/quality comparisons.
+
+Local speech remains the default. Optional `openai` speech streams 24 kHz PCM to
+the voice Pi while updating the mouth envelope. Update both Pi services and
+include `pi/stream_audio.py` when upgrading. Streams are capped at 30 seconds;
+an abandoned stream releases the speaker after a timeout. No automatic fallback
+or replay occurs after partial playback.
+
+To enable cloud voices, configure `OPENAI_API_KEY` in the controller service's
+private environment and restart it. The web engine selector stays disabled until
+a key is configured. Codex ChatGPT sign-in does not provide speech API access.
+For the `okabebot` systemd user service, run
+`python3 scripts/configure-cloud-voice.py` in a private terminal on the controller.
+It prompts without echoing, saves the key in ignored `state/openai.env` with
+permissions 600, configures the service, and restarts it. Keep that state
+directory and service configuration on persistent storage for a live USB.
+Do not put the key in configuration JSON, a command argument, or Git.
+
+Cloud reply text is sent to OpenAI and billed through the API. Configure
+`speech.cloud_model` and `speech.cloud_voices` (warm/calm/robotic) to choose the
+model and voices. The default is `gpt-4o-mini-tts`, with coral/onyx/alloy voices.
+These are synthetic voices, not the characters' actors. Cloud speech requires a
+live API test before its sound quality and latency can be compared; local tests
+only verify the streaming transport and error handling.
 
 ## MCP tools
 

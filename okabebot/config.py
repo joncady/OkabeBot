@@ -60,13 +60,15 @@ DEFAULTS = {
         },
     },
     "speech": {
+        "cloud_model": "gpt-4o-mini-tts",
+        "cloud_voices": {"warm": "coral", "calm": "onyx", "robotic": "alloy"},
         "engine": "auto",
-        "sync_lead_seconds": 1.5,
+        "sync_lead_seconds": 0.5,
         "mac_voices": {"warm": "Samantha (English (US))", "calm": "Daniel", "robotic": "Fred"},
-        "linux_voices": {"warm": "en-us", "calm": "en-gb", "robotic": "en"},
+        "linux_voices": {"warm": "en-us+f3", "calm": "en-gb", "robotic": "en"},
     },
-    "transcription": {"model": "base.en", "language": "en", "compute_type": "int8"},
-    "codex": {"binary": "codex", "thread_name": "Hardware Voice", "cwd": "."},
+    "transcription": {"model": "base.en", "language": "en", "compute_type": "int8", "beam_size": 5},
+    "codex": {"binary": "codex", "thread_name": "Hardware Voice", "cwd": ".", "effort": "low"},
     "web": {"port": 8768},
 }
 
@@ -99,8 +101,8 @@ def load(path):
     allowed = settings["approvals"]["allowed_tools"]
     if not isinstance(allowed, list) or any(t not in HARDWARE_TOOLS for t in allowed):
         raise ValueError("allowed_tools must contain only known hardware tools")
-    if settings["speech"]["engine"] not in ("auto", "say", "espeak"):
-        raise ValueError("speech.engine must be auto, say, or espeak")
+    if settings["speech"]["engine"] not in ("auto", "say", "espeak", "openai"):
+        raise ValueError("speech.engine must be auto, say, espeak, or openai")
     if (
         not isinstance(settings["speech"]["sync_lead_seconds"], (int, float))
         or not 0.2 <= settings["speech"]["sync_lead_seconds"] <= 5
@@ -116,8 +118,8 @@ def load(path):
         or len(settings["character"]["persona"]) > 2000
     ):
         raise ValueError("character.persona must be text up to 2000 characters")
-    if settings["character"]["style"] not in ("okabe", "pip"):
-        raise ValueError("character.style must be okabe or pip")
+    if settings["character"]["style"] not in ("okabe", "kurisu", "pip"):
+        raise ValueError("character.style must be okabe, kurisu, or pip")
     if settings["character"]["default_voice"] not in ("warm", "calm", "robotic"):
         raise ValueError("Unknown default_voice")
     if (
@@ -128,6 +130,13 @@ def load(path):
     for color in settings["character"]["palette"].values():
         if not isinstance(color, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
             raise ValueError("Palette colors must be #RRGGBB")
+    if (
+        type(settings["transcription"]["beam_size"]) is not int
+        or not 1 <= settings["transcription"]["beam_size"] <= 5
+    ):
+        raise ValueError("transcription.beam_size must be 1–5")
+    if settings["codex"]["effort"] not in ("low", "medium", "high"):
+        raise ValueError("codex.effort must be low, medium, or high")
     ports = [settings["web"]["port"]]
     for endpoint in settings["devices"].values():
         ports.append(endpoint["port"])

@@ -87,7 +87,7 @@ class PlaybackSuppressionTests(unittest.TestCase):
 
 class RendererAndSpeechTests(unittest.TestCase):
     def test_both_styles_support_expressions_and_palette(self):
-        for style in ("okabe", "pip"):
+        for style in ("okabe", "kurisu", "pip"):
             images = [render(style=style, emotion=e, phase=1).tobytes() for e in EMOTIONS]
             self.assertEqual(len(set(images)), 5)
             self.assertEqual(
@@ -123,7 +123,7 @@ class CharacterInstructionTests(unittest.TestCase):
 
         config = deepcopy(DEFAULTS)
         config["character"].update(name="Dot", persona="A cheerful robot.")
-        with patch("okabebot.codex.get_config", return_value=config):
+        with patch("okabebot.codex.current_character", return_value=config["character"]):
             prompt = configured_input("What is your name?")
         self.assertIn("current character name is Dot", prompt)
         self.assertIn("A cheerful robot.", prompt)

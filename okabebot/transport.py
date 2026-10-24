@@ -5,6 +5,8 @@ forwarding lets the PTT loop poll cheaply while sharing the same HTTP protocol.
 """
 
 from contextlib import contextmanager
+import atexit
+import threading
 import json
 from pathlib import Path
 import shlex
@@ -85,9 +87,9 @@ class Device:
             )
 
     @contextmanager
-    def connect(self):
+    def connect(self, timeout=5):
         if self.config["transport"] == "local":
-            yield lambda data: http_rpc(self.config["port"], data, timeout=5)
+            yield lambda data: http_rpc(self.config["port"], data, timeout=timeout)
             return
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", 0))
@@ -124,7 +126,7 @@ class Device:
                 def call(data):
                     if proc.poll() is not None:
                         raise RuntimeError("SSH disconnected; restart OkabeBot")
-                    return http_rpc(port, data, timeout=5)
+                    return http_rpc(port, data, timeout=timeout)
 
                 yield call
             finally:
@@ -136,5 +138,46 @@ class Device:
                     proc.wait()
 
 
+class PooledDevice(Device):
+    """One tunnel per endpoint/process. Never replay a failed operation."""
+
+    def __init__(self, config):
+        super().__init__(config)
+        self._guard = threading.Lock()
+        self._context = self._call = None
+
+    def rpc(self, data):
+        if self.config["transport"] == "local":
+            return http_rpc(self.config["port"], data)
+        with self._guard:
+            if self._call is None:
+                context = self.connect(timeout=65)
+                call = context.__enter__()
+                self._context, self._call = context, call
+            call = self._call
+        return call(data)
+
+    def close(self):
+        with self._guard:
+            if self._context is not None:
+                self._context.__exit__(None, None, None)
+                self._context = self._call = None
+
+
+_devices = {}
+_devices_lock = threading.Lock()
+
+
 def device(name):
-    return Device(get_config()["devices"][name])
+    config = get_config()["devices"][name]
+    key = json.dumps(config, sort_keys=True)
+    with _devices_lock:
+        if key not in _devices:
+            _devices[key] = PooledDevice(config)
+        return _devices[key]
+
+
+@atexit.register
+def close_devices():
+    for endpoint in list(_devices.values()):
+        endpoint.close()

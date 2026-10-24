@@ -20,6 +20,7 @@ class PushToTalk:
         self.process = None
         self.ready = None
         self.error = None
+        self.released_at = None
         self.recording = False
 
     def control(self, enabled, acknowledge=None):
@@ -46,6 +47,7 @@ class PushToTalk:
     def button(self, pressed):
         with self.lock:
             if not pressed:
+                self.released_at = time.time()
                 self.stop()
                 return
             if self.recording or self.ready or time.monotonic() >= self.until:
@@ -53,6 +55,7 @@ class PushToTalk:
             if not self.audio_lock.acquire(False):
                 self.error = "Audio busy; try again after playback"
                 return
+            self.released_at = None
             self.recording = True
             self.error = None
             try:
@@ -108,6 +111,7 @@ class PushToTalk:
             with self.lock:
                 self.ready = {
                     "clip_id": uuid.uuid4().hex,
+                    "released_at": self.released_at,
                     "duration_seconds": seconds,
                     "wav_base64": base64.b64encode(path.read_bytes()).decode(),
                 }

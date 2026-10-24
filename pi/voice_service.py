@@ -15,6 +15,7 @@ from pathlib import Path
 from buttons import board
 from device_config import load
 from ptt_recorder import PushToTalk
+from stream_audio import StreamAudio
 
 
 def validate_wav(raw):
@@ -39,6 +40,7 @@ class Voice:
         self.pressed = False
         self.config = load()
         self.board = board(self.config)
+        self.stream = StreamAudio(self.audio_lock, self.config["audio_device"])
         self.ptt = PushToTalk(self.audio_lock, self.board.led, self.config["audio_device"])
         self.board.button.when_pressed = lambda: self.event(True)
         self.board.button.when_released = lambda: self.event(False)
@@ -58,6 +60,8 @@ class Voice:
 
     def request(self, data):
         op = data.get("op")
+        if op in ("stream_start", "stream_chunk", "stream_end", "stream_abort"):
+            return self.stream.request(data)
         if op == "ptt":
             return self.ptt.control(data.get("enabled", False), data.get("acknowledge"))
         if op in ("status", "events"):
@@ -118,13 +122,18 @@ class Voice:
                     raise ValueError("Invalid playback time; check Pi clock")
                 if delay > 0:
                     time.sleep(delay)
+                playback_started_at = time.time()
                 subprocess.run(
                     ["aplay", "-D", self.config["audio_device"], "-q", path],
                     check=True,
                     capture_output=True,
                     timeout=duration + 8,
                 )
-                return {"played": True, "duration_seconds": duration}
+                return {
+                    "played": True,
+                    "duration_seconds": duration,
+                    "playback_started_at": playback_started_at,
+                }
         finally:
             self.audio_lock.release()
 

@@ -1,5 +1,7 @@
 """Codex App Server client with a scoped, configurable hardware approval policy."""
 
+from .profiles import current_character
+
 import json
 import os
 import queue
@@ -21,12 +23,13 @@ def codex_binary():
 
 
 def voice_instructions():
-    character = get_config()["character"]
+    character = current_character()
     name = character["name"]
     return (
         f"Your current character name is {name}. {character['persona']} "
         "This configuration supersedes earlier character names and persona choices in chat history. "
         "User messages come from button-held recordings. Keep replies short and natural. "
+        "For casual conversation reply in one or two sentences. Do not make status checks unless requested. "
         "Use hardware-lab MCP tools for requested hardware operations. Speak replies using "
         "character_speak with an appropriate emotion (neutral, happy, curious, concerned, excited), "
         "intensity 0 to 1, and voice=default (the configured default). Keep speech under 600 characters. "
@@ -78,6 +81,8 @@ class Codex:
             "-c",
             "mcp_servers.hardware-lab.args=" + json.dumps(["-m", "okabebot.server"]),
             "-c",
+            'mcp_servers.hardware-lab.env_vars=["OPENAI_API_KEY"]',
+            "-c",
             "mcp_servers.hardware-lab.env.OKABEBOT_CONFIG="
             + json.dumps(os.environ["OKABEBOT_CONFIG"]),
         ]
@@ -104,37 +109,48 @@ class Codex:
                 },
             )
             self.send({"method": "initialized", "params": {}})
-            saved = folder / "thread.json"
-            if saved.exists():
-                tid = json.loads(saved.read_text())["thread_id"]
-                result = self.call(
-                    "thread/resume",
-                    {
-                        "threadId": tid,
-                        "excludeTurns": True,
-                        "developerInstructions": voice_instructions(),
-                    },
-                )
-            else:
-                result = self.call(
-                    "thread/start",
-                    {
-                        "cwd": config["codex"]["cwd"],
-                        "sandbox": "workspace-write",
-                        "approvalPolicy": "on-request",
-                        "developerInstructions": voice_instructions(),
-                    },
-                )
-            self.thread_id = result["thread"]["id"]
-            saved.write_text(json.dumps({"thread_id": self.thread_id}))
-            self.call(
-                "thread/name/set",
-                {"threadId": self.thread_id, "name": config["codex"]["thread_name"]},
-            )
-            self.notify("connected", {"thread_id": self.thread_id})
+            self.ensure_character_thread()
         except BaseException:
             self.close()
             raise
+
+    def ensure_character_thread(self):
+        instructions = voice_instructions()
+        if getattr(self, "active_instructions", None) == instructions:
+            return
+        config = get_config()
+        saved = self.folder / "thread.json"
+        previous = json.loads(saved.read_text()) if saved.exists() else {}
+        if previous.get("instructions") == instructions:
+            result = self.call(
+                "thread/resume",
+                {
+                    "threadId": previous["thread_id"],
+                    "excludeTurns": True,
+                    "developerInstructions": instructions,
+                },
+            )
+        else:
+            result = self.call(
+                "thread/start",
+                {
+                    "cwd": config["codex"]["cwd"],
+                    "sandbox": "workspace-write",
+                    "approvalPolicy": "on-request",
+                    "developerInstructions": instructions,
+                },
+            )
+        self.thread_id = result["thread"]["id"]
+        self.active_instructions = instructions
+        saved.write_text(json.dumps({"thread_id": self.thread_id, "instructions": instructions}))
+        self.call(
+            "thread/name/set",
+            {
+                "threadId": self.thread_id,
+                "name": config["codex"]["thread_name"] + " — " + current_character()["name"],
+            },
+        )
+        self.notify("connected", {"thread_id": self.thread_id})
 
     def send(self, data):
         with self.lock:
@@ -193,6 +209,18 @@ class Codex:
                     if item.get("type") == "mcpToolCall" and item.get("tool") == "character_speak":
                         # Suppress replay even on uncertain playback failures.
                         self.character_spoken = True
+                        result = item.get("result") or {}
+                        if (
+                            item.get("error")
+                            or item.get("status") == "failed"
+                            or result.get("isError")
+                        ):
+                            self.notify(
+                                "error",
+                                {
+                                    "message": "Speech tool failed; check the voice configuration. Audio was not replayed."
+                                },
+                            )
                     if item.get("type") == "agentMessage":
                         self.notify(
                             "assistant", {"text": item.get("text", ""), "phase": item.get("phase")}
@@ -236,11 +264,13 @@ class Codex:
             self.final = []
             self.character_spoken = False
         try:
+            self.ensure_character_thread()
             return self.call(
                 "turn/start",
                 {
                     "threadId": self.thread_id,
                     "input": [{"type": "text", "text": configured_input(text)}],
+                    "effort": get_config()["codex"]["effort"],
                 },
             )
         except Exception:

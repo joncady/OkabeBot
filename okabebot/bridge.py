@@ -1,5 +1,7 @@
 """Local push-to-talk control page, Whisper transcription, and Codex bridge."""
 
+from .profiles import current_character, select_profile, selection
+
 from contextlib import ExitStack
 import argparse
 import base64
@@ -16,6 +18,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from . import timing
 from .codex import Codex
 from . import character as character_tools
 from concurrent.futures import ThreadPoolExecutor
@@ -50,6 +53,7 @@ class Bridge:
         self.face_activity = None
         self.recording = False
         self.processing = False
+        self.timings = {}
         self.codex = None
         self.token = secrets.token_urlsafe(32)
         self.port = port
@@ -88,6 +92,16 @@ class Bridge:
         return result
 
     def notify(self, kind, data):
+        if (
+            kind == "assistant"
+            and "first_model_output_s" not in self.timings
+            and self.timings.get("submitted_at")
+        ):
+            self.timings["first_model_output_s"] = round(
+                time.time() - self.timings["submitted_at"], 3
+            )
+        if kind == "turn_completed" and self.timings.get("submitted_at"):
+            self.timings["codex_turn_s"] = round(time.time() - self.timings["submitted_at"], 3)
         entry = {"kind": kind, "data": data, "time": time.time()}
         with self.lock:
             self.messages.append(entry)
@@ -106,8 +120,8 @@ class Bridge:
             {
                 "op": "character",
                 "activity": activity,
-                "palette": get_config()["character"]["palette"],
-                "style": get_config()["character"]["style"],
+                "palette": current_character()["palette"],
+                "style": current_character()["style"],
             },
         )
 
@@ -132,7 +146,7 @@ class Bridge:
         segments, _ = self.model.transcribe(
             str(path),
             language=get_config()["transcription"]["language"],
-            beam_size=5,
+            beam_size=get_config()["transcription"]["beam_size"],
             vad_filter=True,
             condition_on_previous_text=False,
         )
@@ -141,6 +155,9 @@ class Bridge:
         ).strip()
 
     def handle_clip(self, clip):
+        self.timings = {"clip_received_at": time.time()}
+        if clip.get("released_at"):
+            self.timings["release_to_clip_s"] = round(time.time() - clip["released_at"], 3)
         clip_id = clip["clip_id"]
         with sqlite3.connect(self.folder / "clips.sqlite3") as db:
             if db.execute("SELECT 1 FROM clips WHERE id=?", (clip_id,)).fetchone():
@@ -155,7 +172,9 @@ class Bridge:
         with tempfile.TemporaryDirectory(prefix="hardware-ptt-") as tmp:
             path = Path(tmp) / "speech.wav"
             path.write_bytes(raw)
+            started = time.monotonic()
             text = self.transcribe(path)
+            self.timings["transcription_s"] = round(time.monotonic() - started, 3)
         if not text:
             self.notify("notice", {"text": "No clear speech detected. Please try again."})
             return
@@ -166,6 +185,7 @@ class Bridge:
             )
         if self.codex:
             self.status = "Codex is working"
+            self.timings["submitted_at"] = time.time()
             self.codex.submit(text)
             with sqlite3.connect(self.folder / "clips.sqlite3") as db:
                 db.execute("UPDATE clips SET status=? WHERE id=?", ("submitted", clip_id))
@@ -216,6 +236,10 @@ class Bridge:
                 with self.codex.lock:
                     approvals = list(self.codex.approvals.values())
             return {
+                "timings": dict(self.timings),
+                "speech_timings": timing.read("speech"),
+                "speech_engine": character_tools.speech.engine(),
+                "cloud_available": bool(os.getenv("OPENAI_API_KEY")),
                 "status": self.status,
                 "enabled": self.enabled,
                 "recording": self.recording,
@@ -223,7 +247,8 @@ class Bridge:
                 "thread_id": self.codex.thread_id if self.codex else None,
                 "messages": list(self.messages),
                 "approvals": approvals,
-                "character": get_config()["character"]["name"],
+                "character": current_character()["name"],
+                "profile": selection() or "configured",
                 "auto_approve_hardware": get_config()["approvals"]["auto_approve_hardware"],
             }
 
@@ -293,6 +318,60 @@ def handler(bridge):
                     bridge.status = (
                         "Ready — hold the button to talk" if bridge.enabled else "Paused"
                     )
+                elif self.path == "/speech-engine":
+                    if (
+                        bridge.recording
+                        or bridge.processing
+                        or (bridge.codex and bridge.codex.busy)
+                    ):
+                        raise ValueError("Wait until the current turn finishes")
+                    engine = data.get("engine")
+                    if engine not in ("auto", "openai"):
+                        raise ValueError("Choose local or cloud speech")
+                    if engine == "openai" and not os.getenv("OPENAI_API_KEY"):
+                        raise ValueError("Configure OPENAI_API_KEY on the controller first")
+                    path = state_dir() / "speech-settings.json"
+                    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as f:
+                        json.dump({"engine": engine}, f)
+                        tmp = Path(f.name)
+                    tmp.replace(path)
+                elif self.path == "/character":
+                    if (
+                        bridge.recording
+                        or bridge.processing
+                        or (bridge.codex and bridge.codex.busy)
+                    ):
+                        raise ValueError("Wait until recording and the current turn finish")
+                    # Disarm capture while changing the face and shared preference.
+                    previous = bridge.enabled
+                    bridge.enabled = False
+                    try:
+                        bridge.pi({"op": "ptt", "enabled": False})
+                        profile = data.get("profile")
+                        from .profiles import PROFILES
+
+                        if not isinstance(profile, str) or (
+                            profile not in PROFILES and profile != "configured"
+                        ):
+                            raise ValueError("Unknown character")
+                        character = (
+                            get_config()["character"]
+                            if profile == "configured"
+                            else {**get_config()["character"], **PROFILES[profile]}
+                        )
+                        character_tools.display_rpc(
+                            {
+                                "op": "character",
+                                "activity": "idle",
+                                "emotion": "neutral",
+                                "style": character["style"],
+                                "palette": character["palette"],
+                            }
+                        )
+                        select_profile(profile)
+                        bridge.face_activity = "idle"
+                    finally:
+                        bridge.enabled = previous
                 elif self.path == "/answer" and bridge.codex:
                     bridge.codex.answer(
                         data["id"], data.get("decision"), data.get("answers"), data.get("persist")

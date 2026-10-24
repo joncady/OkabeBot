@@ -28,6 +28,10 @@ async function action(path, data) {
 document.querySelector("#toggle").onclick = () =>
   action("/enabled", { enabled: !enabled });
 document.querySelector("#stop").onclick = () => action("/interrupt", {});
+document.querySelector("#character").onchange = (event) =>
+  action("/character", { profile: event.target.value });
+document.querySelector("#speech-engine").onchange = (event) =>
+  action("/speech-engine", {engine: event.target.value});
 function requests(items) {
   const key = JSON.stringify(items);
   if (key === lastRequests) return;
@@ -109,6 +113,24 @@ async function refresh() {
   try {
     const s = await api("/state");
     enabled = s.enabled;
+    const voiceEngine = document.querySelector("#speech-engine");
+    voiceEngine.disabled = s.busy || s.recording;
+    voiceEngine.querySelector('[value="openai"]').disabled = !s.cloud_available;
+    if (document.activeElement !== voiceEngine) voiceEngine.value = s.speech_engine === "openai" ? "openai" : "auto";
+    const t = s.timings || {}, a = s.speech_timings || {};
+    const parts = [];
+    for (const [key,label] of [["release_to_clip_s","Release → clip*"],["transcription_s","Transcription"],["first_model_output_s","Model first message"],["codex_turn_s","Codex turn (includes tools/audio)"]]) {
+      if (Number.isFinite(t[key])) parts.push(`${label}: ${t[key].toFixed(2)}s`);
+    }
+    if (a.started_at >= (t.clip_received_at || 0)) {
+      if (Number.isFinite(a.synthesis_s)) parts.push(`Speech synthesis: ${a.synthesis_s.toFixed(2)}s`);
+      if (Number.isFinite(a.first_chunk_s)) parts.push(`First cloud audio chunk: ${a.first_chunk_s.toFixed(2)}s`);
+      if (a.playback_started_at && t.submitted_at) parts.push(`Submit → playback launch*: ${(a.playback_started_at-t.submitted_at).toFixed(2)}s`);
+    }
+    document.querySelector("#timings").textContent = parts.join(" · ") + (parts.length ? " · *Device-clock estimate, not an acoustic measurement." : "Timings appear after your next message.");
+    const selector = document.querySelector("#character");
+    selector.disabled = s.busy || s.recording;
+    if (document.activeElement !== selector) selector.value = s.profile;
     document.querySelector("#status").textContent = s.approvals.length
       ? "Waiting for your approval or answer"
       : s.status;

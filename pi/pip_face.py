@@ -88,6 +88,12 @@ def pip_shapes(emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idl
 
 
 def shapes(style="okabe", **kwargs):
+    if style == "kurisu":
+        try:
+            from .kurisu_face import shapes as kurisu_shapes
+        except ImportError:
+            from kurisu_face import shapes as kurisu_shapes
+        return kurisu_shapes(**kwargs)
     if style == "pip":
         return pip_shapes(**kwargs)
     if __package__:

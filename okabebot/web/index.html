@@ -19,6 +19,18 @@
       Speech recognition runs on the controller. Only the transcript goes to
       Codex. The button is disarmed while Codex works and speaks.
     </p>
+    <label for="character">Character</label>
+    <select id="character">
+      <option value="configured">Configuration default</option>
+      <option value="okabe">Rintaro Okabe</option>
+      <option value="kurisu">Makise Kurisu</option>
+      <option value="pip">Pip</option>
+    </select>
+    <p class="muted">Changes appearance and starts a fresh character chat on the next turn. Any saved voice override stays selected.</p>
+    <label for="speech-engine">Voice engine</label>
+    <select id="speech-engine"><option value="auto">Local speech</option><option value="openai">Cloud streaming (API key required)</option></select>
+    <p class="muted">Voices are AI-generated. Cloud mode sends reply text to OpenAI and uses separately billed API access.</p>
+    <div id="timings" class="muted"></div>
     <div id="thread"></div>
     <div id="error"></div>
   </div>

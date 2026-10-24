@@ -94,14 +94,14 @@ class Display:
         if (
             not isinstance(start, (int, float))
             or not math.isfinite(start)
-            or abs(start - time.time()) > 15
+            or not -35 <= start - time.time() <= 15
         ):
             raise ValueError("Invalid start time; check Pi clock")
         if self.timer:
             self.root.after_cancel(self.timer)
             self.timer = None
-        style = data.get("style", "okabe")
-        if style not in ("okabe", "pip"):
+        style = data.get("style", (self.character or {}).get("style", "okabe"))
+        if style not in ("okabe", "kurisu", "pip"):
             raise ValueError("Unknown character style")
         palette = data.get("palette", {})
         if not isinstance(palette, dict) or any(
