@@ -98,6 +98,9 @@ Run `okabebot-mcp` as a stdio MCP server. The voice controller registers it auto
 
 Hardware is optional per operation: an unavailable camera or Bot makes that tool fail, not a substitute device act. The voice workflow needs both running services. The display service currently needs a graphical desktop session even if you only use its camera/Bluetooth tools.
 
+For a Linux PC controller, remote control-page access, and live-USB persistence
+limitations, see [Linux controller setup](docs/linux-controller.md).
+
 ## Development
 
 ```sh
