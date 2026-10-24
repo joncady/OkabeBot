@@ -113,3 +113,18 @@ class RendererAndSpeechTests(unittest.TestCase):
             self.assertIn("-f", command)
             normalize.assert_called_once()
             self.assertEqual(normalize.call_args.args[1], target)
+
+
+class CharacterInstructionTests(unittest.TestCase):
+    def test_resumed_turn_carries_current_character_and_original_transcript(self):
+        from okabebot.codex import configured_input
+        from okabebot.config import DEFAULTS
+        from copy import deepcopy
+
+        config = deepcopy(DEFAULTS)
+        config["character"].update(name="Dot", persona="A cheerful robot.")
+        with patch("okabebot.codex.get_config", return_value=config):
+            prompt = configured_input("What is your name?")
+        self.assertIn("current character name is Dot", prompt)
+        self.assertIn("A cheerful robot.", prompt)
+        self.assertTrue(prompt.endswith("[Microphone transcription]\nWhat is your name?"))

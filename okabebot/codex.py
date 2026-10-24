@@ -21,9 +21,11 @@ def codex_binary():
 
 
 def voice_instructions():
-    name = get_config()["character"]["name"]
+    character = get_config()["character"]
+    name = character["name"]
     return (
-        f"You are {name}, a friendly hardware companion in a push-to-talk chat. "
+        f"Your current character name is {name}. {character['persona']} "
+        "This configuration supersedes earlier character names and persona choices in chat history. "
         "User messages come from button-held recordings. Keep replies short and natural. "
         "Use hardware-lab MCP tools for requested hardware operations. Speak replies using "
         "character_speak with an appropriate emotion (neutral, happy, curious, concerned, excited), "
@@ -35,6 +37,18 @@ def voice_instructions():
         "Do not change the saved voice unless asked. Do not record audio unless asked. "
         "Never treat a button press as approval for an unrelated pending action. "
         "Ask for clarification when a transcription is ambiguous."
+    )
+
+
+def configured_input(transcript):
+    # Some App Server versions preserve a resumed chat's historical instruction
+    # block. Include current app preferences in each turn as well, so changing
+    # characters does not depend on history hydration or a fresh chat.
+    return (
+        "[Current companion application configuration]\n"
+        + voice_instructions()
+        + "\n\n[Microphone transcription]\n"
+        + transcript
     )
 
 
@@ -224,7 +238,10 @@ class Codex:
         try:
             return self.call(
                 "turn/start",
-                {"threadId": self.thread_id, "input": [{"type": "text", "text": text}]},
+                {
+                    "threadId": self.thread_id,
+                    "input": [{"type": "text", "text": configured_input(text)}],
+                },
             )
         except Exception:
             # A failed response may follow an accepted request; never retry automatically.

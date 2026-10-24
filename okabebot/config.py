@@ -36,6 +36,7 @@ DEFAULTS = {
     "character": {
         "name": "Okabe",
         "style": "okabe",
+        "persona": "Portray Rintaro Okabe from Steins;Gate, lab member 001, as a playful fictional hardware companion. Use brief theatrical scientist humor while keeping technical answers accurate.",
         "default_voice": "calm",
         "intensity": 0.6,
         "palette": {"background": "#101e25", "shell": "#accdc1", "accent": "#a5f4ce"},
@@ -110,6 +111,11 @@ def load(path):
         or not 1 <= len(settings["character"]["name"].strip()) <= 40
     ):
         raise ValueError("character.name must be 1–40 characters")
+    if (
+        not isinstance(settings["character"]["persona"], str)
+        or len(settings["character"]["persona"]) > 2000
+    ):
+        raise ValueError("character.persona must be text up to 2000 characters")
     if settings["character"]["style"] not in ("okabe", "pip"):
         raise ValueError("character.style must be okabe or pip")
     if settings["character"]["default_voice"] not in ("warm", "calm", "robotic"):

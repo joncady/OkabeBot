@@ -78,7 +78,7 @@ Configuration is merged with defaults, so a small override is sufficient:
 }
 ```
 
-Set `style` to `pip` and `name` to `Pip` for the original robot. The `shell` color applies to Pip's body. The character supports neutral, happy, curious, concerned, and excited emotions, with idle, listening, thinking, and speaking activities. Mouth movement follows the synthesized audio amplitude rather than phoneme-level lip sync.
+Set `style` to `pip`, `name` to `Pip`, and `persona` to a friendly robot description for the original robot. The `character.persona` text controls the conversational character independently of its drawing; current preferences are included with every voice turn, including resumed chats. The `shell` color applies to Pip's body. The character supports neutral, happy, curious, concerned, and excited emotions, with idle, listening, thinking, and speaking activities. Mouth movement follows the synthesized audio amplitude rather than phoneme-level lip sync.
 
 Voice presets are `warm`, `calm`, and `robotic`. Map them to installed voices in `speech.mac_voices` or `speech.linux_voices`. `speech.engine: auto` selects macOS `say` or Linux eSpeak. These are generic system voices, not the character's actor. A voice selected through `set_character_voice` is saved in `state/character.json` and takes precedence over `default_voice`; remove that saved preference to use the config default again. Tool argument `voice: default` uses the selected voice (`pip` remains a compatibility alias).
 

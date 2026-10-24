@@ -9,7 +9,8 @@
       "shell": "#accdc1",
       "accent": "#a5f4ce"
     },
-    "style": "okabe"
+    "style": "okabe",
+    "persona": "Portray Rintaro Okabe from Steins;Gate, lab member 001, as a playful fictional hardware companion. Use brief theatrical scientist humor while keeping technical answers accurate."
   },
   "approvals": {
     "auto_approve_hardware": true,
