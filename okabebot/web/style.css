@@ -1,0 +1,95 @@
+:root {
+  color-scheme: dark;
+  font: 16px system-ui;
+  background: #101715;
+  color: #eef4ef;
+}
+body {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+h1 {
+  font-size: 40px;
+  letter-spacing: -1.5px;
+  margin: 12px 0;
+}
+h2 {
+  font-size: 18px;
+}
+.eyebrow {
+  color: #9bc8ae;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 12px;
+}
+.muted {
+  color: #a9b9af;
+}
+#status {
+  font-size: 23px;
+  margin: 20px 0;
+}
+.panel {
+  border: 1px solid #34483d;
+  border-radius: 16px;
+  padding: 24px;
+  margin: 20px 0;
+  background: #17221c;
+}
+button {
+  font: inherit;
+  border: 1px solid #52765f;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin: 5px 8px 5px 0;
+  background: #243e2e;
+  color: #f1f8f3;
+  cursor: pointer;
+}
+button:hover {
+  background: #355940;
+}
+button.danger {
+  background: #482b28;
+  border-color: #96574c;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font:
+    14px ui-monospace,
+    monospace;
+}
+textarea {
+  width: 95%;
+  min-height: 60px;
+  background: #101715;
+  color: inherit;
+  padding: 12px;
+  border: 1px solid #52765f;
+  border-radius: 8px;
+}
+.entry {
+  border-top: 1px solid #34483d;
+  padding: 16px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.who {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #9bc8ae;
+  margin-bottom: 8px;
+}
+#error {
+  color: #ffb4a8;
+}
+#thread {
+  font:
+    12px ui-monospace,
+    monospace;
+}
+a {
+  color: #b9dfc7;
+}

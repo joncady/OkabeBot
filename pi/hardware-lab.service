@@ -1,0 +1,17 @@
+[Unit]
+Description=Hardware Lab display and SwitchBot service
+After=display-manager.service bluetooth.service
+Wants=bluetooth.service
+StartLimitIntervalSec=0
+
+[Service]
+User=pi
+WorkingDirectory=/opt/okabebot/pi
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/pi/.Xauthority
+ExecStart=/usr/bin/python3 /opt/okabebot/pi/service.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target

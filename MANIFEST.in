@@ -1,0 +1,7 @@
+include LICENSE README.md
+recursive-include pi *.py *.service
+recursive-include examples *.json
+recursive-include docs *.md *.png
+recursive-include tests *.py
+recursive-exclude * __pycache__
+global-exclude *.pyc *.local.json

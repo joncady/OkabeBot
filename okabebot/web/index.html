@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>OkabeBot</title>
+  <link rel="stylesheet" href="/style.css" />
+  <div class="eyebrow">AI Hardware Lab · OkabeBot</div>
+  <h1>Hold. Talk. Release.</h1>
+  <p class="muted">
+    Hold the large Pi button while speaking. Release to send your words to
+    Hardware Voice. Maximum 20 seconds per message.
+  </p>
+  <div class="panel">
+    <div id="status">Connecting…</div>
+    <button id="toggle">Pause microphone button</button
+    ><button id="stop" class="danger">Stop Codex turn</button>
+    <p class="muted">
+      Speech recognition runs on the controller. Only the transcript goes to
+      Codex. The button is disarmed while Codex works and speaks.
+    </p>
+    <div id="thread"></div>
+    <div id="error"></div>
+  </div>
+  <div id="approvals"></div>
+  <div class="panel">
+    <h2>Conversation</h2>
+    <div id="messages">Waiting for your first message.</div>
+  </div>
+  <script src="/app.js"></script>
+</html>

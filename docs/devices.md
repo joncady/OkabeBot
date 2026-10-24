@@ -1,0 +1,65 @@
+# Device setup
+
+Run `service.py` for the display/camera/Bluetooth role and `voice_service.py` for the audio/button role. They can share one Pi or run separately. Device scripts are intentionally independent of the Python 3.10+ controller package so legacy Python 3.7 satellites remain usable.
+
+## Dependencies and hardware
+
+On a compatible Raspberry Pi OS installation, the baseline packages are:
+
+```sh
+sudo apt install python3-tk python3-pil python3-pil.imagetk python3-pexpect python3-gpiozero bluez alsa-utils ffmpeg
+```
+
+The display uses Tk on an **X11 desktop session**, normally `DISPLAY=:0`; a native Wayland-only session needs an X11/XWayland setup. An LCD must already work as an OS display: this project does not install HDMI or GPIO LCD drivers. Configure its orientation/resolution in the OS first.
+
+Camera support selects `rpicam-still`/`rpicam-vid`, then `libcamera-still`/`libcamera-vid`, then legacy `raspistill`/`raspivid`. Install the camera tools appropriate to your OS and enable the camera as required. Legacy cameras were tested; modern camera commands still need hardware validation. Infrared illumination and an IR-sensitive camera are hardware requirements for night vision, not something software alone can add.
+
+The current SwitchBot adapter uses **`gatttool`**, supplied by older BlueZ distributions. Check `command -v gatttool`; some modern distributions omit it. Until a modern BLE adapter is added, use a compatible Bluetooth satellite for the Bot if your all-in-one OS lacks it. The Bot must be in press mode and within Bluetooth range. A hub is not required.
+
+For the Google AIY Voice Bonnet, working ALSA and AIY drivers are prerequisites; this repository does not install or port them to newer kernels. Set `button_backend` to `aiy` on an existing AIY installation. For a standard GPIO button use `gpiozero`, or `none` to run audio tools without a physical button. GPIO numbering is BCM. The defaults are button GPIO23 (to ground, pull-up) and LED GPIO25; check for pin conflicts with LCDs/HATs and use suitable LED current limiting. Inspect ALSA devices with `arecord -L` and `aplay -L`.
+
+## Install the services
+
+Copy `pi/` to `/opt/okabebot/pi` on each participating Pi. The service user needs write access there for recordings and the Bot's deduplication database. A simple deployment from the checkout is:
+
+```sh
+ssh pi@display-pi.local 'sudo mkdir -p /opt/okabebot && sudo chown pi:pi /opt/okabebot'
+scp -r pi pi@display-pi.local:/opt/okabebot/
+scp examples/device.json pi@display-pi.local:/opt/okabebot/pi/device.local.json
+```
+
+Replace the host and username with your own. For one Pi, copy locally instead of using SSH. Edit `device.local.json` on each device:
+
+```json
+{
+  "display_port": 8765,
+  "voice_port": 8766,
+  "switchbot_address": "",
+  "audio_device": "default",
+  "button_backend": "gpiozero",
+  "button_pin": 23,
+  "led_pin": 25,
+  "camera_backend": "auto"
+}
+```
+
+Fill in your Bot's Bluetooth address only on the appropriate device. Set the actual ALSA audio device; an existing AIY setup commonly uses `plughw:CARD=aiyvoicebonnet,DEV=0`. Camera backend can be `auto`, `rpicam`, `libcamera`, or `legacy`.
+
+Review `pi/hardware-lab.service` and `pi/hardware-voice.service` before installation: adapt `User`, paths, `XAUTHORITY`, and runtime directory to your desktop/audio user. Install only the roles needed on that device, or both on a single Pi:
+
+```sh
+sudo cp /opt/okabebot/pi/hardware-lab.service /etc/systemd/system/
+sudo cp /opt/okabebot/pi/hardware-voice.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now hardware-lab hardware-voice
+```
+
+The display user must have an active graphical session. The service user needs access to audio, GPIO, camera and Bluetooth hardware; use the OS's usual device groups rather than running the controller as root. Check `journalctl -u hardware-lab -u hardware-voice` if a service fails. Disable other programs that hold the audio device or draw over the display.
+
+## Connect the controller
+
+For local endpoints set `transport` to `local`; match `port` and `recordings_dir` to the service. For SSH endpoints set `transport` to `ssh`, `ssh_target`, optional `ssh_key`, and `remote_dir` to the directory containing `bridge.py`. Set `recordings_dir` to that device's recordings directory.
+
+Authorize your own dedicated SSH public key with `ssh-copy-id`, and connect once interactively to verify the device's host key. The controller uses strict host-key checking and batch mode, so it will not silently accept an unknown host or prompt for a password. Keep private keys outside the repository. Both ordinary RPC and the voice tunnel connect only to loopback on the destination.
+
+Keep clocks synchronized: animation/audio scheduling uses wall-clock timestamps across devices. `speech.sync_lead_seconds` gives remote devices time to prepare playback (default 1.5 seconds).

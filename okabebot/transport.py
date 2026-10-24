@@ -1,0 +1,140 @@
+"""One JSON-RPC transport for local devices and SSH-connected devices.
+
+No remote shell scripts or automatic retries of hardware actions. Persistent SSH
+forwarding lets the PTT loop poll cheaply while sharing the same HTTP protocol.
+"""
+
+from contextlib import contextmanager
+import json
+from pathlib import Path
+import shlex
+import shutil
+import socket
+import subprocess
+import tempfile
+import time
+from urllib.request import ProxyHandler, Request, build_opener
+
+from .config import get_config
+
+OPENER = build_opener(ProxyHandler({}))
+
+
+def http_rpc(port, data, timeout=60):
+    req = Request(
+        f"http://127.0.0.1:{port}/rpc",
+        json.dumps(data).encode(),
+        {"Content-Type": "application/json"},
+    )
+    with OPENER.open(req, timeout=timeout) as response:
+        return json.load(response)
+
+
+class Device:
+    def __init__(self, config):
+        self.config = config
+
+    def ssh_args(self):
+        args = [
+            "ssh",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ConnectTimeout=5",
+            "-o",
+            "ServerAliveInterval=5",
+            "-o",
+            "ServerAliveCountMax=2",
+        ]
+        if self.config["ssh_key"]:
+            args += ["-i", self.config["ssh_key"], "-o", "IdentitiesOnly=yes"]
+        return args
+
+    def rpc(self, data):
+        if self.config["transport"] == "local":
+            return http_rpc(self.config["port"], data)
+        # bridge.py is the same generic stdin bridge for either device service.
+        script = self.config["remote_dir"] + "/bridge.py"
+        command = "python3 " + shlex.quote(script) + " --port " + str(self.config["port"])
+        result = subprocess.run(
+            self.ssh_args() + [self.config["ssh_target"], command],
+            input=json.dumps(data),
+            text=True,
+            capture_output=True,
+            timeout=65,
+        )
+        if result.returncode or not result.stdout.strip():
+            raise RuntimeError("Device SSH failed: " + result.stderr[-300:])
+        return json.loads(result.stdout)
+
+    def download(self, remote_path, destination):
+        if self.config["transport"] == "local":
+            shutil.copyfile(remote_path, destination)
+            return
+        command = "cat -- " + shlex.quote(str(remote_path))
+        with Path(destination).open("wb") as output:
+            subprocess.run(
+                self.ssh_args() + [self.config["ssh_target"], command],
+                stdout=output,
+                stderr=subprocess.PIPE,
+                check=True,
+                timeout=45,
+            )
+
+    @contextmanager
+    def connect(self):
+        if self.config["transport"] == "local":
+            yield lambda data: http_rpc(self.config["port"], data, timeout=5)
+            return
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        with tempfile.TemporaryFile() as errors:
+            proc = subprocess.Popen(
+                self.ssh_args()
+                + [
+                    "-N",
+                    "-o",
+                    "ExitOnForwardFailure=yes",
+                    "-L",
+                    f"127.0.0.1:{port}:127.0.0.1:{self.config['port']}",
+                    self.config["ssh_target"],
+                ],
+                stderr=errors,
+            )
+            try:
+                for _ in range(50):
+                    if proc.poll() is not None:
+                        errors.seek(0)
+                        raise RuntimeError(
+                            "SSH tunnel failed: " + errors.read().decode(errors="replace")[-300:]
+                        )
+                    try:
+                        # Read-only health check; never retry an action.
+                        http_rpc(port, {"op": "status"}, timeout=1)
+                        break
+                    except (OSError, ValueError):
+                        time.sleep(0.1)
+                else:
+                    raise RuntimeError("Device did not respond through SSH")
+
+                def call(data):
+                    if proc.poll() is not None:
+                        raise RuntimeError("SSH disconnected; restart OkabeBot")
+                    return http_rpc(port, data, timeout=5)
+
+                yield call
+            finally:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait()
+
+
+def device(name):
+    return Device(get_config()["devices"][name])

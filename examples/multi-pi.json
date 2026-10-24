@@ -1,0 +1,81 @@
+{
+  "state_dir": "./state",
+  "character": {
+    "name": "Okabe",
+    "default_voice": "calm",
+    "intensity": 0.6,
+    "palette": {
+      "background": "#101e25",
+      "shell": "#accdc1",
+      "accent": "#a5f4ce"
+    },
+    "style": "okabe"
+  },
+  "approvals": {
+    "auto_approve_hardware": true,
+    "allowed_tools": [
+      "get_bot_status",
+      "press_bot",
+      "display_message",
+      "display_image",
+      "clear_display",
+      "get_display_status",
+      "preview_display",
+      "capture_camera",
+      "record_camera",
+      "get_voice_status",
+      "get_button_events",
+      "record_audio",
+      "play_audio",
+      "speak",
+      "character_speak",
+      "character_expression",
+      "list_character_voices",
+      "set_character_voice"
+    ]
+  },
+  "devices": {
+    "display": {
+      "transport": "ssh",
+      "port": 8765,
+      "ssh_target": "pi@display-pi.local",
+      "ssh_key": "~/.ssh/okabebot_ed25519",
+      "remote_dir": "/opt/okabebot/pi",
+      "recordings_dir": "/opt/okabebot/pi/recordings"
+    },
+    "voice": {
+      "transport": "ssh",
+      "port": 8766,
+      "ssh_target": "pi@voice-pi.local",
+      "ssh_key": "~/.ssh/okabebot_ed25519",
+      "remote_dir": "/opt/okabebot/pi"
+    }
+  },
+  "speech": {
+    "engine": "auto",
+    "sync_lead_seconds": 1.5,
+    "mac_voices": {
+      "warm": "Samantha (English (US))",
+      "calm": "Daniel",
+      "robotic": "Fred"
+    },
+    "linux_voices": {
+      "warm": "en-us",
+      "calm": "en-gb",
+      "robotic": "en"
+    }
+  },
+  "transcription": {
+    "model": "base.en",
+    "language": "en",
+    "compute_type": "int8"
+  },
+  "codex": {
+    "binary": "codex",
+    "thread_name": "Hardware Voice",
+    "cwd": "."
+  },
+  "web": {
+    "port": 8768
+  }
+}
