@@ -155,7 +155,17 @@ class PooledDevice(Device):
                 call = context.__enter__()
                 self._context, self._call = context, call
             call = self._call
-        return call(data)
+        try:
+            return call(data)
+        except Exception:
+            # Drop a dead tunnel so the next request can reconnect. Never replay
+            # this request: a physical action may have succeeded before timeout.
+            with self._guard:
+                if self._call is call:
+                    context = self._context
+                    self._context = self._call = None
+                    context.__exit__(None, None, None)
+            raise
 
     def close(self):
         with self._guard:

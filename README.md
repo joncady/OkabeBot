@@ -26,7 +26,7 @@ The existing deployment uses a Mac controller and two legacy Pi Zero W/WH satell
    ```sh
    python3 -m venv .venv
    . .venv/bin/activate
-   pip install -e '.[voice]'
+   pip install -e '.[voice,cast,notifications]'
    cp examples/single-pi.json okabebot.local.json
    # Or copy examples/multi-pi.json for SSH-connected devices.
    ```
@@ -158,3 +158,25 @@ Unit tests use mocks and do not actuate hardware. The separate `tests/*_smoke.py
 Local configs (`*.local.json`), state, SSH keys, recordings, and transcripts are ignored. Keep private material outside source control. Hardware services bind only to loopback and trust local processes; they are not intended for untrusted multi-user hosts. The control page is loopback-only and token protected. For a remote controller, forward its port through SSH rather than exposing it publicly.
 
 Code is MIT licensed. Bundled DejaVu fonts retain their own license in `okabebot/assets/LICENSE-DejaVu.txt`. Steins;Gate and its characters belong to their respective rights holders; the code license does not grant rights to those characters.
+
+## Notifications and tablet controller
+
+A tablet-friendly companion view offers large character portraits and an inbox, with transcription and diagnostics behind Dev. Notifications appear as cards held by the animated character in the bottom of the Pi screen. Important items can use local speech when the conversation is idle. GitHub account notifications and deployments, plus Google Calendar via private iCal feed, are optional sources. See [notification setup and API](docs/notifications.md) and [Codex completion cards with a chime](docs/codex-notifications.md).
+
+Spotify playback can animate the character with music notes and a scrolling song footer. See [Spotify setup](docs/spotify.md) and the [Home Assistant, Tuya, Ring, and Alexa plan](docs/home-assistant.md).
+
+## Guided setup and extending integrations
+
+Codex users can invoke `$okabebot-setup` from this checkout; its instructions live
+in [.agents/skills/okabebot-setup](.agents/skills/okabebot-setup/SKILL.md). It covers
+personal configuration, single/multiple devices, optional providers and migration
+without assuming this author's accounts or network.
+
+On prepared Linux, `./scripts/start-linux.sh --bootstrap` installs the app extras,
+caches the speech model and starts; subsequent launches use
+`./scripts/start-linux.sh`. Read [Linux setup](docs/linux-controller.md) for the
+required OS/account steps and live-USB limitations.
+
+See [adapter contracts](docs/adapters.md) to add media or notification sources.
+Provider code returns normalized state; presentation, sound, grouping and device
+transport remain separate.

@@ -12,13 +12,16 @@ license = "MIT"
 dependencies = ["mcp>=1.20,<2", "Pillow>=10,<13"]
 
 [project.optional-dependencies]
+cast = ["PyChromecast>=14,<15"]
 voice = ["faster-whisper==1.2.1", "av==16.1.0"]
-dev = ["ruff>=0.9", "build"]
+notifications = ["icalendar>=6,<7", "recurring-ical-events>=3,<4"]
+dev = ["ruff>=0.9", "build", "PyYAML>=6,<7"]
 
 [project.scripts]
 okabebot = "okabebot.bridge:main"
 okabebot-mcp = "okabebot.server:main"
 okabebot-model = "okabebot.setup:download_model"
+okabebot-doctor = "okabebot.doctor:main"
 
 [tool.setuptools.packages.find]
 include = ["okabebot*"]

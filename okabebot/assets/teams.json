@@ -1,0 +1,96 @@
+[
+  {
+    "key": "real_madrid",
+    "name": "Real Madrid CF",
+    "short_name": "RMA",
+    "aliases": [
+      "Real Madrid",
+      "Real Madrid CF"
+    ],
+    "wikipedia": "Real_Madrid_CF",
+    "colors": [
+      "#f4f0df",
+      "#ffffff"
+    ],
+    "sport": "soccer"
+  },
+  {
+    "key": "barcelona",
+    "name": "FC Barcelona",
+    "short_name": "BAR",
+    "aliases": [
+      "Barcelona",
+      "FC Barcelona",
+      "Barça"
+    ],
+    "wikipedia": "FC_Barcelona",
+    "colors": [
+      "#98273f",
+      "#64a6dc"
+    ],
+    "sport": "soccer"
+  },
+  {
+    "key": "sunderland",
+    "name": "Sunderland AFC",
+    "short_name": "SUN",
+    "aliases": [
+      "Sunderland",
+      "Sunderland AFC",
+      "Sunderland A.F.C."
+    ],
+    "wikipedia": "Sunderland_A.F.C.",
+    "colors": [
+      "#c12838",
+      "#ffffff"
+    ],
+    "sport": "soccer"
+  },
+  {
+    "key": "leeds_united",
+    "name": "Leeds United",
+    "short_name": "LEE",
+    "aliases": [
+      "Leeds United",
+      "Leeds United FC",
+      "Leeds"
+    ],
+    "wikipedia": "Leeds_United_F.C.",
+    "colors": [
+      "#e6c842",
+      "#ffffff"
+    ],
+    "sport": "soccer"
+  },
+  {
+    "key": "bournemouth",
+    "name": "AFC Bournemouth",
+    "short_name": "BOU",
+    "aliases": [
+      "AFC Bournemouth",
+      "Bournemouth"
+    ],
+    "wikipedia": "AFC_Bournemouth",
+    "colors": [
+      "#b72332",
+      "#ffffff"
+    ],
+    "sport": "soccer"
+  },
+  {
+    "key": "ac_milan",
+    "name": "AC Milan",
+    "short_name": "MIL",
+    "aliases": [
+      "AC Milan",
+      "A.C. Milan",
+      "Milan"
+    ],
+    "wikipedia": "AC_Milan",
+    "colors": [
+      "#bf2634",
+      "#ffffff"
+    ],
+    "sport": "soccer"
+  }
+]

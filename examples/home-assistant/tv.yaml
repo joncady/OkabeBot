@@ -1,0 +1,47 @@
+# Optional package, disabled until you replace BOTH placeholder entity IDs,
+# verify real movie/episode titles, and enable the automation in Home Assistant.
+# Requires rest_command.okabebot_notification from okabebot.yaml.
+automation:
+  - id: okabebot_tv_now_playing
+    alias: OkabeBot - TV now playing
+    initial_state: false
+    description: Silent title card from verified media metadata, with a 30-second cooldown.
+    triggers:
+      - trigger: state
+        entity_id: media_player.replace_with_your_tv
+        to: playing
+      - trigger: state
+        entity_id: media_player.replace_with_your_tv
+        attribute: media_title
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state is not none
+             and trigger.from_state.state not in ['unknown', 'unavailable']
+             and trigger.to_state is not none
+             and trigger.to_state.state == 'playing' }}
+    actions:
+      # Let the app settle its title before reading current state. Position
+      # updates do not trigger this automation.
+      - delay: "00:00:03"
+      - variables:
+          player: "{{ trigger.entity_id }}"
+          title_now: "{{ state_attr(trigger.entity_id, 'media_title') | default('', true) | string | trim }}"
+          app_now: "{{ state_attr(trigger.entity_id, 'app_name') | default('', true) | string | trim }}"
+      - condition: template
+        value_template: >-
+          {{ is_state(player, 'playing')
+             and title_now | length > 0
+             and title_now | lower not in ['unknown', 'unavailable', 'none']
+             and title_now | lower != app_now | lower }}
+      - action: rest_command.okabebot_notification
+        data:
+          title: Now playing on TV
+          body: "{{ title_now }}"
+          priority: normal
+          # Repeated pause/resume or reconnects do not repeat the same title
+          # during a calendar day. Includes entity to separate multiple TVs.
+          event_key: "tv-title-{{ player }}-{{ now().strftime('%Y-%m-%d') }}-{{ title_now }}"
+      - delay: "00:00:30"
+    mode: single
+    max_exceeded: silent

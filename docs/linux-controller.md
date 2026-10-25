@@ -12,7 +12,7 @@ On Ubuntu, install the system dependencies:
 sudo apt-get update
 sudo apt-get install -y python3-venv espeak-ng ffmpeg git openssh-client
 python3 -m venv .venv
-.venv/bin/pip install -e '.[voice]'
+.venv/bin/pip install -e '.[voice,cast,notifications]'
 ```
 
 Install and sign into the [Codex CLI](https://developers.openai.com/codex/cli/).
@@ -24,17 +24,31 @@ Create `okabebot.local.json` using the README's device configuration. Set
 Authorize the controller's SSH public key on each Pi and verify their host keys.
 Do not copy a macOS executable path or assume the Mac's SSH setup exists on Linux.
 
-Download the configured model and start:
+After OS prerequisites, private configuration and account/SSH setup, bootstrap
+and start from the checkout with one command:
 
 ```sh
-OKABEBOT_CONFIG="$PWD/okabebot.local.json" .venv/bin/okabebot-model
-./scripts/start-linux.sh
+./scripts/start-linux.sh --bootstrap
 ```
 
-The launcher accepts an alternative configuration as its first argument and
-additional controller arguments afterward. Set `OKABEBOT_PYTHON` to use another
-virtual environment. It runs in the foreground; Ctrl+C stops it. It does not
-install dependencies, create persistence, or enable automatic startup.
+This creates `.venv` if needed, installs the voice/Cast/calendar extras, downloads
+the configured model once, and starts the controller. It does not install OS
+packages, authorize devices, sign in, or change disk/boot configuration. Downloads
+need Internet access. Existing private config and state are preserved.
+
+For subsequent starts and read-only diagnosis:
+
+```sh
+./scripts/start-linux.sh
+./scripts/start-linux.sh --check
+# Alternate config and bridge arguments:
+./scripts/start-linux.sh /path/controller.local.json -- --port 8768
+```
+
+Set `OKABEBOT_PYTHON` for an existing virtual environment. The launcher runs in
+the foreground; Ctrl+C stops it. `okabebot-doctor` checks dependencies and writable
+state, with `--devices` adding read-only device status probes. It doesn't prove
+account sign-in, speech-model readiness or a successful physical interaction.
 
 Linux speech uses eSpeak NG rather than the Mac's voices. Configure
 `speech.linux_voices` to change the available presets.
@@ -97,3 +111,23 @@ unit tests, exposed all 18 MCP tools, and completed a button-to-Codex-to-hardwar
 interaction. CPU `base.en` int8 transcription took about 1.3 seconds for a
 10-second synthetic speech clip. This is one smoke test, not a general accuracy
 or latency benchmark. Slow USB storage noticeably increased startup time.
+
+## Moving the current Mac setup to a Dell
+
+Recreate the environment on Linux; do not copy the Mac virtual environment.
+Preserve the private configuration, inbox/profile/model cache and chosen provider
+state separately from Git. Replace Mac executable paths with Linux paths, verify
+Codex and GitHub sign-in on the Dell, and verify its SSH key/known hosts for each
+Pi. The startup script cannot infer these accounts or grant access.
+
+Home Assistant and the laptop Codex notify adapter must publish to the new
+controller address after cutover. If keeping Home Assistant on the Mac, its
+notification URL still needs updating; don't start a second competing HA instance.
+Keep the notification token stable when moving its state. Spotify API OAuth may
+need a local browser tunnel/sign-in on the new host; Cast mode uses the configured
+TV address. Choose a LAN bind explicitly for tablet access.
+
+Stop the Mac controller before the Dell takes over the button/display. Validate
+read-only health, quiet audio, display, PTT and an incoming notification, then check
+restart behavior on the actual Dell. The launcher has automated shell/dispatch coverage, and CI is configured for
+Ubuntu. The current full feature set has not yet been live-validated on the Dell. The prior live-USB persistence limitation still applies.

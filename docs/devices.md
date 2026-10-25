@@ -63,3 +63,20 @@ For local endpoints set `transport` to `local`; match `port` and `recordings_dir
 Authorize your own dedicated SSH public key with `ssh-copy-id`, and connect once interactively to verify the device's host key. The controller uses strict host-key checking and batch mode, so it will not silently accept an unknown host or prompt for a password. Keep private keys outside the repository. Both ordinary RPC and the voice tunnel connect only to loopback on the destination.
 
 Keep clocks synchronized: animation/audio scheduling uses wall-clock timestamps across devices. `speech.sync_lead_seconds` gives remote devices time to prepare playback (default 1.5 seconds).
+
+Characters include Okabe, Kurisu, Pip, and Sonic. Sonic uses an original code-drawn pixel interpretation and the existing warm speech preset (not a cloned character voice). Deploy `sonic_face.py` with `pip_face.py`, `scene.py`, and `service.py` on the display Pi.
+
+After 35 seconds of quiet idle, Okabe/Kurisu silently use a phone and Sonic wags a finger for eight seconds. The scene repeats on a 48-second cycle while idle. Music, notifications, deployment activity, listening, thinking, and speech suppress these gestures. No audio or model call is made for an idle gesture.
+
+## Speaker volume
+
+Open **Dev → Speaker volume** to adjust 0–100% or mute/unmute. Changes apply
+immediately to speech and chimes, including audio already playing. The Voice
+service saves `volume.local.json` on the speaker device and restores it when
+restarted; the current setup is left at a quiet 15%.
+
+The device configuration accepts `audio_mixer_control` (default `Master`) and
+`audio_mixer_card` (default empty, using the ALSA default card). These select the
+existing ALSA mixer; no shell commands from the browser are accepted. If the
+mixer is unavailable, audio service startup continues and the Dev control shows
+Unavailable. Volume is independent of microphone/capture gain.

@@ -1,0 +1,55 @@
+# Optional Home Assistant package. Requires okabebot.yaml's REST command.
+# Replace the clearly marked sensor placeholder, then enable the automation.
+# This reports a scheduled timer; it does not claim a timer rang or was cancelled.
+script:
+  okabebot_echo_say:
+    alias: OkabeBot - speak on a selected Echo
+    description: Manual test/action only. Select a Speak entity to avoid the announcement chime.
+    fields:
+      speaker:
+        name: Echo Speak entity
+        required: true
+        selector:
+          entity:
+            domain: notify
+      message:
+        name: Message
+        required: true
+        selector:
+          text:
+    sequence:
+      - action: notify.send_message
+        target:
+          entity_id: "{{ speaker }}"
+        data:
+          message: "{{ message }}"
+    mode: single
+
+automation:
+  - id: okabebot_alexa_timer_scheduled
+    alias: OkabeBot - Alexa timer scheduled
+    description: Silent schedule card; disabled until an actual timer sensor is selected.
+    initial_state: false
+    triggers:
+      - trigger: state
+        entity_id: sensor.replace_with_echo_next_timer
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state is not none and trigger.to_state is not none
+             and trigger.from_state.state != 'unavailable'
+             and trigger.to_state.state not in ['unknown', 'unavailable', 'none', '']
+             and trigger.from_state.state != trigger.to_state.state
+             and as_timestamp(trigger.to_state.state, 0) > as_timestamp(now()) }}
+    actions:
+      - action: rest_command.okabebot_notification
+        data:
+          title: Alexa timer scheduled
+          body: >-
+            Timer scheduled for {{ as_timestamp(trigger.to_state.state)
+              | timestamp_custom('%I:%M %p', true) }}.
+          priority: normal
+          event_key: "alexa-timer-{{ trigger.entity_id }}-{{ trigger.to_state.state }}"
+      - delay: "00:00:15"
+    mode: single
+    max_exceeded: silent

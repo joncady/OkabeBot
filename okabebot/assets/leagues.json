@@ -1,0 +1,13 @@
+[
+  {"id":"laliga","name":"LaLiga","sport":"soccer","aliases":["laliga","la liga"]},
+  {"id":"premier_league","name":"Premier League","sport":"soccer","aliases":["premier league","english premier league","epl"]},
+  {"id":"mls","name":"Major League Soccer","sport":"soccer","aliases":["major league soccer","mls"]},
+  {"id":"bundesliga","name":"Bundesliga","sport":"soccer","aliases":["bundesliga"]},
+  {"id":"serie_a","name":"Serie A","sport":"soccer","aliases":["serie a"]},
+  {"id":"ligue_1","name":"Ligue 1","sport":"soccer","aliases":["ligue 1"]},
+  {"id":"nfl","name":"National Football League","sport":"american_football","aliases":["nfl","national football league"]},
+  {"id":"nba","name":"National Basketball Association","sport":"basketball","aliases":["nba","national basketball association"]},
+  {"id":"wnba","name":"Women's National Basketball Association","sport":"basketball","aliases":["wnba","women s national basketball association"]},
+  {"id":"mlb","name":"Major League Baseball","sport":"baseball","aliases":["mlb","major league baseball"]},
+  {"id":"nhl","name":"National Hockey League","sport":"hockey","aliases":["nhl","national hockey league"]}
+]

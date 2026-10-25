@@ -1,0 +1,40 @@
+# Include as a Home Assistant package. Set secrets on the HA host.
+rest_command:
+  okabebot_notification:
+    url: !secret okabebot_notification_url
+    method: POST
+    content_type: application/json
+    headers:
+      X-Notification-Token: !secret okabebot_notification_token
+    payload: >-
+      {{ {"source": "system", "title": title, "body": body | default(""),
+          "priority": priority | default("normal"),
+          "dedupe_key": event_key,
+          "audio": audio | default("default"),
+          "group_key": group_key | default(none),
+          "group_title": group_title | default(none),
+          "expires_at": as_timestamp(now()) + 60} | to_json }}
+    timeout: 10
+
+automation:
+  - id: okabebot_door_open
+    alias: OkabeBot - door opened
+    description: Silent card on real closed-to-open events; no startup or unavailable alerts.
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.door_sensor_door
+        from: "off"
+        to: "on"
+    actions:
+      - action: rest_command.okabebot_notification
+        data:
+          title: Door opened
+          body: The door sensor detected an opening.
+          priority: normal
+          audio: silent
+          group_key: front-door
+          group_title: Front door activity
+          event_key: "door-open-{{ trigger.to_state.context.id }}"
+      - delay: "00:00:15"
+    mode: single
+    max_exceeded: silent

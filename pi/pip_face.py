@@ -88,6 +88,12 @@ def pip_shapes(emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idl
 
 
 def shapes(style="okabe", **kwargs):
+    if style == "sonic":
+        try:
+            from .sonic_face import shapes as sonic_shapes
+        except ImportError:
+            from sonic_face import shapes as sonic_shapes
+        return sonic_shapes(**kwargs)
     if style == "kurisu":
         try:
             from .kurisu_face import shapes as kurisu_shapes

@@ -1,0 +1,2486 @@
+[
+  {
+    "name": "movie.action.playing",
+    "preset": "movie.action",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "action"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.action.paused",
+    "preset": "movie.action",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "action"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.action.buffering",
+    "preset": "movie.action",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "action"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.action.idle",
+    "preset": "movie.action",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "action"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.adventure.playing",
+    "preset": "movie.adventure",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "adventure"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.adventure.paused",
+    "preset": "movie.adventure",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "adventure"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.adventure.buffering",
+    "preset": "movie.adventure",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "adventure"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.adventure.idle",
+    "preset": "movie.adventure",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "adventure"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.animation.playing",
+    "preset": "movie.animation",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "animation"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.animation.paused",
+    "preset": "movie.animation",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "animation"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.animation.buffering",
+    "preset": "movie.animation",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "animation"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.animation.idle",
+    "preset": "movie.animation",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "animation"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.comedy.playing",
+    "preset": "movie.comedy",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "comedy"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.comedy.paused",
+    "preset": "movie.comedy",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "comedy"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.comedy.buffering",
+    "preset": "movie.comedy",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "comedy"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.comedy.idle",
+    "preset": "movie.comedy",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "comedy"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.crime.playing",
+    "preset": "movie.crime",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "crime"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.crime.paused",
+    "preset": "movie.crime",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "crime"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.crime.buffering",
+    "preset": "movie.crime",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "crime"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.crime.idle",
+    "preset": "movie.crime",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "crime"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.documentary.playing",
+    "preset": "movie.documentary",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "documentary"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.documentary.paused",
+    "preset": "movie.documentary",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "documentary"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.documentary.buffering",
+    "preset": "movie.documentary",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "documentary"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.documentary.idle",
+    "preset": "movie.documentary",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "documentary"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.drama.playing",
+    "preset": "movie.drama",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "drama"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.drama.paused",
+    "preset": "movie.drama",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "drama"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.drama.buffering",
+    "preset": "movie.drama",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "drama"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.drama.idle",
+    "preset": "movie.drama",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "drama"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.family.playing",
+    "preset": "movie.family",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "family"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.family.paused",
+    "preset": "movie.family",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "family"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.family.buffering",
+    "preset": "movie.family",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "family"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.family.idle",
+    "preset": "movie.family",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "family"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.fantasy.playing",
+    "preset": "movie.fantasy",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "fantasy"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.fantasy.paused",
+    "preset": "movie.fantasy",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "fantasy"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.fantasy.buffering",
+    "preset": "movie.fantasy",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "fantasy"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.fantasy.idle",
+    "preset": "movie.fantasy",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "fantasy"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.history.playing",
+    "preset": "movie.history",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "history"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.history.paused",
+    "preset": "movie.history",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "history"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.history.buffering",
+    "preset": "movie.history",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "history"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.history.idle",
+    "preset": "movie.history",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "history"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.horror.playing",
+    "preset": "movie.horror",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "horror"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.horror.paused",
+    "preset": "movie.horror",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "horror"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.horror.buffering",
+    "preset": "movie.horror",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "horror"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.horror.idle",
+    "preset": "movie.horror",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "horror"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.music.playing",
+    "preset": "movie.music",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "music"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.music.paused",
+    "preset": "movie.music",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "music"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.music.buffering",
+    "preset": "movie.music",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "music"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.music.idle",
+    "preset": "movie.music",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "music"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.mystery.playing",
+    "preset": "movie.mystery",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "mystery"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.mystery.paused",
+    "preset": "movie.mystery",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "mystery"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.mystery.buffering",
+    "preset": "movie.mystery",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "mystery"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.mystery.idle",
+    "preset": "movie.mystery",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "mystery"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.romance.playing",
+    "preset": "movie.romance",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "romance"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.romance.paused",
+    "preset": "movie.romance",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "romance"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.romance.buffering",
+    "preset": "movie.romance",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "romance"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.romance.idle",
+    "preset": "movie.romance",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "romance"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.science_fiction.playing",
+    "preset": "movie.science_fiction",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "science_fiction"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.science_fiction.paused",
+    "preset": "movie.science_fiction",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "science_fiction"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.science_fiction.buffering",
+    "preset": "movie.science_fiction",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "science_fiction"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.science_fiction.idle",
+    "preset": "movie.science_fiction",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "science_fiction"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.tv_movie.playing",
+    "preset": "movie.tv_movie",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "tv_movie"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.tv_movie.paused",
+    "preset": "movie.tv_movie",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "tv_movie"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.tv_movie.buffering",
+    "preset": "movie.tv_movie",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "tv_movie"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.tv_movie.idle",
+    "preset": "movie.tv_movie",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "tv_movie"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.thriller.playing",
+    "preset": "movie.thriller",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "thriller"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.thriller.paused",
+    "preset": "movie.thriller",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "thriller"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.thriller.buffering",
+    "preset": "movie.thriller",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "thriller"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.thriller.idle",
+    "preset": "movie.thriller",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "thriller"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.war.playing",
+    "preset": "movie.war",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "war"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.war.paused",
+    "preset": "movie.war",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "war"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.war.buffering",
+    "preset": "movie.war",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "war"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.war.idle",
+    "preset": "movie.war",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "war"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.western.playing",
+    "preset": "movie.western",
+    "state": "PLAYING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "western"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.western.paused",
+    "preset": "movie.western",
+    "state": "PAUSED",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "western"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.western.buffering",
+    "preset": "movie.western",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "western"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "movie.western.idle",
+    "preset": "movie.western",
+    "state": "IDLE",
+    "context": {
+      "kind": "movie",
+      "genres": [
+        "western"
+      ],
+      "format": "",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.sports_highlights.playing",
+    "preset": "video.sports_highlights",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "sports_highlights",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.sports_highlights.paused",
+    "preset": "video.sports_highlights",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "sports_highlights",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.sports_highlights.buffering",
+    "preset": "video.sports_highlights",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "sports_highlights",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.sports_highlights.idle",
+    "preset": "video.sports_highlights",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "sports_highlights",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.sports_live.playing",
+    "preset": "video.sports_live",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "sports_live",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.sports_live.paused",
+    "preset": "video.sports_live",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "sports_live",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.sports_live.buffering",
+    "preset": "video.sports_live",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "sports_live",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.sports_live.idle",
+    "preset": "video.sports_live",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "sports_live",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.sports_analysis.playing",
+    "preset": "video.sports_analysis",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "sports_analysis",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.sports_analysis.paused",
+    "preset": "video.sports_analysis",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "sports_analysis",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.sports_analysis.buffering",
+    "preset": "video.sports_analysis",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "sports_analysis",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.sports_analysis.idle",
+    "preset": "video.sports_analysis",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "sports_analysis",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.game_review.playing",
+    "preset": "video.game_review",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "game_review",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.game_review.paused",
+    "preset": "video.game_review",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "game_review",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.game_review.buffering",
+    "preset": "video.game_review",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "game_review",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.game_review.idle",
+    "preset": "video.game_review",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "game_review",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.gameplay.playing",
+    "preset": "video.gameplay",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "gameplay",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.gameplay.paused",
+    "preset": "video.gameplay",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "gameplay",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.gameplay.buffering",
+    "preset": "video.gameplay",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "gameplay",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.gameplay.idle",
+    "preset": "video.gameplay",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "gameplay",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.esports.playing",
+    "preset": "video.esports",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "esports",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.esports.paused",
+    "preset": "video.esports",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "esports",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.esports.buffering",
+    "preset": "video.esports",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "esports",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.esports.idle",
+    "preset": "video.esports",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "esports",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.comedy_sketch.playing",
+    "preset": "video.comedy_sketch",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "comedy_sketch",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.comedy_sketch.paused",
+    "preset": "video.comedy_sketch",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "comedy_sketch",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.comedy_sketch.buffering",
+    "preset": "video.comedy_sketch",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "comedy_sketch",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.comedy_sketch.idle",
+    "preset": "video.comedy_sketch",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "comedy_sketch",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.standup.playing",
+    "preset": "video.standup",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "standup",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.standup.paused",
+    "preset": "video.standup",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "standup",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.standup.buffering",
+    "preset": "video.standup",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "standup",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.standup.idle",
+    "preset": "video.standup",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "standup",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.reaction.playing",
+    "preset": "video.reaction",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "reaction",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.reaction.paused",
+    "preset": "video.reaction",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "reaction",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.reaction.buffering",
+    "preset": "video.reaction",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "reaction",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.reaction.idle",
+    "preset": "video.reaction",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "reaction",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.film_review.playing",
+    "preset": "video.film_review",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "film_review",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.film_review.paused",
+    "preset": "video.film_review",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "film_review",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.film_review.buffering",
+    "preset": "video.film_review",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "film_review",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.film_review.idle",
+    "preset": "video.film_review",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "film_review",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.trailer.playing",
+    "preset": "video.trailer",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "trailer",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.trailer.paused",
+    "preset": "video.trailer",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "trailer",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.trailer.buffering",
+    "preset": "video.trailer",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "trailer",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.trailer.idle",
+    "preset": "video.trailer",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "trailer",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.music_video.playing",
+    "preset": "video.music_video",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "music_video",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.music_video.paused",
+    "preset": "video.music_video",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "music_video",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.music_video.buffering",
+    "preset": "video.music_video",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "music_video",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.music_video.idle",
+    "preset": "video.music_video",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "music_video",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.concert.playing",
+    "preset": "video.concert",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "concert",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.concert.paused",
+    "preset": "video.concert",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "concert",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.concert.buffering",
+    "preset": "video.concert",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "concert",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.concert.idle",
+    "preset": "video.concert",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "concert",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.tutorial.playing",
+    "preset": "video.tutorial",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "tutorial",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.tutorial.paused",
+    "preset": "video.tutorial",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "tutorial",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.tutorial.buffering",
+    "preset": "video.tutorial",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "tutorial",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.tutorial.idle",
+    "preset": "video.tutorial",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "tutorial",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.lecture.playing",
+    "preset": "video.lecture",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "lecture",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.lecture.paused",
+    "preset": "video.lecture",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "lecture",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.lecture.buffering",
+    "preset": "video.lecture",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "lecture",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.lecture.idle",
+    "preset": "video.lecture",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "lecture",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.science.playing",
+    "preset": "video.science",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "science",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.science.paused",
+    "preset": "video.science",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "science",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.science.buffering",
+    "preset": "video.science",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "science",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.science.idle",
+    "preset": "video.science",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "science",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.technology_review.playing",
+    "preset": "video.technology_review",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "technology_review",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.technology_review.paused",
+    "preset": "video.technology_review",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "technology_review",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.technology_review.buffering",
+    "preset": "video.technology_review",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "technology_review",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.technology_review.idle",
+    "preset": "video.technology_review",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "technology_review",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.news.playing",
+    "preset": "video.news",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "news",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.news.paused",
+    "preset": "video.news",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "news",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.news.buffering",
+    "preset": "video.news",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "news",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.news.idle",
+    "preset": "video.news",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "news",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.interview.playing",
+    "preset": "video.interview",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "interview",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.interview.paused",
+    "preset": "video.interview",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "interview",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.interview.buffering",
+    "preset": "video.interview",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "interview",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.interview.idle",
+    "preset": "video.interview",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "interview",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.podcast.playing",
+    "preset": "video.podcast",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "podcast",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.podcast.paused",
+    "preset": "video.podcast",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "podcast",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.podcast.buffering",
+    "preset": "video.podcast",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "podcast",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.podcast.idle",
+    "preset": "video.podcast",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "podcast",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.vlog.playing",
+    "preset": "video.vlog",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "vlog",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.vlog.paused",
+    "preset": "video.vlog",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "vlog",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.vlog.buffering",
+    "preset": "video.vlog",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "vlog",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.vlog.idle",
+    "preset": "video.vlog",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "vlog",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.travel.playing",
+    "preset": "video.travel",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "travel",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.travel.paused",
+    "preset": "video.travel",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "travel",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.travel.buffering",
+    "preset": "video.travel",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "travel",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.travel.idle",
+    "preset": "video.travel",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "travel",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.food.playing",
+    "preset": "video.food",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "food",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.food.paused",
+    "preset": "video.food",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "food",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.food.buffering",
+    "preset": "video.food",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "food",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.food.idle",
+    "preset": "video.food",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "food",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.fitness.playing",
+    "preset": "video.fitness",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "fitness",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.fitness.paused",
+    "preset": "video.fitness",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "fitness",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.fitness.buffering",
+    "preset": "video.fitness",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "fitness",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.fitness.idle",
+    "preset": "video.fitness",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "fitness",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.nature.playing",
+    "preset": "video.nature",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "nature",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.nature.paused",
+    "preset": "video.nature",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "nature",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.nature.buffering",
+    "preset": "video.nature",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "nature",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.nature.idle",
+    "preset": "video.nature",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "nature",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.animals.playing",
+    "preset": "video.animals",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "animals",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.animals.paused",
+    "preset": "video.animals",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "animals",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.animals.buffering",
+    "preset": "video.animals",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "animals",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.animals.idle",
+    "preset": "video.animals",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "animals",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.asmr.playing",
+    "preset": "video.asmr",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "asmr",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.asmr.paused",
+    "preset": "video.asmr",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "asmr",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.asmr.buffering",
+    "preset": "video.asmr",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "asmr",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.asmr.idle",
+    "preset": "video.asmr",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "asmr",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.relaxation.playing",
+    "preset": "video.relaxation",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "relaxation",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.relaxation.paused",
+    "preset": "video.relaxation",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "relaxation",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.relaxation.buffering",
+    "preset": "video.relaxation",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "relaxation",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.relaxation.idle",
+    "preset": "video.relaxation",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "relaxation",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.diy.playing",
+    "preset": "video.diy",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "diy",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.diy.paused",
+    "preset": "video.diy",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "diy",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.diy.buffering",
+    "preset": "video.diy",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "diy",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.diy.idle",
+    "preset": "video.diy",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "diy",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.automotive.playing",
+    "preset": "video.automotive",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "automotive",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.automotive.paused",
+    "preset": "video.automotive",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "automotive",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.automotive.buffering",
+    "preset": "video.automotive",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "automotive",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.automotive.idle",
+    "preset": "video.automotive",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "automotive",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.fashion.playing",
+    "preset": "video.fashion",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "fashion",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.fashion.paused",
+    "preset": "video.fashion",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "fashion",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.fashion.buffering",
+    "preset": "video.fashion",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "fashion",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.fashion.idle",
+    "preset": "video.fashion",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "fashion",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.shorts.playing",
+    "preset": "video.shorts",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "shorts",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.shorts.paused",
+    "preset": "video.shorts",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "shorts",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.shorts.buffering",
+    "preset": "video.shorts",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "shorts",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.shorts.idle",
+    "preset": "video.shorts",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "shorts",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.nonprofit.playing",
+    "preset": "video.nonprofit",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "nonprofit",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.nonprofit.paused",
+    "preset": "video.nonprofit",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "nonprofit",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.nonprofit.buffering",
+    "preset": "video.nonprofit",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "nonprofit",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.nonprofit.idle",
+    "preset": "video.nonprofit",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "nonprofit",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.unknown.playing",
+    "preset": "video.unknown",
+    "state": "PLAYING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "unknown",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.unknown.paused",
+    "preset": "video.unknown",
+    "state": "PAUSED",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "unknown",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.unknown.buffering",
+    "preset": "video.unknown",
+    "state": "BUFFERING",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "unknown",
+      "confidence": 1
+    }
+  },
+  {
+    "name": "video.unknown.idle",
+    "preset": "video.unknown",
+    "state": "IDLE",
+    "context": {
+      "kind": "video",
+      "genres": [],
+      "format": "unknown",
+      "confidence": 1
+    }
+  }
+]
