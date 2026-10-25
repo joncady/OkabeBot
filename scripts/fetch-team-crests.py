@@ -9,7 +9,7 @@ from urllib.parse import urlencode, quote, unquote
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
-TEAMS = json.loads((ROOT / "okabebot/assets/teams.json").read_text())
+TEAMS = json.loads((ROOT / "okabebot/assets/teams.local.json").read_text())
 HEADERS = {"User-Agent": "OkabeBot/0.1 (personal hardware display; Wikipedia crest cache)"}
 
 
@@ -72,7 +72,7 @@ for team in TEAMS:
     sources = [r for r in sources if r["key"] != team["key"]] + [source]
     (folder / "sources.json").write_text(json.dumps(sources, indent=2) + "\n")
     print(team["key"] + ": cached")
-(ROOT / "okabebot/assets/crests.json").write_text(
+(ROOT / "okabebot/assets/crests.local.json").write_text(
     json.dumps(
         [
             dict(key=t["key"], name=t["name"])

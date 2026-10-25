@@ -74,6 +74,7 @@ DEFAULTS = {
     "codex": {"binary": "codex", "thread_name": "Hardware Voice", "cwd": ".", "effort": "low"},
     "spotify": {
         "source": "api",
+        "playback_control": False,
         "cast_host": "",
         "callback_port": 8769,
         "poll_seconds": 15,

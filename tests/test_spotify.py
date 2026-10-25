@@ -17,6 +17,39 @@ class SpotifyTests(unittest.TestCase):
             self.tmp.name, dict(callback_port=8769, poll_seconds=15, device_name="")
         )
 
+    def test_control_is_opt_in_and_permission_checked(self):
+        with self.assertRaises(ValueError):
+            self.spotify.control("next")
+        self.spotify.settings["playback_control"] = True
+        self.spotify.tokens = dict(client_id="client", scope="user-read-playback-state")
+        with patch("okabebot.spotify.env_value", return_value="client"):
+            with self.assertRaisesRegex(ValueError, "grant playback control"):
+                self.spotify.control("next")
+
+    def test_control_sends_exact_uri_without_polling(self):
+        from unittest.mock import MagicMock
+
+        self.spotify.settings["playback_control"] = True
+        self.spotify.tokens = dict(
+            client_id="client",
+            scope="user-modify-playback-state",
+            access_token="test",
+            expires_at=time.time() + 3600,
+        )
+        with (
+            patch("okabebot.spotify.env_value", return_value="client"),
+            patch("okabebot.spotify.urlopen", return_value=MagicMock()) as send,
+        ):
+            result = self.spotify.control("play", "spotify:track:" + "a" * 22)
+            request = send.call_args.args[0]
+            self.assertEqual(request.method, "PUT")
+            self.assertEqual(json.loads(request.data), {"uris": ["spotify:track:" + "a" * 22]})
+            self.assertTrue(result["accepted"])
+            send.assert_called_once()
+            with self.assertRaises(ValueError):
+                self.spotify.control("play", "https://untrusted.example/song")
+            send.assert_called_once()
+
     def test_pkce_single_use_and_tokens_private(self):
         with (
             patch("okabebot.spotify.env_value", return_value="client"),

@@ -515,7 +515,8 @@ def handler(bridge):
                 )
             elif self.path == "/content/crests" and self.authorized():
                 self.respond(
-                    200, json.loads((Path(__file__).parent / "assets/crests.json").read_text())
+                    200,
+                    [],  # Crests are resolved on demand, not shipped as a registry.
                 )
             elif self.path == "/content/presets" and self.authorized():
                 self.respond(200, PRESETS)

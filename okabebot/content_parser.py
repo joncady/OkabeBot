@@ -6,7 +6,17 @@ import unicodedata
 from pathlib import Path
 from .leagues import detect as detect_league
 
-TEAMS = json.loads((Path(__file__).parent / "assets/teams.json").read_text())
+
+def local_teams():
+    path = Path(__file__).parent / "assets/teams.local.json"
+    try:
+        value = json.loads(path.read_text())
+        return value if isinstance(value, list) else []
+    except (OSError, ValueError):
+        return []
+
+
+TEAMS = local_teams()
 SPORT_MARKERS = {
     "soccer": (
         "premier league",

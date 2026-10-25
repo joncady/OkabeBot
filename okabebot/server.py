@@ -24,6 +24,23 @@ WRITE = ToolAnnotations(
 )
 
 
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=True
+    )
+)
+def control_spotify(
+    action: Literal["play", "pause", "next", "previous"], uri: str = "", device_id: str = ""
+) -> dict:
+    """Control Spotify on an active Spotify Connect device. Explicit opt-in and
+    Spotify playback permission required. Pass a Spotify URI to select music.
+    An accepted request is not proof that audio played. Never retry skips blindly."""
+    from .spotify import Spotify
+    from .config import get_config
+
+    return Spotify(state_dir(), get_config()["spotify"]).control(action, uri, device_id)
+
+
 @mcp.tool(annotations=WRITE)
 def publish_notification(
     source: str,

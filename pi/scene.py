@@ -13,30 +13,43 @@ except ImportError:
     import reactions
 
 
-MEDIA_APPS = {
-    "youtube": "youtube",
-    "spotify": "spotify",
-    "primevideo": "prime",
-    "amazonprimevideo": "prime",
-    "amazonvideo": "prime",
-    "prime": "prime",
-    "hbomax": "max",
-    "max": "max",
-    "netflix": "netflix",
-    "fubotv": "fubo",
-    "fubotvliveproduction": "fubo",
-    "fubo": "fubo",
-    "disney+": "disney",
-    "disneyplus": "disney",
-}
+@lru_cache(maxsize=1)
+def media_aliases():
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent
+    path = root / "media-apps.local.json"
+    if not path.exists():
+        path = root / "assets/media-apps.json"
+    try:
+        aliases = json.loads(path.read_text()).get("aliases", {})
+    except (OSError, ValueError, AttributeError):
+        aliases = {}
+    return aliases
 
 
 def media_source(app):
-    return MEDIA_APPS.get("".join(str(app).casefold().split()), "tv")
+    return media_aliases().get("".join(str(app).casefold().split()), "tv")
 
 
 @lru_cache(maxsize=32)
 def icon(source, size=32):
+    # Optional Wikipedia-sourced assets are downloaded on the controller,
+    # never fetched on the Pi's render loop. Unknown/missing assets use pixel icons.
+    from pathlib import Path
+
+    if str(source).isalnum():
+        path = Path(__file__).resolve().parent / "assets/app-logos" / (source + ".png")
+        try:
+            with Image.open(str(path)) as logo:
+                logo = logo.convert("RGBA")
+                logo.thumbnail((size, size), Image.NEAREST)
+                canvas = Image.new("RGBA", (size, size))
+                canvas.alpha_composite(logo, ((size - logo.width) // 2, (size - logo.height) // 2))
+                return canvas
+        except (OSError, ValueError):
+            pass
     image = Image.new("RGBA", (16, 16))
     d = ImageDraw.Draw(image)
     if str(source).lower() == "youtube":

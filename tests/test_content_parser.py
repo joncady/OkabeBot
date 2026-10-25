@@ -9,16 +9,23 @@ def video(title, **extra):
 
 
 class ParserTests(unittest.TestCase):
+    def setUp(self):
+        from unittest.mock import patch
+
+        registry = patch("okabebot.content_parser.TEAMS", [])
+        registry.start()
+        self.addCleanup(registry.stop)
+
     def test_current_highlight_and_order(self):
         result = parse_video(
             video("Sunderland v. Leeds United | PREMIER LEAGUE HIGHLIGHTS | 10/25/2026")
         )
         c = result["context"]
         self.assertEqual((c["format"], c["sport"]), ("sports_highlights", "soccer"))
-        self.assertEqual([p["crest"] for p in c["participants"]], ["sunderland", "leeds_united"])
+        self.assertEqual([p["name"] for p in c["participants"]], ["Sunderland", "Leeds United"])
         self.assertNotIn("score", str(c))
         reverse = parse_video(video("Leeds United vs Sunderland | Premier League Highlights"))
-        self.assertEqual(reverse["context"]["participants"][0]["crest"], "leeds_united")
+        self.assertEqual(reverse["context"]["participants"][0]["name"], "Leeds United")
 
     def test_aliases_and_format(self):
         cases = [
@@ -65,7 +72,7 @@ class ParserTests(unittest.TestCase):
             )
         )
         self.assertEqual(result["context"]["format"], "sports_live")
-        self.assertEqual(result["context"]["sport"], "soccer")
+        self.assertEqual(result["context"]["sport"], "unknown")
         self.assertEqual(parse_video(dict(app="fuboTV", title="Evening news"))["context"], {})
 
     def test_unfamiliar_matchup_keeps_labels_without_sport_or_manual_team_list(self):

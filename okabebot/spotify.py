@@ -121,7 +121,12 @@ class Spotify:
                     client_id=client,
                     response_type="code",
                     redirect_uri=self.redirect_uri,
-                    scope="user-read-playback-state",
+                    scope="user-read-playback-state"
+                    + (
+                        " user-modify-playback-state"
+                        if self.settings.get("playback_control")
+                        else ""
+                    ),
                     state=state,
                     code_challenge_method="S256",
                     code_challenge=challenge,
@@ -162,6 +167,61 @@ class Spotify:
             except Exception:
                 self.error = "Spotify authorization failed. Check the app redirect URI and allowed user, then reconnect."
                 raise ValueError(self.error) from None
+
+    def control(self, action, uri="", device_id=""):
+        """Explicit, opt-in playback control independent of the metadata source."""
+        if not self.settings.get("playback_control"):
+            raise ValueError("Enable spotify.playback_control and reconnect Spotify first")
+        if action not in ("play", "pause", "next", "previous"):
+            raise ValueError("Unknown playback action")
+        if uri and (
+            action != "play"
+            or not __import__("re").fullmatch(
+                r"spotify:(?:track|album|playlist|artist):[A-Za-z0-9]{22}", uri
+            )
+        ):
+            raise ValueError("Use a Spotify track, album, playlist, or artist URI with play")
+        if device_id and not __import__("re").fullmatch(r"[A-Za-z0-9_-]{1,128}", device_id):
+            raise ValueError("Invalid Spotify device ID")
+        client = env_value("SPOTIFY_CLIENT_ID")
+        if not client or self.tokens.get("client_id") != client:
+            raise ValueError("Connect Spotify on this controller first")
+        if "user-modify-playback-state" not in self.tokens.get("scope", "").split():
+            raise ValueError("Reconnect Spotify to grant playback control")
+        if self.tokens.get("expires_at", 0) < time.time() + 60:
+            self.save(
+                self.exchange(
+                    dict(
+                        grant_type="refresh_token",
+                        client_id=client,
+                        refresh_token=self.tokens["refresh_token"],
+                    )
+                ),
+                client,
+            )
+        body = None
+        if action == "play" and uri:
+            body = json.dumps(
+                {"uris": [uri]} if uri.startswith("spotify:track:") else {"context_uri": uri}
+            ).encode()
+        path = action + (("?" + urlencode({"device_id": device_id})) if device_id else "")
+        request = Request(
+            "https://api.spotify.com/v1/me/player/" + path,
+            data=body,
+            method="POST" if action in ("next", "previous") else "PUT",
+            headers={
+                "Authorization": "Bearer " + self.tokens["access_token"],
+                "Content-Type": "application/json",
+            },
+        )
+        try:
+            with urlopen(request, timeout=10):
+                return {"accepted": True, "action": action}
+        except HTTPError as exc:
+            raise ValueError(
+                "Spotify playback request failed (HTTP %s); check Premium, permissions and active device"
+                % exc.code
+            ) from None
 
     def poll(self):
         with self.lock:

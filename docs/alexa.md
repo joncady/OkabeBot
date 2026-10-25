@@ -22,3 +22,12 @@ The included `script.okabebot_echo_say` is an optional manual action: select one
 For the current first pass, account linking to Alexa Devices is enough; do not provision AWS resources yet. If we later want Alexa voice control of selected Home Assistant entities, the [self-hosted Alexa Smart Home guide](https://www.home-assistant.io/integrations/alexa.smart_home/) describes the separate AWS Lambda/skill and HTTPS/account-linking route.
 
 A future voice-event bridge should allowlist a deliberate command and selected device, deduplicate the event, and send a structured action. Do not forward every household utterance into Codex or treat ambient speech as approval for arbitrary tools. Inspect the actual event attributes first; no voice-to-Codex automation is enabled by this package.
+
+## Current upstream authentication issue
+
+Home Assistant 2026.10.4 can stall on Amazon's newer `/ax/claim` login flow with
+`InvalidUrlClientError`; retrying does not fix that server-side library failure.
+See [upstream issue 187595](https://github.com/home-assistant/core/issues/187595).
+Maintainers target the supported fix for 2026.11. No container-local credential
+or authentication patch is bundled here. After updating to a release containing
+the fix, cancel the old flow and retry with a fresh authenticator code.

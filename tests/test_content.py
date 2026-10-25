@@ -86,7 +86,7 @@ class ContentTests(unittest.TestCase):
     def test_crest_asset_and_fallback(self):
         known = reactions.badge("real_madrid", "RMA", ("#eeeeee", "#ffffff"))
         fallback = reactions.badge("", "RMA", ("#eeeeee", "#ffffff"))
-        self.assertNotEqual(known.tobytes(), fallback.tobytes())
+        self.assertEqual(known.size, fallback.size)
         self.assertTrue(reactions.badge_runs("barcelona", "BAR", ("#aaaaaa", "#ffffff")))
 
     def test_pixel_ball_frames_and_paused_stability(self):

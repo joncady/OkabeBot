@@ -71,3 +71,23 @@ Before adding a provider, test normalized output, missing/partial metadata,
 stop/disconnect, failure recovery, duplicate events, resource cleanup and an
 unrelated provider continuing to work. Use fake providers for contract tests;
 live tests should identify the exact app/device and what metadata it exposes.
+
+## Media identity and logo assets
+
+The Pi reads `pi/assets/media-apps.json` for normalized display-name aliases.
+Override the complete aliases dictionary with ignored `pi/media-apps.local.json`;
+restart the display service after editing. Unknown apps retain the generic TV icon.
+This is a display fallback: provider app IDs should be preferred when available.
+
+To use an actual Wikipedia logo, select its exact File: title from the app article
+and run `python scripts/fetch-app-logo.py youtube 'File:Your chosen logo.svg'`.
+The controller fetches through Wikipedia's image API, records file provenance and
+rights, and caches a PNG in ignored `pi/assets/app-logos/`. Review the result and
+copy that folder to the Pi. The renderer loads it locally and falls back to its
+pixel icon if unavailable. No runtime network calls or downloaded logos ship in
+this repository; check each file's usage terms before redistribution.
+
+Sports identity and crest discovery use the existing on-demand Wikidata/Wikipedia
+resolver. Team registries and downloaded crests are local data, not required
+install assets. An optional legacy `okabebot/assets/teams.local.json` can supply
+aliases, but new installations do not need one.
