@@ -15,3 +15,5 @@ recursive-include docs *.txt
 recursive-exclude pi/assets/crests *
 recursive-exclude pi/assets/app-logos *
 exclude okabebot/assets/teams.json okabebot/assets/crests.json
+
+recursive-include .githooks *

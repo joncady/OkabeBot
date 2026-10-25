@@ -190,3 +190,11 @@ required OS/account steps and live-USB limitations.
 See [adapter contracts](docs/adapters.md) to add media or notification sources.
 Provider code returns normalized state; presentation, sound, grouping and device
 transport remain separate.
+
+## Commit documentation check
+
+Run `./scripts/install-hooks.sh` once per checkout to enable the tracked commit
+hook. Every commit must either stage a README update or include a trailer such as
+`README-Reviewed: Internal fix; documented setup and behavior remain accurate.`
+Review the README before using that trailer. The hook requires review evidence;
+it cannot determine whether prose is correct or automatically rewrite it.

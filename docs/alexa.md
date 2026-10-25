@@ -31,3 +31,12 @@ See [upstream issue 187595](https://github.com/home-assistant/core/issues/187595
 Maintainers target the supported fix for 2026.11. No container-local credential
 or authentication patch is bundled here. After updating to a release containing
 the fix, cancel the old flow and retry with a fresh authenticator code.
+
+For a deliberate local workaround on 2026.10.4, upstream's merged
+[dependency update](https://github.com/home-assistant/core/pull/187985) uses
+`aioamazondevices==16.9.1`. Replacing the installed library and matching the
+integration manifest requirement is an unsupported local backport, not an app
+installation step. Back up the original library and manifest, restart Home
+Assistant, then retry setup with a fresh code. Container recreation removes this
+change; a normal fixed Home Assistant release should replace it. To roll back,
+restore the original manifest and library version, then restart.
