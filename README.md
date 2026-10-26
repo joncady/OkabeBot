@@ -26,7 +26,8 @@ messages, not screenshots of private account activity.
 
 Each device endpoint independently selects `local` or `ssh`. Both use the same loopback HTTP protocol. SSH connections use your existing verified host keys; no hardware service needs an exposed network port.
 
-The existing deployment uses a Mac controller and two legacy Pi Zero W/WH satellites. **The all-in-one ARM64 setup is an architectural option, not yet hardware-validated.** A Pi Zero cannot run this controller stack. Use a modern 64-bit Pi with sufficient RAM and supported dependencies for local Whisper and Codex CLI. Codex model inference still requires the OpenAI service; “local” refers to transcription, speech synthesis, and tool execution.
+The existing deployment uses a Mac controller and one legacy Pi Zero WH satellite
+combining display, camera, Bluetooth, audio and button services. **The all-in-one ARM64 setup is an architectural option, not yet hardware-validated.** A Pi Zero cannot run this controller stack. Use a modern 64-bit Pi with sufficient RAM and supported dependencies for local Whisper and Codex CLI. Codex model inference still requires the OpenAI service; “local” refers to transcription, speech synthesis, and tool execution.
 
 ## Quick start
 
@@ -289,3 +290,8 @@ When AWS relay sign-in expires, dashboard health displays the profile-specific
 renewal command (`aws sso login` for Identity Center, or `aws login` for the
 source login profile). The consumer retries automatically after renewal; network
 and permission failures remain distinct from expired-login guidance.
+
+The Pi display disables X11 screen blanking and DPMS after opening its desktop
+connection, avoiding startup authentication races and the default ten-minute
+black screen. Set `display_keep_awake: false` in the device settings to retain
+the desktop power-saving behavior.

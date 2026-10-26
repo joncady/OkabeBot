@@ -6,6 +6,7 @@ from pathlib import Path
 
 DEFAULTS = {
     "display_port": 8765,
+    "display_keep_awake": True,
     "voice_port": 8766,
     "switchbot_address": "",
     "audio_device": "default",

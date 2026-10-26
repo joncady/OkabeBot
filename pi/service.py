@@ -22,6 +22,7 @@ import layout
 import reactions
 import prop_art
 from device_config import load
+from display_power import keep_awake
 import math
 
 ROOT = Path(__file__).resolve().parent
@@ -31,6 +32,8 @@ class Display:
     def __init__(self):
         self.session_id = uuid.uuid4().hex
         self.root = tk.Tk()
+        if not keep_awake(self.root.winfo_screen(), load()["display_keep_awake"]):
+            print("Some X11 power-saving settings could not be applied", flush=True)
         self.root.title("Hardware Lab")
         self.root.attributes("-fullscreen", True)
         self.root.configure(bg="black", cursor="none")
