@@ -47,3 +47,8 @@ The 16.9.1 backport also needs the matching upstream import in
 this change authentication may succeed but entity setup fails. Verify every
 integration module imports before restarting; retain the original integration
 directory for rollback.
+
+Local backport validation: authentication and entity import completed on the
+2026.10.4 installation (8 devices, 94 entities). This verifies account import,
+not timer-to-screen delivery, Echo speech, or long-term token refresh; test those
+separately after choosing an Echo device.
