@@ -30,8 +30,20 @@ def check(config, devices=False):
         modules.extend(["icalendar", "recurring_ical_events"])
     for module in modules:
         add(module, importlib.util.find_spec(module) is not None, "Python dependency")
-    binary = config["codex"]["binary"]
-    add("codex", bool(shutil.which(binary)), "Install Codex for this OS and complete codex login")
+    if config["conversation"]["backend"] == "local":
+        command = config["conversation"]["command"][0]
+        add(
+            "local-conversation",
+            bool(shutil.which(command)),
+            "Configured local inference Python/worker executable",
+        )
+    else:
+        binary = config["codex"]["binary"]
+        add(
+            "codex",
+            bool(shutil.which(binary)),
+            "Install Codex for this OS and complete codex login",
+        )
     commands = ["say", "afconvert"] if sys.platform == "darwin" else ["espeak-ng", "ffmpeg"]
     if any(d["transport"] == "ssh" for d in config["devices"].values()):
         commands.append("ssh")

@@ -92,6 +92,11 @@ DEFAULTS = {
         "linux_voices": {"warm": "en-us+f3", "calm": "en-gb", "robotic": "en"},
     },
     "transcription": {"model": "base.en", "language": "en", "compute_type": "int8", "beam_size": 5},
+    "conversation": {
+        "backend": "codex",
+        "model": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+        "command": [],
+    },
     "codex": {"binary": "codex", "thread_name": "Hardware Voice", "cwd": ".", "effort": "low"},
     "spotify": {
         "source": "api",
@@ -197,6 +202,17 @@ def load(path):
         or not 1 <= settings["transcription"]["beam_size"] <= 5
     ):
         raise ValueError("transcription.beam_size must be 1–5")
+    conversation = settings["conversation"]
+    if conversation["backend"] not in ("codex", "local"):
+        raise ValueError("conversation.backend must be codex or local")
+    if not isinstance(conversation["model"], str) or not conversation["model"].strip():
+        raise ValueError("conversation.model must be a model name or path")
+    if not isinstance(conversation["command"], list) or any(
+        not isinstance(v, str) or not v for v in conversation["command"]
+    ):
+        raise ValueError("conversation.command must be an argv list")
+    if conversation["backend"] == "local" and not conversation["command"]:
+        raise ValueError("Local conversation requires a worker command")
     if settings["codex"]["effort"] not in ("low", "medium", "high"):
         raise ValueError("codex.effort must be low, medium, or high")
     import ipaddress

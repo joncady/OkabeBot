@@ -329,3 +329,9 @@ correlate confirmed phone presence with a recent door opening. The selected
 character delivers a short quip and a bounded recap of important inbox events from
 the absence, without an extra LLM turn. Quiet hours and existing volume rules apply.
 Reliable away/home phone updates are required; door opening alone never means arrival.
+
+An optional [local conversation backend](docs/local-conversation.md) keeps a Qwen
+4B model warm on an Apple Silicon controller for fast tool selection and casual
+chat. The Pi button still uses the same recording/transcription/action/speech path.
+Explicit targets, existing action allowlists, schema checks and durable clip IDs
+remain in force. Set `conversation.backend` back to `codex` to roll back.
