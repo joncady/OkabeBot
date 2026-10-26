@@ -40,6 +40,7 @@ SPORT_MARKERS = {
     "rugby": ("rugby",),
     "cricket": ("cricket",),
     "tennis": ("tennis", "atp", "wta"),
+    "golf": ("golf", "pga tour", "lpga"),
     "motorsport": ("formula 1", "formula one", "f1", "nascar", "motogp"),
     "combat": ("ufc", "boxing", "mma"),
 }
@@ -70,18 +71,19 @@ def resolve_team(side, teams=None):
 def matchup_names(title):
     segment = str(title).split("|")[0]
     segment = re.sub(r"^(?:live|soccer|nfl|nba|nhl|mlb)\s*[:–-]\s*", "", segment, flags=re.I)
-    pair = re.split(r"\s+(?:v\.?|vs\.?|versus)\s+", segment, maxsplit=1, flags=re.I)
+    pair = re.split(r"\s+(?:v\.?|vs\.?|versus|at|@)\s+", segment, maxsplit=1, flags=re.I)
     if len(pair) != 2:
         return []
     pair = [
         re.sub(
-            r"\s+(?:highlights|recap|full match|live stream|\d{1,2}/\d{1,2}/\d{2,4})\b.*$",
+            r"\s+(?:extended highlights|highlights|recap|full (?:match|game)(?: highlights)?|live stream|\d{1,2}/\d{1,2}/\d{2,4})\b.*$",
             "",
             p,
             flags=re.I,
         ).strip()
         for p in pair
     ]
+    pair = [re.sub(r"\s+\d{1,3}(?:\s*[-–:]\s*\d{1,3})?\s*$", "", p).strip() for p in pair]
     return pair if all(1 <= len(p) <= 60 for p in pair) else []
 
 
@@ -93,6 +95,24 @@ def parse_video(video, teams=None):
         return result
     text = words(title)
     league = detect_league(text)
+    from .video_categories import classify
+
+    generic, generic_evidence = classify(video, text)
+    if generic.get("kind") in ("movie", "episode") or generic.get("format") in (
+        "game_review",
+        "gameplay",
+        "esports",
+        "film_review",
+        "trailer",
+        "comedy_sketch",
+        "standup",
+    ):
+        result.update(
+            context=generic,
+            source="metadata" if generic_evidence.startswith("provider") else "title_rules",
+        )
+        result["evidence"].append(generic_evidence)
+        return result
     # Real clubs appear in game videos too. Don't attach real-match badges.
     if any(
         contains(text, w) for w in ("ea fc", "efootball", "football manager", "madden", "nba 2k")
@@ -140,6 +160,15 @@ def parse_video(video, teams=None):
     if competition and not sports:
         sports = ["unknown"]
         result["unresolved"].append("sport awaiting team lookup")
+    if not sports and not competition:
+        context, evidence = generic, generic_evidence
+        if context:
+            result.update(
+                context=context,
+                source="metadata" if evidence.startswith("provider") else "title_rules",
+            )
+            result["evidence"].append(evidence)
+            return result
     if len(sports) != 1:
         result["unresolved"].append("sport missing or ambiguous")
         return result
@@ -156,6 +185,10 @@ def parse_video(video, teams=None):
         fmt = "sports_live"
         result["evidence"].append("Fubo matchup title" if fubo else "explicit live marker")
     else:
+        if generic:
+            result.update(context=generic, source="title_rules")
+            result["evidence"].append(generic_evidence)
+            return result
         result["unresolved"].append("sports format not explicit")
         return result
     if participants and any(t["sport"] != sport for t in (pair if len(matchup) == 2 else [])):

@@ -17,14 +17,16 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import timing, scene
+from . import timing, scene, agenda
 from .notifications import Inbox
 from .notification_policy import NotificationPolicy
+from .github_webhook import GitHubWebhook
 from .focus import FocusTimer
 from .sources import Sources
 from .adapters.media import MediaSnapshot, create_media_source, begin_auth
 from .content import ContentContext, ContentPreview, PRESETS
 from .team_resolver import TeamResolver
+from .movie_metadata import MovieMetadata
 from .music_expression import MusicExpression
 from .integration_auth import notification_token, may_publish, persistent_token
 from .codex import Codex
@@ -78,11 +80,16 @@ class Bridge:
         self.content_preview = ContentPreview()
         self.team_resolver = TeamResolver(state_dir(), upload=scene.rpc)
         self.resources.callback(self.team_resolver.close)
+        self.movie_metadata = MovieMetadata(state_dir())
+        self.resources.callback(self.movie_metadata.close)
         self.content_parse = {}
         self.inbox = Inbox(state_dir(), config["notifications"]["group_window_seconds"])
         self.inbox.recover()
         self.notification_policy = NotificationPolicy(
             state_dir(), config["notifications"]["speak_important"]
+        )
+        self.github_webhook = GitHubWebhook(
+            self.inbox, config["notifications"]["github_webhook_repositories"]
         )
         self.focus = FocusTimer(self.inbox)
         self.sources = Sources(self.inbox, state_dir(), config["notifications"])
@@ -273,7 +280,7 @@ class Bridge:
                 continue
             music = dict(self.media_state.music)
             tv = dict(self.media_state.video)
-            self.content_parse = self.team_resolver.get(tv)
+            self.content_parse = self.movie_metadata.get(tv, self.team_resolver.get(tv))
             if (
                 tv.get("app") != "Spotify"
                 and (tv.get("title") or tv.get("app"))
@@ -298,7 +305,7 @@ class Bridge:
                         session = status.get("session_id")
                         if session != display_session:
                             scene.set_activity()
-                            scene.set_deploying(bool(self.sources.state.get("deployments")))
+                            scene.set_deploying(bool(self.deployments()))
                             with self.team_resolver.lock:
                                 self.team_resolver.results.clear()
                             display_session = session
@@ -360,11 +367,14 @@ class Bridge:
                 self.music_meter = {"active": False, "error": "Music microphone unavailable"}
                 self.closing.wait(3)
 
+    def deployments(self):
+        return self.github_webhook.deployments(self.sources.state.get("deployments", []))
+
     def poll_sources(self):
         while not self.closing.is_set():
             self.sources.poll()
             try:
-                scene.set_deploying(bool(self.sources.state.get("deployments")))
+                scene.set_deploying(bool(self.deployments()))
                 self.sources.errors.pop("display", None)
             except Exception:
                 self.sources.errors["display"] = "Deployment indicator unavailable"
@@ -481,12 +491,15 @@ class Bridge:
                 "notifications": self.inbox.items(),
                 "notification_policy": self.notification_policy.snapshot(),
                 "focus": self.focus.status(),
+                "agenda": agenda.snapshot(
+                    self.sources.state, get_config()["notifications"]["agenda_timezone"]
+                ),
                 "active_notification": self.active_notification
                 if time.time() < self.notification_until
                 else None,
                 "source_errors": dict(self.sources.errors),
                 "github_checks_health": dict(self.sources.state.get("github_checks_health", {})),
-                "deployments": self.sources.state.get("deployments", []),
+                "deployments": self.deployments(),
                 "announcing": self.announcing,
                 "timings": dict(self.timings),
                 "speech_timings": timing.read("speech"),
@@ -584,6 +597,20 @@ def handler(bridge):
                 self.respond(403, {"error": "Open the control URL printed by the bridge"})
 
         def do_POST(self):
+            if self.path == "/webhooks/github":
+                try:
+                    n = int(self.headers.get("Content-Length", 0))
+                    if not 0 < n <= 1_000_000:
+                        raise ValueError("Invalid webhook size")
+                    self.connection.settimeout(10)
+                    result = bridge.github_webhook.receive(self.headers, self.rfile.read(n))
+                    bridge.face_worker.submit(scene.set_deploying, bool(bridge.deployments()))
+                    self.respond(200, result)
+                except PermissionError:
+                    self.respond(403, {"error": "Webhook forbidden"})
+                except Exception:
+                    self.respond(400, {"error": "Invalid webhook payload"})
+                return
             if not self.authorized() and not may_publish(
                 self.path,
                 self.headers.get("Host"),
@@ -631,6 +658,18 @@ def handler(bridge):
                     return
                 if self.path in ("/media/connect", "/spotify/connect"):
                     self.respond(200, begin_auth(bridge.media_source))
+                    return
+                elif self.path == "/agenda/show":
+                    self.respond(
+                        200,
+                        agenda.publish(
+                            bridge.inbox,
+                            agenda.snapshot(
+                                bridge.sources.state,
+                                get_config()["notifications"]["agenda_timezone"],
+                            ),
+                        ),
+                    )
                     return
                 elif self.path == "/focus/start":
                     self.respond(200, bridge.focus.start(data.get("minutes")))

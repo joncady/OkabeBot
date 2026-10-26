@@ -14,6 +14,8 @@ from pi import prop_art
 class MediaRecoveryTests(unittest.TestCase):
     def test_unchanged_media_republished_and_restart_restores_character(self):
         bridge = Bridge.__new__(Bridge)
+        bridge.movie_metadata = SimpleNamespace(get=lambda tv,basic: basic)
+        bridge.github_webhook = SimpleNamespace(deployments=lambda polled: polled)
         iterations = 0
 
         class Closing:
@@ -100,6 +102,8 @@ class MediaRecoveryTests(unittest.TestCase):
 
     def test_titleless_prime_shows_app_without_inventing_identity_or_progress(self):
         bridge = Bridge.__new__(Bridge)
+        bridge.movie_metadata = SimpleNamespace(get=lambda tv,basic: basic)
+        bridge.github_webhook = SimpleNamespace(deployments=lambda polled: polled)
         done = False
 
         class Closing:
@@ -159,6 +163,8 @@ class MediaRecoveryTests(unittest.TestCase):
 
     def test_recovered_display_clears_old_deployment_error(self):
         bridge = Bridge.__new__(Bridge)
+        bridge.movie_metadata = SimpleNamespace(get=lambda tv,basic: basic)
+        bridge.github_webhook = SimpleNamespace(deployments=lambda polled: polled)
         finished = False
 
         class Closing:

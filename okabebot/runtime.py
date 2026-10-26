@@ -244,7 +244,15 @@ def install(config_path):
     os.chmod(path, 0o600)
     domain = "gui/" + str(os.getuid())
     subprocess.run(["launchctl", "bootout", domain + "/" + label], capture_output=True)
-    subprocess.run(["launchctl", "bootstrap", domain, str(path)], check=True)
+    # bootout can return while launchd is still removing the old job.
+    for attempt in range(4):
+        try:
+            subprocess.run(["launchctl", "bootstrap", domain, str(path)], check=True)
+            break
+        except subprocess.CalledProcessError as exc:
+            if exc.returncode != 5 or attempt == 3:
+                raise
+            time.sleep(2 ** attempt)
     print("Installed login service:", label)
     print("Stop with: launchctl bootout", domain + "/" + label)
 

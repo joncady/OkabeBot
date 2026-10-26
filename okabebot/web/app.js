@@ -1,3 +1,4 @@
+let connectionError = "";
 let enabled = true,
   lastRequests = "";
 let notificationPolicy = {}, policyDirty = false;
@@ -148,6 +149,7 @@ document.querySelectorAll("[data-focus]").forEach(button => { button.onclick = a
 document.querySelector("#focus-cancel").onclick = async () => { try { await api("/focus/cancel", {}); } catch (e) { document.querySelector("#error").textContent = e.message; } };
 
 function musicUI(s) {
+  agendaUI(s);
   const focus = s.focus || {};
   const left = Math.max(0, Math.ceil((focus.ends_at || 0) - Date.now()/1000));
   document.querySelector("#focus-status").textContent = focus.active ? (left ? `${Math.floor(left/60)}:${String(left%60).padStart(2,"0")} left · Keep going` : "Complete · reminder queued") : "Choose a session. I’ll remind you to take a break.";
@@ -313,6 +315,8 @@ function requests(items) {
 async function refresh() {
   try {
     const s = await api("/state");
+    if (connectionError && document.querySelector("#error").textContent === connectionError) document.querySelector("#error").textContent = "";
+    connectionError = "";
     enabled = s.enabled;
     notificationUI(s);
     musicUI(s);
@@ -417,6 +421,7 @@ async function refresh() {
       root.append(entry);
     }
   } catch (e) {
+    connectionError = e.message;
     document.querySelector("#error").textContent = e.message;
   }
   setTimeout(refresh, 1000);
@@ -459,3 +464,13 @@ refresh();
     document.querySelector('#stop-content-preview').onclick = () => action('/content/preview/stop', {});
   } catch (e) { /* Server may still be starting; existing controls remain usable. */ }
 })();
+
+ document.querySelector('#agenda-show').onclick=()=>action('/agenda/show',{});
+ function agendaUI(s) {
+   const agenda=s.agenda || {}, next=agenda.next;
+   const minutes=next ? Math.max(0,Math.ceil((next.start-Date.now()/1000)/60)) : 0;
+   document.querySelector('#agenda-next').textContent = agenda.stale ? 'Calendar unavailable or updating' : next ? `${next.title} · in ${minutes} min` : 'No upcoming timed events';
+   const root=document.querySelector('#agenda-events');root.replaceChildren();
+   for (const event of agenda.events || []) root.append(el('p',`${new Date(event.start*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',...(agenda.timezone && agenda.timezone!=='local'?{timeZone:agenda.timezone}:{})})} · ${event.title}`,'muted'));
+   document.querySelector('#agenda-show').disabled=Boolean(agenda.stale);
+ }

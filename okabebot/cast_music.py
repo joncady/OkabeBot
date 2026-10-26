@@ -140,7 +140,13 @@ class CastMusic:
             )
         elif isinstance(identifier, str) and identifier.startswith(("http://", "https://")):
             identifier = "media:" + hashlib.sha256(identifier.encode()).hexdigest()[:24]
+        raw_metadata = getattr(status, "media_metadata", {}) or {}
+        if not isinstance(raw_metadata, dict):
+            raw_metadata = {}
+        kind = {1: "movie", 2: "episode"}.get(raw_metadata.get("metadataType"))
+        metadata = {"kind": kind, "genres": raw_metadata.get("genres", raw_metadata.get("genre", []))}
         self.tv = {
+            "metadata": metadata,
             "app": self.app,
             "app_icon": getattr(self, "app_icon", None),
             "title": title,

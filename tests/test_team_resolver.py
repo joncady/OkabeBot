@@ -108,7 +108,7 @@ class ResolverTests(unittest.TestCase):
                 with patch.object(
                     resolver,
                     "candidate",
-                    side_effect=[{"qid": "Q1", "score": 1}, {"qid": "Q2", "score": 1}],
+                    side_effect=[None, {"qid": "Q1", "score": 1}, {"qid": "Q2", "score": 1}],
                 ):
                     self.assertIsNone(resolver.resolve("Manchester", "soccer"))
             finally:
@@ -245,5 +245,32 @@ class ResolverTests(unittest.TestCase):
                         self.assertTrue(other.ensure_crest(team)[0].get("png_base64"))
                 finally:
                     other.close()
+            finally:
+                resolver.close()
+
+    def test_exact_canonical_team_avoids_search_ranking_and_generic_sport_conflict(self):
+        with tempfile.TemporaryDirectory() as folder:
+            resolver = self.resolver(folder)
+            original = resolver.fetch
+
+            def fetch(url, **kwargs):
+                value = original(url, **kwargs)
+                if "EntityData/" in url:
+                    value["entities"]["Q9617"]["claims"]["P641"].append(
+                        {"mainsnak": {"datavalue": {"value": {"id": "QBASKET"}}}}
+                    )
+                if "wbgetentities" in url:
+                    value["entities"]["QBASKET"] = {"labels": {"en": {"value": "basketball"}}}
+                return value
+
+            resolver.fetch = fetch
+            try:
+                team = resolver.candidate("Arsenal", "Arsenal F.C.", "soccer")
+                self.assertEqual(team["sport"], "soccer")
+                with patch.object(
+                    resolver, "candidate", return_value=dict(team, name="Exact Club")
+                ) as candidate:
+                    self.assertEqual(resolver.resolve("Exact Club", "soccer")["name"], "Exact Club")
+                    candidate.assert_called_once()
             finally:
                 resolver.close()

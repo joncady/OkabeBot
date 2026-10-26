@@ -69,7 +69,7 @@ def main():
         if (state / name).is_file():
             shutil.copy2(state / name, target_state / name)
             (target_state / name).chmod(0o600)
-    for name in ('notifications.sqlite3', 'sports-resolver.sqlite3'):
+    for name in ('notifications.sqlite3', 'sports-resolver.sqlite3', 'movie-metadata.sqlite3'):
         if (state / name).is_file():
             with sqlite3.connect(state / name) as db, sqlite3.connect(target_state / name) as out:
                 db.backup(out)

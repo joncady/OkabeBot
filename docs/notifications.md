@@ -131,3 +131,49 @@ publisher uses the current queue schema. Back up the inbox before migration.
 For live review, open the front door and press the Ring doorbell within three
 seconds; expect one silent bottom card with the character still visible, and
 two separate history records.
+
+## Signed GitHub webhooks
+
+POST `/webhooks/github` accepts GitHub `workflow_run` and `deployment_status`
+events. It verifies HMAC-SHA256 over the original request bytes with
+`X-Hub-Signature-256`, before decoding JSON. Set a random
+`GITHUB_WEBHOOK_SECRET` in the controller's private `.env`, and explicitly list
+allowed `notifications.github_webhook_repositories` as `["owner/repository"]`.
+Without both, the receiver rejects events. Never use the dashboard/publisher token
+as the webhook secret. Restart after changing credentials or the repository list.
+
+Workflow failures share the polling adapter's run/attempt dedupe keys. Deployment
+transitions update the animation immediately, persist across restarts, ignore older
+status timestamps, and publish silent start/success cards or a failure chime.
+Signed-body digests dedupe redeliveries even if an unsigned delivery header changes.
+Recent webhook state takes precedence over stale polling state for that deployment.
+Polling remains enabled for repositories without hooks and missed deliveries.
+
+GitHub needs an externally reachable HTTPS URL. Configure a TLS reverse proxy or
+relay that forwards **only** `/webhooks/github` to this path on the controller;
+do not expose the dashboard or other controller routes. Choose JSON content and
+subscribe to Workflow runs and Deployment statuses in repository webhook settings.
+Use the same secret on GitHub and the controller. External ingress, repository
+hook registration, and a real GitHub delivery are separate deployment steps; a
+successful local signature test does not prove internet reachability. No public
+ingress is created by the installer. The current receiver limits bodies to 1 MB;
+oversized events are rejected and workflow polling can recover their failures.
+
+Reference: [GitHub signature validation](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries).
+
+## Agenda first pass
+
+The tablet's **Your day** panel shows remaining timed events today and a live
+next-meeting countdown. **Show agenda on Pi** queues a silent calendar card;
+existing notification priority/snooze rules still apply. Authenticated POST
+`/agenda/show` accepts `{}`. Calendar titles are displayed as text, never executed.
+The publish-only credential cannot request an agenda. All-day events and already
+started appointments are excluded in this first pass. A calendar snapshot older
+than six minutes is marked stale and cannot produce a misleading fresh summary.
+
+For an optional daily silent card, configure `notifications.agenda_time` as
+`"08:00"` and `notifications.agenda_timezone` as `"America/Los_Angeles"` (or
+`"local"`). The default time is empty, disabling scheduled cards. A successful
+calendar refresh in the first 15 minutes after that time queues one deduplicated
+card for the local date; late startup does not announce an obsolete morning agenda.
+The existing calendar reminder lead time remains independently configurable.

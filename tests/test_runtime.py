@@ -96,3 +96,23 @@ class RuntimeTests(unittest.TestCase):
             root.mkdir()
             (root / "control.json").write_text(json.dumps({"url": "http://127.0.0.1:1/#token"}))
             self.assertIsNone(runtime.controller_state(Path(folder)))
+
+    def test_login_service_retries_transient_unload_race(self):
+        import subprocess
+
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            with (
+                patch.object(runtime.Path, "home", return_value=root),
+                patch.object(runtime, "state_dir", return_value=root / "state"),
+                patch.object(runtime.sys, "platform", "darwin"),
+                patch.object(runtime.time, "sleep") as sleep,
+                patch.object(
+                    runtime.subprocess,
+                    "run",
+                    side_effect=[Mock(), subprocess.CalledProcessError(5, "launchctl"), Mock()],
+                ) as run,
+            ):
+                runtime.install(root / "config.json")
+                self.assertEqual(run.call_count, 3)
+                sleep.assert_called_once_with(1)

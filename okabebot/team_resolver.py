@@ -102,9 +102,9 @@ class TeamResolver:
                 "CREATE TABLE IF NOT EXISTS crest_assets (qid TEXT PRIMARY KEY, value TEXT, expires REAL, error TEXT)"
             )
             # Old negative results may have included temporary provider failures.
-            if c.execute("PRAGMA user_version").fetchone()[0] < 1:
+            if c.execute("PRAGMA user_version").fetchone()[0] < 3:
                 c.execute("DELETE FROM teams WHERE value='null'")
-                c.execute("PRAGMA user_version=1")
+                c.execute("PRAGMA user_version=3")
         self.fetch = fetch
         self.upload = upload
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="sports-resolver")
@@ -196,13 +196,22 @@ class TeamResolver:
             for label, value in SPORT_NAMES.items()
             if value and any(label in text.casefold() for text in labels)
         }
+        typed_sports = {
+            value
+            for label, value in SPORT_NAMES.items()
+            if value and any(label in text.casefold() for text in labels_by_property["P31"])
+        }
+        # A specific 'ice hockey team' type is stronger than inconsistent P641
+        # entries on the same entity; a generic club type cannot resolve a conflict.
+        if len(typed_sports) == 1:
+            resolved = typed_sports
         # P641/P31 must establish an unambiguous sport; summary images alone are not proof.
         if len(resolved) > 1 or (not resolved and len(claimed_sports) != 1):
             return None
         actual_sport = resolved.pop() if resolved else "unknown"
         if sport and actual_sport != sport:
             return None
-        if not any(t in " ".join(labels).casefold() for t in ("team", "club")):
+        if not any(t in " ".join(labels).casefold() for t in ("team", "club", "franchise")):
             return None
         score = 1 if query == canonical else len(query) / len(canonical)
         result = dict(
@@ -344,6 +353,23 @@ class TeamResolver:
             return candidates[0]
         if row:
             return None
+        try:
+            exact = (
+                self.candidate(name, name, sport, league)
+                if league
+                else self.candidate(name, name, sport)
+            )
+        except HTTPError as exc:
+            if exc.code != 404:
+                raise
+            exact = None
+        if exact and words(exact["name"]) == words(name):
+            with self.db() as c:
+                c.execute(
+                    "INSERT OR REPLACE INTO teams VALUES (?,?,?)",
+                    (key, json.dumps(exact), time.time() + 2592000),
+                )
+            return exact
         search = self.fetch(
             "https://en.wikipedia.org/w/api.php?"
             + urlencode(

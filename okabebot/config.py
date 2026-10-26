@@ -87,8 +87,11 @@ DEFAULTS = {
     "notifications": {
         "github": "",
         "workflow_lookback_days": 30,
+        "github_webhook_repositories": [],
         "calendar": "",
         "calendar_lead_minutes": 10,
+        "agenda_time": "",
+        "agenda_timezone": "local",
         "speak_important": True,
         "group_window_seconds": 3,
         "chime_gain": 0.25,
@@ -180,6 +183,28 @@ def load(path):
     if settings["web"]["host"] == "0.0.0.0":
         raise ValueError("Use a specific LAN address or 127.0.0.1 for web.host")
     notifications = settings["notifications"]
+    if not isinstance(notifications["agenda_time"], str) or (
+        notifications["agenda_time"]
+        and not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", notifications["agenda_time"])
+    ):
+        raise ValueError("agenda_time must be empty or HH:MM")
+    from zoneinfo import ZoneInfo
+
+    if notifications["agenda_timezone"] != "local":
+        try:
+            ZoneInfo(notifications["agenda_timezone"])
+        except (KeyError, ValueError, TypeError):
+            raise ValueError("agenda_timezone must be local or an IANA timezone") from None
+    repositories = notifications["github_webhook_repositories"]
+    if (
+        not isinstance(repositories, list)
+        or len(repositories) > 100
+        or any(
+            not isinstance(repo, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo)
+            for repo in repositories
+        )
+    ):
+        raise ValueError("github_webhook_repositories must be explicit owner/repository names")
     if (
         type(notifications["workflow_lookback_days"]) is not int
         or not 1 <= notifications["workflow_lookback_days"] <= 90

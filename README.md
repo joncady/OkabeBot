@@ -259,3 +259,11 @@ disabled-by-default toggle, dry-run routing, and a cooldown; see
 
 For direct ALSA playback, configure the physical card's speaker mixer rather
 than the default virtual Master; see [volume setup](docs/devices.md#match-the-volume-mixer-to-the-playback-device).
+
+The tablet now includes **Your day**: remaining calendar appointments, a next-event
+countdown and a silent agenda card on the Pi. Optional scheduled morning cards and
+signed GitHub workflow/deployment webhooks are documented in
+[notification setup](docs/notifications.md). Webhooks require a private secret,
+explicit repository list and separately configured HTTPS ingress; polling stays on.
+[TV classification](docs/tv.md) now covers common video formats, provider genres and
+cached, verified Wikidata movie/series genre enrichment, with neutral fallbacks.
