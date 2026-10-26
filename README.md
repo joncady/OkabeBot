@@ -284,3 +284,8 @@ connect the relay with `--consumer-profile PROFILE`; a queue-only permission-set
 template is included in `infra/aws/queue-sso.json`.
 The controller also restores the character after a display Pi reboot, even when
 the media source is temporarily unavailable.
+
+When AWS relay sign-in expires, dashboard health displays the profile-specific
+renewal command (`aws sso login` for Identity Center, or `aws login` for the
+source login profile). The consumer retries automatically after renewal; network
+and permission failures remain distinct from expired-login guidance.

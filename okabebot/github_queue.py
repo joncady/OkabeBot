@@ -1,16 +1,49 @@
 """Outbound-only SQS long polling; acknowledge only after durable local handling."""
 
 import base64
+import configparser
 import json
 import os
+from pathlib import Path
+import shlex
 import subprocess
 import threading
 import time
 
 
+class QueueSignInRequired(RuntimeError):
+    """Safe authentication error carrying a local renewal command, never CLI output."""
+
+    def __init__(self, command):
+        self.command = command
+        super().__init__("AWS sign-in expired or unavailable. On the controller run: " + command)
+
+
 class AwsQueueClient:
     def __init__(self, settings):
         self.queue = settings["github_queue_url"]
+        profile = settings["github_queue_profile"] or "default"
+        config = configparser.RawConfigParser()
+        try:
+            config.read(Path(os.environ.get("AWS_CONFIG_FILE", str(Path.home() / ".aws/config"))))
+            # Renew the login that supplies an assumed-role profile, not the role itself.
+            visited = set()
+            for _ in range(8):
+                section = "default" if profile == "default" else "profile " + profile
+                source = config.get(section, "source_profile", fallback=None)
+                if not source or source in visited:
+                    break
+                visited.add(profile)
+                profile = source
+            section = "default" if profile == "default" else "profile " + profile
+            sso = config.has_option(section, "sso_session") or config.has_option(
+                section, "sso_start_url"
+            )
+        except configparser.Error:
+            sso = False
+        self.login_command = shlex.join(
+            ["aws", *(["sso", "login"] if sso else ["login"]), "--profile", profile]
+        )
         self.argv = [
             "aws",
             "--region",
@@ -39,8 +72,24 @@ class AwsQueueClient:
             )
             self.process = process
         try:
-            out, _ = process.communicate(timeout=35)
+            out, error = process.communicate(timeout=35)
             if process.returncode:
+                if any(
+                    marker in error.lower()
+                    for marker in (
+                        "expiredtoken",
+                        "token has expired",
+                        "sso session",
+                        "invalid_grant",
+                        "error loading sso token",
+                        "token has been revoked",
+                        "unable to locate credentials",
+                        "token refresh failed",
+                        "credentials have expired",
+                        "session has expired",
+                    )
+                ):
+                    raise QueueSignInRequired(self.login_command)
                 raise RuntimeError("AWS queue unavailable; check sign-in and permissions")
             return json.loads(out) if out.strip() else {}
         except subprocess.TimeoutExpired:
@@ -122,10 +171,19 @@ class GitHubQueue:
                     if failures
                     else None,
                 )
+            except QueueSignInRequired as exc:
+                self.health = dict(
+                    configured=True,
+                    available=False,
+                    auth_required=True,
+                    reauth_command=exc.command,
+                    error=str(exc),
+                )
+                self.stopping.wait(10)
             except Exception:
                 self.health = dict(
                     configured=True,
                     available=False,
-                    error="AWS queue unavailable; check AWS sign-in and permissions",
+                    error="AWS queue unavailable; check connectivity and queue permissions",
                 )
                 self.stopping.wait(10)
