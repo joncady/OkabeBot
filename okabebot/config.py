@@ -88,6 +88,9 @@ DEFAULTS = {
         "github": "",
         "workflow_lookback_days": 30,
         "github_webhook_repositories": [],
+        "github_queue_url": "",
+        "github_queue_region": "us-west-2",
+        "github_queue_profile": "",
         "calendar": "",
         "calendar_lead_minutes": 10,
         "agenda_time": "",
@@ -195,6 +198,20 @@ def load(path):
             ZoneInfo(notifications["agenda_timezone"])
         except (KeyError, ValueError, TypeError):
             raise ValueError("agenda_timezone must be local or an IANA timezone") from None
+    for field in ("github_queue_url", "github_queue_region", "github_queue_profile"):
+        if not isinstance(notifications[field], str):
+            raise ValueError(field + " must be text")
+    if notifications["github_queue_url"] and not re.fullmatch(
+        r"https://sqs\.[a-z0-9-]+\.amazonaws\.com(?:\.cn)?/\d{12}/[A-Za-z0-9_-]+",
+        notifications["github_queue_url"],
+    ):
+        raise ValueError("github_queue_url must be a regional AWS SQS standard queue URL")
+    if not re.fullmatch(r"[a-z0-9-]+", notifications["github_queue_region"]):
+        raise ValueError("Invalid AWS queue region")
+    if notifications["github_queue_profile"].startswith("-") or any(
+        c.isspace() for c in notifications["github_queue_profile"]
+    ):
+        raise ValueError("Invalid AWS queue profile")
     repositories = notifications["github_webhook_repositories"]
     if (
         not isinstance(repositories, list)

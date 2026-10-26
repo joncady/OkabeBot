@@ -103,3 +103,10 @@ claims conflict. Existing sport/league checks and reserve-squad ambiguity guards
 remain. A Celtics/Lakers NBA highlight fixture resolved both identities, fetched
 and delivered both crests, and rendered on the Pi through the shared preview API.
 These examples are validation results, not a hardcoded title/team registry.
+
+Verified abbreviations (for example LAFC → Los Angeles FC) now match exact English
+Wikidata labels, aliases or short names, after the same sport/type/league and
+reserve-squad checks. No abbreviation table is required. An unresolved team or a
+transient lookup failure on one side no longer suppresses the other side's verified
+crest. Both title labels remain while missing identity/art retries. Live LAFC vs
+LA Galaxy lookup, crest delivery and the actual Pi canvas were verified.

@@ -392,6 +392,7 @@ async function refresh() {
     const components = Object.entries(s.device_health || {}).map(([name, health])=>
       `${name === 'voice' ? 'Speaker/button Pi' : 'Display Pi'}: ${health.available ? 'connected' : 'reconnecting'}`);
     if (s.speech_health) components.push(`Voice: ${s.speech_health.available ? 'ready' : s.speech_health.error || 'warming'}`);
+    if (s.github_queue_health?.configured && !s.github_queue_health.available) components.push(s.github_queue_health.error || 'GitHub relay reconnecting');
     if (s.codex_alive === false) components.push('Codex: reconnecting');
     document.querySelector('#system-health').textContent=components.join(' · ');
     document.querySelector("#thread").textContent =

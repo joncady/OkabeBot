@@ -177,3 +177,65 @@ For an optional daily silent card, configure `notifications.agenda_time` as
 calendar refresh in the first 15 minutes after that time queues one deduplicated
 card for the local date; late startup does not announce an obsolete morning agenda.
 The existing calendar reminder lead time remains independently configurable.
+
+## AWS relay: outbound-only Mac connection
+
+`infra/aws/` provides a small CloudFormation deployment:
+
+`GitHub → Lambda function URL → private SQS standard queue → Mac consumer`
+
+Lambda checks the raw-body HMAC and repository allowlist before queueing. The
+Mac checks the signature again and uses the same durable local dedupe and delivery
+policy as direct webhooks. Queue messages are deleted only after successful local
+handling. An interrupted receive/ack can redeliver without repeating a notification.
+Deployment scene updates use the existing high-level scene API. The Mac opens only
+outbound AWS requests; neither the dashboard nor Home Assistant is exposed.
+
+Prepare an AWS CLI v2 login and GitHub CLI access with webhook administration for
+the explicitly allowed repositories. Configure the private secret and repository
+list described above, then run from a prepared checkout/environment:
+
+```sh
+python scripts/deploy-github-relay.py --config /path/to/okabebot.local.json --region us-west-2
+python scripts/connect-github-relay.py --config /path/to/okabebot.local.json
+```
+
+The first command creates or updates the `okabebot-github-relay` stack. Region,
+source AWS profile and stack name are configurable. Secret parameters are NoEcho
+and supplied through a private temporary file, not command arguments or output.
+The second command registers or updates matching webhook URLs, backs up private
+configuration, sets the queue URL/region/profile, and creates a dedicated AWS
+profile that assumes a **queue-consumer-only role** from the signed-in source
+profile. It refuses to overwrite a profile pointing to another role. No IAM user
+or permanent access key is created. It verifies access before enabling consumption.
+Restart the controller after connecting. Deployment metadata and hook IDs are in
+`state/github-relay.json`; do not publish that file or copy Mac credentials to Pis.
+
+This login-based setup still depends on a valid source AWS login. When that login
+expires, run `aws login --profile SOURCE_PROFILE`; the consumer retries and the
+dashboard health line reports the outage. Existing GitHub polling continues
+independently. The role profile renews its assumed-role credentials while the
+source credentials remain valid; it does not eliminate source-login expiration.
+
+The standard queue retains messages for 14 days. Failed messages retry after a
+120-second visibility timeout and move to a private dead-letter queue after five
+receives. Inspect that queue with the deployment/admin profile; the consumer has
+no dead-letter queue access. Invalid signatures never reach the queue through
+Lambda. The cloud body limit is 512 KiB so its base64 envelope fits SQS's 1 MiB
+limit; oversized deliveries are rejected and workflow polling remains the fallback.
+CloudWatch logs retain seven days and the receiver never logs event bodies or
+secrets. Lambda is 128 MB, capped at two concurrent executions; there is no EC2,
+load balancer, VPC or NAT gateway. Free allowances and account-wide usage determine
+the actual bill; the personal-use planning estimate is $0–$1/month, not a hard cap.
+
+A real GitHub ping verifies the public endpoint and signature. A signed deployment
+fixture through Lambda/SQS/local delivery verifies the queue-to-screen path without
+rerunning or changing a real CI workflow. A ping is intentionally not queued.
+To add repositories, edit the explicit local allowlist, rerun deploy/connect, and
+restart. Other repositories continue using polling until hooks are registered.
+
+To disable consumption, set `notifications.github_queue_url` to `""` and restart.
+To remove cloud infrastructure, remove its registered repository hooks, then delete
+the named CloudFormation stack in its region. Stack deletion also removes queue
+contents and the queue-only role; preserve any pending data you need first. The
+local profile can then be removed. No teardown is performed automatically.

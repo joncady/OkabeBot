@@ -1,0 +1,38 @@
+{
+  "AWSTemplateFormatVersion":"2010-09-09",
+  "Description":"OkabeBot signed GitHub webhook relay: HTTPS Lambda URL and private SQS queue. No VPC or always-on server.",
+  "Parameters":{
+    "WebhookSecret":{"Type":"String","NoEcho":true,"MinLength":32},
+    "Repositories":{"Type":"String","MinLength":3},
+    "ConsumerPrincipalArn":{"Type":"String"}
+  },
+  "Resources":{
+    "DeadLetters":{"Type":"AWS::SQS::Queue","Properties":{"MessageRetentionPeriod":1209600,"SqsManagedSseEnabled":true}},
+    "Events":{"Type":"AWS::SQS::Queue","Properties":{"MessageRetentionPeriod":1209600,"ReceiveMessageWaitTimeSeconds":20,"VisibilityTimeout":120,"MaximumMessageSize":1048576,"SqsManagedSseEnabled":true,"RedrivePolicy":{"deadLetterTargetArn":{"Fn::GetAtt":["DeadLetters","Arn"]},"maxReceiveCount":5}}},
+    "ReceiverRole":{"Type":"AWS::IAM::Role","Properties":{
+      "AssumeRolePolicyDocument":{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]},
+      "Policies":[{"PolicyName":"QueueSendOnly","PolicyDocument":{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"sqs:SendMessage","Resource":{"Fn::GetAtt":["Events","Arn"]}}]}}]
+    }},
+    "ConsumerRole":{"Type":"AWS::IAM::Role","Properties":{
+      "AssumeRolePolicyDocument":{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":{"Ref":"ConsumerPrincipalArn"}},"Action":"sts:AssumeRole"}]},
+      "Policies":[{"PolicyName":"QueueReadOnlyConsumer","PolicyDocument":{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["sqs:ReceiveMessage","sqs:DeleteMessage","sqs:GetQueueAttributes"],"Resource":{"Fn::GetAtt":["Events","Arn"]}}]}}]
+    }},
+    "Receiver":{"Type":"AWS::Lambda::Function","Properties":{
+      "Runtime":"python3.12","Handler":"index.handler","Role":{"Fn::GetAtt":["ReceiverRole","Arn"]},"MemorySize":128,"Timeout":10,"ReservedConcurrentExecutions":2,
+      "Environment":{"Variables":{"QUEUE_URL":{"Ref":"Events"},"WEBHOOK_SECRET":{"Ref":"WebhookSecret"},"REPOSITORIES":{"Ref":"Repositories"}}},
+      "Code":{"ZipFile":"# Filled from github_relay.py by the deployment script"}
+    }},
+    "Logs":{"Type":"AWS::Logs::LogGroup","Properties":{"LogGroupName":{"Fn::Sub":"/aws/lambda/${Receiver}"},"RetentionInDays":7}},
+    "LogPolicy":{"Type":"AWS::IAM::Policy","Properties":{"PolicyName":"BoundedReceiverLogs","Roles":[{"Ref":"ReceiverRole"}],"PolicyDocument":{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["logs:CreateLogStream","logs:PutLogEvents"],"Resource":{"Fn::Sub":"arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${Receiver}:*"}}]}}},
+    "Url":{"Type":"AWS::Lambda::Url","Properties":{"TargetFunctionArn":{"Ref":"Receiver"},"AuthType":"NONE"}},
+    "UrlPermission":{"Type":"AWS::Lambda::Permission","Properties":{"FunctionName":{"Ref":"Receiver"},"Action":"lambda:InvokeFunctionUrl","Principal":"*","FunctionUrlAuthType":"NONE"}},
+    "InvokePermission":{"Type":"AWS::Lambda::Permission","Properties":{"FunctionName":{"Ref":"Receiver"},"Action":"lambda:InvokeFunction","Principal":"*","InvokedViaFunctionUrl":true}}
+  },
+  "Outputs":{
+    "WebhookUrl":{"Value":{"Fn::Join":["",[{"Fn::GetAtt":["Url","FunctionUrl"]},"webhooks/github"]]}},
+    "QueueUrl":{"Value":{"Ref":"Events"}},
+    "DeadLetterQueueUrl":{"Value":{"Ref":"DeadLetters"}},
+    "ConsumerRoleArn":{"Value":{"Fn::GetAtt":["ConsumerRole","Arn"]}},
+    "FunctionName":{"Value":{"Ref":"Receiver"}}
+  }
+}

@@ -21,6 +21,7 @@ from . import timing, scene, agenda
 from .notifications import Inbox
 from .notification_policy import NotificationPolicy
 from .github_webhook import GitHubWebhook
+from .github_queue import GitHubQueue, AwsQueueClient
 from .focus import FocusTimer
 from .sources import Sources
 from .adapters.media import MediaSnapshot, create_media_source, begin_auth
@@ -91,6 +92,16 @@ class Bridge:
         self.github_webhook = GitHubWebhook(
             self.inbox, config["notifications"]["github_webhook_repositories"]
         )
+        self.github_queue = None
+        if config["notifications"]["github_queue_url"]:
+            self.github_queue = GitHubQueue(
+                self.github_webhook,
+                AwsQueueClient(config["notifications"]),
+                on_event=lambda: self.face_worker.submit(
+                    scene.set_deploying, bool(self.deployments())
+                ),
+            )
+            self.resources.callback(self.github_queue.close)
         self.focus = FocusTimer(self.inbox)
         self.sources = Sources(self.inbox, state_dir(), config["notifications"])
         self.active_notification = None
@@ -128,6 +139,8 @@ class Bridge:
         self.show_activity("idle")
         (self.folder / "control.json").write_text(json.dumps({"url": self.url, "pid": os.getpid()}))
         os.chmod(self.folder / "control.json", 0o600)
+        if self.github_queue:
+            self.github_queue.start()
         threading.Thread(target=self.poll, daemon=True).start()
         threading.Thread(target=self.poll_sources, daemon=True).start()
         threading.Thread(target=self.poll_music, daemon=True).start()
@@ -498,6 +511,9 @@ class Bridge:
                 if time.time() < self.notification_until
                 else None,
                 "source_errors": dict(self.sources.errors),
+                "github_queue_health": dict(self.github_queue.health)
+                if self.github_queue
+                else {"configured": False},
                 "github_checks_health": dict(self.sources.state.get("github_checks_health", {})),
                 "deployments": self.deployments(),
                 "announcing": self.announcing,

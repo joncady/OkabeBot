@@ -274,3 +274,77 @@ class ResolverTests(unittest.TestCase):
                     candidate.assert_called_once()
             finally:
                 resolver.close()
+
+    def test_verified_acronym_alias_and_independent_partial_crest(self):
+        with tempfile.TemporaryDirectory() as folder:
+            resolver = self.resolver(folder)
+            original = resolver.fetch
+
+            def fetch(url, **kwargs):
+                value = original(url, **kwargs)
+                if "EntityData/" in url:
+                    value["entities"]["Q9617"]["aliases"] = {"en": [{"value": "Verified AFC"}]}
+                return value
+
+            resolver.fetch = fetch
+            try:
+                self.assertEqual(
+                    resolver.candidate("Verified AFC", "Arsenal F.C.", "soccer")["qid"], "Q9617"
+                )
+                self.assertIsNone(
+                    resolver.candidate("Unverified acronym", "Arsenal F.C.", "soccer")
+                )
+                team = dict(
+                    key="wiki_q9617",
+                    qid="Q9617",
+                    name="Arsenal F.C.",
+                    short_name="ARS",
+                    colors=["#ffffff", "#000000"],
+                    sport="soccer",
+                    source="https://example.test",
+                    crest="wiki_q9617",
+                    png_base64="png",
+                    aliases=["Arsenal"],
+                )
+                resolver.upload = lambda data: {}
+                with (
+                    patch.object(resolver, "resolve", side_effect=[None, team]),
+                    patch.object(resolver, "ensure_crest", return_value=(team, None, None)),
+                ):
+                    result = resolver._enrich(
+                        dict(app="YouTube", title="Unknown Club vs Arsenal | Soccer highlights")
+                    )
+                self.assertEqual(result["context"]["participants"][0]["crest"], "")
+                self.assertEqual(result["context"]["participants"][1]["crest"], "wiki_q9617")
+                self.assertEqual(result["context"]["sport"], "soccer")
+            finally:
+                resolver.close()
+
+    def test_transient_failure_on_one_opponent_preserves_the_other_crest(self):
+        with tempfile.TemporaryDirectory() as folder:
+            resolver = self.resolver(folder)
+            team = dict(
+                key="wiki_q9617",
+                qid="Q9617",
+                name="Arsenal F.C.",
+                short_name="ARS",
+                colors=["#ffffff", "#000000"],
+                sport="soccer",
+                source="https://example.test",
+                crest="wiki_q9617",
+                png_base64="png",
+                aliases=["Arsenal"],
+            )
+            resolver.upload = lambda data: {}
+            try:
+                with (
+                    patch.object(resolver, "resolve", side_effect=[OSError("temporary"), team]),
+                    patch.object(resolver, "ensure_crest", return_value=(team, None, None)),
+                ):
+                    result = resolver._enrich(
+                        dict(app="YouTube", title="Unknown Club vs Arsenal | Soccer highlights")
+                    )
+                self.assertEqual(result["context"]["participants"][1]["crest"], "wiki_q9617")
+                self.assertIn("retry_at", result)
+            finally:
+                resolver.close()

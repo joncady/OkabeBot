@@ -267,3 +267,10 @@ signed GitHub workflow/deployment webhooks are documented in
 explicit repository list and separately configured HTTPS ingress; polling stays on.
 [TV classification](docs/tv.md) now covers common video formats, provider genres and
 cached, verified Wikidata movie/series genre enrichment, with neutral fallbacks.
+
+Optional [AWS webhook relay](docs/notifications.md#aws-relay-outbound-only-mac-connection)
+uses Lambda HTTPS → SQS → an outbound Mac consumer, preserving signed delivery and
+local deduplication while the Mac is disconnected. Deployment/connect scripts are
+in `scripts/`; the source AWS login must remain valid. No permanent AWS keys or
+public dashboard access are required. Team crests also support verified Wikidata
+abbreviations and independent partial enrichment when one opponent is unresolved.

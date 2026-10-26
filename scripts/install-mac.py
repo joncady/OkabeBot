@@ -54,7 +54,7 @@ def main():
     if command and not ((source / command[0]).absolute().parent.parent / 'pyvenv.cfg').is_file():
         raise SystemExit('The bundled speech worker needs its own prepared virtual environment')
     destination.mkdir(parents=True, mode=0o700)
-    for name in ('okabebot', 'scripts'):
+    for name in ('okabebot', 'scripts', 'infra'):
         shutil.copytree(ROOT / name, destination / name,
                         ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
     copy_environment(Path(sys.prefix), destination / '.venv')
@@ -64,7 +64,7 @@ def main():
     names = ('notification-sources.json', 'notification-policy.json', 'profile.json',
              'character.json', 'speech-settings.json', 'button-settings.json',
              'spotify-tokens.json', 'content-context.json', 'notification-token',
-             'controller-token')
+             'controller-token', 'github-relay.json')
     for name in names:
         if (state / name).is_file():
             shutil.copy2(state / name, target_state / name)
