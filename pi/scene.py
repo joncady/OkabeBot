@@ -253,34 +253,23 @@ def shapes(
                 max(1, width * scale),
             )
         )
-    # Forearms lead into the card; hands visibly grip its upper edge.
-    if character.get("style") == "sonic":
-        # Arms start at Sonic's narrower shoulders, not the human sleeve anchors.
-        out.extend(
-            [
-                (
-                    "polygon",
-                    (210, 171, 211, 168, 174, 185, 131, 193, 119, 181, 167, 172),
-                    "#b77251",
-                    1,
-                ),
-                (
-                    "polygon",
-                    (272, 171, 283, 171, 313, 172, 361, 181, 354, 193, 305, 185, 274, 168),
-                    "#e7a579",
-                    1,
-                ),
-                ("rectangle", (113, 177, 133, 190), "#f8f6e9", 1),
-                ("rectangle", (346, 177, 366, 190), "#f8f6e9", 1),
-            ]
-        )
-        return out
-    sleeve = "#e6e2d8" if character.get("style") == "okabe" else "#a88b72"
-    if character.get("style") == "pip":
-        sleeve = "#accdc1"
-    out.append(("polygon", (170, 177, 165, 180, 133, 191, 113, 191, 113, 177, 151, 177), sleeve, 1))
-    out.append(("polygon", (310, 177, 315, 180, 346, 191, 366, 191, 366, 177, 329, 177), sleeve, 1))
+    # Keep shoulders attached to the torso. Bend at the elbow rather than
+    # compressing the old arm polygons when the notification edge moves upward.
+    sleeve = {"okabe": "#e6e2d8", "kurisu": "#a88b72", "pip": "#accdc1"}.get(
+        character.get("style"), "#edc59c"
+    )
+    if sonic:
+        left = (210, 165, 218, 177, 195, 186, 173, 191, 163, 183, 190, 175)
+    else:
+        left = (174, 164, 183, 176, 163, 185, 143, 191, 133, 181, 155, 173)
+    out.append(("polygon", left, sleeve, 1))
+    right = tuple(480 - v if i % 2 == 0 else v for i, v in enumerate(left))
+    out.append(("polygon", right, sleeve, 1))
     return out
+
+
+def grip_positions(style):
+    return (163, 297) if style == "sonic" else (133, 327)
 
 
 def card(notification, font_path=None, style=None):
@@ -320,7 +309,7 @@ def card(notification, font_path=None, style=None):
         first = fit(words.pop(0), body_font, 420)
     for row, line in enumerate((first, fit(" ".join(words), body_font, 420))):
         d.text((27, 262 + row * 24), line, font=body_font, fill="#c7d5d8")
-    for x in (113, 346):
+    for x in grip_positions(style):
         d.rectangle((x, 183, x + 20, 200), fill="#f8f6e9" if style == "sonic" else "#ecc3a3")
         d.line((x + 7, 191, x + 7, 197), fill="#939994" if style == "sonic" else "#aa7e69")
         d.line((x + 13, 191, x + 13, 197), fill="#939994" if style == "sonic" else "#aa7e69")
