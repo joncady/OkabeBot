@@ -272,3 +272,15 @@ consumer profile on subsequent runs. Renew the SSO login
 when its session expires; role credentials refresh while the SSO login is valid.
 Deploying/updating relay infrastructure still uses a separate administrator profile.
 Re-deployment preserves private hook and Identity Center metadata.
+
+### Relay sign-in recovery
+
+On an expired or missing AWS login, the dashboard component status displays the
+specific renewal command for the consumer's configured profile. Identity Center
+profiles use `aws sso login --profile PROFILE`; assumed-role profiles follow
+`source_profile` to the underlying login. Run that command on the controller host,
+finish the AWS sign-in, and leave the controller running: queue consumption retries
+automatically. Successful consumption clears the sign-in warning. Permission or
+network failures keep a separate connection/permissions message. CLI stderr and
+credential contents are never exposed in dashboard status. This guidance does not
+make SSO unattended or renew a browser login automatically.
