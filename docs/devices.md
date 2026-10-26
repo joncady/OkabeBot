@@ -112,3 +112,14 @@ For the legacy HDMI firmware configuration used by this panel, back up
 framebuffer_height=320, disable_overscan=1. Remove conflicting active mode values
 and reboot. Preserve the vendor overlay, SPI and camera settings. This is specific
 to the legacy display setup; do not apply it to a DRM/KMS installation unchanged.
+
+### Keep the character screen awake
+
+`display_keep_awake` defaults to true in the device settings. After Tk opens its
+X11 connection, the service wakes the monitor and disables DPMS and screen
+blanking using `xset` on that same display. Run these settings after desktop
+login; an early systemd `ExecStartPre=xset ...` can fail with an invalid
+MIT-MAGIC-COOKIE before the desktop authentication file is ready. Missing `xset`
+or unsupported extensions do not prevent the character service from starting.
+Set the option false to leave desktop power settings unchanged. This controls
+software blanking; the LCD's physical backlight button remains independent.
