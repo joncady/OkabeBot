@@ -202,3 +202,6 @@ it cannot determine whether prose is correct or automatically rewrite it.
 Context-aware Echo speaking has an optional Home Assistant package with a
 disabled-by-default toggle, dry-run routing, and a cooldown; see
 [Alexa setup](docs/alexa.md#optional-context-aware-speaking).
+
+For direct ALSA playback, configure the physical card's speaker mixer rather
+than the default virtual Master; see [volume setup](docs/devices.md#match-the-volume-mixer-to-the-playback-device).

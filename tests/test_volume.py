@@ -33,6 +33,20 @@ class VolumeTests(unittest.TestCase):
             self.assertEqual(Volume({}, path).snapshot()["percent"], 0)
             self.assertEqual(path.stat().st_mode & 0o777, 0o600)
 
+    def test_explicit_card_controls_the_playback_hardware(self):
+        with (
+            tempfile.TemporaryDirectory() as folder,
+            patch("pi.volume.subprocess.run", side_effect=self.mixer()) as run,
+        ):
+            volume = Volume(
+                {"audio_mixer_card": "aiyvoicebonnet", "audio_mixer_control": "Speaker"},
+                Path(folder) / "volume.local.json",
+            )
+            volume.set(5)
+            self.assertEqual(
+                run.call_args.args[0], ["amixer", "-c", "aiyvoicebonnet", "sset", "Speaker", "5%"]
+            )
+
     def test_bad_input_never_invokes_mixer(self):
         with (
             tempfile.TemporaryDirectory() as folder,
