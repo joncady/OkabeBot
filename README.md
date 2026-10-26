@@ -264,7 +264,8 @@ The tablet now includes **Your day**: remaining calendar appointments, a next-ev
 countdown and a silent agenda card on the Pi. Optional scheduled morning cards and
 signed GitHub workflow/deployment webhooks are documented in
 [notification setup](docs/notifications.md). Webhooks require a private secret,
-explicit repository list and separately configured HTTPS ingress; polling stays on.
+explicit repository list and separately configured HTTPS ingress. Set
+`notifications.github_polling: false` after registering hooks for webhook-only delivery.
 [TV classification](docs/tv.md) now covers common video formats, provider genres and
 cached, verified Wikidata movie/series genre enrichment, with neutral fallbacks.
 
@@ -274,3 +275,12 @@ local deduplication while the Mac is disconnected. Deployment/connect scripts ar
 in `scripts/`; the source AWS login must remain valid. No permanent AWS keys or
 public dashboard access are required. Team crests also support verified Wikidata
 abbreviations and independent partial enrichment when one opponent is unresolved.
+
+The Pi layout uses larger notification/media text, 80-pixel sports crests and a
+narrower Pip with clear side lanes. Working/deployment activity uses a subtle
+thinking expression, without loading dots beneath the media footer. The live
+canvas and preview share native 480×320 layout geometry. Identity Center users can
+connect the relay with `--consumer-profile PROFILE`; a queue-only permission-set
+template is included in `infra/aws/queue-sso.json`.
+The controller also restores the character after a display Pi reboot, even when
+the media source is temporarily unavailable.

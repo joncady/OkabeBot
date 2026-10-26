@@ -27,7 +27,7 @@ Install `pip install -e '.[voice,notifications]'`. Configure in the ignored loca
 
 GitHub uses `gh` authentication on the controller. It reads account notifications across repositories without marking them read. Mentions, review requests and CI notifications are important; others are visual. Events depend on your GitHub notification subscriptions. The first run establishes a baseline rather than replaying old messages.
 
-Deployment polling uses GitHub Deployment records for owned/collaborator repositories. A paginated GraphQL query checks up to three recent deployments per repository every approximately 90 seconds plus request time. Recent pending/in-progress deployments animate progress lights on the Pi and a badge in the tablet UI. Workflows that do not create GitHub Deployment records do not animate this indicator.
+Deployment polling uses GitHub Deployment records for owned/collaborator repositories. A paginated GraphQL query checks up to three recent deployments per repository every approximately 90 seconds plus request time. Recent pending/in-progress deployments show a subtle thinking expression on the Pi and a badge in the tablet UI. Workflows that do not create GitHub Deployment records do not animate this indicator.
 
 A separate Actions workflow monitor detects failed, timed-out, action-required,
 startup-failure and stale completed runs, independent of notification subscriptions.
@@ -213,8 +213,11 @@ Restart the controller after connecting. Deployment metadata and hook IDs are in
 
 This login-based setup still depends on a valid source AWS login. When that login
 expires, run `aws login --profile SOURCE_PROFILE`; the consumer retries and the
-dashboard health line reports the outage. Existing GitHub polling continues
-independently. The role profile renews its assumed-role credentials while the
+dashboard health line reports the outage. GitHub polling runs only when
+`notifications.github_polling` is true (the compatibility default). Set it false
+after every desired repository has a verified hook. Calendar polling is unaffected.
+Webhook-only mode receives workflow failures and deployment events; it does not
+replace the old general GitHub inbox/review-request polling. The role profile renews its assumed-role credentials while the
 source credentials remain valid; it does not eliminate source-login expiration.
 
 The standard queue retains messages for 14 days. Failed messages retry after a
@@ -222,7 +225,7 @@ The standard queue retains messages for 14 days. Failed messages retry after a
 receives. Inspect that queue with the deployment/admin profile; the consumer has
 no dead-letter queue access. Invalid signatures never reach the queue through
 Lambda. The cloud body limit is 512 KiB so its base64 envelope fits SQS's 1 MiB
-limit; oversized deliveries are rejected and workflow polling remains the fallback.
+limit; oversized deliveries are rejected; polling is a fallback only if explicitly enabled.
 CloudWatch logs retain seven days and the receiver never logs event bodies or
 secrets. Lambda is 128 MB, capped at two concurrent executions; there is no EC2,
 load balancer, VPC or NAT gateway. Free allowances and account-wide usage determine
@@ -232,10 +235,40 @@ A real GitHub ping verifies the public endpoint and signature. A signed deployme
 fixture through Lambda/SQS/local delivery verifies the queue-to-screen path without
 rerunning or changing a real CI workflow. A ping is intentionally not queued.
 To add repositories, edit the explicit local allowlist, rerun deploy/connect, and
-restart. Other repositories continue using polling until hooks are registered.
+restart. With polling disabled, repositories without hooks do not generate GitHub cards.
 
 To disable consumption, set `notifications.github_queue_url` to `""` and restart.
 To remove cloud infrastructure, remove its registered repository hooks, then delete
 the named CloudFormation stack in its region. Stack deletion also removes queue
 contents and the queue-only role; preserve any pending data you need first. The
 local profile can then be removed. No teardown is performed automatically.
+
+### Identity Center consumer profile
+
+Use `infra/aws/queue-sso.json` in your **Identity Center home region**, which may
+be different from the SQS region. Supply InstanceArn, PrincipalId (your Identity
+Store user ID), AccountId and the exact QueueArn. The template creates and assigns
+`OkabeBotQueueConsumer`, with only ReceiveMessage, DeleteMessage and
+GetQueueAttributes on that queue, and a 12-hour role session. It grants no send,
+queue administration, dead-letter queue or other service access.
+
+Configure a named AWS profile using your existing SSO session:
+
+```ini
+[profile okabebot-sqs]
+sso_session = YOUR_EXISTING_SESSION
+sso_account_id = YOUR_ACCOUNT_ID
+sso_role_name = OkabeBotQueueConsumer
+region = YOUR_QUEUE_REGION
+```
+
+```sh
+aws sso login --profile okabebot-sqs
+python scripts/connect-github-relay.py --config /path/to/okabebot.local.json --consumer-profile okabebot-sqs
+```
+
+The connector verifies access without changing this profile and reuses the saved
+consumer profile on subsequent runs. Renew the SSO login
+when its session expires; role credentials refresh while the SSO login is valid.
+Deploying/updating relay infrastructure still uses a separate administrator profile.
+Re-deployment preserves private hook and Identity Center metadata.

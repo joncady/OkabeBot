@@ -52,12 +52,13 @@ def shapes(
         rect(83, 14, 85, 21, "#f2ca70")
         rect(83, 23, 85, 25, "#f2ca70")
     blink = phase % 4.7 < 0.16
+    gaze = (1 if math.sin(phase * 0.8) > 0 else -1) if activity == "thinking" else 0
     for x in (48, 65):
         rect(x, 32, x + 8, 33, "#49303a")
         if not blink:
             rect(x, 33, x + 8, 37, "#fff3e7")
-            rect(x + 3, 33, x + 6, 37, "#526a94")
-            rect(x + 4, 33, x + 5, 36, "#29364e")
+            rect(x + 3 + gaze, 33, x + 6 + gaze, 37, "#526a94")
+            rect(x + 4 + gaze, 33, x + 5 + gaze, 36, "#29364e")
     rect(48, 28 if emotion != "curious" else 26, 56, 29 if emotion != "curious" else 27, hair)
     rect(65, 27 if emotion == "concerned" else 28, 73, 28 if emotion == "concerned" else 29, hair)
     if emotion == "curious":
@@ -82,11 +83,4 @@ def shapes(
         rect(81, 38, 87, 45, skin)
         rect(78, 32, 84, 45, "#131a24")
         rect(79, 34, 83, 42, "#52728a")
-    for i in range(3):
-        color = (
-            palette.get("accent", "#a5f4ce")
-            if activity == "listening" or (activity == "thinking" and int(phase * 3) % 3 == i)
-            else "#466b64"
-        )
-        rect(55 + i * 5, 77, 57 + i * 5, 79, color)
     return out

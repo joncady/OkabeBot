@@ -18,6 +18,7 @@ from presses import PressController
 from camera import Camera
 import pip_face
 import scene
+import layout
 import reactions
 import prop_art
 from device_config import load
@@ -312,13 +313,21 @@ class Display:
                     team.get("short_name", "?"),
                     tuple(team.get("colors", ["#486a81", "#ffffff"])),
                 )
-                im = im.resize((max(1, round(64 * sx)), max(1, round(64 * sy))), Image.NEAREST)
+                im = im.resize(
+                    (max(1, round(layout.CREST_SIZE * sx)), max(1, round(layout.CREST_SIZE * sy))),
+                    Image.NEAREST,
+                )
                 buf = io.BytesIO()
                 im.save(buf, format="PNG")
                 photo = tk.PhotoImage(data=base64.b64encode(buf.getvalue()).decode("ascii"))
                 self.crest_photos.append(photo)
                 self.sport_items.append(
-                    self.canvas.create_image((18 + i * 380) * sx, 80 * sy, image=photo, anchor="nw")
+                    self.canvas.create_image(
+                        (layout.CREST_X + i * layout.CREST_STEP) * sx,
+                        layout.CREST_Y * sy,
+                        image=photo,
+                        anchor="nw",
+                    )
                 )
             if art_key:
                 _, _, w, h = prop_art.SLOT
@@ -361,7 +370,7 @@ class Display:
             if video
             else "{} · {}".format(self.music.get("title", "Music"), self.music.get("artist", ""))
         )
-        left, viewport = (60, 400)
+        left, viewport = (layout.MEDIA_LEFT, layout.MEDIA_VIEWPORT)
         key = (title, left, viewport, (video or {}).get("app"), sx, sy)
         if key != self.media_key:
             strip, self.media_travel = scene.media_title_strip(title, None, viewport)
@@ -376,14 +385,20 @@ class Display:
             self.media_title.itemconfigure(self.media_title_item, image=self.media_title_photo)
             self.media_title.place(
                 x=round(left * sx),
-                y=round(9 * sy),
+                y=round(layout.MEDIA_TITLE_Y * sy),
                 width=round(viewport * sx),
-                height=round(28 * sy),
+                height=round(layout.MEDIA_TITLE_HEIGHT * sy),
             )
             if video or self.music.get("is_playing"):
                 app = video.get("app", "") if video else "Spotify"
-                icon = scene.icon(scene.media_source(app), 32)
-                icon = icon.resize((max(1, round(32 * sx)), max(1, round(32 * sy))), Image.NEAREST)
+                icon = scene.icon(scene.media_source(app), layout.MEDIA_ICON_SIZE)
+                icon = icon.resize(
+                    (
+                        max(1, round(layout.MEDIA_ICON_SIZE * sx)),
+                        max(1, round(layout.MEDIA_ICON_SIZE * sy)),
+                    ),
+                    Image.NEAREST,
+                )
                 buf = io.BytesIO()
                 icon.save(buf, format="PNG")
                 self.media_icon_photo = tk.PhotoImage(
@@ -392,7 +407,9 @@ class Display:
                 self.media_panel.itemconfigure(
                     self.media_icon_item, image=self.media_icon_photo, state="normal"
                 )
-                self.media_panel.coords(self.media_icon_item, 16 * sx, 7 * sy)
+                self.media_panel.coords(
+                    self.media_icon_item, layout.MEDIA_ICON_X * sx, layout.MEDIA_ICON_Y * sy
+                )
             else:
                 self.media_panel.itemconfigure(self.media_icon_item, state="hidden")
             self.media_key = key
@@ -410,21 +427,30 @@ class Display:
         if visible != self.progress_visible:
             for identifier in (self.media_track, self.media_progress):
                 self.media_panel.itemconfigure(identifier, state="normal" if visible else "hidden")
-            self.media_panel.coords(self.media_track, 20 * sx, 40 * sy, 460 * sx, 43 * sy)
+            self.media_panel.coords(
+                self.media_track,
+                20 * sx,
+                layout.MEDIA_PROGRESS_Y * sy,
+                460 * sx,
+                (layout.MEDIA_PROGRESS_Y + 3) * sy,
+            )
             self.progress_visible = visible
         if visible:
             coords = (
                 round(20 * sx),
-                round(40 * sy),
+                round(layout.MEDIA_PROGRESS_Y * sy),
                 round((20 + 440 * fraction) * sx),
-                round(43 * sy),
+                round((layout.MEDIA_PROGRESS_Y + 3) * sy),
             )
             if coords != self.progress_coords:
                 self.media_panel.coords(self.media_progress, *coords)
                 self.progress_coords = coords
         if not self.media_shown:
             self.media_panel.place(
-                x=0, y=round(273 * sy), width=round(480 * sx), height=round(47 * sy)
+                x=0,
+                y=round(layout.MEDIA_TOP * sy),
+                width=round(480 * sx),
+                height=round(layout.MEDIA_HEIGHT * sy),
             )
             self.media_shown = True
 

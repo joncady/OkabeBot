@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Connect an existing relay to local config and explicitly allowed GitHub repositories.
 
-Creates a queue-only assumed-role AWS profile, never an IAM user or static key.
+Uses an existing scoped AWS/SSO profile or creates a queue-only assumed-role profile.
+Never creates an IAM user or static key.
 """
 
 import argparse
@@ -20,36 +21,39 @@ from okabebot.runtime import atomic_json
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=Path("okabebot.local.json"))
+    parser.add_argument("--consumer-profile", help="Use an existing scoped AWS/SSO profile")
     args = parser.parse_args()
     config = args.config.expanduser().resolve()
     os.environ["OKABEBOT_CONFIG"] = str(config)
     get_config.cache_clear()
     settings = get_config()["notifications"]
     metadata = json.loads((state_dir() / "github-relay.json").read_text())
-    profile = metadata["stack"] + "-consumer"
-    source = metadata["source_profile"]
-    if source == profile:
-        raise SystemExit("Consumer source profile cannot refer to itself")
-    aws_config = configparser.RawConfigParser()
-    aws_config.read(Path(os.environ.get("AWS_CONFIG_FILE", str(Path.home() / ".aws/config"))))
-    section = "profile " + profile
-    if (
-        aws_config.has_section(section)
-        and aws_config.get(section, "role_arn", fallback="") != metadata["ConsumerRoleArn"]
-    ):
-        raise SystemExit(
-            "AWS profile already belongs to a different role; choose a different stack name"
-        )
-    for key, value in [
-        ("role_arn", metadata["ConsumerRoleArn"]),
-        ("source_profile", source),
-        ("region", metadata["region"]),
-    ]:
-        subprocess.run(
-            ["aws", "configure", "set", key, value, "--profile", profile],
-            check=True,
-            capture_output=True,
-        )
+    existing_profile = args.consumer_profile or metadata.get("consumer_profile")
+    profile = existing_profile or metadata["stack"] + "-consumer"
+    if not existing_profile:
+        source = metadata["source_profile"]
+        if source == profile:
+            raise SystemExit("Consumer source profile cannot refer to itself")
+        aws_config = configparser.RawConfigParser()
+        aws_config.read(Path(os.environ.get("AWS_CONFIG_FILE", str(Path.home() / ".aws/config"))))
+        section = "profile " + profile
+        if (
+            aws_config.has_section(section)
+            and aws_config.get(section, "role_arn", fallback="") != metadata["ConsumerRoleArn"]
+        ):
+            raise SystemExit(
+                "AWS profile already belongs to a different role; choose a different stack name"
+            )
+        for key, value in [
+            ("role_arn", metadata["ConsumerRoleArn"]),
+            ("source_profile", source),
+            ("region", metadata["region"]),
+        ]:
+            subprocess.run(
+                ["aws", "configure", "set", key, value, "--profile", profile],
+                check=True,
+                capture_output=True,
+            )
     subprocess.run(
         [
             "aws",

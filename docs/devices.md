@@ -101,3 +101,14 @@ minimum and confirm audibly before increasing. The AIY Speaker control at 100%
 reported +12 dB; at 5% it reported -43.5 dB. Percentages are hardware-specific.
 The corrected control applies to file playback, streaming speech, and chimes;
 the saved level is restored when the Voice service restarts.
+
+### Native UCTRONICS display resolution
+
+B010601 is a 480×320 panel. Verify `/sys/class/graphics/fb0/virtual_size` and
+`DISPLAY=:0 xrandr`; a 640×480 framebuffer causes resampling and softer text.
+For the legacy HDMI firmware configuration used by this panel, back up
+`/boot/config.txt`, use `hdmi_group=2`, `hdmi_mode=87`, the existing
+`hdmi_cvt 480 320 60 6 0 0 0`, and framebuffer_width=480,
+framebuffer_height=320, disable_overscan=1. Remove conflicting active mode values
+and reboot. Preserve the vendor overlay, SPI and camera settings. This is specific
+to the legacy display setup; do not apply it to a DRM/KMS installation unchanged.

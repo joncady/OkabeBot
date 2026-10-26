@@ -7,7 +7,7 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent / "assets"
-SLOT = (46, 208, 56, 56)
+SLOT = (46, 188, 56, 56)
 
 # The parser names semantic props; only this mapping knows the art vocabulary.
 PROP_KEYS = {

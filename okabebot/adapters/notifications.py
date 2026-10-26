@@ -21,6 +21,10 @@ class PollingAdapter:
     setting: str = ""
 
     def enabled(self, context):
+        if self.name in ("github", "github_checks") and not context.settings.get(
+            "github_polling", True
+        ):
+            return False
         return bool(context.settings.get(self.setting or self.name))
 
     def poll(self, context):

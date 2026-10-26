@@ -8,7 +8,6 @@ def shapes(
 ):
     palette = palette or {}
     bg = palette.get("background", "#101e25")
-    accent = palette.get("accent", "#a5f4ce")
     out = [("rectangle", (0, 0, 480, 320), bg, 1)]
     # Work on a 120x80 pixel grid, then scale exactly 4x for the LCD.
     bob = round(math.sin(phase * (5 if emotion == "excited" else 1.7)))
@@ -91,11 +90,4 @@ def shapes(
         rect(81, 38, 87, 45, skin)
         rect(78, 32, 84, 45, "#131a24")
         rect(79, 34, 83, 42, "#52728a")
-    for i in range(3):
-        color = (
-            accent
-            if activity == "listening" or (activity == "thinking" and int(phase * 3) % 3 == i)
-            else "#466b64"
-        )
-        rect(55 + i * 5, 77, 57 + i * 5, 79, color)
     return out

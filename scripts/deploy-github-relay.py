@@ -94,7 +94,9 @@ def main():
     outputs = json.loads(aws("cloudformation", "describe-stacks", "--stack-name", args.stack))[
         "Stacks"
     ][0]["Outputs"]
-    value = {o["OutputKey"]: o["OutputValue"] for o in outputs}
+    path = state_dir() / "github-relay.json"
+    value = json.loads(path.read_text()) if path.exists() else {}
+    value.update({o["OutputKey"]: o["OutputValue"] for o in outputs})
     value.update(region=args.region, stack=args.stack, source_profile=args.profile)
     path = state_dir() / "github-relay.json"
     path.write_text(json.dumps(value, indent=2))

@@ -70,14 +70,17 @@ class NotificationTests(unittest.TestCase):
         self.assertNotEqual(image.getpixel((240, 90)), image.getpixel((0, 90)))
         self.assertNotEqual(image.getpixel((30, 250)), image.getpixel((0, 250)))
 
-    def test_deployment_indicator_animates_without_replacing_character(self):
-        args = dict(style="kurisu", emotion="neutral", deploying=True)
-        first = scene.render(phase=1, **args)
-        second = scene.render(phase=1.3, **args)
-        self.assertNotEqual(
-            first.crop((10, 10, 60, 25)).tobytes(), second.crop((10, 10, 60, 25)).tobytes()
-        )
-        self.assertEqual(first.getpixel((240, 90)), second.getpixel((240, 90)))
+    def test_deployment_uses_thinking_expression_and_preserves_voice_priority(self):
+        for style in ("okabe", "kurisu", "pip", "sonic"):
+            args = dict(style=style, emotion="neutral", phase=1)
+            working = scene.render(deploying=True, **args)
+            thinking = scene.render(activity="thinking", **args)
+            self.assertEqual(working.tobytes(), thinking.tobytes())
+            self.assertNotEqual(working.tobytes(), scene.render(**args).tobytes())
+            self.assertEqual(
+                scene.render(activity="speaking", **args).tobytes(),
+                scene.render(activity="speaking", deploying=True, **args).tobytes(),
+            )
 
     def test_dismissed_notification_does_not_announce(self):
         n = self.inbox.publish("system", "Dismiss me")

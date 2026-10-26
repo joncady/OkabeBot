@@ -176,6 +176,9 @@ class Bridge:
                     if result.get("error"):
                         raise RuntimeError("Device status unavailable")
                     self.device_health[name] = {"available": True, "error": None}
+                    if name == "display" and result.get("kind") == "idle":
+                        # A reboot clears the Pi canvas even when the desired activity is unchanged.
+                        self.face_worker.submit(scene.set_activity, self.face_activity or "idle")
                     if name == "voice":
                         self.speaker_volume = result.get("volume", self.speaker_volume)
                 except Exception:
@@ -381,7 +384,11 @@ class Bridge:
                 self.closing.wait(3)
 
     def deployments(self):
-        return self.github_webhook.deployments(self.sources.state.get("deployments", []))
+        return self.github_webhook.deployments(
+            self.sources.state.get("deployments", [])
+            if get_config()["notifications"].get("github_polling", True)
+            else []
+        )
 
     def poll_sources(self):
         while not self.closing.is_set():

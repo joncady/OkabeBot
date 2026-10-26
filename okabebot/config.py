@@ -91,6 +91,7 @@ DEFAULTS = {
         "github_queue_url": "",
         "github_queue_region": "us-west-2",
         "github_queue_profile": "",
+        "github_polling": True,
         "calendar": "",
         "calendar_lead_minutes": 10,
         "agenda_time": "",
@@ -186,6 +187,8 @@ def load(path):
     if settings["web"]["host"] == "0.0.0.0":
         raise ValueError("Use a specific LAN address or 127.0.0.1 for web.host")
     notifications = settings["notifications"]
+    if not isinstance(notifications["github_polling"], bool):
+        raise ValueError("github_polling must be boolean")
     if not isinstance(notifications["agenda_time"], str) or (
         notifications["agenda_time"]
         and not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", notifications["agenda_time"])
