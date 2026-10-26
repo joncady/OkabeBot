@@ -40,3 +40,10 @@ installation step. Back up the original library and manifest, restart Home
 Assistant, then retry setup with a fresh code. Container recreation removes this
 change; a normal fixed Home Assistant release should replace it. To roll back,
 restore the original manifest and library version, then restart.
+
+The 16.9.1 backport also needs the matching upstream import in
+`alexa_devices/binary_sensor.py`: `SENSOR_STATE_OFF` moved from
+`aioamazondevices.const.metadata` to `aioamazondevices.const.sensors`. Without
+this change authentication may succeed but entity setup fails. Verify every
+integration module imports before restarting; retain the original integration
+directory for rollback.

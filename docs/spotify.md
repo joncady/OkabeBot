@@ -92,5 +92,6 @@ The MCP `control_spotify` tool accepts `play`, `pause`, `next`, and `previous`.
 `play` can take a `spotify:track:…`, album, playlist, or artist URI and an optional
 Spotify device ID. No device ID follows the active Spotify device. The tool is
 not automatically approved by the default hardware allowlist. Control is off by
-default, requires fresh OAuth consent, and has not yet been tested against live
-playback. Successful API acceptance does not prove the speaker played audio.
+default, requires fresh OAuth consent, and was live-tested with pause/resume on a Spotify Connect TV while Cast
+remained the metadata source. Track selection and other device types still need
+validation. Successful API acceptance does not prove the speaker played audio.

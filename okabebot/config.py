@@ -187,6 +187,8 @@ def load(path):
         or not 10 <= settings["spotify"]["poll_seconds"] <= 300
     ):
         raise ValueError("Spotify polling must be 10–300 seconds")
+    if type(settings["spotify"]["playback_control"]) is not bool:
+        raise ValueError("spotify.playback_control must be boolean")
     if type(settings["spotify"]["listen_along"]) is not bool:
         raise ValueError("spotify.listen_along must be boolean")
     if not isinstance(settings["spotify"]["device_name"], str):

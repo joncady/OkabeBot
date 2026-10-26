@@ -76,6 +76,7 @@ class Spotify:
         if not token.get("access_token"):
             raise ValueError("Spotify returned no token")
         token["refresh_token"] = token.get("refresh_token") or self.tokens.get("refresh_token")
+        token["scope"] = token.get("scope", self.tokens.get("scope", ""))
         token["client_id"] = client
         token["expires_at"] = time.time() + int(token.get("expires_in", 3600))
         self.folder.mkdir(parents=True, exist_ok=True)

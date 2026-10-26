@@ -12,8 +12,15 @@ from okabebot.spotify import Spotify
 source = Spotify(state_dir(), get_config()["spotify"])
 try:
     print("Open on this computer:", source.begin(), flush=True)
-    while source.pending and time.time() < source.pending["expires"]:
+    while True:
+        with source.lock:
+            pending = source.pending
+            if not pending or time.time() >= pending["expires"]:
+                break
         time.sleep(1)
-    print("Authorization finished." if source.tokens else "Authorization incomplete.")
+    granted = "user-modify-playback-state" in source.tokens.get("scope", "").split()
+    print(
+        "Playback control authorized." if granted else "Playback control authorization incomplete."
+    )
 finally:
     source.close()
