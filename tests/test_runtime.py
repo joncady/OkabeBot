@@ -79,7 +79,7 @@ class RuntimeTests(unittest.TestCase):
                 patch.object(module, "device", return_value=endpoint),
                 patch.object(module, "create_media_source", return_value=Mock()),
                 patch.object(module, "TeamResolver", return_value=Mock()),
-                patch("faster_whisper.WhisperModel"),
+                patch.dict("sys.modules", {"faster_whisper": Mock(WhisperModel=Mock())}),
                 patch.object(module.Bridge, "show_activity"),
                 patch.object(module.threading.Thread, "start"),
             ):
