@@ -1,0 +1,71 @@
+# Optional, disabled by default. Replace the route IDs in your local copy.
+# Call script.okabebot_context_say explicitly; sensor changes alone never speak.
+input_boolean:
+  okabebot_context_speech:
+    name: OkabeBot context-aware speech
+    icon: mdi:account-voice
+    initial: false
+
+timer:
+  okabebot_context_speech_cooldown:
+    duration: "00:05:00"
+
+script:
+  okabebot_context_say:
+    alias: OkabeBot - context-aware speech
+    description: Speak once on the first configured occupied room; off by default.
+    mode: single
+    max_exceeded: silent
+    fields:
+      message:
+        name: Message
+        required: true
+        selector:
+          text:
+      dry_run:
+        name: Preview without speaking
+        default: true
+        selector:
+          boolean:
+    sequence:
+      - variables:
+          # Ordered, explicit sensor-to-speaker mapping; never broadcast.
+          routes:
+            - sensor: binary_sensor.replace_with_room_motion
+              speaker: notify.replace_with_room_speak
+          selected: >-
+            {% set ns = namespace(speaker='') %}
+            {% for route in routes %}
+              {% if not ns.speaker and is_state(route.sensor, 'on')
+                    and (expand(route.speaker) | list | count) > 0
+                    and not is_state(route.speaker, 'unavailable') %}
+                {% set ns.speaker = route.speaker %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.speaker }}
+          preview:
+            enabled: "{{ is_state('input_boolean.okabebot_context_speech', 'on') }}"
+            speaker: "{{ selected }}"
+            cooldown_ready: "{{ is_state('timer.okabebot_context_speech_cooldown', 'idle') }}"
+      - if:
+          - condition: template
+            value_template: "{{ dry_run | default(true) | bool }}"
+        then:
+          - stop: Context route preview; no sound played.
+            response_variable: preview
+      - condition: state
+        entity_id: input_boolean.okabebot_context_speech
+        state: "on"
+      - condition: state
+        entity_id: timer.okabebot_context_speech_cooldown
+        state: idle
+      - condition: template
+        value_template: "{{ selected != '' and message is string and 0 < message | length <= 300 }}"
+      - action: timer.start
+        target:
+          entity_id: timer.okabebot_context_speech_cooldown
+      - action: notify.send_message
+        target:
+          entity_id: "{{ selected }}"
+        data:
+          message: "{{ message }}"

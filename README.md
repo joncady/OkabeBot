@@ -198,3 +198,7 @@ hook. Every commit must either stage a README update or include a trailer such a
 `README-Reviewed: Internal fix; documented setup and behavior remain accurate.`
 Review the README before using that trailer. The hook requires review evidence;
 it cannot determine whether prose is correct or automatically rewrite it.
+
+Context-aware Echo speaking has an optional Home Assistant package with a
+disabled-by-default toggle, dry-run routing, and a cooldown; see
+[Alexa setup](docs/alexa.md#optional-context-aware-speaking).

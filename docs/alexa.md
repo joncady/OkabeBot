@@ -52,3 +52,23 @@ Local backport validation: authentication and entity import completed on the
 2026.10.4 installation (8 devices, 94 entities). This verifies account import,
 not timer-to-screen delivery, Echo speech, or long-term token refresh; test those
 separately after choosing an Echo device.
+
+## Optional context-aware speaking
+
+Install `examples/home-assistant/context_speech.yaml` as a package and replace the
+local ordered sensor-to-Speak routes. The helper starts off, and the script
+defaults to dry-run. Calling it with `message` and `dry_run: true` returns the
+selected speaker, enable state, and cooldown readiness without sound. For actual
+speech, manually enable `input_boolean.okabebot_context_speech` and pass
+`dry_run: false`. It selects the first active room sensor, rejects unavailable
+speakers and inactive/unknown sensors, and enforces a five-minute cooldown.
+No occupancy transition or notification automatically invokes this script.
+
+Motion indicates activity, not identity or continuous occupancy. Map an indoor
+room sensor only to a speaker in that same room. Connectivity is not presence;
+Ring outdoor motion and a phone's home/away tracker should not select a room
+speaker. The current installation exposes one Echo motion sensor; neither
+imported Show exposes room occupancy through this integration.
+
+The Show Speak action was tested successfully with soft-volume SSML. Speaker
+routing remains an opt-in experiment; it is not attached to notification delivery.
