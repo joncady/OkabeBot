@@ -11,6 +11,7 @@ def shapes(
     activity="idle",
     palette=None,
     show_emphasis=True,
+    pose="rest",
 ):
     palette = palette or {}
     out = [("rectangle", (0, 0, 480, 320), palette.get("background", "#101e25"), 1)]
@@ -26,9 +27,11 @@ def shapes(
     rect(77, 29, 86, 71, hair)
     rect(40, 35, 44, 65, light)
     rect(78, 34, 81, 67, light)
-    rect(35, 60, 85, 74, "#947461")
+    phone = pose == "phone"
+    rect(35, 60, 77 if phone else 85, 74, "#947461")
     rect(32, 65, 43, 74, "#b5997a")
-    rect(77, 65, 88, 74, "#b5997a")
+    if not phone:
+        rect(77, 65, 88, 74, "#b5997a")
     rect(46, 54, 74, 74, "#f4eee4")
     rect(54, 47, 66, 56, shade)
     rect(56, 48, 64, 55, skin)
@@ -70,6 +73,15 @@ def shapes(
         rect(56, 44, 65, 45, "#985962")
         if emotion in ("happy", "excited"):
             rect(65, 43, 67, 44, "#985962")
+    if phone:
+        # The raised arm replaces its resting sleeve and shares the face/body transform.
+        rect(76, 58, 82, 64, "#b5997a")
+        rect(80, 61, 87, 66, "#b5997a")
+        rect(83, 44, 88, 64, "#b5997a")
+        rect(82, 44, 88, 48, "#947461")
+        rect(81, 38, 87, 45, skin)
+        rect(78, 32, 84, 45, "#131a24")
+        rect(79, 34, 83, 42, "#52728a")
     for i in range(3):
         color = (
             palette.get("accent", "#a5f4ce")

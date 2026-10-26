@@ -6,8 +6,8 @@ from pathlib import Path
 import secrets
 
 
-def notification_token(folder):
-    path = Path(folder) / "notification-token"
+def persistent_token(folder, filename):
+    path = Path(folder) / filename
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -20,6 +20,10 @@ def notification_token(folder):
     with os.fdopen(fd, "w") as stream:
         stream.write(token)
     return token
+
+
+def notification_token(folder):
+    return persistent_token(folder, "notification-token")
 
 
 def may_publish(path, host, allowed_hosts, supplied, expected):

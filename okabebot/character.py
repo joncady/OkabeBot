@@ -97,7 +97,7 @@ def speak(text, emotion="neutral", intensity=None, voice="default"):
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             raise RuntimeError("The character is already speaking")
-        if speech.engine() == "openai":
+        if speech.engine() in ("openai", "local"):
             return stream_speak(text, emotion, intensity, voice, metrics)
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "speech.wav"
@@ -167,9 +167,13 @@ def stream_speak(text, emotion, intensity, voice, metrics):
         for sequence, chunk in enumerate(speech.pcm_chunks(text, emotion, selected)):
             if stream_id is None:
                 metrics["first_chunk_s"] = round(time.time() - metrics["started_at"], 3)
+                stream_started = time.monotonic()
                 stream_id = voice_rpc({"op": "stream_start"})["stream_id"]
+                metrics["stream_open_s"] = round(time.monotonic() - stream_started, 3)
                 character = current_character()
-                display_rpc(
+                # A cold display SSH tunnel must not delay the first speaker chunk.
+                face_future = face_pool.submit(
+                    display_rpc,
                     {
                         "op": "character",
                         "activity": "speaking",
@@ -177,8 +181,9 @@ def stream_speak(text, emotion, intensity, voice, metrics):
                         "style": character["style"],
                         "palette": character["palette"],
                         "intensity": intensity,
-                    }
+                    },
                 )
+            chunk_started = time.monotonic()
             result = voice_rpc(
                 {
                     "op": "stream_chunk",
@@ -187,6 +192,8 @@ def stream_speak(text, emotion, intensity, voice, metrics):
                     "pcm_base64": base64.b64encode(chunk).decode(),
                 }
             )
+            if sequence == 0:
+                metrics["first_chunk_delivery_s"] = round(time.monotonic() - chunk_started, 3)
             values = array.array("h", chunk)
             import sys
 

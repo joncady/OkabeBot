@@ -8,6 +8,8 @@ import shutil
 import subprocess
 import tempfile
 import wave
+import socket
+import struct
 from pathlib import Path
 
 from .config import get_config, state_dir
@@ -64,7 +66,7 @@ def synthesize(text, emotion, voice, target):
         source, audio = Path(tmp) / "text.txt", Path(tmp) / "speech.wav"
         source.write_text(text.replace("[[", "").replace("]]", ""))
         name = voices()[voice]
-        if engine() == "openai":
+        if engine() in ("openai", "local"):
             count = 0
             with wave.open(str(audio), "wb") as wav:
                 wav.setparams((1, 2, 24000, 0, "NONE", "not compressed"))
@@ -111,6 +113,9 @@ def synthesize(text, emotion, voice, target):
 
 def pcm_chunks(text, emotion, voice):
     """Stream 24 kHz PCM; one HTTP request, no retries after audio begins."""
+    if engine() == "local":
+        yield from local_pcm_chunks(text, emotion, voice)
+        return
     key = os.environ.get("OPENAI_API_KEY")
     if not key:
         raise RuntimeError("Set OPENAI_API_KEY on the controller to use cloud speech")
@@ -134,3 +139,86 @@ def pcm_chunks(text, emotion, voice):
             if not chunk:
                 break
             yield chunk
+
+
+def _receive(connection, length):
+    data = bytearray()
+    while len(data) < length:
+        chunk = connection.recv(length - len(data))
+        if not chunk:
+            raise RuntimeError("Local speech worker disconnected before completion")
+        data.extend(chunk)
+    return bytes(data)
+
+
+def local_pcm_chunks(text, emotion, voice):
+    """Private Unix socket: JSON request, length-prefixed mono PCM16 at 24 kHz."""
+    from .profiles import current_character
+
+    request = {
+        "text": text,
+        "emotion": emotion,
+        "voice": voice,
+        "character": current_character()["style"],
+    }
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+        connection.settimeout(30)
+        connection.connect(get_config()["speech"]["local_socket"])
+        connection.sendall(json.dumps(request).encode() + b"\n")
+        total = 0
+        while True:
+            length = struct.unpack("!I", _receive(connection, 4))[0]
+            if length == 0:
+                return
+            total += length
+            if length % 2 or length > 48000 or total > 30 * 48000:
+                raise RuntimeError("Invalid or excessive PCM from local speech worker")
+            yield _receive(connection, length)
+
+
+def local_worker_status():
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+        connection.settimeout(2)
+        connection.connect(get_config()["speech"]["local_socket"])
+        connection.sendall(b'{"op":"status"}\n')
+        size = struct.unpack("!I", _receive(connection, 4))[0]
+        if not 0 < size <= 8192:
+            raise ValueError("Invalid worker status")
+        return json.loads(_receive(connection, size))
+
+
+def health():
+    backend = engine()
+    if backend == "local":
+        try:
+            result = local_worker_status()
+            from .profiles import current_character
+
+            supported = current_character()["style"] in result.get("characters", [])
+            return {
+                "backend": backend,
+                "available": bool(result.get("ready") and supported),
+                "worker_ready": bool(result.get("ready")),
+                "characters": result.get("characters", []),
+                "error": None if supported else "Selected character has no voice reference",
+            }
+        except Exception:
+            return {
+                "backend": backend,
+                "available": False,
+                "error": "Local voice worker unavailable or warming",
+            }
+    available = (
+        bool(os.getenv("OPENAI_API_KEY"))
+        if backend == "openai"
+        else bool(
+            shutil.which("say")
+            if backend == "say"
+            else shutil.which("espeak-ng") or shutil.which("espeak")
+        )
+    )
+    return {
+        "backend": backend,
+        "available": available,
+        "error": None if available else "Speech backend is not configured",
+    }

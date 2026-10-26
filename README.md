@@ -54,6 +54,34 @@ The existing deployment uses a Mac controller and two legacy Pi Zero W/WH satell
 
 The controller resumes its saved Codex chat. The button disarms while Codex works or speaks. A renewable lease disarms it if the controller disconnects. Recordings are deduplicated before submission; uncertain actions are not automatically replayed.
 
+For supervised Mac startup, run **`./scripts/start-mac.sh`** from this checkout.
+It starts the configured voice worker, waits for its warm-up, and starts the
+controller. Child failures restart with backoff; unavailable Pis reconnect without
+re-enabling a manually paused microphone. The dashboard shows device and voice
+readiness. The control URL stays valid across restarts; its private credential is
+stored in `state/controller-token`. Delete that file while stopped to rotate it.
+
+To start after Mac login and recover if the supervisor exits, stop the foreground
+process, then run `.venv/bin/python scripts/install-mac.py`. This makes a private
+installation in `~/Library/Application Support/OkabeBot` and installs its login
+service. It copies the prepared environments, settings, reference manifest/audio,
+models and persistent application state, without copying development scratch data.
+This avoids macOS background-process restrictions on Documents/Desktop/Downloads.
+The installer refuses an existing destination rather than overwriting private
+state. For updates, stop the printed service, back up that installation, and update
+its code/environments deliberately; do not overwrite its `.local` state. The copied
+environments are for this same Mac, not portable to another machine.
+
+The installed one-command start script is
+`~/Library/Application Support/OkabeBot/scripts/start-mac.sh`. To use the login
+service instead of foreground mode, run that script with `--install` (it also
+restarts the service). This is a per-user LaunchAgent, not a system daemon: log
+into the Mac after a reboot. It prints the service label and its stop command. Logs and supervisor status live in `state/runtime/`; the private
+dashboard URL is also in `state/ptt/control.json`. Stop an independently running
+controller/worker before the first supervised launch. Foreground mode stops both
+children with Ctrl-C. Prepared Linux hosts can also run
+`python -m okabebot.runtime --config /path/to/config.json` under their service manager.
+
 ## Auto-approval
 
 Hardware MCP tool calls are **automatically approved by default** in this voice controller. This includes physical button presses, camera capture, and audio recording when requested by Codex. The policy is limited to the `hardware-lab` server and the named `approvals.allowed_tools` list. It does not approve shell commands, file edits, other MCP servers, arbitrary forms, or explicit review denials.
@@ -93,6 +121,32 @@ The control page’s **Character** selector switches between Okabe, Makise Kuris
 Set `style` to `pip`, `name` to `Pip`, and `persona` to a friendly robot description for the original robot. The `character.persona` text controls the conversational character independently of its drawing; current preferences are included with every voice turn, including resumed chats. The `shell` color applies to Pip's body. The character supports neutral, happy, curious, concerned, and excited emotions, with idle, listening, thinking, and speaking activities. Mouth movement follows the synthesized audio amplitude rather than phoneme-level lip sync.
 
 Voice presets are `warm`, `calm`, and `robotic`. Map them to installed voices in `speech.mac_voices` or `speech.linux_voices`. `speech.engine: auto` selects macOS `say` or Linux eSpeak. These are generic system voices, not the character's actor. A voice selected through `set_character_voice` is saved in `state/character.json` and takes precedence over `default_voice`; remove that saved preference to use the config default again. Tool argument `voice: default` uses the selected voice (`pip` remains a compatibility alias).
+
+For streaming Qwen character voices on Apple Silicon, create a separate environment
+and install `mlx-audio==0.6.1`. Keep the reference manifest and audio in ignored
+private state. Each manifest key is a character style, containing `audio` (relative
+to the manifest) and `text` (its exact English transcript). References and voice
+samples are not included. Configure the supervisor with argv, without a shell:
+
+```json
+{"speech": {
+  "engine": "local",
+  "local_socket": "state/tts.sock",
+  "worker_command": [".voice-venv/bin/python", "scripts/qwen-voice-worker.py",
+    "--manifest", "state/voices/references.json", "--socket", "state/tts.sock",
+    "--revision", "0d6bb6fe33f92d47a507e23b9148940e8366ab5b"],
+  "worker_ready_timeout_seconds": 120
+}}
+```
+
+Worker arguments run relative to the config file's directory. Its Python environment
+is separate from the controller's, and the current MLX worker requires Apple Silicon.
+The worker keeps references warm and streams 24 kHz audio through the Pi playback
+and animation path. Delivery follows the reference performance; emotion instructions
+and voice presets do not change this model's delivery. Missing character references
+are shown as unavailable; select **Local speech** in Dev to use the system voice.
+`speech.worker_command` can launch any worker implementing the protocol documented
+in [adapter contracts](docs/adapters.md), keeping model dependencies out of the controller.
 
 The Codex instruction interprets “wave” as a happy face plus **one SwitchBot press**. A durable request ID prevents a retry from pressing again. Different physical gestures can be implemented by changing the instruction and tool adapter together.
 

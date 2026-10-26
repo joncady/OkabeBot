@@ -35,6 +35,7 @@
           ><button id="stop">Stop response</button>
         </div>
         <p class="hint">Hold the Pi button, speak, then release.</p>
+        <p id="system-health" class="hint" role="status"></p>
       </section>
       <section class="characters">
         <div class="section-title">
@@ -88,6 +89,27 @@
         <div id="source-errors" role="status"></div>
       </section>
       <div id="error" role="alert"></div>
+      <section class="panel notification-settings">
+        <h2>Notification preferences</h2>
+        <p id="notification-policy-status" class="muted" role="status"></p>
+        <div class="focus-actions"><button data-snooze="15">Snooze 15 min</button><button data-snooze="60">Snooze 1 hour</button><button data-snooze="0">Resume notifications</button></div>
+        <p class="hint">Snooze holds new cards until it ends. Expired reminders are skipped.</p>
+        <form id="quiet-hours-form" class="preference-form">
+          <label><input id="quiet-enabled" type="checkbox" /> Quiet hours</label>
+          <label>From <input id="quiet-start" type="time" value="22:00" required /></label>
+          <label>Until <input id="quiet-end" type="time" value="08:00" required /></label>
+          <label>Timezone <input id="quiet-timezone" value="local" placeholder="local or America/New_York" required /></label>
+          <button type="submit">Save quiet hours</button>
+        </form>
+        <p class="hint">Quiet hours keep cards visible and silence all notification audio, including urgent alerts. Your button replies are unaffected.</p>
+        <form id="source-rule-form" class="preference-form">
+          <label>Source <select id="notification-source"><option>github</option><option>calendar</option><option>codex</option><option>system</option></select></label>
+          <label><input id="source-enabled" type="checkbox" checked /> Show cards</label>
+          <label>Audio <select id="source-audio"><option value="default">Priority default</option><option value="silent">Silent</option><option value="chime">Chime</option><option value="speech">Read aloud</option></select></label>
+          <button type="submit">Save source</button>
+        </form>
+        <p class="hint">Explicitly silent events stay silent. Source changes apply to future deliveries.</p>
+      </section>
       <div id="approvals"></div>
       <section id="developer" hidden>
         <div class="panel">
@@ -101,6 +123,7 @@
           ><label for="speech-engine">Voice engine</label
           ><select id="speech-engine">
             <option value="auto">Local speech</option>
+            <option value="local">Local character voice worker</option>
             <option value="openai">Cloud streaming</option>
           </select>
           <p class="muted">

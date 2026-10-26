@@ -358,6 +358,10 @@ footer span {
 }
 
 .music-panel { display: flex; align-items: center; gap: 20px; }
+.preference-form { display:flex; flex-wrap:wrap; gap:16px; align-items:end; margin-top:20px; }
+.preference-form label { display:flex; flex-direction:column; gap:8px; min-width:140px; }
+.preference-form input:not([type=checkbox]), .preference-form select { min-height:44px; max-width:100%; }
+.preference-form input[type=checkbox] { width:22px; height:22px; }
 .music-copy { flex: 1; min-width: 0; }
 .music-copy p { overflow-wrap: anywhere; margin-bottom: 0; }
 .music-footer { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px 14px; overflow: hidden; background: #172b34; border: 1px solid #7ca99d; border-radius: 10px; }

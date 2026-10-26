@@ -6,7 +6,7 @@ Run the controller on one host at a time. The Mac can control the existing displ
 
 The controller defaults to loopback. For a tablet on your trusted home network, set `web.host` to the controller's specific LAN IPv4 address (not `0.0.0.0`). Open the complete printed control URL on the tablet, including its `#` token. Use a current browser. Keep the controller awake while using it.
 
-The URL grants controller access. This LAN mode is HTTP, so use it only on a trusted network; do not forward its port to the Internet. Use a private HTTPS reverse proxy or VPN for other networks. Dev mode hides diagnostics for convenience; it is not a separate permission level. Session tokens change when the controller restarts.
+The URL grants controller access. This LAN mode is HTTP, so use it only on a trusted network; do not forward its port to the Internet. Use a private HTTPS reverse proxy or VPN for other networks. Dev mode hides diagnostics for convenience; it is not a separate permission level. The control token persists across restarts in private `state/controller-token`; stop the controller and delete that file to rotate it.
 
 The home view has large character portrait buttons, microphone pause, stop response, and a notification inbox. Dev reveals transcription, approvals diagnostics, timings, voice settings, and a test card. Actual approval requests remain visible outside Dev.
 
@@ -27,13 +27,43 @@ Install `pip install -e '.[voice,notifications]'`. Configure in the ignored loca
 
 GitHub uses `gh` authentication on the controller. It reads account notifications across repositories without marking them read. Mentions, review requests and CI notifications are important; others are visual. Events depend on your GitHub notification subscriptions. The first run establishes a baseline rather than replaying old messages.
 
-Deployment polling uses GitHub Deployment records for owned/collaborator repositories. A paginated GraphQL query checks up to three recent deployments per repository every approximately 90 seconds plus request time. Recent pending/in-progress deployments animate progress lights on the Pi and a badge in the tablet UI. Workflows that do not create GitHub Deployment records are not detected by this indicator. Signed webhooks and richer workflow handling are backlog items.
+Deployment polling uses GitHub Deployment records for owned/collaborator repositories. A paginated GraphQL query checks up to three recent deployments per repository every approximately 90 seconds plus request time. Recent pending/in-progress deployments animate progress lights on the Pi and a badge in the tablet UI. Workflows that do not create GitHub Deployment records do not animate this indicator.
+
+A separate Actions workflow monitor detects failed, timed-out, action-required,
+startup-failure and stale completed runs, independent of notification subscriptions.
+It checks a configured repository or, for `github: all`, active owned/collaborator
+repositories accessible to the signed-in `gh` account. Discovery refreshes every
+15 minutes. The first check per repository establishes a baseline; new failures
+create important cards with a chime, deduplicated by run ID and attempt. Failed
+requests preserve their cursor and are retried on the next poll. The created-run
+lookback is `notifications.workflow_lookback_days` (default 30, range 1–90): reruns
+of runs created before that window are outside coverage. All pages within the window
+are read, so large repositories may consume substantial GitHub API quota. Access
+failures appear in source health; this does not cover third-party check providers.
+Signed webhooks remain a future option for faster, lower-quota delivery.
 
 Google Calendar starts with its read-only private iCal feed. Put `ICAL_FEED="https://..."` in `.env` beside the local JSON, or set the environment variable. Never commit the secret feed. Google Calendar → Settings → calendar → Integrate calendar → Secret address in iCal format. Do not make the calendar public.
 
 The adapter fetches every approximately 90 seconds, expands recurring timed events for the next two days, and schedules local reminders. Calendar event timezones are honored; display times use the controller's local timezone. All-day events are not spoken. Updates reconcile pending reminders and cancellations. Already delivered, failed, or uncertain announcements are not automatically replayed. Feed refresh latency means last-second changes may not be seen immediately.
 
-The source adapter boundary produces inbox records, independent of the renderer and speech engine. Other providers can implement the same scheduling/deduplication contract. OAuth, per-calendar controls, and quiet hours are planned follow-ups.
+The source adapter boundary produces inbox records, independent of the renderer and speech engine. Other providers can implement the same scheduling/deduplication contract. OAuth and per-calendar controls remain follow-ups.
+
+## Delivery preferences
+
+The tablet's **Notification preferences** panel configures quiet hours, snooze,
+and per-source card/audio settings. Quiet hours silence all notification audio,
+including urgent alerts, while cards still appear. Set an IANA timezone or `local`
+for the controller timezone; overnight ranges are supported. Button replies are
+unaffected. Snooze defers all new cards/audio until it ends; expired reminders are
+skipped. Source audio can follow priority defaults, stay silent, chime, or read aloud.
+Explicitly silent event payloads always stay silent. Disabled sources remain in
+history with `suppressed` status. Settings affect future deliveries and persist in
+private `state/notification-policy.json` independently of provider configuration.
+
+Interactive-token API routes: POST `/notifications/preferences` with a partial
+`quiet_hours` object and/or `sources: {"github": {"enabled": true, "audio": "chime"}}`;
+POST `/notifications/snooze` with `{"minutes": 15}` (0 resumes, maximum 1440).
+The publish-only integration credential cannot change preferences.
 
 ## API
 

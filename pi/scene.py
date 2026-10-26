@@ -133,6 +133,7 @@ def shapes(
     )
     if idle_action and character.get("style", "okabe") in ("okabe", "kurisu"):
         character["mouth"] = max(0, math.sin(idle_frame * 8)) * 0.25
+        character["pose"] = "phone"
     if character.get("style") == "sonic":
         character["arms"] = not (notification or gesture == "present" or idle_action)
     if (
@@ -213,23 +214,7 @@ def shapes(
             )
     if idle_action:
         style = character.get("style", "okabe")
-        if style in ("okabe", "kurisu"):
-            # Raised sleeve, hand, and dark phone beside the cheek; entirely silent.
-            sleeve = "#b5997a" if style == "kurisu" else "#e9e5dc"
-            original.extend(
-                [
-                    (
-                        "polygon",
-                        (302, 258, 340, 248, 344, 170, 324, 166, 316, 224, 300, 232),
-                        sleeve,
-                        1,
-                    ),
-                    ("rectangle", (322, 150, 345, 189), "#edc59c", 1),
-                    ("rectangle", (314, 127, 337, 178), "#131a24", 1),
-                    ("rectangle", (318, 133, 333, 168), "#52728a", 1),
-                ]
-            )
-        elif style == "sonic":
+        if style == "sonic":
             original.extend(
                 [
                     ("rectangle", (192, 216, 207, 259), "#edc59c", 1),
