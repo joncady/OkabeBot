@@ -72,3 +72,23 @@ imported Show exposes room occupancy through this integration.
 
 The Show Speak action was tested successfully with soft-volume SSML. Speaker
 routing remains an opt-in experiment; it is not attached to notification delivery.
+
+## Explicit named speech from MCP and dashboard
+
+Install `examples/home-assistant/echo_webhook.yaml` as a package, replace its
+notify-entity allowlist, and define `okabebot_echo_webhook` in Home Assistant's
+private secrets.yaml using a fresh random secret (at least 32 bytes). Validate HA
+configuration and reload automations or restart HA. The webhook is local-only and
+POST-only. Keep it on a trusted local network; it carries a bearer secret in its URL.
+
+In the controller's private `.env`, set `OKABEBOT_ECHO_WEBHOOK` to
+`http://your-ha-host:8123/api/webhook/YOUR_SECRET` and set
+`OKABEBOT_ECHO_SPEAKERS` to a quoted JSON object mapping display names to the same
+allowlisted `notify.*_speak` entity IDs. Never commit either credential. Rotate by
+changing both the HA secret and controller URL, then reloading HA.
+
+`list_echo_speakers` lists configured destinations, not proof they are online.
+`speak_on_echo` requires an explicit name, escapes text and uses soft-volume SSML.
+`dry_run=true` validates local configuration without sound. A successful webhook
+submission is not proof of playback; no automatic retry is performed. No presence
+routing or automatic notification-to-Echo announcement is enabled by these tools.

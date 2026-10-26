@@ -118,3 +118,23 @@ with mode 0600 and never replace an endpoint owned by a live worker. Workers sho
 exit if their supervisor dies; the example watches `OKABEBOT_PARENT_PID`.
 This makes controller and model failure recovery independent. Speech references,
 model caches, credentials and generated recordings are private installation data.
+
+### Voice tools and controller state
+
+MCP read tools project only relevant fields from the authenticated local controller
+API (`controller_tools.py`); they do not return transcripts or credentials. Focus
+mutations call the same endpoints as the dashboard. Notifications use the existing
+Inbox store. Calendar range reads reuse `calendar_feed.load_calendar` and expand
+recurrences without scheduling reminders or mutating the inbox. Date ranges have
+an exclusive end and a 366-day expansion bound; results indicate truncation.
+Provider text remains untrusted data. Read failures must not be reported as an
+empty successful schedule. Physical actions are never automatically replayed.
+
+`Application.execute(path, data)` is the shared mutation boundary for existing
+HTTP controls and MCP wrappers: volume, focus, notification policy/dismissal,
+reminders, agenda cards, device discovery, and explicit Echo speech. Add validation
+here or in its provider/domain objects, not separately in an MCP wrapper and UI.
+MCP calls the controller API through the private control file. A controller timeout
+is an uncertain result, not permission to repeat a physical/audio action. Reminders
+are the exception with explicit durable request-ID deduplication. No new pollers
+are created by these tools.

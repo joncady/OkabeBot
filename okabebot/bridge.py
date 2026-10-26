@@ -102,6 +102,9 @@ class Bridge:
                 ),
             )
             self.resources.callback(self.github_queue.close)
+        from .application import Application
+
+        self.application = Application(self)
         self.focus = FocusTimer(self.inbox)
         self.sources = Sources(self.inbox, state_dir(), config["notifications"])
         self.active_notification = None
@@ -204,6 +207,8 @@ class Bridge:
             self.messages.append(entry)
             with (self.folder / "transcript.jsonl").open("a") as f:
                 f.write(json.dumps(entry) + "\n")
+            if kind == "approval":
+                self.status = "Codex needs your input"
             if kind == "error":
                 self.status = str(data.get("message", data))
         print(kind, json.dumps(data)[:500], flush=True)
@@ -648,6 +653,9 @@ def handler(bridge):
                 if not 0 < n <= 20000:
                     raise ValueError("Invalid request size")
                 data = json.loads(self.rfile.read(n))
+                if self.path in bridge.application.ROUTES:
+                    self.respond(200, bridge.application.execute(self.path, data))
+                    return
                 if self.path == "/content/preview":
                     self.respond(200, bridge.content_preview.start(data))
                     return
@@ -672,59 +680,12 @@ def handler(bridge):
                         bridge.music_meter = bridge.pi({"op": "music_meter", "enabled": False})
                     self.respond(200, {"enabled": bridge.music_mic})
                     return
-                if self.path == "/speaker/volume":
-                    percent = data.get("percent")
-                    if type(percent) is not int or not 0 <= percent <= 100:
-                        raise ValueError("Volume must be an integer from 0 to 100")
-                    bridge.speaker_volume = bridge.pi({"op": "volume", "percent": percent})
-                    self.respond(200, bridge.speaker_volume)
-                    return
                 if self.path in ("/media/connect", "/spotify/connect"):
                     self.respond(200, begin_auth(bridge.media_source))
-                    return
-                elif self.path == "/agenda/show":
-                    self.respond(
-                        200,
-                        agenda.publish(
-                            bridge.inbox,
-                            agenda.snapshot(
-                                bridge.sources.state,
-                                get_config()["notifications"]["agenda_timezone"],
-                            ),
-                        ),
-                    )
-                    return
-                elif self.path == "/focus/start":
-                    self.respond(200, bridge.focus.start(data.get("minutes")))
-                    return
-                elif self.path == "/focus/cancel":
-                    bridge.focus.cancel()
-                    self.respond(200, bridge.focus.status())
                     return
                 elif self.path == "/notifications":
                     self.respond(200, bridge.inbox.publish(**data))
                     return
-                elif self.path == "/notifications/preferences":
-                    self.respond(200, bridge.notification_policy.update(data))
-                    return
-                elif self.path == "/notifications/snooze":
-                    minutes = data.get("minutes")
-                    if type(minutes) is not int or not 0 <= minutes <= 1440:
-                        raise ValueError("Snooze must be 0–1440 minutes")
-                    self.respond(
-                        200,
-                        bridge.notification_policy.update(
-                            {"snoozed_until": time.time() + minutes * 60 if minutes else 0}
-                        ),
-                    )
-                    return
-                elif self.path == "/notifications/dismiss":
-                    bridge.inbox.dismiss(data["id"])
-                    if bridge.active_notification and data["id"] in bridge.active_notification.get(
-                        "member_ids", [bridge.active_notification["id"]]
-                    ):
-                        bridge.active_notification = None
-                        scene.dismiss()
                 elif self.path == "/enabled":
                     if type(data.get("enabled")) is not bool:
                         raise ValueError("enabled must be boolean")

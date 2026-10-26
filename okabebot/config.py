@@ -12,6 +12,23 @@ from pathlib import Path
 import re
 
 HARDWARE_TOOLS = (
+    "set_speaker_volume",
+    "snooze_notifications",
+    "dismiss_notification",
+    "set_notification_source",
+    "list_spotify_devices",
+    "create_reminder",
+    "list_reminders",
+    "cancel_reminder",
+    "show_calendar_agenda",
+    "list_echo_speakers",
+    "speak_on_echo",
+    "get_current_media",
+    "get_device_health",
+    "get_focus_session",
+    "control_focus_session",
+    "get_recent_notifications",
+    "get_calendar_agenda",
     "get_content_reaction_presets",
     "set_content_context",
     "publish_notification",
@@ -34,6 +51,7 @@ HARDWARE_TOOLS = (
     "list_character_voices",
     "set_character_voice",
 )
+APPROVABLE_TOOLS = HARDWARE_TOOLS + ("control_spotify",)
 DEFAULTS = {
     "state_dir": "./state",
     "character": {
@@ -130,7 +148,7 @@ def load(path):
     if type(settings["approvals"]["auto_approve_hardware"]) is not bool:
         raise ValueError("auto_approve_hardware must be true or false")
     allowed = settings["approvals"]["allowed_tools"]
-    if not isinstance(allowed, list) or any(t not in HARDWARE_TOOLS for t in allowed):
+    if not isinstance(allowed, list) or any(t not in APPROVABLE_TOOLS for t in allowed):
         raise ValueError("allowed_tools must contain only known hardware tools")
     if settings["speech"]["engine"] not in ("auto", "say", "espeak", "openai", "local"):
         raise ValueError("speech.engine must be auto, say, espeak, openai, or local")

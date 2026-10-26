@@ -475,3 +475,53 @@ refresh();
    for (const event of agenda.events || []) root.append(el('p',`${new Date(event.start*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',...(agenda.timezone && agenda.timezone!=='local'?{timeZone:agenda.timezone}:{})})} · ${event.title}`,'muted'));
    document.querySelector('#agenda-show').disabled=Boolean(agenda.stale);
  }
+
+
+// These controls call the same application operations as the MCP tools.
+async function refreshReminders() {
+  const result = await api('/reminders/list', {});
+  const list = document.querySelector('#reminders-list');
+  list.replaceChildren();
+  for (const reminder of result.reminders) {
+    const row = el('p', `${reminder.body} — ${new Date(reminder.due_at * 1000).toLocaleString()}`);
+    const cancel = el('button', 'Cancel');
+    cancel.onclick = async () => { await action('/reminders/cancel', {id:reminder.id}); await refreshReminders(); };
+    row.append(cancel); list.append(row);
+  }
+  if (!result.reminders.length) list.append(el('p', 'No pending reminders.'));
+}
+let reminderRequestId = null;
+document.querySelector('#reminder-form').onsubmit = async event => {
+  event.preventDefault();
+  // Keep this ID after an uncertain failure; never duplicate a reminder on retry.
+  reminderRequestId ||= 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  try {
+    await api('/reminders/create', {text:document.querySelector('#reminder-text').value,
+      minutes:Number(document.querySelector('#reminder-minutes').value), request_id:reminderRequestId});
+    reminderRequestId = null; await refreshReminders();
+    document.querySelector('#error').textContent = '';
+  } catch(error) { document.querySelector('#error').textContent = error.message; }
+};
+document.querySelector('#reminder-form').oninput = () => { reminderRequestId = null; };
+document.querySelector('#reminders-refresh').onclick = () => refreshReminders().catch(error => { document.querySelector('#error').textContent = error.message; });
+document.querySelector('#spotify-devices').onclick = async () => {
+  try {
+    const result = await api('/spotify/devices', {});
+    document.querySelector('#spotify-device-list').textContent = result.devices.map(d => `${d.name}${d.is_active ? ' (playing)' : ''}`).join(', ') || 'No Spotify Connect devices currently available.';
+  } catch(error) { document.querySelector('#error').textContent = error.message; }
+};
+document.querySelector('#agenda-range-form').onsubmit = event => {
+  event.preventDefault();
+  action('/agenda/show', {start_date:document.querySelector('#agenda-from').value, end_date:document.querySelector('#agenda-until').value});
+};
+document.querySelector('#echo-refresh').onclick = async () => {
+  try {
+    const result = await api('/echo/speakers', {});
+    const select = document.querySelector('#echo-speaker'); select.replaceChildren();
+    for (const name of result.speakers) { const option = el('option', name); option.value = name; select.append(option); }
+  } catch(error) { document.querySelector('#error').textContent = error.message; }
+};
+document.querySelector('#echo-form').onsubmit = event => {
+  event.preventDefault();
+  action('/echo/speak', {speaker:document.querySelector('#echo-speaker').value, text:document.querySelector('#echo-text').value});
+};

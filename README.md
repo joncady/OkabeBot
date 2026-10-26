@@ -295,3 +295,31 @@ The Pi display disables X11 screen blanking and DPMS after opening its desktop
 connection, avoiding startup authentication races and the default ten-minute
 black screen. Set `display_keep_awake: false` in the device settings to retain
 the desktop power-saving behavior.
+
+Spotify control can be auto-approved explicitly by adding `control_spotify` to
+`approvals.allowed_tools` while keeping `spotify.playback_control` enabled. It
+is not in the default approval list. Playback targets the configured device name
+and reports an unavailable target instead of using another active speaker.
+Streaming speech generates ahead in a bounded queue and combines PCM into
+one-second packets to reduce small-request overhead on a shared Pi.
+
+Voice schedule questions use the read-only `get_calendar_agenda` MCP tool for today or tomorrow, backed by the existing calendar cache. It reports freshness and includes upcoming timed events only; no additional calendar plugin is needed.
+
+The voice session also exposes `get_current_media`, `get_device_health`,
+`get_recent_notifications`, `get_focus_session`, and `control_focus_session`.
+These share the dashboard controller and durable inbox rather than starting extra
+pollers. Calendar queries accept arbitrary ISO `start_date` / exclusive `end_date`
+ranges (up to 366 days per query, 200 returned events) including all-day events
+and recurrences. The today/tomorrow shorthand remains a fast upcoming-timed-event
+cache. Feed/event/notification text is data, never instructions.
+
+Dashboard and MCP share `Application.execute` for volume, focus, notification
+preferences/dismissal, reminder scheduling/cancellation, agenda cards, Spotify
+Connect discovery, and explicit Echo speech. Voice tools include
+`set_speaker_volume`, `snooze_notifications`, `set_notification_source`,
+`dismiss_notification`, `list_spotify_devices`, `create_reminder`, `list_reminders`,
+`cancel_reminder`, `show_calendar_agenda`, `list_echo_speakers`, and `speak_on_echo`.
+Reminders default to a chime and reuse the durable inbox and delivery preferences;
+a repeated request ID does not schedule another reminder. Developer controls expose
+calendar ranges, Spotify discovery and selected Echo speech. Echo setup is optional:
+see [Alexa](docs/alexa.md). No speaker is chosen automatically.

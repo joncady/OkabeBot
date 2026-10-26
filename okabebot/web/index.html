@@ -71,6 +71,13 @@
         </div>
       </section>
       <section class="panel"><h2>Time to focus</h2><p id="focus-status" role="status">Choose a session. I’ll remind you to take a break.</p><div class="focus-actions"><button data-focus="5">5 min</button><button data-focus="25">25 min</button><button data-focus="50">50 min</button><button id="focus-cancel" hidden>Cancel timer</button></div></section>
+      <section class="panel"><h2>Reminders</h2>
+        <form id="reminder-form" class="preference-form">
+          <label>Remind me to <input id="reminder-text" maxlength="500" required /></label>
+          <label>In minutes <input id="reminder-minutes" type="number" min="1" max="525600" value="20" required /></label>
+          <button type="submit">Set reminder</button>
+        </form><button id="reminders-refresh">Refresh reminders</button><div id="reminders-list"></div>
+      </section>
       <section class="panel"><h2>Your day</h2><p id="agenda-next" role="status">Waiting for calendar…</p><div id="agenda-events"></div><button id="agenda-show">Show agenda on Pi</button></section>
       <section class="panel music-panel">
         <div class="music-copy"><h2>Music in the lab</h2><p id="spotify-status" class="muted" role="status">Connect from a browser on the controller computer; then use any tablet to view playback.</p></div>
@@ -104,7 +111,7 @@
         </form>
         <p class="hint">Quiet hours keep cards visible and silence all notification audio, including urgent alerts. Your button replies are unaffected.</p>
         <form id="source-rule-form" class="preference-form">
-          <label>Source <select id="notification-source"><option>github</option><option>calendar</option><option>codex</option><option>system</option></select></label>
+          <label>Source <select id="notification-source"><option>github</option><option>calendar</option><option>codex</option><option>system</option><option>reminder</option></select></label>
           <label><input id="source-enabled" type="checkbox" checked /> Show cards</label>
           <label>Audio <select id="source-audio"><option value="default">Priority default</option><option value="silent">Silent</option><option value="chime">Chime</option><option value="speech">Read aloud</option></select></label>
           <button type="submit">Save source</button>
@@ -145,6 +152,19 @@
           <label for="preview-right">Right team</label><select id="preview-right"><option value="">No team</option></select>
           <button id="stop-content-preview">Stop reaction preview</button>
           <p class="muted">Previews work with any app or no TV. They stop after 90 seconds.</p>
+          <h3>Connected tools</h3>
+          <button id="spotify-devices">Find Spotify devices</button><p id="spotify-device-list" role="status"></p>
+          <form id="agenda-range-form" class="preference-form">
+            <label>From <input id="agenda-from" type="date" required /></label>
+            <label>Until (exclusive) <input id="agenda-until" type="date" required /></label>
+            <button type="submit">Show calendar range on Pi</button>
+          </form>
+          <form id="echo-form" class="preference-form">
+            <button id="echo-refresh" type="button">Find configured Echo speakers</button>
+            <label>Speaker <select id="echo-speaker" required></select></label>
+            <label>Say <input id="echo-text" maxlength="500" required /></label>
+            <button type="submit">Speak on selected Echo</button>
+          </form>
           <button id="test-notification">Test calendar card</button>
           <div id="timings" class="muted"></div>
           <div id="thread"></div>

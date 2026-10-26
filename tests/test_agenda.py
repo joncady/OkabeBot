@@ -63,3 +63,79 @@ class AgendaTests(unittest.TestCase):
                 context.state["calendar_checked_at"] = now.timestamp()
                 schedule(context)
                 self.assertEqual(len(inbox.items()), 1)
+
+
+class CalendarToolTests(unittest.TestCase):
+    def test_tomorrow_boundary_stale_and_missing(self):
+        import json
+        from pathlib import Path
+        from okabebot.agenda import read_calendar
+
+        now = dt.datetime(2026, 10, 26, 23, 30, tzinfo=dt.timezone.utc).timestamp()
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertFalse(read_calendar(folder, "UTC", now=now)["available"])
+            Path(folder, "notification-sources.json").write_text(
+                json.dumps(
+                    dict(
+                        calendar_checked_at=now,
+                        calendar_upcoming=[
+                            dict(title="Today", start=now + 60),
+                            dict(title="Tomorrow", start=now + 3600),
+                        ],
+                    )
+                )
+            )
+            result = read_calendar(folder, "UTC", "tomorrow", now)
+            self.assertEqual(result["date"], "2026-10-27")
+            self.assertEqual([e["title"] for e in result["events"]], ["Tomorrow"])
+            stale = read_calendar(folder, "UTC", "tomorrow", now + 400)
+            self.assertFalse(stale["available"])
+            self.assertEqual(stale["events"], [])
+            with self.assertRaises(ValueError):
+                read_calendar(folder, "UTC", "yesterday", now)
+
+
+class CalendarRangeTests(unittest.TestCase):
+    def test_arbitrary_range_recurrence_all_day_and_cancelled(self):
+        from unittest.mock import patch
+        import icalendar
+        from okabebot.agenda import query_calendar
+
+        feed = icalendar.Calendar.from_ical("""BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:daily
+DTSTART:20270101T120000Z
+RRULE:FREQ=DAILY;COUNT=3
+SUMMARY:Daily
+END:VEVENT
+BEGIN:VEVENT
+UID:day
+DTSTART;VALUE=DATE:20270102
+SUMMARY:Holiday
+END:VEVENT
+BEGIN:VEVENT
+UID:cancelled
+DTSTART:20270102T130000Z
+STATUS:CANCELLED
+SUMMARY:Cancelled
+END:VEVENT
+END:VCALENDAR""")
+        with patch("okabebot.adapters.calendar_feed.load_calendar", return_value=feed):
+            result = query_calendar({"agenda_timezone": "UTC"}, "2027-01-01", "2027-01-03")
+        self.assertTrue(result["available"])
+        self.assertEqual(len(result["events"]), 3)
+        self.assertEqual(sum(e["all_day"] for e in result["events"]), 1)
+        with self.assertRaises(ValueError):
+            query_calendar({"agenda_timezone": "UTC"}, "2027-01-03", "2027-01-01")
+
+    def test_error_does_not_leak_feed_credentials(self):
+        from unittest.mock import patch
+        from okabebot.agenda import query_calendar
+
+        with patch(
+            "okabebot.adapters.calendar_feed.load_calendar", side_effect=ValueError("SECRET")
+        ):
+            result = query_calendar({"agenda_timezone": "UTC"}, "2027-01-01", "2027-01-03")
+        self.assertFalse(result["available"])
+        self.assertNotIn("SECRET", str(result))
