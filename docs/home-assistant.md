@@ -91,3 +91,35 @@ A LAN-only server cannot receive updates while the phone is away from Wi-Fi. Rel
 - [Alexa Devices](alexa.md): native account integration and timer cards.
 
 Tuya scenes are deferred; the existing door notification stays enabled. These optional packages require account/device setup and real entity IDs before enabling.
+
+## Arrival-only welcome and important-update recap
+
+`examples/home-assistant/arrival.yaml` tracks a confirmed home → not_home → home
+cycle and correlates the return with a door opening within three minutes. It handles
+either event order, requires at least two minutes away, persists departure helpers,
+and disarms before delivery. It does not infer departure from opening a door and
+never speaks a goodbye. Replace the person/door entities and enable
+`input_boolean.okabebot_arrival_enabled` when ready.
+
+Set private `okabebot_arrival_url` to the controller's `/arrivals` endpoint and
+`okabebot_arrival_token` to the controller state directory's owner-only
+`arrival-token`. This dedicated credential can only submit bounded arrival
+timestamps; it cannot read the dashboard or invoke tools. It is separate from the
+publish-only notification token. Delete it while the controller is stopped to
+rotate, then update Home Assistant. Use the trusted local network, as for the
+existing notification bridge.
+
+The controller queues one short character quip plus up to three unique titles from
+important/urgent inbox events recorded during the absence. Disabled sources and
+cancelled/suppressed/dismissed items are omitted. It does not fetch email, read
+notification bodies, run a Codex turn, or interpret event text as instructions.
+“No important updates were recorded” describes the connected inbox, not all events
+in the world. Delivery uses the existing character voice, speaker volume, snooze
+and quiet-hours policy. Greetings expire after three minutes; request deduplication
+prevents repeated welcomes for the same departure. Uncertain speech is not retried.
+
+Automatic arrivals depend on reliable phone presence: background location and a
+working connection to Home Assistant while away. LAN-only access may leave the
+phone stuck at home. Do not claim an arrival test passed until an actual away/home
+transition and door event have been observed. First-time installation while already
+away does not fabricate a departure or arm a welcome for that unobserved trip.

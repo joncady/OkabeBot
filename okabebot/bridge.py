@@ -113,6 +113,7 @@ class Bridge:
         self.codex = None
         self.token = persistent_token(state_dir(), "controller-token")
         self.notification_token = notification_token(state_dir())
+        self.arrival_token = persistent_token(state_dir(), "arrival-token")
         self.port = port
         host = config["web"]["host"]
         self.allowed_hosts = {"127.0.0.1:%s" % port, host + ":" + str(port)}
@@ -434,7 +435,10 @@ class Bridge:
             if audio_mode == "speech":
                 self.announcing = True
                 self.pi({"op": "ptt", "enabled": False})
-                character_tools.speak((item["title"] + ". " + item["body"])[:550], "curious")
+                character_tools.speak(
+                    (item["title"] + ". " + item["body"])[:550],
+                    "happy" if item["source"] == "arrival" else "curious",
+                )
                 scene.present(item, 5)
                 self.notification_until = time.time() + 5
             self.inbox.finish(item["id"])
@@ -638,6 +642,25 @@ def handler(bridge):
                     self.respond(403, {"error": "Webhook forbidden"})
                 except Exception:
                     self.respond(400, {"error": "Invalid webhook payload"})
+                return
+            if self.path == "/arrivals":
+                if self.headers.get("Host") not in bridge.allowed_hosts or not hmac.compare_digest(
+                    self.headers.get("X-Arrival-Token", ""), bridge.arrival_token
+                ):
+                    self.respond(403, {"error": "Forbidden"})
+                    return
+                try:
+                    n = int(self.headers.get("Content-Length", 0))
+                    if not 0 < n <= 1024:
+                        raise ValueError("Invalid arrival size")
+                    self.connection.settimeout(10)
+                    data = json.loads(self.rfile.read(n))
+                    from .arrival import queue_greeting
+
+                    item = queue_greeting(bridge.inbox, bridge.notification_policy, **data)
+                    self.respond(200, {"queued": True, "id": item["id"]})
+                except Exception:
+                    self.respond(400, {"error": "Invalid or stale arrival event"})
                 return
             if not self.authorized() and not may_publish(
                 self.path,

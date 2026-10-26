@@ -323,3 +323,9 @@ Reminders default to a chime and reuse the durable inbox and delivery preference
 a repeated request ID does not schedule another reminder. Developer controls expose
 calendar ranges, Spotify discovery and selected Echo speech. Echo setup is optional:
 see [Alexa](docs/alexa.md). No speaker is chosen automatically.
+
+Optional [arrival-only welcomes](docs/home-assistant.md#arrival-only-welcome-and-important-update-recap)
+correlate confirmed phone presence with a recent door opening. The selected
+character delivers a short quip and a bounded recap of important inbox events from
+the absence, without an extra LLM turn. Quiet hours and existing volume rules apply.
+Reliable away/home phone updates are required; door opening alone never means arrival.

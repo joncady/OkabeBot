@@ -1,0 +1,104 @@
+# Arrival only: replace person/door entities. No goodbye action.
+# Requires a genuine home -> not_home -> home presence cycle.
+input_boolean:
+  okabebot_arrival_enabled:
+    name: OkabeBot welcome-home greetings
+    icon: mdi:home-heart
+  okabebot_arrival_armed:
+    name: OkabeBot confirmed away
+input_datetime:
+  okabebot_away_since:
+    name: OkabeBot away since
+    has_date: true
+    has_time: true
+  okabebot_last_door_open:
+    name: OkabeBot last door opening
+    has_date: true
+    has_time: true
+rest_command:
+  okabebot_arrival:
+    url: !secret okabebot_arrival_url
+    method: POST
+    content_type: application/json
+    headers:
+      X-Arrival-Token: !secret okabebot_arrival_token
+    payload: >-
+      {{ {"away_since": away_since | float,
+          "arrived_at": as_timestamp(now())} | to_json }}
+    timeout: 10
+
+automation:
+  - id: okabebot_confirm_departure
+    alias: OkabeBot - remember confirmed departure
+    triggers:
+      - trigger: state
+        entity_id: person.replace_with_your_person
+        from: "home"
+        to: "not_home"
+    actions:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.okabebot_away_since
+        data:
+          timestamp: "{{ as_timestamp(now()) }}"
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.okabebot_arrival_armed
+    mode: single
+
+  - id: okabebot_remember_door_open
+    alias: OkabeBot - remember door opening for arrival
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.replace_with_your_door
+        from: "off"
+        to: "on"
+    actions:
+      - action: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.okabebot_last_door_open
+        data:
+          timestamp: "{{ as_timestamp(now()) }}"
+    mode: restart
+
+  - id: okabebot_welcome_home
+    alias: OkabeBot - welcome home with important updates
+    # Helper changes cover either ordering of presence and door events.
+    triggers:
+      - trigger: state
+        entity_id: person.replace_with_your_person
+        from: "not_home"
+        to: "home"
+      - trigger: state
+        entity_id: input_datetime.okabebot_last_door_open
+    conditions:
+      - condition: state
+        entity_id: input_boolean.okabebot_arrival_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.okabebot_arrival_armed
+        state: "on"
+      - condition: state
+        entity_id: person.replace_with_your_person
+        state: "home"
+      - condition: template
+        value_template: >-
+          {% set now_ts = as_timestamp(now()) %}
+          {% set away = as_timestamp(states('input_datetime.okabebot_away_since'), 0) %}
+          {% set door = as_timestamp(states('input_datetime.okabebot_last_door_open'), 0) %}
+          {% set home = as_timestamp(states.person.replace_with_your_person.last_changed, 0) %}
+          {{ 120 <= now_ts - away <= 90 * 86400
+             and 0 <= now_ts - door <= 180
+             and 0 <= now_ts - home <= 180 }}
+    actions:
+      - variables:
+          departed_at: "{{ as_timestamp(states('input_datetime.okabebot_away_since'), 0) }}"
+      # Disarm before submission: uncertain network/audio outcomes are not replayed.
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.okabebot_arrival_armed
+      - action: rest_command.okabebot_arrival
+        data:
+          away_since: "{{ departed_at }}"
+    mode: single
+    max_exceeded: silent
