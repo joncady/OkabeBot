@@ -95,3 +95,19 @@ not automatically approved by the default hardware allowlist. Control is off by
 default, requires fresh OAuth consent, and was live-tested with pause/resume on a Spotify Connect TV while Cast
 remained the metadata source. Track selection and other device types still need
 validation. Successful API acceptance does not prove the speaker played audio.
+
+### Voice control and target selection
+
+`spotify.playback_control` and OAuth playback permission remain required. To
+approve voice playback without a dashboard prompt, explicitly add
+`control_spotify` to `approvals.allowed_tools` on that controller. Spotify control
+is supported by the validator but remains excluded from the default tool list.
+Restart the controller after changing approvals.
+
+If no explicit device ID is supplied, a configured `spotify.device_name` is
+resolved against Spotify Connect devices when an action is requested. Exactly
+one unrestricted match is required, including inactive devices. Missing or
+ambiguous matches fail without sending the playback action to another device.
+There is no background device polling or automatic Cast receiver launch. A 404
+reports that the device must have Spotify open. Cast discovery alone does not
+prove that Spotify Connect has a playback target.

@@ -284,3 +284,14 @@ automatically. Successful consumption clears the sign-in warning. Permission or
 network failures keep a separate connection/permissions message. CLI stderr and
 credential contents are never exposed in dashboard status. This guidance does not
 make SSO unattended or renew a browser login automatically.
+
+## Personal reminders
+
+Dashboard and MCP reminders share the notification inbox. `create_reminder` accepts
+text, a relative delay in minutes (1–525600), a unique request ID, and optional
+silent/chime/default audio. Reuse the ID after a lost response; the original due
+time and reminder remain unchanged. `list_reminders` returns up to 100 pending
+personal reminders, and `cancel_reminder` only cancels that class of pending record.
+Focus timers remain separate. Completion respects quiet hours, snooze and source
+rules. The controller must be running to deliver; overdue reminders expire one day
+after their due time, so this is not a safety-critical alarm.

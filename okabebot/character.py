@@ -18,6 +18,7 @@ from .hardware import rpc as display_rpc
 from .voice import rpc as voice_rpc
 from .config import get_config, state_dir
 from . import speech, timing
+from .audio_buffer import buffered_chunks
 
 Emotion = Literal["neutral", "happy", "curious", "concerned", "excited"]
 Voice = Literal["default", "pip", "warm", "calm", "robotic"]
@@ -163,8 +164,9 @@ def stream_speak(text, emotion, intensity, voice, metrics):
     face_pool = ThreadPoolExecutor(max_workers=1)
     face_future = None
     character = current_character()
+    stream = buffered_chunks(speech.pcm_chunks(text, emotion, selected), metrics=metrics)
     try:
-        for sequence, chunk in enumerate(speech.pcm_chunks(text, emotion, selected)):
+        for sequence, chunk in enumerate(stream):
             if stream_id is None:
                 metrics["first_chunk_s"] = round(time.time() - metrics["started_at"], 3)
                 stream_started = time.monotonic()
@@ -191,6 +193,9 @@ def stream_speak(text, emotion, intensity, voice, metrics):
                     "sequence": sequence,
                     "pcm_base64": base64.b64encode(chunk).decode(),
                 }
+            )
+            metrics["chunk_rpc_max_s"] = round(
+                max(metrics.get("chunk_rpc_max_s", 0), time.monotonic() - chunk_started), 3
             )
             if sequence == 0:
                 metrics["first_chunk_delivery_s"] = round(time.monotonic() - chunk_started, 3)
@@ -240,6 +245,7 @@ def stream_speak(text, emotion, intensity, voice, metrics):
                 pass
         raise
     finally:
+        stream.close()
         face_pool.shutdown(wait=True)
         display_rpc({"op": "character", "activity": "idle", "emotion": emotion})
 

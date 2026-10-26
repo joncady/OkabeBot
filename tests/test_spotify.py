@@ -103,3 +103,59 @@ class SpotifyTests(unittest.TestCase):
             scene.render(notification=notification).tobytes(),
             scene.render(notification=notification, music=music).tobytes(),
         )
+
+    def test_control_targets_configured_device_even_when_inactive(self):
+        import io
+        from unittest.mock import MagicMock
+
+        self.spotify.settings.update(playback_control=True, device_name="JC tv")
+        self.spotify.tokens = dict(
+            client_id="client",
+            scope="user-modify-playback-state user-read-playback-state",
+            access_token="token",
+            expires_at=time.time() + 3600,
+        )
+        devices = io.BytesIO(
+            json.dumps(
+                {
+                    "devices": [
+                        {
+                            "id": "tv-id",
+                            "name": "JC tv",
+                            "is_active": False,
+                            "is_restricted": False,
+                        },
+                        {"id": "other", "name": "Other speaker", "is_active": True},
+                    ]
+                }
+            ).encode()
+        )
+        with (
+            patch("okabebot.spotify.env_value", return_value="client"),
+            patch("okabebot.spotify.urlopen", side_effect=[devices, MagicMock()]) as send,
+        ):
+            self.assertTrue(self.spotify.control("play", "spotify:track:" + "a" * 22)["accepted"])
+            self.assertIn("device_id=tv-id", send.call_args.args[0].full_url)
+
+    def test_missing_configured_device_does_not_redirect_or_send_play(self):
+        import io
+
+        self.spotify.settings.update(playback_control=True, device_name="JC tv")
+        self.spotify.tokens = dict(
+            client_id="client",
+            scope="user-modify-playback-state",
+            access_token="token",
+            expires_at=time.time() + 3600,
+        )
+        devices = io.BytesIO(
+            json.dumps(
+                {"devices": [{"id": "other", "name": "Other speaker", "is_active": True}]}
+            ).encode()
+        )
+        with (
+            patch("okabebot.spotify.env_value", return_value="client"),
+            patch("okabebot.spotify.urlopen", return_value=devices) as send,
+        ):
+            with self.assertRaisesRegex(ValueError, "Open Spotify on that device"):
+                self.spotify.control("play", "spotify:track:" + "a" * 22)
+            send.assert_called_once()

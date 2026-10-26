@@ -10,11 +10,10 @@ import time
 from urllib.request import urlopen
 
 
-def poll(context):
+def load_calendar(settings):
     import icalendar
-    import recurring_ical_events
 
-    source = context.settings["calendar"]
+    source = settings["calendar"]
     if source.startswith("env:"):
         name = source[4:]
         source = os.environ.get(name, "")
@@ -37,9 +36,15 @@ def poll(context):
         raw = Path(source).expanduser().read_bytes()
     if len(raw) > 2_000_000:
         raise ValueError("Calendar too large")
+    return icalendar.Calendar.from_ical(raw)
+
+
+def poll(context):
+    import recurring_ical_events
+
     now = dt.datetime.now(dt.timezone.utc)
     lead = context.settings["calendar_lead_minutes"]
-    events = recurring_ical_events.of(icalendar.Calendar.from_ical(raw)).between(
+    events = recurring_ical_events.of(load_calendar(context.settings)).between(
         now, now + dt.timedelta(days=2)
     )
     scheduled = []

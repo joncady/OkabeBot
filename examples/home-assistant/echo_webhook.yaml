@@ -1,0 +1,25 @@
+# Optional explicit speech bridge. Use a random secret webhook ID in secrets.yaml.
+# Match this allowlist to OKABEBOT_ECHO_SPEAKERS on the controller.
+automation:
+  - id: okabebot_explicit_echo_speech
+    alias: OkabeBot - explicit named Echo speech
+    triggers:
+      - trigger: webhook
+        webhook_id: !secret okabebot_echo_webhook
+        allowed_methods: [POST]
+        local_only: true
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.json is mapping
+             and trigger.json.speaker in ['notify.replace_with_selected_echo_speak']
+             and trigger.json.message is string
+             and 0 < trigger.json.message | length <= 4000 }}
+    actions:
+      - action: notify.send_message
+        target:
+          entity_id: "{{ trigger.json.speaker }}"
+        data:
+          message: "{{ trigger.json.message }}"
+    mode: queued
+    max: 3

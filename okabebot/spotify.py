@@ -169,6 +169,51 @@ class Spotify:
                 self.error = "Spotify authorization failed. Check the app redirect URI and allowed user, then reconnect."
                 raise ValueError(self.error) from None
 
+    def devices(self):
+        """Discover Connect targets on demand, without transferring or starting audio."""
+        client = env_value("SPOTIFY_CLIENT_ID")
+        if not client or self.tokens.get("client_id") != client:
+            raise ValueError("Connect Spotify on this controller first")
+        if self.tokens.get("expires_at", 0) < time.time() + 60:
+            self.save(
+                self.exchange(
+                    dict(
+                        grant_type="refresh_token",
+                        client_id=client,
+                        refresh_token=self.tokens["refresh_token"],
+                    )
+                ),
+                client,
+            )
+        try:
+            req = Request(
+                "https://api.spotify.com/v1/me/player/devices",
+                headers={"Authorization": "Bearer " + self.tokens["access_token"]},
+            )
+            with urlopen(req, timeout=10) as response:
+                devices = json.load(response).get("devices", [])
+            return {
+                "devices": [
+                    {
+                        key: d.get(key)
+                        for key in (
+                            "id",
+                            "name",
+                            "type",
+                            "is_active",
+                            "is_restricted",
+                            "volume_percent",
+                        )
+                    }
+                    for d in devices
+                ],
+                "configured_device": self.settings.get("device_name", ""),
+            }
+        except Exception:
+            raise ValueError(
+                "Spotify device discovery failed; check connection and playback-state permission"
+            ) from None
+
     def control(self, action, uri="", device_id=""):
         """Explicit, opt-in playback control independent of the metadata source."""
         if not self.settings.get("playback_control"):
@@ -200,6 +245,33 @@ class Spotify:
                 ),
                 client,
             )
+        if not device_id and self.settings.get("device_name"):
+            configured = self.settings["device_name"].strip()
+            request = Request(
+                "https://api.spotify.com/v1/me/player/devices",
+                headers={"Authorization": "Bearer " + self.tokens["access_token"]},
+            )
+            try:
+                with urlopen(request, timeout=10) as response:
+                    devices = json.load(response).get("devices", [])
+            except HTTPError as exc:
+                raise ValueError(
+                    "Spotify device discovery failed (HTTP %s); reconnect with playback-state permission"
+                    % exc.code
+                ) from None
+            matches = [
+                d
+                for d in devices
+                if d.get("name", "").strip().casefold() == configured.casefold()
+                and d.get("id")
+                and not d.get("is_restricted")
+            ]
+            if len(matches) != 1:
+                raise ValueError(
+                    "Spotify device '%s' is unavailable or ambiguous. Open Spotify on that device, then try again."
+                    % configured
+                )
+            device_id = matches[0]["id"]
         body = None
         if action == "play" and uri:
             body = json.dumps(
@@ -219,6 +291,10 @@ class Spotify:
             with urlopen(request, timeout=10):
                 return {"accepted": True, "action": action}
         except HTTPError as exc:
+            if exc.code == 404:
+                raise ValueError(
+                    "Spotify has no active connection to the requested device. Open Spotify there, then try again."
+                ) from None
             raise ValueError(
                 "Spotify playback request failed (HTTP %s); check Premium, permissions and active device"
                 % exc.code
