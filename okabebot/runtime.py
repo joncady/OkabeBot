@@ -252,7 +252,7 @@ def install(config_path):
         except subprocess.CalledProcessError as exc:
             if exc.returncode != 5 or attempt == 3:
                 raise
-            time.sleep(2 ** attempt)
+            time.sleep(2**attempt)
     print("Installed login service:", label)
     print("Stop with: launchctl bootout", domain + "/" + label)
 

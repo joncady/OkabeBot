@@ -144,7 +144,10 @@ class CastMusic:
         if not isinstance(raw_metadata, dict):
             raw_metadata = {}
         kind = {1: "movie", 2: "episode"}.get(raw_metadata.get("metadataType"))
-        metadata = {"kind": kind, "genres": raw_metadata.get("genres", raw_metadata.get("genre", []))}
+        metadata = {
+            "kind": kind,
+            "genres": raw_metadata.get("genres", raw_metadata.get("genre", [])),
+        }
         self.tv = {
             "metadata": metadata,
             "app": self.app,

@@ -33,6 +33,7 @@ class Sources:
                 self.errors[name] = (
                     name + " sync failed; check its private configuration and access"
                 )
+
         with ThreadPoolExecutor(max_workers=max(1, min(4, len(self.adapters)))) as pool:
             list(pool.map(run, self.adapters))
         tmp = self.path.with_suffix(".tmp")
