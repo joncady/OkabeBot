@@ -10,7 +10,6 @@ import hmac
 import json
 import os
 from pathlib import Path
-import secrets
 import signal
 import sqlite3
 import tempfile
@@ -18,15 +17,19 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import timing, scene
+from . import timing, scene, agenda
 from .notifications import Inbox
+from .notification_policy import NotificationPolicy
+from .github_webhook import GitHubWebhook
+from .github_queue import GitHubQueue, AwsQueueClient
 from .focus import FocusTimer
 from .sources import Sources
 from .adapters.media import MediaSnapshot, create_media_source, begin_auth
 from .content import ContentContext, ContentPreview, PRESETS
 from .team_resolver import TeamResolver
+from .movie_metadata import MovieMetadata
 from .music_expression import MusicExpression
-from .integration_auth import notification_token, may_publish
+from .integration_auth import notification_token, may_publish, persistent_token
 from .codex import Codex
 from . import character as character_tools
 from concurrent.futures import ThreadPoolExecutor
@@ -52,7 +55,12 @@ class Bridge:
         config = get_config()
         self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.lock = threading.RLock()
-        self.enabled = True
+        try:
+            self.enabled = json.loads((state_dir() / "button-settings.json").read_text())["enabled"]
+            if type(self.enabled) is not bool:
+                self.enabled = True
+        except (OSError, ValueError, KeyError):
+            self.enabled = True
         self.closing = threading.Event()
         self.messages = collections.deque(maxlen=100)
         self.status = "Starting"
@@ -73,25 +81,44 @@ class Bridge:
         self.content_preview = ContentPreview()
         self.team_resolver = TeamResolver(state_dir(), upload=scene.rpc)
         self.resources.callback(self.team_resolver.close)
+        self.movie_metadata = MovieMetadata(state_dir())
+        self.resources.callback(self.movie_metadata.close)
         self.content_parse = {}
         self.inbox = Inbox(state_dir(), config["notifications"]["group_window_seconds"])
         self.inbox.recover()
+        self.notification_policy = NotificationPolicy(
+            state_dir(), config["notifications"]["speak_important"]
+        )
+        self.github_webhook = GitHubWebhook(
+            self.inbox, config["notifications"]["github_webhook_repositories"]
+        )
+        self.github_queue = None
+        if config["notifications"]["github_queue_url"]:
+            self.github_queue = GitHubQueue(
+                self.github_webhook,
+                AwsQueueClient(config["notifications"]),
+                on_event=lambda: self.face_worker.submit(
+                    scene.set_deploying, bool(self.deployments())
+                ),
+            )
+            self.resources.callback(self.github_queue.close)
         self.focus = FocusTimer(self.inbox)
         self.sources = Sources(self.inbox, state_dir(), config["notifications"])
         self.active_notification = None
         self.notification_until = 0
         self.announcing = False
         self.codex = None
-        self.token = secrets.token_urlsafe(32)
+        self.token = persistent_token(state_dir(), "controller-token")
         self.notification_token = notification_token(state_dir())
         self.port = port
         host = config["web"]["host"]
         self.allowed_hosts = {"127.0.0.1:%s" % port, host + ":" + str(port)}
-        self.voice_rpc = self.resources.enter_context(device("voice").connect())
-        self.pi({"op": "ptt", "enabled": False})
-        self.speaker_volume = self.pi({"op": "status"}).get(
-            "volume", {"available": False, "percent": None}
-        )
+        self.voice_rpc = device("voice").rpc
+        self.device_health = {
+            name: {"available": False, "error": "Connecting"} for name in ("voice", "display")
+        }
+        self.speech_health = {"available": False, "error": "Checking voice backend"}
+        self.speaker_volume = {"available": False, "percent": None}
         from faster_whisper import WhisperModel
 
         self.model = WhisperModel(
@@ -112,20 +139,54 @@ class Bridge:
         self.show_activity("idle")
         (self.folder / "control.json").write_text(json.dumps({"url": self.url, "pid": os.getpid()}))
         os.chmod(self.folder / "control.json", 0o600)
+        if self.github_queue:
+            self.github_queue.start()
         threading.Thread(target=self.poll, daemon=True).start()
         threading.Thread(target=self.poll_sources, daemon=True).start()
         threading.Thread(target=self.poll_music, daemon=True).start()
         threading.Thread(target=self.poll_music_meter, daemon=True).start()
+        threading.Thread(target=self.poll_health, daemon=True).start()
 
     @property
     def url(self):
         return "http://%s:%s/#%s" % (get_config()["web"]["host"], self.port, self.token)
 
     def pi(self, data):
-        result = self.voice_rpc(data)
-        if result.get("error") and "armed" not in result:
-            raise RuntimeError(result["error"])
-        return result
+        try:
+            result = self.voice_rpc(data)
+            if result.get("error") and "armed" not in result:
+                raise RuntimeError(result["error"])
+            self.device_health["voice"] = {"available": True, "error": None}
+            return result
+        except Exception:
+            self.device_health["voice"] = {
+                "available": False,
+                "error": "Unavailable — reconnecting",
+            }
+            raise
+
+    def poll_health(self):
+        while not self.closing.is_set():
+            busy = self.processing or self.announcing or (self.codex and self.codex.busy)
+            if not busy:
+                self.speech_health = character_tools.speech.health()
+            for name in ("voice", "display"):
+                try:
+                    result = device(name).rpc({"op": "status"})
+                    if result.get("error"):
+                        raise RuntimeError("Device status unavailable")
+                    self.device_health[name] = {"available": True, "error": None}
+                    if name == "display" and result.get("kind") == "idle":
+                        # A reboot clears the Pi canvas even when the desired activity is unchanged.
+                        self.face_worker.submit(scene.set_activity, self.face_activity or "idle")
+                    if name == "voice":
+                        self.speaker_volume = result.get("volume", self.speaker_volume)
+                except Exception:
+                    self.device_health[name] = {
+                        "available": False,
+                        "error": "Unavailable — reconnecting",
+                    }
+            self.closing.wait(5)
 
     def notify(self, kind, data):
         if (
@@ -235,7 +296,7 @@ class Bridge:
                 continue
             music = dict(self.media_state.music)
             tv = dict(self.media_state.video)
-            self.content_parse = self.team_resolver.get(tv)
+            self.content_parse = self.movie_metadata.get(tv, self.team_resolver.get(tv))
             if (
                 tv.get("app") != "Spotify"
                 and (tv.get("title") or tv.get("app"))
@@ -260,7 +321,7 @@ class Bridge:
                         session = status.get("session_id")
                         if session != display_session:
                             scene.set_activity()
-                            scene.set_deploying(bool(self.sources.state.get("deployments")))
+                            scene.set_deploying(bool(self.deployments()))
                             with self.team_resolver.lock:
                                 self.team_resolver.results.clear()
                             display_session = session
@@ -322,17 +383,26 @@ class Bridge:
                 self.music_meter = {"active": False, "error": "Music microphone unavailable"}
                 self.closing.wait(3)
 
+    def deployments(self):
+        return self.github_webhook.deployments(
+            self.sources.state.get("deployments", [])
+            if get_config()["notifications"].get("github_polling", True)
+            else []
+        )
+
     def poll_sources(self):
         while not self.closing.is_set():
             self.sources.poll()
             try:
-                scene.set_deploying(bool(self.sources.state.get("deployments")))
+                scene.set_deploying(bool(self.deployments()))
                 self.sources.errors.pop("display", None)
             except Exception:
                 self.sources.errors["display"] = "Deployment indicator unavailable"
             self.closing.wait(90)
 
     def deliver_notification(self):
+        if self.notification_policy.snapshot()["snoozed"]:
+            return
         if self.active_notification and time.time() < self.notification_until:
             return
         self.active_notification = None
@@ -340,23 +410,23 @@ class Bridge:
         if not item:
             return
         try:
+            if not self.notification_policy.enabled(item["source"]):
+                self.inbox.suppress(item["id"])
+                return
             if item["priority"] == "low":
                 self.inbox.finish(item["id"])
                 return
             self.active_notification = item
             self.notification_until = time.time() + 15
             scene.present(item, 30 if item["priority"] in ("important", "urgent") else 15)
-            if item.get("audio") == "chime":
+            audio_mode = self.notification_policy.audio(item)
+            if audio_mode == "chime":
                 from .chime import play
 
                 self.announcing = True
                 self.pi({"op": "ptt", "enabled": False})
                 play()
-            if (
-                item.get("audio", "default") == "default"
-                and item["priority"] in ("important", "urgent")
-                and get_config()["notifications"]["speak_important"]
-            ):
+            if audio_mode == "speech":
                 self.announcing = True
                 self.pi({"op": "ptt", "enabled": False})
                 character_tools.speak((item["title"] + ". " + item["body"])[:550], "curious")
@@ -377,9 +447,19 @@ class Bridge:
                 armed = bool(
                     self.enabled
                     and not busy
+                    and self.speech_health.get("available")
                     and (not self.codex or self.codex.process.poll() is None)
                 )
                 data = self.pi({"op": "ptt", "enabled": armed})
+                self.device_health["voice"] = {"available": True, "error": None}
+                if not busy and not data["recording"]:
+                    self.status = (
+                        "Paused"
+                        if not self.enabled
+                        else "Ready — hold the button to talk"
+                        if armed
+                        else "Voice backend unavailable — waiting for recovery"
+                    )
                 self.recording = data["recording"]
                 if self.recording:
                     self.status = "Listening — release to send"
@@ -404,9 +484,12 @@ class Bridge:
                         self.processing = False
                     if not self.codex or not self.codex.busy:
                         self.status = "Ready — hold the button to talk"
-            except Exception as exc:
-                self.enabled = False
-                self.notify("error", {"message": str(exc)})
+            except Exception:
+                self.status = (
+                    "Turn failed — ready for your next message"
+                    if self.device_health["voice"]["available"]
+                    else "Voice device unavailable — reconnecting"
+                )
                 self.closing.wait(3)
             self.closing.wait(0.4)
 
@@ -426,16 +509,27 @@ class Bridge:
                 "music_mic": self.music_mic,
                 "music_meter": dict(self.music_meter),
                 "notifications": self.inbox.items(),
+                "notification_policy": self.notification_policy.snapshot(),
                 "focus": self.focus.status(),
+                "agenda": agenda.snapshot(
+                    self.sources.state, get_config()["notifications"]["agenda_timezone"]
+                ),
                 "active_notification": self.active_notification
                 if time.time() < self.notification_until
                 else None,
                 "source_errors": dict(self.sources.errors),
-                "deployments": self.sources.state.get("deployments", []),
+                "github_queue_health": dict(self.github_queue.health)
+                if self.github_queue
+                else {"configured": False},
+                "github_checks_health": dict(self.sources.state.get("github_checks_health", {})),
+                "deployments": self.deployments(),
                 "announcing": self.announcing,
                 "timings": dict(self.timings),
                 "speech_timings": timing.read("speech"),
                 "speech_engine": character_tools.speech.engine(),
+                "device_health": dict(self.device_health),
+                "speech_health": dict(self.speech_health),
+                "codex_alive": self.codex is None or self.codex.process.poll() is None,
                 "speaker_volume": dict(self.speaker_volume),
                 "cloud_available": bool(os.getenv("OPENAI_API_KEY")),
                 "status": self.status,
@@ -526,6 +620,20 @@ def handler(bridge):
                 self.respond(403, {"error": "Open the control URL printed by the bridge"})
 
         def do_POST(self):
+            if self.path == "/webhooks/github":
+                try:
+                    n = int(self.headers.get("Content-Length", 0))
+                    if not 0 < n <= 1_000_000:
+                        raise ValueError("Invalid webhook size")
+                    self.connection.settimeout(10)
+                    result = bridge.github_webhook.receive(self.headers, self.rfile.read(n))
+                    bridge.face_worker.submit(scene.set_deploying, bool(bridge.deployments()))
+                    self.respond(200, result)
+                except PermissionError:
+                    self.respond(403, {"error": "Webhook forbidden"})
+                except Exception:
+                    self.respond(400, {"error": "Invalid webhook payload"})
+                return
             if not self.authorized() and not may_publish(
                 self.path,
                 self.headers.get("Host"),
@@ -574,6 +682,18 @@ def handler(bridge):
                 if self.path in ("/media/connect", "/spotify/connect"):
                     self.respond(200, begin_auth(bridge.media_source))
                     return
+                elif self.path == "/agenda/show":
+                    self.respond(
+                        200,
+                        agenda.publish(
+                            bridge.inbox,
+                            agenda.snapshot(
+                                bridge.sources.state,
+                                get_config()["notifications"]["agenda_timezone"],
+                            ),
+                        ),
+                    )
+                    return
                 elif self.path == "/focus/start":
                     self.respond(200, bridge.focus.start(data.get("minutes")))
                     return
@@ -583,6 +703,20 @@ def handler(bridge):
                     return
                 elif self.path == "/notifications":
                     self.respond(200, bridge.inbox.publish(**data))
+                    return
+                elif self.path == "/notifications/preferences":
+                    self.respond(200, bridge.notification_policy.update(data))
+                    return
+                elif self.path == "/notifications/snooze":
+                    minutes = data.get("minutes")
+                    if type(minutes) is not int or not 0 <= minutes <= 1440:
+                        raise ValueError("Snooze must be 0–1440 minutes")
+                    self.respond(
+                        200,
+                        bridge.notification_policy.update(
+                            {"snoozed_until": time.time() + minutes * 60 if minutes else 0}
+                        ),
+                    )
                     return
                 elif self.path == "/notifications/dismiss":
                     bridge.inbox.dismiss(data["id"])
@@ -595,6 +729,10 @@ def handler(bridge):
                     if type(data.get("enabled")) is not bool:
                         raise ValueError("enabled must be boolean")
                     bridge.enabled = data["enabled"]
+                    with tempfile.NamedTemporaryFile(mode="w", dir=state_dir(), delete=False) as f:
+                        json.dump({"enabled": bridge.enabled}, f)
+                        saved_button = Path(f.name)
+                    saved_button.replace(state_dir() / "button-settings.json")
                     if not bridge.enabled:
                         bridge.pi({"op": "ptt", "enabled": False})
                     bridge.status = (
@@ -609,7 +747,7 @@ def handler(bridge):
                     ):
                         raise ValueError("Wait until the current turn finishes")
                     engine = data.get("engine")
-                    if engine not in ("auto", "openai"):
+                    if engine not in ("auto", "openai", "local"):
                         raise ValueError("Choose local or cloud speech")
                     if engine == "openai" and not os.getenv("OPENAI_API_KEY"):
                         raise ValueError("Configure OPENAI_API_KEY on the controller first")
@@ -672,6 +810,15 @@ def handler(bridge):
 
 
 def main():
+    parent_pid = os.environ.get("OKABEBOT_PARENT_PID")
+    if parent_pid:
+
+        def watch_parent():
+            while os.getppid() == int(parent_pid):
+                time.sleep(2)
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        threading.Thread(target=watch_parent, daemon=True).start()
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", help="Path to OkabeBot JSON configuration")
     parser.add_argument("--port", type=int)
@@ -689,11 +836,13 @@ def main():
     folder.mkdir(parents=True, exist_ok=True, mode=0o700)
     lockfile = (folder / "bridge.lock").open("w")
     fcntl.flock(lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    bridge = Bridge(args.port, args.transcribe_only)
+    # Bind before initializing hardware, including copies using another state folder.
+    server = ThreadingHTTPServer((config["web"]["host"], args.port), BaseHTTPRequestHandler)
     try:
-        server = ThreadingHTTPServer((config["web"]["host"], args.port), handler(bridge))
+        bridge = Bridge(args.port, args.transcribe_only)
+        server.RequestHandlerClass = handler(bridge)
     except BaseException:
-        bridge.close()
+        server.server_close()
         raise
     print("Control page: " + bridge.url, flush=True)
 

@@ -1,10 +1,47 @@
 import unittest
 import time
+import math
 from pi import scene, pip_face
 from okabebot.profiles import PROFILES
 
 
 class IdleTests(unittest.TestCase):
+    def test_phone_replaces_resting_arm_and_follows_body_bob(self):
+        for style, sleeve, resting_bottom in (
+            ("okabe", "#e9e5dc", 73),
+            ("kurisu", "#b5997a", 74),
+        ):
+            for phase in (1, 3):
+                bob = round(math.sin(phase * 1.7))
+                resting = scene.shapes(style=style, phase=phase)
+                phone = scene.shapes(style=style, phase=phase, idle_seconds=38)
+                # No second arm remains below the raised elbow.
+                self.assertTrue(
+                    any(
+                        fill == sleeve
+                        and coords[0] >= 308
+                        and coords[3] == (resting_bottom + bob) * 4 - 1
+                        for kind, coords, fill, _ in resting
+                        if kind == "rectangle"
+                    )
+                )
+                self.assertFalse(
+                    any(
+                        fill == sleeve and coords[0] >= 308 and coords[3] > (66 + bob) * 4 - 1
+                        for kind, coords, fill, _ in phone
+                        if kind == "rectangle"
+                    )
+                )
+                self.assertIn(
+                    ("rectangle", (312, (32 + bob) * 4, 335, (45 + bob) * 4 - 1), "#131a24", 1),
+                    phone,
+                )
+                # The opposite resting sleeve remains in place.
+                self.assertEqual(
+                    [s for s in resting if s[2] == sleeve and s[1][0] < 140],
+                    [s for s in phone if s[2] == sleeve and s[1][0] < 140],
+                )
+
     def test_idle_yields_to_activity_and_overlays(self):
         for style in ("kurisu", "okabe", "sonic"):
             self.assertNotEqual(

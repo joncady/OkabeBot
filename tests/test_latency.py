@@ -1,4 +1,5 @@
 import threading
+import time
 import unittest
 from unittest.mock import Mock, patch
 from contextlib import contextmanager
@@ -9,6 +10,39 @@ from pi.stream_audio import StreamAudio
 
 
 class LatencyTests(unittest.TestCase):
+    def test_slow_face_connection_does_not_block_first_audio(self):
+        from okabebot import character
+
+        delivered = threading.Event()
+        observed = []
+
+        def face(data):
+            if data.get("activity") == "speaking" and "envelope" not in data:
+                observed.append(delivered.wait(timeout=1))
+            return {}
+
+        def audio(data):
+            if data["op"] == "stream_start":
+                return {"stream_id": "test"}
+            if data["op"] == "stream_chunk":
+                delivered.set()
+                return {"playback_started_at": time.time()}
+            return {"played": True}
+
+        profile = {"style": "kurisu", "palette": {}, "default_voice": "warm"}
+        with (
+            patch.object(character, "display_rpc", side_effect=face),
+            patch.object(character, "voice_rpc", side_effect=audio),
+            patch.object(character, "current_character", return_value=profile),
+            patch.object(character.speech, "pcm_chunks", return_value=iter([b"\0" * 480])),
+            patch.object(character.timing, "write"),
+        ):
+            result = character.stream_speak(
+                "Hello", "neutral", 0.6, "warm", {"started_at": time.time()}
+            )
+        self.assertTrue(result["spoken"])
+        self.assertEqual(observed, [True])
+
     def test_tunnel_reused_and_uncertain_action_not_replayed(self):
         config = deepcopy(DEFAULTS["devices"]["voice"])
         config["transport"] = "ssh"
@@ -57,7 +91,11 @@ class LatencyTests(unittest.TestCase):
     def test_cloud_does_not_request_without_key(self):
         from okabebot.speech import pcm_chunks
 
-        with patch.dict("os.environ", {}, clear=True), patch("okabebot.speech.urlopen") as urlopen:
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            patch("okabebot.speech.engine", return_value="openai"),
+            patch("okabebot.speech.urlopen") as urlopen,
+        ):
             with self.assertRaises(RuntimeError):
                 list(pcm_chunks("hello", "happy", "warm"))
             urlopen.assert_not_called()

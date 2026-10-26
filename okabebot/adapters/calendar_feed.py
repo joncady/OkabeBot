@@ -43,6 +43,7 @@ def poll(context):
         now, now + dt.timedelta(days=2)
     )
     scheduled = []
+    upcoming = []
     for event in events:
         if str(event.get("STATUS", "")).upper() == "CANCELLED":
             continue
@@ -55,6 +56,7 @@ def poll(context):
         if start.timestamp() <= time.time():
             continue
         title = str(event.get("SUMMARY", "Calendar event"))[:100]
+        upcoming.append(dict(title=title, start=start.timestamp()))
         identifier = (
             "feed-"
             + hashlib.sha256(
@@ -86,3 +88,9 @@ def poll(context):
         for (identifier,) in rows:
             if identifier not in scheduled:
                 db.execute("UPDATE notifications SET status='cancelled' WHERE id=?", (identifier,))
+
+    context.state["calendar_upcoming"] = sorted(upcoming, key=lambda e: e["start"])
+    context.state["calendar_checked_at"] = time.time()
+    from ..agenda import schedule
+
+    schedule(context)

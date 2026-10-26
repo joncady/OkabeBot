@@ -54,6 +54,34 @@ The existing deployment uses a Mac controller and two legacy Pi Zero W/WH satell
 
 The controller resumes its saved Codex chat. The button disarms while Codex works or speaks. A renewable lease disarms it if the controller disconnects. Recordings are deduplicated before submission; uncertain actions are not automatically replayed.
 
+For supervised Mac startup, run **`./scripts/start-mac.sh`** from this checkout.
+It starts the configured voice worker, waits for its warm-up, and starts the
+controller. Child failures restart with backoff; unavailable Pis reconnect without
+re-enabling a manually paused microphone. The dashboard shows device and voice
+readiness. The control URL stays valid across restarts; its private credential is
+stored in `state/controller-token`. Delete that file while stopped to rotate it.
+
+To start after Mac login and recover if the supervisor exits, stop the foreground
+process, then run `.venv/bin/python scripts/install-mac.py`. This makes a private
+installation in `~/Library/Application Support/OkabeBot` and installs its login
+service. It copies the prepared environments, settings, reference manifest/audio,
+models and persistent application state, without copying development scratch data.
+This avoids macOS background-process restrictions on Documents/Desktop/Downloads.
+The installer refuses an existing destination rather than overwriting private
+state. For updates, stop the printed service, back up that installation, and update
+its code/environments deliberately; do not overwrite its `.local` state. The copied
+environments are for this same Mac, not portable to another machine.
+
+The installed one-command start script is
+`~/Library/Application Support/OkabeBot/scripts/start-mac.sh`. To use the login
+service instead of foreground mode, run that script with `--install` (it also
+restarts the service). This is a per-user LaunchAgent, not a system daemon: log
+into the Mac after a reboot. It prints the service label and its stop command. Logs and supervisor status live in `state/runtime/`; the private
+dashboard URL is also in `state/ptt/control.json`. Stop an independently running
+controller/worker before the first supervised launch. Foreground mode stops both
+children with Ctrl-C. Prepared Linux hosts can also run
+`python -m okabebot.runtime --config /path/to/config.json` under their service manager.
+
 ## Auto-approval
 
 Hardware MCP tool calls are **automatically approved by default** in this voice controller. This includes physical button presses, camera capture, and audio recording when requested by Codex. The policy is limited to the `hardware-lab` server and the named `approvals.allowed_tools` list. It does not approve shell commands, file edits, other MCP servers, arbitrary forms, or explicit review denials.
@@ -93,6 +121,32 @@ The control page’s **Character** selector switches between Okabe, Makise Kuris
 Set `style` to `pip`, `name` to `Pip`, and `persona` to a friendly robot description for the original robot. The `character.persona` text controls the conversational character independently of its drawing; current preferences are included with every voice turn, including resumed chats. The `shell` color applies to Pip's body. The character supports neutral, happy, curious, concerned, and excited emotions, with idle, listening, thinking, and speaking activities. Mouth movement follows the synthesized audio amplitude rather than phoneme-level lip sync.
 
 Voice presets are `warm`, `calm`, and `robotic`. Map them to installed voices in `speech.mac_voices` or `speech.linux_voices`. `speech.engine: auto` selects macOS `say` or Linux eSpeak. These are generic system voices, not the character's actor. A voice selected through `set_character_voice` is saved in `state/character.json` and takes precedence over `default_voice`; remove that saved preference to use the config default again. Tool argument `voice: default` uses the selected voice (`pip` remains a compatibility alias).
+
+For streaming Qwen character voices on Apple Silicon, create a separate environment
+and install `mlx-audio==0.6.1`. Keep the reference manifest and audio in ignored
+private state. Each manifest key is a character style, containing `audio` (relative
+to the manifest) and `text` (its exact English transcript). References and voice
+samples are not included. Configure the supervisor with argv, without a shell:
+
+```json
+{"speech": {
+  "engine": "local",
+  "local_socket": "state/tts.sock",
+  "worker_command": [".voice-venv/bin/python", "scripts/qwen-voice-worker.py",
+    "--manifest", "state/voices/references.json", "--socket", "state/tts.sock",
+    "--revision", "0d6bb6fe33f92d47a507e23b9148940e8366ab5b"],
+  "worker_ready_timeout_seconds": 120
+}}
+```
+
+Worker arguments run relative to the config file's directory. Its Python environment
+is separate from the controller's, and the current MLX worker requires Apple Silicon.
+The worker keeps references warm and streams 24 kHz audio through the Pi playback
+and animation path. Delivery follows the reference performance; emotion instructions
+and voice presets do not change this model's delivery. Missing character references
+are shown as unavailable; select **Local speech** in Dev to use the system voice.
+`speech.worker_command` can launch any worker implementing the protocol documented
+in [adapter contracts](docs/adapters.md), keeping model dependencies out of the controller.
 
 The Codex instruction interprets “wave” as a happy face plus **one SwitchBot press**. A durable request ID prevents a retry from pressing again. Different physical gestures can be implemented by changing the instruction and tool adapter together.
 
@@ -198,3 +252,35 @@ hook. Every commit must either stage a README update or include a trailer such a
 `README-Reviewed: Internal fix; documented setup and behavior remain accurate.`
 Review the README before using that trailer. The hook requires review evidence;
 it cannot determine whether prose is correct or automatically rewrite it.
+
+Context-aware Echo speaking has an optional Home Assistant package with a
+disabled-by-default toggle, dry-run routing, and a cooldown; see
+[Alexa setup](docs/alexa.md#optional-context-aware-speaking).
+
+For direct ALSA playback, configure the physical card's speaker mixer rather
+than the default virtual Master; see [volume setup](docs/devices.md#match-the-volume-mixer-to-the-playback-device).
+
+The tablet now includes **Your day**: remaining calendar appointments, a next-event
+countdown and a silent agenda card on the Pi. Optional scheduled morning cards and
+signed GitHub workflow/deployment webhooks are documented in
+[notification setup](docs/notifications.md). Webhooks require a private secret,
+explicit repository list and separately configured HTTPS ingress. Set
+`notifications.github_polling: false` after registering hooks for webhook-only delivery.
+[TV classification](docs/tv.md) now covers common video formats, provider genres and
+cached, verified Wikidata movie/series genre enrichment, with neutral fallbacks.
+
+Optional [AWS webhook relay](docs/notifications.md#aws-relay-outbound-only-mac-connection)
+uses Lambda HTTPS → SQS → an outbound Mac consumer, preserving signed delivery and
+local deduplication while the Mac is disconnected. Deployment/connect scripts are
+in `scripts/`; the source AWS login must remain valid. No permanent AWS keys or
+public dashboard access are required. Team crests also support verified Wikidata
+abbreviations and independent partial enrichment when one opponent is unresolved.
+
+The Pi layout uses larger notification/media text, 80-pixel sports crests and a
+narrower Pip with clear side lanes. Working/deployment activity uses a subtle
+thinking expression, without loading dots beneath the media footer. The live
+canvas and preview share native 480×320 layout geometry. Identity Center users can
+connect the relay with `--consumer-profile PROFILE`; a queue-only permission-set
+template is included in `infra/aws/queue-sso.json`.
+The controller also restores the character after a display Pi reboot, even when
+the media source is temporarily unavailable.

@@ -177,6 +177,13 @@ class Inbox:
                 (identifier, identifier),
             )
 
+    def suppress(self, identifier):
+        with self.connect() as db:
+            db.execute(
+                "UPDATE notifications SET status='suppressed' WHERE id=? OR batch_id=?",
+                (identifier, identifier),
+            )
+
     def items(self):
         with self.connect() as db:
             rows = db.execute(

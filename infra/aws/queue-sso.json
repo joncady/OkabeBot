@@ -1,0 +1,92 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Identity Center permission set scoped to one OkabeBot SQS consumer queue",
+  "Parameters": {
+    "InstanceArn": {
+      "Type": "String"
+    },
+    "PrincipalId": {
+      "Type": "String"
+    },
+    "AccountId": {
+      "Type": "String",
+      "AllowedPattern": "[0-9]{12}"
+    },
+    "QueueArn": {
+      "Type": "String"
+    },
+    "PermissionSetName": {
+      "Type": "String",
+      "Default": "OkabeBotQueueConsumer",
+      "MaxLength": 32
+    }
+  },
+  "Resources": {
+    "ConsumerPermission": {
+      "Type": "AWS::SSO::PermissionSet",
+      "Properties": {
+        "InstanceArn": {
+          "Ref": "InstanceArn"
+        },
+        "Name": {
+          "Ref": "PermissionSetName"
+        },
+        "Description": "Receive and acknowledge OkabeBot webhook events; no send or other AWS access",
+        "SessionDuration": "PT12H",
+        "InlinePolicy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "sqs:ReceiveMessage",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueAttributes"
+              ],
+              "Resource": {
+                "Ref": "QueueArn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ConsumerAssignment": {
+      "Type": "AWS::SSO::Assignment",
+      "Properties": {
+        "InstanceArn": {
+          "Ref": "InstanceArn"
+        },
+        "PermissionSetArn": {
+          "Fn::GetAtt": [
+            "ConsumerPermission",
+            "PermissionSetArn"
+          ]
+        },
+        "PrincipalId": {
+          "Ref": "PrincipalId"
+        },
+        "PrincipalType": "USER",
+        "TargetId": {
+          "Ref": "AccountId"
+        },
+        "TargetType": "AWS_ACCOUNT"
+      }
+    }
+  },
+  "Outputs": {
+    "PermissionSetArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ConsumerPermission",
+          "PermissionSetArn"
+        ]
+      }
+    },
+    "PermissionSetName": {
+      "Value": {
+        "Ref": "PermissionSetName"
+      }
+    }
+  }
+}

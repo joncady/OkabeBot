@@ -3,10 +3,11 @@
 import math
 
 
-def shapes(emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idle", palette=None):
+def shapes(
+    emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idle", palette=None, pose="rest"
+):
     palette = palette or {}
     bg = palette.get("background", "#101e25")
-    accent = palette.get("accent", "#a5f4ce")
     out = [("rectangle", (0, 0, 480, 320), bg, 1)]
     # Work on a 120x80 pixel grid, then scale exactly 4x for the LCD.
     bob = round(math.sin(phase * (5 if emotion == "excited" else 1.7)))
@@ -20,10 +21,12 @@ def shapes(emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idle", 
     coat, seam, shirt = "#e9e5dc", "#a8aaa7", "#57514d"
     rect(34, 72, 87, 75, "#091319")
     # Lab coat, dark shirt and angular lapels.
-    rect(35, 57, 85, 72, seam)
+    phone = pose == "phone"
+    rect(35, 57, 80 if phone else 85, 72, seam)
     rect(31, 62, 40, 73, coat)
-    rect(80, 62, 89, 73, coat)
-    rect(38, 57, 82, 73, coat)
+    if not phone:
+        rect(80, 62, 89, 73, coat)
+    rect(38, 57, 80 if phone else 82, 73, coat)
     rect(51, 54, 69, 73, shirt)
     rect(53, 48, 67, 58, shade)
     rect(55, 49, 65, 57, skin)
@@ -78,11 +81,13 @@ def shapes(emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idle", 
     # Recognizable faint chin stubble.
     for x in (55, 59, 63):
         rect(x, 48, x + 1, 49, "#8e7468")
-    for i in range(3):
-        color = (
-            accent
-            if activity == "listening" or (activity == "thinking" and int(phase * 3) % 3 == i)
-            else "#466b64"
-        )
-        rect(55 + i * 5, 77, 57 + i * 5, 79, color)
+    if phone:
+        # Replace the resting right sleeve; every part follows the body's pixel-grid bob.
+        rect(76, 58, 82, 64, coat)
+        rect(80, 61, 87, 66, coat)
+        rect(83, 44, 88, 64, coat)
+        rect(82, 44, 88, 48, seam)
+        rect(81, 38, 87, 45, skin)
+        rect(78, 32, 84, 45, "#131a24")
+        rect(79, 34, 83, 42, "#52728a")
     return out

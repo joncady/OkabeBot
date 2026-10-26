@@ -50,11 +50,12 @@ def shapes(
     rect(48, 21, 52, 29, light)
     rect(47, 30, 62, 42, white)
     rect(61, 27, 75, 42, white)
+    gaze = -1 if activity == "thinking" else 0
     if phase % 4.7 >= 0.16:
-        rect(56, 32, 59, 41, "#25883d")
-        rect(68, 30, 71, 41, "#25883d")
-        rect(58, 33, 60, 41, "#101a28")
-        rect(70, 31, 72, 41, "#101a28")
+        rect(56 + gaze, 32, 59 + gaze, 41, "#25883d")
+        rect(68 + gaze, 30, 71 + gaze, 41, "#25883d")
+        rect(58 + gaze, 33, 60 + gaze, 41, "#101a28")
+        rect(70 + gaze, 31, 72 + gaze, 41, "#101a28")
     else:
         rect(49, 36, 60, 37, "#101a28")
         rect(64, 35, 73, 36, "#101a28")

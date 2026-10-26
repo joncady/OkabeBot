@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Callable, Protocol
 from .github import poll as github
 from .calendar_feed import poll as calendar
+from .github_checks import poll as github_checks
 
 
 class NotificationAdapter(Protocol):
@@ -17,12 +18,21 @@ class NotificationAdapter(Protocol):
 class PollingAdapter:
     name: str
     callback: Callable
+    setting: str = ""
 
     def enabled(self, context):
-        return bool(context.settings.get(self.name))
+        if self.name in ("github", "github_checks") and not context.settings.get(
+            "github_polling", True
+        ):
+            return False
+        return bool(context.settings.get(self.setting or self.name))
 
     def poll(self, context):
         self.callback(context)
 
 
-BUILTIN_ADAPTERS = (PollingAdapter("github", github), PollingAdapter("calendar", calendar))
+BUILTIN_ADAPTERS = (
+    PollingAdapter("github", github),
+    PollingAdapter("calendar", calendar),
+    PollingAdapter("github_checks", github_checks, "github"),
+)

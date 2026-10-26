@@ -104,7 +104,7 @@ class ContentTests(unittest.TestCase):
         )
         ball = reactions.decorations(reaction, 1, "PLAYING")
         self.assertTrue(all(shape[0] == "rectangle" for shape in ball))
-        self.assertGreater(min(shape[1][1] for shape in ball), 200)
+        self.assertGreater(min(shape[1][1] for shape in ball), 180)
 
     def test_native_sprites_avoid_crest_pixel_items(self):
         p = plan(

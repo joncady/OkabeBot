@@ -77,14 +77,15 @@ def pip_shapes(emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idl
     if emotion in ("happy", "excited"):
         draw("ellipse", (145, 187, 170, 194), "#d79588")
         draw("ellipse", (310, 187, 335, 194), "#d79588")
-    for i in range(3):
-        color = (
-            light
-            if activity == "listening" or (activity == "thinking" and int(phase * 3) % 3 == i)
-            else "#466b64"
+    return [out[0]] + [
+        (
+            kind,
+            tuple(240 + (v - 240) * 0.7 if i % 2 == 0 else v for i, v in enumerate(coords)),
+            fill,
+            width,
         )
-        add("ellipse", (222 + i * 16, 299, 228 + i * 16, 305), color)
-    return out
+        for kind, coords, fill, width in out[1:]
+    ]
 
 
 def shapes(style="okabe", **kwargs):

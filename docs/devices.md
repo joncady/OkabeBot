@@ -80,3 +80,35 @@ The device configuration accepts `audio_mixer_control` (default `Master`) and
 existing ALSA mixer; no shell commands from the browser are accepted. If the
 mixer is unavailable, audio service startup continues and the Dev control shows
 Unavailable. Volume is independent of microphone/capture gain.
+
+### Match the volume mixer to the playback device
+
+Direct `plughw:` playback bypasses the default PulseAudio mixer. A working
+`amixer sget Master` does not establish that it controls the physical speaker.
+For the tested AIY Voice Bonnet, use the following device settings:
+
+```json
+{
+  "audio_device": "plughw:CARD=aiyvoicebonnet,DEV=0",
+  "audio_mixer_card": "aiyvoicebonnet",
+  "audio_mixer_control": "Speaker"
+}
+```
+
+Verify with `amixer -c aiyvoicebonnet sget Speaker`. Inspect other hardware with
+`amixer -c CARD scontrols` and select its actual playback control. Start near the
+minimum and confirm audibly before increasing. The AIY Speaker control at 100%
+reported +12 dB; at 5% it reported -43.5 dB. Percentages are hardware-specific.
+The corrected control applies to file playback, streaming speech, and chimes;
+the saved level is restored when the Voice service restarts.
+
+### Native UCTRONICS display resolution
+
+B010601 is a 480×320 panel. Verify `/sys/class/graphics/fb0/virtual_size` and
+`DISPLAY=:0 xrandr`; a 640×480 framebuffer causes resampling and softer text.
+For the legacy HDMI firmware configuration used by this panel, back up
+`/boot/config.txt`, use `hdmi_group=2`, `hdmi_mode=87`, the existing
+`hdmi_cvt 480 320 60 6 0 0 0`, and framebuffer_width=480,
+framebuffer_height=320, disable_overscan=1. Remove conflicting active mode values
+and reboot. Preserve the vendor overlay, SPI and camera settings. This is specific
+to the legacy display setup; do not apply it to a DRM/KMS installation unchanged.

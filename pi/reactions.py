@@ -6,9 +6,10 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 try:
-    from . import prop_art
+    from . import prop_art, layout
 except ImportError:
     import prop_art
+    import layout
 
 EMOTIONS = {
     "attentive": "neutral",
@@ -149,14 +150,14 @@ def decorations(reaction, phase, state, native_sprites=False):
             team.get("short_name", "?"),
             tuple(team.get("colors", ["#486a81", "#ffffff"])),
         ):
-            # 64px crests retain their existing side centers.
+            # 80px crests retain their existing side centers.
             add(
                 "rectangle",
                 (
-                    18 + i * 380 + x * 1.6,
-                    80 + y * 1.6,
-                    18 + i * 380 + end * 1.6,
-                    80 + (y + 1) * 1.6,
+                    layout.CREST_X + i * layout.CREST_STEP + x * (layout.CREST_SIZE / 40),
+                    layout.CREST_Y + y * (layout.CREST_SIZE / 40),
+                    layout.CREST_X + i * layout.CREST_STEP + end * (layout.CREST_SIZE / 40),
+                    layout.CREST_Y + (y + 1) * (layout.CREST_SIZE / 40),
                 ),
                 color,
             )

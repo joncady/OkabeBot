@@ -7,8 +7,9 @@ from functools import lru_cache
 from PIL import Image, ImageDraw, ImageFont
 
 try:
-    from . import pip_face, reactions
+    from . import pip_face, reactions, layout
 except ImportError:
+    import layout
     import pip_face
     import reactions
 
@@ -118,6 +119,12 @@ def shapes(
     native_sprites=False,
     **character,
 ):
+    if character.get("activity", "idle") == "thinking" or (
+        deploying and character.get("activity", "idle") == "idle"
+    ):
+        character.update(activity="thinking", emotion="curious", mouth=0)
+        if character.get("style", "okabe") == "kurisu":
+            character["show_emphasis"] = False
     video = (music or {}).get("video") or {}
     watching = reactions.active(music, notification, character.get("activity", "idle"), deploying)
     reaction = video.get("reaction") or {}
@@ -133,6 +140,7 @@ def shapes(
     )
     if idle_action and character.get("style", "okabe") in ("okabe", "kurisu"):
         character["mouth"] = max(0, math.sin(idle_frame * 8)) * 0.25
+        character["pose"] = "phone"
     if character.get("style") == "sonic":
         character["arms"] = not (notification or gesture == "present" or idle_action)
     if (
@@ -213,23 +221,7 @@ def shapes(
             )
     if idle_action:
         style = character.get("style", "okabe")
-        if style in ("okabe", "kurisu"):
-            # Raised sleeve, hand, and dark phone beside the cheek; entirely silent.
-            sleeve = "#b5997a" if style == "kurisu" else "#e9e5dc"
-            original.extend(
-                [
-                    (
-                        "polygon",
-                        (302, 258, 340, 248, 344, 170, 324, 166, 316, 224, 300, 232),
-                        sleeve,
-                        1,
-                    ),
-                    ("rectangle", (322, 150, 345, 189), "#edc59c", 1),
-                    ("rectangle", (314, 127, 337, 178), "#131a24", 1),
-                    ("rectangle", (318, 133, 333, 168), "#52728a", 1),
-                ]
-            )
-        elif style == "sonic":
+        if style == "sonic":
             original.extend(
                 [
                     ("rectangle", (192, 216, 207, 259), "#edc59c", 1),
@@ -244,17 +236,6 @@ def shapes(
                     ("line", (321, 183, 321 + wag, 151), "#f5f4ed", 12),
                     ("ellipse", (315 + wag, 145, 327 + wag, 157), "#f5f4ed", 1),
                 ]
-            )
-    if deploying:
-        phase = character.get("phase", 0)
-        for i in range(4):
-            original.append(
-                (
-                    "rectangle",
-                    (14 + i * 9, 14, 20 + i * 9, 20),
-                    "#e9a176" if int(phase * 4) % 4 == i else "#416065",
-                    1,
-                )
             )
     if not notification and gesture != "present":
         return original
@@ -272,34 +253,23 @@ def shapes(
                 max(1, width * scale),
             )
         )
-    # Forearms lead into the card; hands visibly grip its upper edge.
-    if character.get("style") == "sonic":
-        # Arms start at Sonic's narrower shoulders, not the human sleeve anchors.
-        out.extend(
-            [
-                (
-                    "polygon",
-                    (210, 171, 211, 185, 174, 202, 131, 210, 119, 198, 167, 189),
-                    "#b77251",
-                    1,
-                ),
-                (
-                    "polygon",
-                    (272, 171, 283, 171, 313, 189, 361, 198, 354, 210, 305, 202, 274, 185),
-                    "#e7a579",
-                    1,
-                ),
-                ("rectangle", (113, 194, 133, 207), "#f8f6e9", 1),
-                ("rectangle", (346, 194, 366, 207), "#f8f6e9", 1),
-            ]
-        )
-        return out
-    sleeve = "#e6e2d8" if character.get("style") == "okabe" else "#a88b72"
-    if character.get("style") == "pip":
-        sleeve = "#accdc1"
-    out.append(("polygon", (170, 177, 165, 197, 133, 208, 113, 208, 113, 194, 151, 177), sleeve, 1))
-    out.append(("polygon", (310, 177, 315, 197, 346, 208, 366, 208, 366, 194, 329, 177), sleeve, 1))
+    # Keep shoulders attached to the torso. Bend at the elbow rather than
+    # compressing the old arm polygons when the notification edge moves upward.
+    sleeve = {"okabe": "#e6e2d8", "kurisu": "#a88b72", "pip": "#accdc1"}.get(
+        character.get("style"), "#edc59c"
+    )
+    if sonic:
+        left = (210, 165, 218, 177, 195, 186, 173, 191, 163, 183, 190, 175)
+    else:
+        left = (174, 164, 183, 176, 163, 185, 143, 191, 133, 181, 155, 173)
+    out.append(("polygon", left, sleeve, 1))
+    right = tuple(480 - v if i % 2 == 0 else v for i, v in enumerate(left))
+    out.append(("polygon", right, sleeve, 1))
     return out
+
+
+def grip_positions(style):
+    return (163, 297) if style == "sonic" else (133, 327)
 
 
 def card(notification, font_path=None, style=None):
@@ -307,8 +277,8 @@ def card(notification, font_path=None, style=None):
     if not notification:
         return image
     d = ImageDraw.Draw(image)
-    d.rectangle((12, 207, 468, 314), fill="#172b34", outline="#7ca99d")
-    image.alpha_composite(icon(notification.get("source"), 32), (27, 225))
+    d.rectangle((12, 190, 468, 318), fill="#172b34", outline="#7ca99d")
+    image.alpha_composite(icon(notification.get("source"), 32), (27, 204))
 
     def font(size):
         try:
@@ -327,15 +297,22 @@ def card(notification, font_path=None, style=None):
             text = text[:-1]
         return text + "…"
 
-    small, title = font(13), font(18)
-    d.text((73, 218), notification.get("source", "system").upper(), font=small, fill="#a8d9cd")
-    d.text((73, 236), fit(notification.get("title", ""), title, 375), font=title, fill="#fff5e8")
-    body = notification.get("body", "")
-    d.text((27, 274), fit(body, font(15), 420), font=font(15), fill="#c7d5d8")
-    for x in (113, 346):
-        d.rectangle((x, 200, x + 20, 217), fill="#f8f6e9" if style == "sonic" else "#ecc3a3")
-        d.line((x + 7, 208, x + 7, 214), fill="#939994" if style == "sonic" else "#aa7e69")
-        d.line((x + 13, 208, x + 13, 214), fill="#939994" if style == "sonic" else "#aa7e69")
+    small, title = font(14), font(23)
+    d.text((73, 202), notification.get("source", "system").upper(), font=small, fill="#a8d9cd")
+    d.text((73, 224), fit(notification.get("title", ""), title, 375), font=title, fill="#fff5e8")
+    words = str(notification.get("body", "")).replace("\n", " ").split()
+    body_font = font(19)
+    first = ""
+    while words and measure((first + " " + words[0]).strip(), body_font) <= 420:
+        first = (first + " " + words.pop(0)).strip()
+    if not first and words:
+        first = fit(words.pop(0), body_font, 420)
+    for row, line in enumerate((first, fit(" ".join(words), body_font, 420))):
+        d.text((27, 262 + row * 24), line, font=body_font, fill="#c7d5d8")
+    for x in grip_positions(style):
+        d.rectangle((x, 183, x + 20, 200), fill="#f8f6e9" if style == "sonic" else "#ecc3a3")
+        d.line((x + 7, 191, x + 7, 197), fill="#939994" if style == "sonic" else "#aa7e69")
+        d.line((x + 13, 191, x + 13, 197), fill="#939994" if style == "sonic" else "#aa7e69")
     return image
 
 
@@ -343,14 +320,14 @@ def card(notification, font_path=None, style=None):
 def media_title_strip(title, font_path, viewport):
     # Cache glyph rendering; each animation frame only crops the prepared strip.
     try:
-        font = ImageFont.truetype(font_path or "DejaVuSans.ttf", 16)
+        font = ImageFont.truetype(font_path or "DejaVuSans.ttf", 23)
     except OSError:
         font = ImageFont.load_default()
     draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
     width = (
         font.getlength(title) if hasattr(font, "getlength") else draw.textsize(title, font=font)[0]
     )
-    strip = Image.new("RGBA", (max(viewport, int(math.ceil(width)) + 1), 28))
+    strip = Image.new("RGBA", (max(viewport, int(math.ceil(width)) + 1), layout.MEDIA_TITLE_HEIGHT))
     ImageDraw.Draw(strip).text((0, 3), title, font=font, fill="#d9eee5")
     return strip, max(0, width - viewport)
 
@@ -397,19 +374,25 @@ def music_card(music, phase=0, font_path=None):
     if not music or not (music.get("is_playing") or music.get("video")):
         return image
     d = ImageDraw.Draw(image)
-    d.rectangle((0, 273, 480, 320), fill="#172b34")
+    d.rectangle((0, layout.MEDIA_TOP, 480, 320), fill="#172b34")
     video = music.get("video")
     title = (
         video.get("title", "")
         if video
         else "{} · {}".format(music.get("title", "Music"), music.get("artist", ""))
     )
-    left, viewport = (60, 400)
+    left, viewport = layout.MEDIA_LEFT, layout.MEDIA_VIEWPORT
     app = video.get("app", "") if video else "Spotify"
-    image.alpha_composite(icon(media_source(app), 32), (16, 280))
+    image.alpha_composite(
+        icon(media_source(app), layout.MEDIA_ICON_SIZE),
+        (layout.MEDIA_ICON_X, layout.MEDIA_TOP + layout.MEDIA_ICON_Y),
+    )
     strip, travel = media_title_strip(title, font_path, viewport)
     offset = round(marquee_offset(travel, phase))
-    image.alpha_composite(strip.crop((offset, 0, offset + viewport, 28)), (left, 282))
+    image.alpha_composite(
+        strip.crop((offset, 0, offset + viewport, layout.MEDIA_TITLE_HEIGHT)),
+        (left, layout.MEDIA_TOP + layout.MEDIA_TITLE_Y),
+    )
     fraction = progress_fraction(video)
     if fraction is not None:
         d.rectangle((20, 313, 460, 316), fill="#38444b")

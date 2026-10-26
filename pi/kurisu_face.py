@@ -11,6 +11,7 @@ def shapes(
     activity="idle",
     palette=None,
     show_emphasis=True,
+    pose="rest",
 ):
     palette = palette or {}
     out = [("rectangle", (0, 0, 480, 320), palette.get("background", "#101e25"), 1)]
@@ -26,9 +27,11 @@ def shapes(
     rect(77, 29, 86, 71, hair)
     rect(40, 35, 44, 65, light)
     rect(78, 34, 81, 67, light)
-    rect(35, 60, 85, 74, "#947461")
+    phone = pose == "phone"
+    rect(35, 60, 77 if phone else 85, 74, "#947461")
     rect(32, 65, 43, 74, "#b5997a")
-    rect(77, 65, 88, 74, "#b5997a")
+    if not phone:
+        rect(77, 65, 88, 74, "#b5997a")
     rect(46, 54, 74, 74, "#f4eee4")
     rect(54, 47, 66, 56, shade)
     rect(56, 48, 64, 55, skin)
@@ -49,12 +52,13 @@ def shapes(
         rect(83, 14, 85, 21, "#f2ca70")
         rect(83, 23, 85, 25, "#f2ca70")
     blink = phase % 4.7 < 0.16
+    gaze = (1 if math.sin(phase * 0.8) > 0 else -1) if activity == "thinking" else 0
     for x in (48, 65):
         rect(x, 32, x + 8, 33, "#49303a")
         if not blink:
             rect(x, 33, x + 8, 37, "#fff3e7")
-            rect(x + 3, 33, x + 6, 37, "#526a94")
-            rect(x + 4, 33, x + 5, 36, "#29364e")
+            rect(x + 3 + gaze, 33, x + 6 + gaze, 37, "#526a94")
+            rect(x + 4 + gaze, 33, x + 5 + gaze, 36, "#29364e")
     rect(48, 28 if emotion != "curious" else 26, 56, 29 if emotion != "curious" else 27, hair)
     rect(65, 27 if emotion == "concerned" else 28, 73, 28 if emotion == "concerned" else 29, hair)
     if emotion == "curious":
@@ -70,11 +74,13 @@ def shapes(
         rect(56, 44, 65, 45, "#985962")
         if emotion in ("happy", "excited"):
             rect(65, 43, 67, 44, "#985962")
-    for i in range(3):
-        color = (
-            palette.get("accent", "#a5f4ce")
-            if activity == "listening" or (activity == "thinking" and int(phase * 3) % 3 == i)
-            else "#466b64"
-        )
-        rect(55 + i * 5, 77, 57 + i * 5, 79, color)
+    if phone:
+        # The raised arm replaces its resting sleeve and shares the face/body transform.
+        rect(76, 58, 82, 64, "#b5997a")
+        rect(80, 61, 87, 66, "#b5997a")
+        rect(83, 44, 88, 64, "#b5997a")
+        rect(82, 44, 88, 48, "#947461")
+        rect(81, 38, 87, 45, skin)
+        rect(78, 32, 84, 45, "#131a24")
+        rect(79, 34, 83, 42, "#52728a")
     return out

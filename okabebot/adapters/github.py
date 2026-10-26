@@ -23,6 +23,8 @@ def poll(context):
         "notifications?" + urlencode({"all": "true", "since": since, "per_page": 100}), True
     )
     for event in events:
+        if context.settings["github"] not in ("all", event["repository"]["full_name"]):
+            continue
         reason = event.get("reason", "subscribed")
         title = event["subject"]["title"]
         context.inbox.publish(

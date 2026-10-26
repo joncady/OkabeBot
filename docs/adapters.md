@@ -41,6 +41,8 @@ The GitHub and ICS implementations live in separate modules. Add an instance to
 `BUILTIN_ADAPTERS`, or pass an adapter collection to `Sources` for another host.
 Add its settings to the validated config defaults when exposing it through JSON.
 `PollingAdapter(name, callback)` is a small convenience for simple providers.
+Use its optional `setting` argument when separate monitors share one enable setting,
+as GitHub inbox/deployment and workflow-check monitors do.
 
 Providers call `context.inbox.publish(...)` with a stable dedupe key and optional
 expiry. Source IDs are lowercase identifiers, at most 30 characters; unknown
@@ -91,3 +93,28 @@ Sports identity and crest discovery use the existing on-demand Wikidata/Wikipedi
 resolver. Team registries and downloaded crests are local data, not required
 install assets. An optional legacy `okabebot/assets/teams.local.json` can supply
 aliases, but new installations do not need one.
+
+## Local speech workers
+
+The controller accepts any private Unix-socket worker through `speech.engine: local`
+and `speech.local_socket`. Configure its argv in `speech.worker_command` for the
+supervisor to launch and restart it. The command runs from the configuration
+directory; no shell interpolation occurs. Keep model packages in that worker's
+environment. The controller and device protocol do not depend on MLX or Qwen.
+
+Each connection carries one newline-terminated JSON request. A speech request has
+`text`, `character`, `emotion`, and `voice`. Reply with big-endian unsigned 32-bit
+length-prefixed frames of mono PCM16 little-endian audio at 24 kHz. Frames must be
+even, at most 48,000 bytes; total audio is limited to 30 seconds. A zero-length
+frame marks successful completion. Close an incomplete stream on failure; clients
+abort rather than replay it. Preserve audio boundaries across frames and bound
+requests to 600 text characters. The Qwen example currently uses character
+references and does not implement emotion/preset changes.
+
+For `{"op":"status"}`, return one length-prefixed UTF-8 JSON frame (at most
+8192 bytes), then the zero frame, with `ready`, `characters`, and `sample_rate`.
+Do not report readiness before model/reference warm-up finishes. Create the socket
+with mode 0600 and never replace an endpoint owned by a live worker. Workers should
+exit if their supervisor dies; the example watches `OKABEBOT_PARENT_PID`.
+This makes controller and model failure recovery independent. Speech references,
+model caches, credentials and generated recordings are private installation data.

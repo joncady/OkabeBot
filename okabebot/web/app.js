@@ -1,5 +1,62 @@
+let connectionError = "";
 let enabled = true,
   lastRequests = "";
+let notificationPolicy = {}, policyDirty = false;
+function updateSourceRule() {
+  const source = document.querySelector('#notification-source').value;
+  const rule = notificationPolicy.sources?.[source] || {enabled:true,audio:'default'};
+  document.querySelector('#source-enabled').checked = rule.enabled;
+  document.querySelector('#source-audio').value = rule.audio;
+}
+document.querySelector('#notification-source').onchange = updateSourceRule;
+document.querySelector('#quiet-hours-form').oninput = () => { policyDirty = true; };
+document.querySelector('#quiet-hours-form').onsubmit = async event => {
+  event.preventDefault();
+  try {
+    await api('/notifications/preferences', {quiet_hours:{
+      enabled:document.querySelector('#quiet-enabled').checked,
+      start:document.querySelector('#quiet-start').value,
+      end:document.querySelector('#quiet-end').value,
+      timezone:document.querySelector('#quiet-timezone').value.trim()
+    }});
+    policyDirty=false;
+    document.querySelector('#error').textContent='';
+  } catch(error) { document.querySelector('#error').textContent=error.message; }
+};
+document.querySelector('#source-rule-form').onsubmit = async event => {
+  event.preventDefault();
+  await action('/notifications/preferences', {sources:{
+    [document.querySelector('#notification-source').value]:{
+      enabled:document.querySelector('#source-enabled').checked,
+      audio:document.querySelector('#source-audio').value
+    }
+  }});
+};
+document.querySelectorAll('[data-snooze]').forEach(button => {
+  button.onclick=()=>action('/notifications/snooze',{minutes:Number(button.dataset.snooze)});
+});
+function notificationPreferencesUI(state) {
+  const previous = JSON.stringify(notificationPolicy.sources);
+  notificationPolicy=state.notification_policy || {};
+  const quiet=notificationPolicy.quiet_hours;
+  if (!quiet) return;
+  document.querySelector('#notification-policy-status').textContent = notificationPolicy.snoozed
+    ? `Snoozed until ${new Date(notificationPolicy.snoozed_until*1000).toLocaleTimeString()}`
+    : notificationPolicy.quiet_active ? 'Quiet hours active · cards only' : 'Notifications active';
+  if (!policyDirty) {
+    document.querySelector('#quiet-enabled').checked=quiet.enabled;
+    document.querySelector('#quiet-start').value=quiet.start;
+    document.querySelector('#quiet-end').value=quiet.end;
+    document.querySelector('#quiet-timezone').value=quiet.timezone;
+  }
+  const select=document.querySelector('#notification-source');
+  for (const source of new Set([...Object.keys(notificationPolicy.sources || {}),...(state.notifications || []).map(n=>n.source)])) {
+    if (![...select.options].some(option=>option.value===source)) {
+      const option=document.createElement('option'); option.value=source;option.textContent=source;select.append(option);
+    }
+  }
+  if (previous!==JSON.stringify(notificationPolicy.sources)) updateSourceRule();
+}
 async function api(path, data) {
   let r = await fetch(path, {
     method: data ? "POST" : "GET",
@@ -92,6 +149,7 @@ document.querySelectorAll("[data-focus]").forEach(button => { button.onclick = a
 document.querySelector("#focus-cancel").onclick = async () => { try { await api("/focus/cancel", {}); } catch (e) { document.querySelector("#error").textContent = e.message; } };
 
 function musicUI(s) {
+  agendaUI(s);
   const focus = s.focus || {};
   const left = Math.max(0, Math.ceil((focus.ends_at || 0) - Date.now()/1000));
   document.querySelector("#focus-status").textContent = focus.active ? (left ? `${Math.floor(left/60)}:${String(left%60).padStart(2,"0")} left · Keep going` : "Complete · reminder queued") : "Choose a session. I’ll remind you to take a break.";
@@ -257,6 +315,8 @@ function requests(items) {
 async function refresh() {
   try {
     const s = await api("/state");
+    if (connectionError && document.querySelector("#error").textContent === connectionError) document.querySelector("#error").textContent = "";
+    connectionError = "";
     enabled = s.enabled;
     notificationUI(s);
     musicUI(s);
@@ -290,7 +350,7 @@ async function refresh() {
     voiceEngine.disabled = s.busy || s.recording;
     voiceEngine.querySelector('[value="openai"]').disabled = !s.cloud_available;
     if (document.activeElement !== voiceEngine)
-      voiceEngine.value = s.speech_engine === "openai" ? "openai" : "auto";
+      voiceEngine.value = ["openai", "local"].includes(s.speech_engine) ? s.speech_engine : "auto";
     const t = s.timings || {},
       a = s.speech_timings || {};
     const parts = [];
@@ -328,6 +388,13 @@ async function refresh() {
       ? "Pause microphone button"
       : "Enable microphone button";
     document.title = s.character + " · OkabeBot";
+    notificationPreferencesUI(s);
+    const components = Object.entries(s.device_health || {}).map(([name, health])=>
+      `${name === 'voice' ? 'Speaker/button Pi' : 'Display Pi'}: ${health.available ? 'connected' : 'reconnecting'}`);
+    if (s.speech_health) components.push(`Voice: ${s.speech_health.available ? 'ready' : s.speech_health.error || 'warming'}`);
+    if (s.github_queue_health?.configured && !s.github_queue_health.available) components.push(s.github_queue_health.error || 'GitHub relay reconnecting');
+    if (s.codex_alive === false) components.push('Codex: reconnecting');
+    document.querySelector('#system-health').textContent=components.join(' · ');
     document.querySelector("#thread").textContent =
       (s.auto_approve_hardware
         ? "Hardware auto-approval ON · "
@@ -355,6 +422,7 @@ async function refresh() {
       root.append(entry);
     }
   } catch (e) {
+    connectionError = e.message;
     document.querySelector("#error").textContent = e.message;
   }
   setTimeout(refresh, 1000);
@@ -397,3 +465,13 @@ refresh();
     document.querySelector('#stop-content-preview').onclick = () => action('/content/preview/stop', {});
   } catch (e) { /* Server may still be starting; existing controls remain usable. */ }
 })();
+
+ document.querySelector('#agenda-show').onclick=()=>action('/agenda/show',{});
+ function agendaUI(s) {
+   const agenda=s.agenda || {}, next=agenda.next;
+   const minutes=next ? Math.max(0,Math.ceil((next.start-Date.now()/1000)/60)) : 0;
+   document.querySelector('#agenda-next').textContent = agenda.stale ? 'Calendar unavailable or updating' : next ? `${next.title} · in ${minutes} min` : 'No upcoming timed events';
+   const root=document.querySelector('#agenda-events');root.replaceChildren();
+   for (const event of agenda.events || []) root.append(el('p',`${new Date(event.start*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',...(agenda.timezone && agenda.timezone!=='local'?{timeZone:agenda.timezone}:{})})} · ${event.title}`,'muted'));
+   document.querySelector('#agenda-show').disabled=Boolean(agenda.stale);
+ }

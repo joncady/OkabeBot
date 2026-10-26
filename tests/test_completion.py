@@ -59,6 +59,9 @@ class CompletionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             bridge = Bridge.__new__(Bridge)
             bridge.inbox = Inbox(folder)
+            from okabebot.notification_policy import NotificationPolicy
+
+            bridge.notification_policy = NotificationPolicy(folder)
             bridge.inbox.publish("system", "Session", priority="important", audio="chime")
             bridge.active_notification = None
             bridge.pi = lambda data: {}

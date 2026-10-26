@@ -66,6 +66,9 @@ DEFAULTS = {
         "cloud_model": "gpt-4o-mini-tts",
         "cloud_voices": {"warm": "coral", "calm": "onyx", "robotic": "alloy"},
         "engine": "auto",
+        "local_socket": "/tmp/okabebot-tts.sock",
+        "worker_command": [],
+        "worker_ready_timeout_seconds": 120,
         "sync_lead_seconds": 0.5,
         "mac_voices": {"warm": "Samantha (English (US))", "calm": "Daniel", "robotic": "Fred"},
         "linux_voices": {"warm": "en-us+f3", "calm": "en-gb", "robotic": "en"},
@@ -83,8 +86,16 @@ DEFAULTS = {
     },
     "notifications": {
         "github": "",
+        "workflow_lookback_days": 30,
+        "github_webhook_repositories": [],
+        "github_queue_url": "",
+        "github_queue_region": "us-west-2",
+        "github_queue_profile": "",
+        "github_polling": True,
         "calendar": "",
         "calendar_lead_minutes": 10,
+        "agenda_time": "",
+        "agenda_timezone": "local",
         "speak_important": True,
         "group_window_seconds": 3,
         "chime_gain": 0.25,
@@ -121,8 +132,21 @@ def load(path):
     allowed = settings["approvals"]["allowed_tools"]
     if not isinstance(allowed, list) or any(t not in HARDWARE_TOOLS for t in allowed):
         raise ValueError("allowed_tools must contain only known hardware tools")
-    if settings["speech"]["engine"] not in ("auto", "say", "espeak", "openai"):
-        raise ValueError("speech.engine must be auto, say, espeak, or openai")
+    if settings["speech"]["engine"] not in ("auto", "say", "espeak", "openai", "local"):
+        raise ValueError("speech.engine must be auto, say, espeak, openai, or local")
+    if not isinstance(settings["speech"]["local_socket"], str):
+        raise ValueError("speech.local_socket must be a path")
+    settings["speech"]["local_socket"] = resolve(settings["speech"]["local_socket"])
+    command = settings["speech"]["worker_command"]
+    if not isinstance(command, list) or any(
+        not isinstance(a, str) or not a or "\0" in a for a in command
+    ):
+        raise ValueError("speech.worker_command must be an argv list")
+    if (
+        type(settings["speech"]["worker_ready_timeout_seconds"]) is not int
+        or not 5 <= settings["speech"]["worker_ready_timeout_seconds"] <= 600
+    ):
+        raise ValueError("worker_ready_timeout_seconds must be 5–600")
     if (
         not isinstance(settings["speech"]["sync_lead_seconds"], (int, float))
         or not 0.2 <= settings["speech"]["sync_lead_seconds"] <= 5
@@ -163,6 +187,49 @@ def load(path):
     if settings["web"]["host"] == "0.0.0.0":
         raise ValueError("Use a specific LAN address or 127.0.0.1 for web.host")
     notifications = settings["notifications"]
+    if not isinstance(notifications["github_polling"], bool):
+        raise ValueError("github_polling must be boolean")
+    if not isinstance(notifications["agenda_time"], str) or (
+        notifications["agenda_time"]
+        and not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", notifications["agenda_time"])
+    ):
+        raise ValueError("agenda_time must be empty or HH:MM")
+    from zoneinfo import ZoneInfo
+
+    if notifications["agenda_timezone"] != "local":
+        try:
+            ZoneInfo(notifications["agenda_timezone"])
+        except (KeyError, ValueError, TypeError):
+            raise ValueError("agenda_timezone must be local or an IANA timezone") from None
+    for field in ("github_queue_url", "github_queue_region", "github_queue_profile"):
+        if not isinstance(notifications[field], str):
+            raise ValueError(field + " must be text")
+    if notifications["github_queue_url"] and not re.fullmatch(
+        r"https://sqs\.[a-z0-9-]+\.amazonaws\.com(?:\.cn)?/\d{12}/[A-Za-z0-9_-]+",
+        notifications["github_queue_url"],
+    ):
+        raise ValueError("github_queue_url must be a regional AWS SQS standard queue URL")
+    if not re.fullmatch(r"[a-z0-9-]+", notifications["github_queue_region"]):
+        raise ValueError("Invalid AWS queue region")
+    if notifications["github_queue_profile"].startswith("-") or any(
+        c.isspace() for c in notifications["github_queue_profile"]
+    ):
+        raise ValueError("Invalid AWS queue profile")
+    repositories = notifications["github_webhook_repositories"]
+    if (
+        not isinstance(repositories, list)
+        or len(repositories) > 100
+        or any(
+            not isinstance(repo, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo)
+            for repo in repositories
+        )
+    ):
+        raise ValueError("github_webhook_repositories must be explicit owner/repository names")
+    if (
+        type(notifications["workflow_lookback_days"]) is not int
+        or not 1 <= notifications["workflow_lookback_days"] <= 90
+    ):
+        raise ValueError("workflow_lookback_days must be 1–90")
     if (
         type(notifications["calendar_lead_minutes"]) is not int
         or not 1 <= notifications["calendar_lead_minutes"] <= 120

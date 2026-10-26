@@ -63,3 +63,50 @@ icon. Aliases are centralized in `pi.scene.MEDIA_APPS`; unknown apps retain the
 TV icon. These are simplified pixel marks, not fetched official logo files.
 The native display and preview share the same mapping. Receiver `icon_url`
 is exposed for diagnostics but is not downloaded or rendered.
+
+## Automatic general content classification
+
+The parser now accepts normalized provider `metadata.kind` (`movie`/`episode`)
+and genre labels. Cast's movie/TV metadata type and genre fields are retained when
+present; providers frequently omit them. Explicit title format markers cover game
+and film reviews, trailers, gameplay/esports, comedy/standup, music/concerts,
+science, news, interviews/podcasts, tutorials, travel/food/fitness/nature/animals,
+ASMR/relaxation, DIY, automotive, fashion, shorts and nonprofit content. These map
+to the existing high-level reaction catalog and pixel-art props. Generic words
+such as "highlights", "football", or "review" alone do not establish a subtype.
+
+For unclassified titled movie/series receivers (Netflix, Prime Video, Max, Disney+,
+Apple TV and Hulu), or a provider's explicit movie/episode metadata type, a
+background Wikidata lookup can supply genres. It requires exact English labels
+or aliases, a verified film/television work type, and a unique candidate; a year
+suffix can distinguish remakes. Ambiguous/no-match results remain neutral. Positive
+results persist for 30 days, misses for five minutes; transient errors retry after
+two minutes. Wikimedia requests share pacing/backoff with team resolution. No
+plots, scene events or spoilers are retrieved. A new work-type adapter can supply
+normalized metadata without adding a title catalog or changing character drawing.
+No automatic inference is possible when the TV provides no title.
+
+`tests/test_content_coverage.py` uses representative **synthetic** titles across
+11 sports, four receiver names, common formats and false positives. It is regression
+coverage, not a measured real-world accuracy score. Existing renderer tests exercise
+all presets/characters, playback states, missing assets and priority suppression.
+Athlete portraits and automatic individual-athlete identity resolution remain
+unsupported; tennis/combat titles can show names and the appropriate sport prop.
+Live multi-app switching, unfamiliar teams, women/youth squads, and Pi visual/timing
+review remain a separate human checklist in the GitHub roadmap.
+
+Live cross-sport checks verified Boston Celtics, Kansas City Chiefs, Toronto Maple
+Leafs, New York Yankees, Chennai Super Kings and Leinster Rugby. This exposed two
+resolver fixes: probe an exact canonical page before relying on search ranking;
+and accept sport-specific team/club/franchise types as evidence when generic sport
+claims conflict. Existing sport/league checks and reserve-squad ambiguity guards
+remain. A Celtics/Lakers NBA highlight fixture resolved both identities, fetched
+and delivered both crests, and rendered on the Pi through the shared preview API.
+These examples are validation results, not a hardcoded title/team registry.
+
+Verified abbreviations (for example LAFC → Los Angeles FC) now match exact English
+Wikidata labels, aliases or short names, after the same sport/type/league and
+reserve-squad checks. No abbreviation table is required. An unresolved team or a
+transient lookup failure on one side no longer suppresses the other side's verified
+crest. Both title labels remain while missing identity/art retries. Live LAFC vs
+LA Galaxy lookup, crest delivery and the actual Pi canvas were verified.

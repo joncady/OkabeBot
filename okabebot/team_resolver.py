@@ -102,9 +102,9 @@ class TeamResolver:
                 "CREATE TABLE IF NOT EXISTS crest_assets (qid TEXT PRIMARY KEY, value TEXT, expires REAL, error TEXT)"
             )
             # Old negative results may have included temporary provider failures.
-            if c.execute("PRAGMA user_version").fetchone()[0] < 1:
+            if c.execute("PRAGMA user_version").fetchone()[0] < 4:
                 c.execute("DELETE FROM teams WHERE value='null'")
-                c.execute("PRAGMA user_version=1")
+                c.execute("PRAGMA user_version=4")
         self.fetch = fetch
         self.upload = upload
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="sports-resolver")
@@ -135,7 +135,7 @@ class TeamResolver:
         actual = summary["title"]
         query = team_tokens(name)
         canonical = team_tokens(actual)
-        if not query or not query.issubset(canonical):
+        if not query:
             return None
         # Do not silently select a women's/youth side for an unqualified club name.
         if any(
@@ -154,6 +154,17 @@ class TeamResolver:
         ):
             return None
         entity = self.entity(qid)
+        # Redirects and abbreviations need not overlap the canonical page name.
+        # Accept exact aliases only when the verified Wikidata entity supplies them.
+        aliases = [entity.get("labels", {}).get("en", {}).get("value", "")]
+        aliases.extend(a.get("value", "") for a in entity.get("aliases", {}).get("en", []))
+        for claim in entity.get("claims", {}).get("P1813", []):
+            value = claim.get("mainsnak", {}).get("datavalue", {}).get("value", {})
+            if isinstance(value, dict) and value.get("language") in ("en", "mul"):
+                aliases.append(value.get("text", ""))
+        alias_match = words(name) in {words(a) for a in aliases if isinstance(a, str) and a}
+        if not query.issubset(canonical) and not alias_match:
+            return None
         claims = entity.get("claims", {})
         labels_by_property = {}
         ids_by_property = {}
@@ -196,15 +207,24 @@ class TeamResolver:
             for label, value in SPORT_NAMES.items()
             if value and any(label in text.casefold() for text in labels)
         }
+        typed_sports = {
+            value
+            for label, value in SPORT_NAMES.items()
+            if value and any(label in text.casefold() for text in labels_by_property["P31"])
+        }
+        # A specific 'ice hockey team' type is stronger than inconsistent P641
+        # entries on the same entity; a generic club type cannot resolve a conflict.
+        if len(typed_sports) == 1:
+            resolved = typed_sports
         # P641/P31 must establish an unambiguous sport; summary images alone are not proof.
         if len(resolved) > 1 or (not resolved and len(claimed_sports) != 1):
             return None
         actual_sport = resolved.pop() if resolved else "unknown"
         if sport and actual_sport != sport:
             return None
-        if not any(t in " ".join(labels).casefold() for t in ("team", "club")):
+        if not any(t in " ".join(labels).casefold() for t in ("team", "club", "franchise")):
             return None
-        score = 1 if query == canonical else len(query) / len(canonical)
+        score = 1 if alias_match or query == canonical else len(query) / len(canonical)
         result = dict(
             name=actual,
             short_name="".join(w[0] for w in actual.split()[:4]).upper(),
@@ -214,6 +234,7 @@ class TeamResolver:
             key="wiki_" + qid.lower(),
             qid=qid,
             aliases=[actual, name],
+            matched_alias=alias_match,
             source="https://en.wikipedia.org/wiki/" + quote(actual.replace(" ", "_")),
             colors=["#486a81", "#ffffff"],
             score=score,
@@ -344,6 +365,23 @@ class TeamResolver:
             return candidates[0]
         if row:
             return None
+        try:
+            exact = (
+                self.candidate(name, name, sport, league)
+                if league
+                else self.candidate(name, name, sport)
+            )
+        except HTTPError as exc:
+            if exc.code != 404:
+                raise
+            exact = None
+        if exact and (words(exact["name"]) == words(name) or exact.get("matched_alias")):
+            with self.db() as c:
+                c.execute(
+                    "INSERT OR REPLACE INTO teams VALUES (?,?,?)",
+                    (key, json.dumps(exact), time.time() + 2592000),
+                )
+            return exact
         search = self.fetch(
             "https://en.wikipedia.org/w/api.php?"
             + urlencode(
@@ -411,22 +449,41 @@ class TeamResolver:
         if hint == "unknown":
             hint = None
         league = basic.get("context", {}).get("league", "")
-        pair = [self.resolve(n, hint, league) if league else self.resolve(n, hint) for n in names]
-        if (
-            not all(pair)
-            or pair[0]["qid"] == pair[1]["qid"]
-            or pair[0]["sport"] != pair[1]["sport"]
-            or (
-                pair[0]["sport"] == "unknown"
-                and pair[0].get("sport_label") != pair[1].get("sport_label")
+        pair = []
+        lookup_failed = False
+        for name in names:
+            try:
+                pair.append(
+                    self.resolve(name, hint, league) if league else self.resolve(name, hint)
+                )
+            except (OSError, ValueError, KeyError):
+                pair.append(None)
+                lookup_failed = True
+        resolved = [t for t in pair if t]
+        if not resolved or (
+            len(resolved) == 2
+            and (
+                resolved[0]["qid"] == resolved[1]["qid"]
+                or resolved[0]["sport"] != resolved[1]["sport"]
+                or (
+                    resolved[0]["sport"] == "unknown"
+                    and resolved[0].get("sport_label") != resolved[1].get("sport_label")
+                )
             )
         ):
             basic["unresolved"].append("dynamic team resolution abstained")
-            basic["retry_at"] = time.time() + 300
+            basic["retry_at"] = time.time() + (120 if lookup_failed else 300)
             return basic
-        enriched = parse_video(video, teams=pair)
+        enriched = parse_video(video, teams=resolved)
         context = enriched.get("context", {})
+        if len(resolved) < 2:
+            context["sport"] = resolved[0]["sport"]
+            enriched["unresolved"].append("one team unresolved; preserving the verified crest")
+            enriched["retry_at"] = time.time() + (120 if lookup_failed else 300)
         for p, t in zip(context.get("participants", []), pair):
+            if t is None:
+                continue
+            p.update(name=t["name"], short_name=t["short_name"], colors=t["colors"])
             t, retry_at, error = self.ensure_crest(t)
             if retry_at and not t.get("png_base64"):
                 enriched["retry_at"] = min(enriched.get("retry_at", retry_at), retry_at)
@@ -446,7 +503,7 @@ class TeamResolver:
                     enriched["lookup_error"] = "Crest delivery unavailable; retrying"
                     enriched["retry_at"] = time.time() + 30
         enriched["source"] = "title_rules+wikidata"
-        enriched["evidence"].extend(t["source"] for t in pair)
+        enriched["evidence"].extend(t["source"] for t in resolved)
         return enriched
 
     def get(self, video):
