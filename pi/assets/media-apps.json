@@ -1,0 +1,18 @@
+{
+  "aliases": {
+    "youtube": "youtube",
+    "spotify": "spotify",
+    "primevideo": "prime",
+    "amazonprimevideo": "prime",
+    "amazonvideo": "prime",
+    "prime": "prime",
+    "hbomax": "max",
+    "max": "max",
+    "netflix": "netflix",
+    "fubotv": "fubo",
+    "fubotvliveproduction": "fubo",
+    "fubo": "fubo",
+    "disney+": "disney",
+    "disneyplus": "disney"
+  }
+}

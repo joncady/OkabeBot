@@ -12,6 +12,9 @@ from pathlib import Path
 import re
 
 HARDWARE_TOOLS = (
+    "get_content_reaction_presets",
+    "set_content_context",
+    "publish_notification",
     "get_bot_status",
     "press_bot",
     "display_message",
@@ -69,7 +72,24 @@ DEFAULTS = {
     },
     "transcription": {"model": "base.en", "language": "en", "compute_type": "int8", "beam_size": 5},
     "codex": {"binary": "codex", "thread_name": "Hardware Voice", "cwd": ".", "effort": "low"},
-    "web": {"port": 8768},
+    "spotify": {
+        "source": "api",
+        "playback_control": False,
+        "cast_host": "",
+        "callback_port": 8769,
+        "poll_seconds": 15,
+        "device_name": "",
+        "listen_along": True,
+    },
+    "notifications": {
+        "github": "",
+        "calendar": "",
+        "calendar_lead_minutes": 10,
+        "speak_important": True,
+        "group_window_seconds": 3,
+        "chime_gain": 0.25,
+    },
+    "web": {"port": 8768, "host": "127.0.0.1"},
 }
 
 
@@ -118,8 +138,8 @@ def load(path):
         or len(settings["character"]["persona"]) > 2000
     ):
         raise ValueError("character.persona must be text up to 2000 characters")
-    if settings["character"]["style"] not in ("okabe", "kurisu", "pip"):
-        raise ValueError("character.style must be okabe, kurisu, or pip")
+    if settings["character"]["style"] not in ("okabe", "kurisu", "pip", "sonic"):
+        raise ValueError("character.style must be okabe, kurisu, pip, or sonic")
     if settings["character"]["default_voice"] not in ("warm", "calm", "robotic"):
         raise ValueError("Unknown default_voice")
     if (
@@ -137,7 +157,51 @@ def load(path):
         raise ValueError("transcription.beam_size must be 1–5")
     if settings["codex"]["effort"] not in ("low", "medium", "high"):
         raise ValueError("codex.effort must be low, medium, or high")
-    ports = [settings["web"]["port"]]
+    import ipaddress
+
+    ipaddress.ip_address(settings["web"]["host"])
+    if settings["web"]["host"] == "0.0.0.0":
+        raise ValueError("Use a specific LAN address or 127.0.0.1 for web.host")
+    notifications = settings["notifications"]
+    if (
+        type(notifications["calendar_lead_minutes"]) is not int
+        or not 1 <= notifications["calendar_lead_minutes"] <= 120
+    ):
+        raise ValueError("Calendar lead must be 1–120 minutes")
+    if (
+        type(notifications["group_window_seconds"]) not in (int, float)
+        or not 0 <= notifications["group_window_seconds"] <= 10
+    ):
+        raise ValueError("group_window_seconds must be 0..10")
+    if (
+        type(notifications["chime_gain"]) not in (int, float)
+        or not 0 <= notifications["chime_gain"] <= 1
+    ):
+        raise ValueError("chime_gain must be 0..1")
+    if type(notifications["speak_important"]) is not bool:
+        raise ValueError("speak_important must be boolean")
+    if any(not isinstance(notifications[k], str) for k in ("github", "calendar")):
+        raise ValueError("Notification sources must be strings")
+    if (
+        type(settings["spotify"]["poll_seconds"]) is not int
+        or not 10 <= settings["spotify"]["poll_seconds"] <= 300
+    ):
+        raise ValueError("Spotify polling must be 10–300 seconds")
+    if type(settings["spotify"]["playback_control"]) is not bool:
+        raise ValueError("spotify.playback_control must be boolean")
+    if type(settings["spotify"]["listen_along"]) is not bool:
+        raise ValueError("spotify.listen_along must be boolean")
+    if not isinstance(settings["spotify"]["device_name"], str):
+        raise ValueError("Spotify device_name must be text")
+    from .adapters.media import MEDIA_FACTORIES
+
+    if settings["spotify"]["source"] not in MEDIA_FACTORIES:
+        raise ValueError("Media source must match a registered adapter")
+    if settings["spotify"]["source"] == "cast":
+        ipaddress.ip_address(settings["spotify"]["cast_host"])
+        if not settings["spotify"]["device_name"]:
+            raise ValueError("Cast requires device_name")
+    ports = [settings["web"]["port"], settings["spotify"]["callback_port"]]
     for endpoint in settings["devices"].values():
         ports.append(endpoint["port"])
         if endpoint["transport"] not in ("local", "ssh"):

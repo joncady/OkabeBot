@@ -1,0 +1,4 @@
+interface:
+  display_name: "Set up OkabeBot"
+  short_description: "Set up and migrate a personal hardware companion"
+  default_prompt: "Use $okabebot-setup to configure this personal hardware assistant for my devices."

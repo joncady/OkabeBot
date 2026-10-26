@@ -19,3 +19,8 @@ __pycache__/
 build/
 dist/
 .ruff_cache/
+
+pi/assets/crests/
+pi/assets/app-logos/
+okabebot/assets/teams.json
+okabebot/assets/crests.json

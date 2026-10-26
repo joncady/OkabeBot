@@ -16,6 +16,8 @@ from buttons import board
 from device_config import load
 from ptt_recorder import PushToTalk
 from stream_audio import StreamAudio
+from music_meter import MusicMeter
+from volume import Volume
 
 
 def validate_wav(raw):
@@ -39,13 +41,17 @@ class Voice:
         self.session = uuid.uuid4().hex
         self.pressed = False
         self.config = load()
+        self.volume = Volume(self.config)
         self.board = board(self.config)
+        self.music_meter = MusicMeter(self.audio_lock, self.config["audio_device"])
         self.stream = StreamAudio(self.audio_lock, self.config["audio_device"])
         self.ptt = PushToTalk(self.audio_lock, self.board.led, self.config["audio_device"])
         self.board.button.when_pressed = lambda: self.event(True)
         self.board.button.when_released = lambda: self.event(False)
 
     def event(self, pressed):
+        if pressed:
+            self.music_meter.preempt()
         self.ptt.button(pressed)
         with self.events_lock:
             self.pressed = pressed
@@ -60,6 +66,12 @@ class Voice:
 
     def request(self, data):
         op = data.get("op")
+        if op == "volume":
+            return self.volume.set(data["percent"]) if "percent" in data else self.volume.get()
+        if op == "music_meter":
+            return self.music_meter.control(data.get("enabled", False))
+        if op in ("record", "play", "stream_start"):
+            self.music_meter.preempt()
         if op in ("stream_start", "stream_chunk", "stream_end", "stream_abort"):
             return self.stream.request(data)
         if op == "ptt":
@@ -75,6 +87,7 @@ class Voice:
                     "latest_id": self.sequence,
                     "events": [e for e in self.events if e["id"] > after],
                     "audio_busy": self.audio_lock.locked(),
+                    "volume": self.volume.snapshot(),
                 }
         if op not in ("record", "play"):
             raise ValueError("Unknown operation")

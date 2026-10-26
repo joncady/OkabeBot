@@ -6,6 +6,12 @@ from pathlib import Path
 from .config import get_config, state_dir
 
 PROFILES = {
+    "sonic": {
+        "name": "Sonic",
+        "style": "sonic",
+        "default_voice": "warm",
+        "persona": "Portray Sonic the Hedgehog as a friendly fictional companion: upbeat, quick-witted and confident. Keep replies brief and useful; stay technically accurate.",
+    },
     "okabe": {
         "name": "Okabe",
         "style": "okabe",
@@ -45,7 +51,7 @@ def current_character():
 
 def select_profile(name):
     if not isinstance(name, str) or (name not in PROFILES and name != "configured"):
-        raise ValueError("Choose configured, okabe, kurisu, or pip")
+        raise ValueError("Choose configured, okabe, kurisu, pip, or sonic")
     folder = state_dir()
     folder.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(mode="w", dir=folder, delete=False) as f:

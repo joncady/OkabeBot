@@ -1,0 +1,373 @@
+[
+  {
+    "id": "movie.action",
+    "kind": "movie",
+    "label": "Action",
+    "reaction": "energetic",
+    "prop": "star"
+  },
+  {
+    "id": "movie.adventure",
+    "kind": "movie",
+    "label": "Adventure",
+    "reaction": "curious",
+    "prop": "compass"
+  },
+  {
+    "id": "movie.animation",
+    "kind": "movie",
+    "label": "Animation",
+    "reaction": "delighted",
+    "prop": "star"
+  },
+  {
+    "id": "movie.comedy",
+    "kind": "movie",
+    "label": "Comedy",
+    "reaction": "amused",
+    "prop": "spark"
+  },
+  {
+    "id": "movie.crime",
+    "kind": "movie",
+    "label": "Crime",
+    "reaction": "analytical",
+    "prop": "search"
+  },
+  {
+    "id": "movie.documentary",
+    "kind": "movie",
+    "label": "Documentary",
+    "reaction": "attentive",
+    "prop": "book"
+  },
+  {
+    "id": "movie.drama",
+    "kind": "movie",
+    "label": "Drama",
+    "reaction": "moved",
+    "prop": "heart"
+  },
+  {
+    "id": "movie.family",
+    "kind": "movie",
+    "label": "Family",
+    "reaction": "delighted",
+    "prop": "star"
+  },
+  {
+    "id": "movie.fantasy",
+    "kind": "movie",
+    "label": "Fantasy",
+    "reaction": "wonder",
+    "prop": "star"
+  },
+  {
+    "id": "movie.history",
+    "kind": "movie",
+    "label": "History",
+    "reaction": "attentive",
+    "prop": "book"
+  },
+  {
+    "id": "movie.horror",
+    "kind": "movie",
+    "label": "Horror",
+    "reaction": "tense",
+    "prop": "ghost"
+  },
+  {
+    "id": "movie.music",
+    "kind": "movie",
+    "label": "Music",
+    "reaction": "upbeat",
+    "prop": "note"
+  },
+  {
+    "id": "movie.mystery",
+    "kind": "movie",
+    "label": "Mystery",
+    "reaction": "analytical",
+    "prop": "search"
+  },
+  {
+    "id": "movie.romance",
+    "kind": "movie",
+    "label": "Romance",
+    "reaction": "moved",
+    "prop": "heart"
+  },
+  {
+    "id": "movie.science_fiction",
+    "kind": "movie",
+    "label": "Science Fiction",
+    "reaction": "curious",
+    "prop": "planet"
+  },
+  {
+    "id": "movie.tv_movie",
+    "kind": "movie",
+    "label": "Tv Movie",
+    "reaction": "attentive",
+    "prop": "screen"
+  },
+  {
+    "id": "movie.thriller",
+    "kind": "movie",
+    "label": "Thriller",
+    "reaction": "tense",
+    "prop": "search"
+  },
+  {
+    "id": "movie.war",
+    "kind": "movie",
+    "label": "War",
+    "reaction": "serious",
+    "prop": "shield"
+  },
+  {
+    "id": "movie.western",
+    "kind": "movie",
+    "label": "Western",
+    "reaction": "attentive",
+    "prop": "hat"
+  },
+  {
+    "id": "video.sports_highlights",
+    "kind": "video",
+    "label": "Sports Highlights",
+    "reaction": "competitive",
+    "prop": "ball"
+  },
+  {
+    "id": "video.sports_live",
+    "kind": "video",
+    "label": "Sports Live",
+    "reaction": "competitive",
+    "prop": "ball"
+  },
+  {
+    "id": "video.sports_analysis",
+    "kind": "video",
+    "label": "Sports Analysis",
+    "reaction": "analytical",
+    "prop": "ball"
+  },
+  {
+    "id": "video.game_review",
+    "kind": "video",
+    "label": "Game Review",
+    "reaction": "analytical",
+    "prop": "controller"
+  },
+  {
+    "id": "video.gameplay",
+    "kind": "video",
+    "label": "Gameplay",
+    "reaction": "engaged",
+    "prop": "controller"
+  },
+  {
+    "id": "video.esports",
+    "kind": "video",
+    "label": "Esports",
+    "reaction": "competitive",
+    "prop": "controller"
+  },
+  {
+    "id": "video.comedy_sketch",
+    "kind": "video",
+    "label": "Comedy Sketch",
+    "reaction": "amused",
+    "prop": "spark"
+  },
+  {
+    "id": "video.standup",
+    "kind": "video",
+    "label": "Standup",
+    "reaction": "amused",
+    "prop": "spark"
+  },
+  {
+    "id": "video.reaction",
+    "kind": "video",
+    "label": "Reaction",
+    "reaction": "curious",
+    "prop": "spark"
+  },
+  {
+    "id": "video.film_review",
+    "kind": "video",
+    "label": "Film Review",
+    "reaction": "analytical",
+    "prop": "screen"
+  },
+  {
+    "id": "video.trailer",
+    "kind": "video",
+    "label": "Trailer",
+    "reaction": "engaged",
+    "prop": "screen"
+  },
+  {
+    "id": "video.music_video",
+    "kind": "video",
+    "label": "Music Video",
+    "reaction": "upbeat",
+    "prop": "note"
+  },
+  {
+    "id": "video.concert",
+    "kind": "video",
+    "label": "Concert",
+    "reaction": "upbeat",
+    "prop": "note"
+  },
+  {
+    "id": "video.tutorial",
+    "kind": "video",
+    "label": "Tutorial",
+    "reaction": "attentive",
+    "prop": "book"
+  },
+  {
+    "id": "video.lecture",
+    "kind": "video",
+    "label": "Lecture",
+    "reaction": "attentive",
+    "prop": "book"
+  },
+  {
+    "id": "video.science",
+    "kind": "video",
+    "label": "Science",
+    "reaction": "curious",
+    "prop": "planet"
+  },
+  {
+    "id": "video.technology_review",
+    "kind": "video",
+    "label": "Technology Review",
+    "reaction": "analytical",
+    "prop": "chip"
+  },
+  {
+    "id": "video.news",
+    "kind": "video",
+    "label": "News",
+    "reaction": "serious",
+    "prop": "screen"
+  },
+  {
+    "id": "video.interview",
+    "kind": "video",
+    "label": "Interview",
+    "reaction": "attentive",
+    "prop": "chat"
+  },
+  {
+    "id": "video.podcast",
+    "kind": "video",
+    "label": "Podcast",
+    "reaction": "attentive",
+    "prop": "chat"
+  },
+  {
+    "id": "video.vlog",
+    "kind": "video",
+    "label": "Vlog",
+    "reaction": "engaged",
+    "prop": "camera"
+  },
+  {
+    "id": "video.travel",
+    "kind": "video",
+    "label": "Travel",
+    "reaction": "curious",
+    "prop": "compass"
+  },
+  {
+    "id": "video.food",
+    "kind": "video",
+    "label": "Food",
+    "reaction": "delighted",
+    "prop": "food"
+  },
+  {
+    "id": "video.fitness",
+    "kind": "video",
+    "label": "Fitness",
+    "reaction": "energetic",
+    "prop": "weight"
+  },
+  {
+    "id": "video.nature",
+    "kind": "video",
+    "label": "Nature",
+    "reaction": "calm",
+    "prop": "leaf"
+  },
+  {
+    "id": "video.animals",
+    "kind": "video",
+    "label": "Animals",
+    "reaction": "delighted",
+    "prop": "paw"
+  },
+  {
+    "id": "video.asmr",
+    "kind": "video",
+    "label": "Asmr",
+    "reaction": "calm",
+    "prop": "moon"
+  },
+  {
+    "id": "video.relaxation",
+    "kind": "video",
+    "label": "Relaxation",
+    "reaction": "calm",
+    "prop": "moon"
+  },
+  {
+    "id": "video.diy",
+    "kind": "video",
+    "label": "Diy",
+    "reaction": "attentive",
+    "prop": "tools"
+  },
+  {
+    "id": "video.automotive",
+    "kind": "video",
+    "label": "Automotive",
+    "reaction": "engaged",
+    "prop": "wheel"
+  },
+  {
+    "id": "video.fashion",
+    "kind": "video",
+    "label": "Fashion",
+    "reaction": "curious",
+    "prop": "spark"
+  },
+  {
+    "id": "video.shorts",
+    "kind": "video",
+    "label": "Shorts",
+    "reaction": "engaged",
+    "prop": "screen"
+  },
+  {
+    "id": "video.nonprofit",
+    "kind": "video",
+    "label": "Nonprofit",
+    "reaction": "moved",
+    "prop": "heart"
+  },
+  {
+    "id": "video.unknown",
+    "kind": "video",
+    "label": "Unknown",
+    "reaction": "attentive",
+    "prop": "screen"
+  }
+]

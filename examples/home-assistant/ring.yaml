@@ -1,0 +1,32 @@
+# Optional HA package. Include alongside okabebot.yaml for its rest_command.
+# Replace the placeholder with the Ring doorbell's event entity (not motion).
+# Keep disabled until the entity is selected and a real press is verified.
+automation:
+  - id: okabebot_ring_doorbell
+    alias: OkabeBot - Ring doorbell card
+    description: Silent doorbell card; ignores old/restored events and rate-limits duplicates.
+    initial_state: false
+    triggers:
+      - trigger: state
+        entity_id: event.replace_with_ring_doorbell_event
+        from: null
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state is not none
+             and trigger.to_state is not none
+             and trigger.to_state.state not in ['unknown', 'unavailable']
+             and 0 <= as_timestamp(now()) - as_timestamp(trigger.to_state.state, 0) < 15 }}
+    actions:
+      - action: rest_command.okabebot_notification
+        data:
+          title: Someone is at the door
+          body: The Ring doorbell was pressed.
+          priority: normal
+          audio: silent
+          group_key: front-door
+          group_title: Front door activity
+          event_key: "ring-doorbell-{{ trigger.entity_id }}-{{ trigger.to_state.state }}"
+      - delay: "00:00:20"
+    mode: single
+    max_exceeded: silent

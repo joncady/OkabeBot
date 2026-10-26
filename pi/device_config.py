@@ -9,6 +9,8 @@ DEFAULTS = {
     "voice_port": 8766,
     "switchbot_address": "",
     "audio_device": "default",
+    "audio_mixer_control": "Master",
+    "audio_mixer_card": "",
     "button_backend": "gpiozero",
     "button_pin": 23,
     "led_pin": 25,

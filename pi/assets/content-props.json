@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "image": "content-props-v1.png",
+  "columns": 4,
+  "rows": 5,
+  "order": [
+    "soccer",
+    "football",
+    "basketball",
+    "gaming",
+    "cinema",
+    "comedy",
+    "learning",
+    "romance",
+    "mystery",
+    "science",
+    "horror",
+    "music",
+    "nature",
+    "food",
+    "fitness",
+    "travel",
+    "talk",
+    "diy",
+    "technology",
+    "relaxation"
+  ],
+  "rectangles": {
+    "soccer": [
+      30,
+      98,
+      257,
+      301
+    ],
+    "football": [
+      294,
+      98,
+      560,
+      301
+    ],
+    "basketball": [
+      570,
+      98,
+      839,
+      301
+    ],
+    "gaming": [
+      863,
+      98,
+      1096,
+      301
+    ],
+    "cinema": [
+      30,
+      335,
+      257,
+      563
+    ],
+    "comedy": [
+      294,
+      335,
+      560,
+      563
+    ],
+    "learning": [
+      570,
+      335,
+      839,
+      563
+    ],
+    "romance": [
+      863,
+      335,
+      1096,
+      563
+    ],
+    "mystery": [
+      30,
+      597,
+      257,
+      822
+    ],
+    "science": [
+      294,
+      597,
+      560,
+      822
+    ],
+    "horror": [
+      570,
+      597,
+      839,
+      822
+    ],
+    "music": [
+      863,
+      597,
+      1096,
+      822
+    ],
+    "nature": [
+      30,
+      827,
+      257,
+      1079
+    ],
+    "food": [
+      294,
+      827,
+      560,
+      1079
+    ],
+    "fitness": [
+      570,
+      827,
+      839,
+      1079
+    ],
+    "travel": [
+      863,
+      827,
+      1096,
+      1079
+    ],
+    "talk": [
+      30,
+      1087,
+      257,
+      1333
+    ],
+    "diy": [
+      294,
+      1087,
+      560,
+      1333
+    ],
+    "technology": [
+      570,
+      1087,
+      839,
+      1333
+    ],
+    "relaxation": [
+      863,
+      1087,
+      1096,
+      1333
+    ]
+  },
+  "mapping": {
+    "controller": "gaming",
+    "screen": "cinema",
+    "star": "comedy",
+    "spark": "comedy",
+    "book": "learning",
+    "heart": "romance",
+    "search": "mystery",
+    "planet": "science",
+    "ghost": "horror",
+    "note": "music",
+    "leaf": "nature",
+    "paw": "nature",
+    "food": "food",
+    "weight": "fitness",
+    "compass": "travel",
+    "wheel": "travel",
+    "chat": "talk",
+    "camera": "cinema",
+    "tools": "diy",
+    "chip": "technology",
+    "moon": "relaxation",
+    "shield": "cinema",
+    "hat": "cinema"
+  },
+  "sports": {
+    "soccer": "soccer",
+    "american_football": "football",
+    "rugby": "football",
+    "basketball": "basketball"
+  }
+}

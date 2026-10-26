@@ -1,0 +1,103 @@
+# Notifications and tablet controller
+
+Run the controller on one host at a time. The Mac can control the existing display and voice Pis over SSH; deployment to a different controller is a separate step.
+
+## Tablet access
+
+The controller defaults to loopback. For a tablet on your trusted home network, set `web.host` to the controller's specific LAN IPv4 address (not `0.0.0.0`). Open the complete printed control URL on the tablet, including its `#` token. Use a current browser. Keep the controller awake while using it.
+
+The URL grants controller access. This LAN mode is HTTP, so use it only on a trusted network; do not forward its port to the Internet. Use a private HTTPS reverse proxy or VPN for other networks. Dev mode hides diagnostics for convenience; it is not a separate permission level. Session tokens change when the controller restarts.
+
+The home view has large character portrait buttons, microphone pause, stop response, and a notification inbox. Dev reveals transcription, approvals diagnostics, timings, voice settings, and a test card. Actual approval requests remain visible outside Dev.
+
+## Sources
+
+Install `pip install -e '.[voice,notifications]'`. Configure in the ignored local JSON:
+
+```json
+{
+  "notifications": {
+    "github": "all",
+    "calendar": "env:ICAL_FEED",
+    "calendar_lead_minutes": 10,
+    "speak_important": true
+  }
+}
+```
+
+GitHub uses `gh` authentication on the controller. It reads account notifications across repositories without marking them read. Mentions, review requests and CI notifications are important; others are visual. Events depend on your GitHub notification subscriptions. The first run establishes a baseline rather than replaying old messages.
+
+Deployment polling uses GitHub Deployment records for owned/collaborator repositories. A paginated GraphQL query checks up to three recent deployments per repository every approximately 90 seconds plus request time. Recent pending/in-progress deployments animate progress lights on the Pi and a badge in the tablet UI. Workflows that do not create GitHub Deployment records are not detected by this indicator. Signed webhooks and richer workflow handling are backlog items.
+
+Google Calendar starts with its read-only private iCal feed. Put `ICAL_FEED="https://..."` in `.env` beside the local JSON, or set the environment variable. Never commit the secret feed. Google Calendar → Settings → calendar → Integrate calendar → Secret address in iCal format. Do not make the calendar public.
+
+The adapter fetches every approximately 90 seconds, expands recurring timed events for the next two days, and schedules local reminders. Calendar event timezones are honored; display times use the controller's local timezone. All-day events are not spoken. Updates reconcile pending reminders and cancellations. Already delivered, failed, or uncertain announcements are not automatically replayed. Feed refresh latency means last-second changes may not be seen immediately.
+
+The source adapter boundary produces inbox records, independent of the renderer and speech engine. Other providers can implement the same scheduling/deduplication contract. OAuth, per-calendar controls, and quiet hours are planned follow-ups.
+
+## API
+
+POST `/notifications` with `X-Hardware-Token` (interactive controller) or `X-Notification-Token` (publish-only integration) and JSON:
+
+```json
+{"source":"system","title":"Backup complete","body":"All files verified.","priority":"normal","dedupe_key":"backup-42"}
+```
+
+Sources: `system`, `github`, `calendar`. Priorities: `low` (inbox), `normal` (card), `important` and `urgent` (card plus speech if enabled). Important notifications wait until conversation and recording are idle; urgent currently shares that behavior rather than interrupting live audio. Optional Unix-second `due_at` and `expires_at` schedule and expire a record. Dismiss with POST `/notifications/dismiss` and its `id`.
+
+MCP `publish_notification` uses the same persistent inbox. The controller must be running to deliver queued items. Notification text is never submitted to Codex as instructions. Delivery is claimed before actuation; ambiguous failures and crashes are surfaced, not replayed automatically.
+
+`okabebot.scene` is the intent-level interface: `set_activity`, `present`, `dismiss`, `set_deploying`; `okabebot.character.speak` handles speech and lip sync. Renderers own pixel geometry. `pi/scene.py` composes the animated character above a bottom card, with presenting arms and pixel source icons. The overlay survives mouth/activity updates and expires independently.
+
+Upgrade the display Pi with both `pi/service.py` and `pi/scene.py`. Its X11 screen timeout can be disabled with `xset s off`, `xset -dpms`, and `xset s noblank` in the desktop autostart configuration.
+
+The controller creates an owner-only `notification-token` file in its state directory. Unlike the browser token, it survives controller restarts. Copy its contents privately into Home Assistant secrets. This credential only permits POST `/notifications`; it cannot read state, change characters, dismiss cards, or invoke tools. Delete the file while stopped and restart to rotate it, then update integration secrets.
+
+## Long-running command completion
+
+Run a command with the standalone wrapper (no extra Python dependencies):
+
+```sh
+python3 scripts/notify-command.py --title "Build" --state-dir .local --url http://CONTROLLER_HOST:8768/notifications -- make build
+```
+
+Use your actual controller URL and state directory. Successful commands produce a silent card; failures produce an important notification, spoken if important speech is enabled. The wrapper preserves the command's exit code even if delivery fails. It sends only the supplied title, elapsed time and exit code—not command arguments or output. The controller must already be running. Cards expire after five minutes. For shell pipelines, explicitly supply `sh -c 'your pipeline'` after `--`.
+
+## Focus timer
+
+The dashboard offers 5-, 25-, and 50-minute sessions and Cancel. Starting another session replaces the pending timer. The durable inbox preserves it across controller restarts; completion uses an important reminder, which waits for conversation to finish and follows the existing speech preference. If the controller returns more than 15 minutes late, the reminder expires instead of announcing an old break.
+
+Authenticated POST `/focus/start` accepts `{"minutes":25}` (integer 1–180); `/focus/cancel` accepts `{}`. The publish-only notification credential cannot control timers. A timer already claimed for delivery cannot be recalled by Cancel.
+
+## Codex completion alerts
+
+Use the [Codex notify adapter](codex-notifications.md) for session-name cards and a short local completion chime. It preserves an existing hook and sends no prompt or response text. The optional `audio` field accepts `default`, `silent`, or `chime`; the latter two suppress TTS at every priority.
+
+## Related event cards
+
+Publish `group_key` and optionally `group_title` to collect related events:
+
+```json
+{"source":"system","title":"Door opened","priority":"normal","audio":"silent","group_key":"front-door","group_title":"Front door activity","dedupe_key":"unique-opening"}
+```
+
+Matching source/group keys arriving within the collection window share one card
+(for example **Front door activity (2)** with **Door opened · Someone is at the
+door**). Each original event remains in history with its own title, dedupe key
+and delivery status. Finishing/failing a batch updates all its members;
+dismissing any member dismisses the visible batch. Unknown delivery after a
+restart is marked uncertain and is not replayed.
+
+Set `notifications.group_window_seconds` in local JSON (default 3, range 0–10;
+0 disables collection). Urgent notifications bypass grouping. Unrelated pending
+events can be delivered while a group is collecting. Grouping does not alter
+the existing policy of waiting for conversation/recording and the active card
+to finish. Events after the window form another card. Silent members keep a
+group silent. The Home Assistant examples opt the door and Ring doorbell into
+the `front-door` group; other publishers are unchanged.
+
+After upgrading, restart controller/MCP publisher processes together so every
+publisher uses the current queue schema. Back up the inbox before migration.
+For live review, open the front door and press the Ring doorbell within three
+seconds; expect one silent bottom card with the character still visible, and
+two separate history records.

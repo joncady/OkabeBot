@@ -3,7 +3,15 @@
 import math
 
 
-def shapes(emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idle", palette=None):
+def shapes(
+    emotion="neutral",
+    intensity=0.6,
+    mouth=0,
+    phase=0,
+    activity="idle",
+    palette=None,
+    show_emphasis=True,
+):
     palette = palette or {}
     out = [("rectangle", (0, 0, 480, 320), palette.get("background", "#101e25"), 1)]
     bob = round(math.sin(phase * (5 if emotion == "excited" else 1.7)))
@@ -37,7 +45,7 @@ def shapes(emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idle", 
     for x, y in [(44, 20), (48, 23), (52, 26), (70, 23), (74, 20)]:
         rect(x, y, x + 4, y + 8, hair)
     rect(61, 17, 65, 23, light)
-    if emotion == "excited":
+    if emotion == "excited" and show_emphasis:
         rect(83, 14, 85, 21, "#f2ca70")
         rect(83, 23, 85, 25, "#f2ca70")
     blink = phase % 4.7 < 0.16

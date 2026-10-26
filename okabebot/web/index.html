@@ -1,43 +1,137 @@
 <!doctype html>
 <html lang="en">
-  <meta charset="utf-8" /><meta
-    name="viewport"
-    content="width=device-width,initial-scale=1"
-  /><title>OkabeBot</title>
-  <link rel="stylesheet" href="/style.css" />
-  <div class="eyebrow">AI Hardware Lab · OkabeBot</div>
-  <h1>Hold. Talk. Release.</h1>
-  <p class="muted">
-    Hold the large Pi button while speaking. Release to send your words to
-    Hardware Voice. Maximum 20 seconds per message.
-  </p>
-  <div class="panel">
-    <div id="status">Connecting…</div>
-    <button id="toggle">Pause microphone button</button
-    ><button id="stop" class="danger">Stop Codex turn</button>
-    <p class="muted">
-      Speech recognition runs on the controller. Only the transcript goes to
-      Codex. The button is disarmed while Codex works and speaks.
-    </p>
-    <label for="character">Character</label>
-    <select id="character">
-      <option value="configured">Configuration default</option>
-      <option value="okabe">Rintaro Okabe</option>
-      <option value="kurisu">Makise Kurisu</option>
-      <option value="pip">Pip</option>
-    </select>
-    <p class="muted">Changes appearance and starts a fresh character chat on the next turn. Any saved voice override stays selected.</p>
-    <label for="speech-engine">Voice engine</label>
-    <select id="speech-engine"><option value="auto">Local speech</option><option value="openai">Cloud streaming (API key required)</option></select>
-    <p class="muted">Voices are AI-generated. Cloud mode sends reply text to OpenAI and uses separately billed API access.</p>
-    <div id="timings" class="muted"></div>
-    <div id="thread"></div>
-    <div id="error"></div>
-  </div>
-  <div id="approvals"></div>
-  <div class="panel">
-    <h2>Conversation</h2>
-    <div id="messages">Waiting for your first message.</div>
-  </div>
-  <script src="/app.js"></script>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>OkabeBot · Companion</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <div class="eyebrow">AI HARDWARE LAB</div>
+        <h1>Your little lab.</h1>
+      </div>
+      <button id="dev-toggle" class="small" aria-pressed="false">Dev</button>
+    </header>
+    <main>
+      <section class="hero panel">
+        <div class="live">
+          <span class="dot"></span
+          ><span id="status" role="status">Connecting…</span>
+        </div>
+        <div class="scene">
+          <img id="companion" src="/okabe.png" alt="Current companion" />
+          <div class="music-notes" aria-hidden="true" hidden>♪ <span>♫</span></div>
+          <div id="music-footer" class="music-footer" hidden></div>
+          <div id="presented" class="presented" hidden></div>
+        </div>
+        <div class="hero-caption">
+          <span id="companion-name">Okabe</span
+          ><span class="muted">Your desk companion</span>
+        </div>
+        <div class="controls">
+          <button id="toggle" class="primary">Pause microphone</button
+          ><button id="stop">Stop response</button>
+        </div>
+        <p class="hint">Hold the Pi button, speak, then release.</p>
+      </section>
+      <section class="characters">
+        <div class="section-title">
+          <h2>Choose your companion</h2>
+          <span class="muted">Same lab. New personality.</span>
+        </div>
+        <div class="character-grid">
+          <button
+            class="character-card"
+            data-profile="okabe"
+            aria-pressed="false"
+          >
+            <img src="/okabe.png" alt="" /><strong>Okabe</strong
+            ><span>The curious scientist</span>
+          </button>
+          <button
+            class="character-card"
+            data-profile="kurisu"
+            aria-pressed="false"
+          >
+            <img src="/kurisu.png" alt="" /><strong>Kurisu</strong
+            ><span>A little healthy skepticism</span>
+          </button>
+          <button
+            class="character-card"
+            data-profile="pip"
+            aria-pressed="false"
+          >
+            <img src="/pip.png" alt="" /><strong>Pip</strong
+            ><span>Your friendly robot</span>
+          </button>
+          <button class="character-card" data-profile="sonic" aria-pressed="false"><img src="/sonic.png" alt="" /><strong>Sonic</strong><span>Ready for the next adventure</span></button>
+        </div>
+      </section>
+      <section class="panel"><h2>Time to focus</h2><p id="focus-status" role="status">Choose a session. I’ll remind you to take a break.</p><div class="focus-actions"><button data-focus="5">5 min</button><button data-focus="25">25 min</button><button data-focus="50">50 min</button><button id="focus-cancel" hidden>Cancel timer</button></div></section>
+      <section class="panel music-panel">
+        <div class="music-copy"><h2>Music in the lab</h2><p id="spotify-status" class="muted" role="status">Connect from a browser on the controller computer; then use any tablet to view playback.</p></div>
+        <span class="muted">Music mic reacts locally; push-to-talk stays separate.</span>
+        <button id="music-mic" aria-pressed="true">Music mic: on</button>
+        <button id="spotify-connect">Connect Spotify</button>
+      </section>
+      <section class="panel inbox">
+        <div class="section-title">
+          <h2>On your radar</h2>
+          <span id="inbox-count" class="badge">0</span>
+        </div>
+        <div id="deployments"></div>
+        <div id="inbox">
+          <p class="muted">All quiet. You’re free to focus.</p>
+        </div>
+        <div id="source-errors" role="status"></div>
+      </section>
+      <div id="error" role="alert"></div>
+      <div id="approvals"></div>
+      <section id="developer" hidden>
+        <div class="panel">
+          <h2>Developer controls</h2>
+          <label for="character">Character configuration</label
+          ><select id="character">
+            <option value="configured">Configuration default</option>
+            <option value="okabe">Okabe</option>
+            <option value="kurisu">Kurisu</option>
+            <option value="pip">Pip</option></select
+          ><label for="speech-engine">Voice engine</label
+          ><select id="speech-engine">
+            <option value="auto">Local speech</option>
+            <option value="openai">Cloud streaming</option>
+          </select>
+          <p class="muted">
+            Cloud speech sends reply text to OpenAI and requires separate API
+            credits.
+          </p>
+          <div class="speaker-volume">
+            <label for="speaker-volume">Speaker volume <output id="speaker-volume-value" for="speaker-volume">Unavailable</output></label>
+            <div class="volume-controls"><input id="speaker-volume" type="range" min="0" max="100" step="5" value="20" disabled /><button id="speaker-mute" disabled>Mute</button></div>
+            <p class="muted">Applies to speech and notification sounds. Saved on the speaker device.</p>
+          </div>
+          <p id="content-parse" class="muted"></p>
+          <label for="content-preset">Content reaction preview</label>
+          <select id="content-preset"><option value="">Choose a reaction to preview</option></select>
+          <label for="preview-sport">Sport for preview</label>
+          <select id="preview-sport"><option value="soccer">Soccer</option><option value="american_football">American football</option><option value="basketball">Basketball</option><option value="unknown">Generic sport</option></select>
+          <label for="preview-left">Left team</label><select id="preview-left"><option value="">No team</option></select>
+          <label for="preview-right">Right team</label><select id="preview-right"><option value="">No team</option></select>
+          <button id="stop-content-preview">Stop reaction preview</button>
+          <p class="muted">Previews work with any app or no TV. They stop after 90 seconds.</p>
+          <button id="test-notification">Test calendar card</button>
+          <div id="timings" class="muted"></div>
+          <div id="thread"></div>
+        </div>
+        <div class="panel">
+          <h2>Transcription &amp; conversation</h2>
+          <div id="messages">Waiting for your first message.</div>
+        </div>
+      </section>
+    </main>
+    <footer>OKABEBOT <span>Make room for a little curiosity.</span></footer>
+    <script src="/app.js"></script>
+  </body>
 </html>
