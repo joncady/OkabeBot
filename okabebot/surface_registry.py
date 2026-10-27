@@ -110,8 +110,10 @@ class Registry:
     def update(self, identity, values, configured):
         with _LOCK:
             data = self.read()
-            known = {p["id"]: p for p in configured}
-            known.update(data["devices"])
+            known = {p["id"]: dict(p) for p in configured}
+            known.update({key: dict(p) for key, p in data["devices"].items()})
+            for key, place in known.items():
+                place["name"] = data.get("names", {}).get(key, place["name"])
             if identity not in known:
                 raise ValueError("Unknown location")
             if values.get("remove") is True:

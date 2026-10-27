@@ -277,9 +277,11 @@ def acknowledgement(name, result):
             + "."
         )
     if name == "get_companion_locations":
-        state = result.get("surfaces", {})
+        names = [p["name"] for p in result.get("locations", [])]
         return (
-            "My destinations are " + ", ".join(p["name"] for p in state.get("locations", [])) + "."
+            "My destinations are " + ", ".join(names) + "."
+            if names
+            else "I have no configured destinations."
         )
     if name == "set_speaker_volume":
         return "Speaker volume is now %s percent." % result["percent"]

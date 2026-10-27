@@ -131,3 +131,28 @@ class LocalToolTests(unittest.TestCase):
         obj._turn("Set speaker volume to 5 percent")
         volume.assert_not_called()
         self.assertIn("Which device", obj.completed.call_args.args[0])
+
+
+class LocationAcknowledgementTests(unittest.TestCase):
+    def test_real_tool_response_lists_names_and_handles_empty_registry(self):
+        from okabebot.local_conversation import acknowledgement
+        from okabebot.server import get_companion_locations
+
+        for places, expected in (
+            ([{"name": "Desk"}, {"name": "TV"}], "My destinations are Desk, TV."),
+            ([], "I have no configured destinations."),
+        ):
+            with patch(
+                "okabebot.controller_tools.projection",
+                return_value={
+                    "surfaces": {
+                        "locations": places,
+                        "current_location": None,
+                        "destination_location": None,
+                        "destination_name": "",
+                        "phase": "pi",
+                    }
+                },
+            ):
+                result = get_companion_locations()
+            self.assertEqual(acknowledgement("get_companion_locations", result), expected)

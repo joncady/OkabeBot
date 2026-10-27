@@ -50,6 +50,20 @@ class RegistryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.registry.update("companion", {"name": "Living room TV"}, self.places)
 
+    def test_renames_use_persisted_names_and_preserve_rejected_state(self):
+        self.registry.update("companion", {"name": "Desk"}, self.places)
+        before = self.path.read_bytes()
+        for name in ("Desk", "desk", "  DESK  "):
+            with self.assertRaisesRegex(ValueError, "unique"):
+                Registry(self.path).update("living-room", {"name": name}, self.places)
+            self.assertEqual(self.path.read_bytes(), before)
+        phone = self.registry.register(self.secret, "Phone", "browser")
+        with self.assertRaisesRegex(ValueError, "unique"):
+            self.registry.update(phone["id"], {"name": "Desk"}, self.places)
+        self.registry.update("companion", {"name": "Studio"}, self.places)
+        self.registry.update("living-room", {"name": "Desk"}, self.places)
+        self.assertEqual([p["name"] for p in self.registry.enrich(self.places)], ["Studio", "Desk"])
+
     def test_browser_handoff_waits_for_render_and_cannot_ack_other_device(self):
         with patch("okabebot.surface_registry.registry_path", return_value=self.path):
             surface = Surfaces(Mock(), start=False)
