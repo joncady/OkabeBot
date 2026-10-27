@@ -33,3 +33,12 @@ test('speaker recovery replaces a running graph and keeps volume without replay'
  const old=player.context,session=player.session;old.close=async()=>old.closed=true;player.receive({kind:'start',stream_id:'old'});
  await player.restart();assert.equal(old.closed,true);assert.notEqual(player.context,old);assert.notEqual(player.session,session);assert.equal(player.gain.gain.value,.37);assert.equal(player.stream,null);player.close();
 });
+
+test('LAN HTTP session generation and suspend do not require randomUUID',()=>{
+ const fs=require('node:fs'),vm=require('node:vm');let seed=0;
+ const context={Uint8Array,crypto:{getRandomValues:values=>{values.fill(++seed);return values;}},window:{}};
+ vm.runInNewContext(fs.readFileSync('okabebot/web/browser-audio.js','utf8'),context);
+ const player=new context.window.BrowserAudio(async()=>({events:[]}),()=>{}),first=player.session;
+ assert.match(first,/^[a-f0-9]{32}$/);player.cursor=12;player.suspend();
+ assert.match(player.session,/^[a-f0-9]{32}$/);assert.notEqual(player.session,first);assert.equal(player.cursor,0);
+});

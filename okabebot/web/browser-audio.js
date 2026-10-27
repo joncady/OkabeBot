@@ -1,8 +1,10 @@
 /* Paired browser PCM sink. No tool execution or controller credential. */
 (function(root){
 'use strict';
+// getRandomValues also works on LAN HTTP, where randomUUID is unavailable.
+function sessionID(){return Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');}
 class BrowserAudio{
- constructor(request,onStatus){this.request=request;this.onStatus=onStatus;this.context=null;this.gain=null;this.cursor=0;this.epoch=null;this.session=crypto.randomUUID().replaceAll('-','');this.stream=null;this.finished=null;this.closed=false;this.volume=.5;}
+ constructor(request,onStatus){this.request=request;this.onStatus=onStatus;this.context=null;this.gain=null;this.cursor=0;this.epoch=null;this.session=sessionID();this.stream=null;this.finished=null;this.closed=false;this.volume=.5;}
  async enable(){
   if(!this.context){this.context=new AudioContext();this.context.onstatechange=()=>{if(this.context.state!=='running')this.stop();};this.gain=this.context.createGain();this.gain.gain.value=this.volume;this.gain.connect(this.context.destination);}
   await this.context.resume();
@@ -17,7 +19,7 @@ class BrowserAudio{
   if(context){context.onstatechange=null;await context.close();}
   if(!this.closed)await this.enable();
  }
- suspend(){this.stop();this.session=crypto.randomUUID().replaceAll('-','');this.cursor=0;this.epoch=null;this.finished=null;}
+ suspend(){this.stop();this.session=sessionID();this.cursor=0;this.epoch=null;this.finished=null;}
  setVolume(percent){this.volume=Math.max(0,Math.min(100,Number(percent)))/100;if(this.gain)this.gain.gain.value=this.volume;}
  stop(){if(this.stream){this.stream.aborted=true;for(const source of this.stream.sources)try{source.stop();}catch{}this.stream=null;}}
  receive(event){
