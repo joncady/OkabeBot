@@ -9,7 +9,7 @@ description = "A configurable Codex voice companion with an expressive face and 
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-dependencies = ["mcp>=1.20,<2", "Pillow>=10,<13"]
+dependencies = ["mcp>=1.20,<2", "Pillow>=10,<13", "jsonschema>=4,<5"]
 
 [project.optional-dependencies]
 cast = ["PyChromecast>=13.1,<14; python_version < '3.11'", "PyChromecast>=14,<15; python_version >= '3.11'"]

@@ -133,7 +133,12 @@ class Bridge:
             local_files_only=True,
         )
         if not transcribe_only:
-            self.codex = Codex(self.folder, self.notify, self.reply)
+            if config["conversation"]["backend"] == "local":
+                from .local_conversation import LocalConversation
+
+                self.codex = LocalConversation(self.folder, self.notify, self.reply)
+            else:
+                self.codex = Codex(self.folder, self.notify, self.reply)
             self.resources.callback(self.codex.close)
         with sqlite3.connect(self.folder / "clips.sqlite3") as db:
             db.execute(
@@ -193,6 +198,10 @@ class Bridge:
             self.closing.wait(5)
 
     def notify(self, kind, data):
+        if kind == "local_model":
+            self.timings["local_generation_s"] = data["selection_s"]
+        if kind == "local_execution":
+            self.timings["local_tool_s"] = data["duration_s"]
         if (
             kind == "assistant"
             and "first_model_output_s" not in self.timings
@@ -279,7 +288,9 @@ class Bridge:
                 "UPDATE clips SET status=?, transcript=? WHERE id=?", ("transcribed", text, clip_id)
             )
         if self.codex:
-            self.status = "Codex is working"
+            self.status = (
+                "Local model" if get_config()["conversation"]["backend"] == "local" else "Codex"
+            ) + " is working"
             self.timings["submitted_at"] = time.time()
             self.codex.submit(text)
             with sqlite3.connect(self.folder / "clips.sqlite3") as db:
@@ -538,6 +549,7 @@ class Bridge:
                 "speech_engine": character_tools.speech.engine(),
                 "device_health": dict(self.device_health),
                 "speech_health": dict(self.speech_health),
+                "conversation_backend": get_config()["conversation"]["backend"],
                 "codex_alive": self.codex is None or self.codex.process.poll() is None,
                 "speaker_volume": dict(self.speaker_volume),
                 "cloud_available": bool(os.getenv("OPENAI_API_KEY")),
@@ -673,9 +685,47 @@ def handler(bridge):
                 return
             try:
                 n = int(self.headers.get("Content-Length", 0))
-                if not 0 < n <= 20000:
+                if not 0 < n <= (950000 if self.path == "/conversation/test-clip" else 20000):
                     raise ValueError("Invalid request size")
                 data = json.loads(self.rfile.read(n))
+                if self.path == "/conversation/test-clip":
+                    # Full dashboard authentication is required above; never accepts a
+                    # publish-only token. Reuses the real clip ledger and transcription path.
+                    import re
+
+                    if set(data) != {"clip_id", "wav_base64"} or not re.fullmatch(
+                        r"test-[A-Za-z0-9_-]{8,95}", data["clip_id"]
+                    ):
+                        raise ValueError("Use a unique test clip id and WAV data")
+                    raw = base64.b64decode(data["wav_base64"], validate=True)
+                    if len(raw) > 700000 or raw[:4] != b"RIFF" or raw[8:12] != b"WAVE":
+                        raise ValueError("Invalid test WAV")
+                    with bridge.lock:
+                        if (
+                            bridge.processing
+                            or bridge.recording
+                            or bridge.announcing
+                            or not bridge.codex
+                            or bridge.codex.busy
+                        ):
+                            raise ValueError("Wait until the current turn finishes")
+                        bridge.processing = True
+
+                    def inject():
+                        try:
+                            bridge.pi({"op": "ptt", "enabled": False})
+                            bridge.handle_clip(dict(data, released_at=time.time()))
+                        except Exception:
+                            bridge.notify(
+                                "error",
+                                {"message": "Synthetic clip failed; check state before retrying"},
+                            )
+                        finally:
+                            bridge.processing = False
+
+                    threading.Thread(target=inject, daemon=True).start()
+                    self.respond(202, {"accepted": True, "clip_id": data["clip_id"]})
+                    return
                 if self.path in bridge.application.ROUTES:
                     self.respond(200, bridge.application.execute(self.path, data))
                     return

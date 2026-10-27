@@ -393,12 +393,13 @@ async function refresh() {
       `${name === 'voice' ? 'Speaker/button Pi' : 'Display Pi'}: ${health.available ? 'connected' : 'reconnecting'}`);
     if (s.speech_health) components.push(`Voice: ${s.speech_health.available ? 'ready' : s.speech_health.error || 'warming'}`);
     if (s.github_queue_health?.configured && !s.github_queue_health.available) components.push(s.github_queue_health.error || 'GitHub relay reconnecting');
-    if (s.codex_alive === false) components.push('Codex: reconnecting');
+    if (s.codex_alive === false) components.push(s.conversation_backend === 'local' ? 'Local model unavailable; restart controller' : 'Codex: reconnecting');
     document.querySelector('#system-health').textContent=components.join(' · ');
     document.querySelector("#thread").textContent =
       (s.auto_approve_hardware
         ? "Hardware auto-approval ON · "
         : "Manual approvals · ") +
+      (s.conversation_backend === "local" ? "Local model · " : "Codex · ") +
       (s.thread_id ? "Chat: " + s.thread_id : "Transcription only");
     requests(s.approvals);
     const root = document.querySelector("#messages");
