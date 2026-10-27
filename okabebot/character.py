@@ -14,7 +14,7 @@ import time
 from typing import Literal
 import wave
 
-from .hardware import rpc as display_rpc
+from .scene import rpc as display_rpc
 from .voice import rpc as voice_rpc
 from .config import get_config, state_dir
 from . import speech, timing
@@ -80,7 +80,7 @@ def envelope(path):
     return [round(min(1, (v / max(peak, 1)) ** 0.65), 3) if v > 100 else 0 for v in rms], seconds
 
 
-def speak(text, emotion="neutral", intensity=None, voice="default"):
+def speak(text, emotion="neutral", intensity=None, voice="default", purpose="reply"):
     if intensity is None:
         intensity = current_character()["intensity"]
     if (
@@ -98,6 +98,72 @@ def speak(text, emotion="neutral", intensity=None, voice="default"):
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             raise RuntimeError("The character is already speaking")
+        from . import audio_output
+
+        route = audio_output.resolve(purpose)
+        if route["target"] == "browser":
+            if not route.get("ready"):
+                raise ValueError("Tap Enable sound on the destination screen before speaking")
+            metrics["audio_target"] = route["device_id"]
+            return stream_speak(
+                text,
+                emotion,
+                intensity,
+                voice,
+                metrics,
+                audio_output.BrowserStream(route["device_id"]),
+            )
+        if route["target"] == "beam":
+            if (
+                not text.strip()
+                or len(text) > 600
+                or emotion not in EMOTIONS
+                or voice not in ("default", "pip", *VOICES)
+            ):
+                raise ValueError("Invalid speech request")
+            selected = current_voice() if voice in ("default", "pip") else voice
+            pcm = b"".join(speech.pcm_chunks(text, emotion, selected))
+            metrics["synthesis_s"] = round(time.time() - speech_started, 3)
+            seconds = len(pcm) / 48000
+            values = array.array("h", pcm)
+            levels = [
+                min(
+                    1,
+                    math.sqrt(
+                        sum(x * x for x in values[n : n + 1200]) / max(1, len(values[n : n + 1200]))
+                    )
+                    / 5000,
+                )
+                for n in range(0, len(values), 1200)
+            ]
+            result = audio_output.play(pcm)
+            start = time.time() + 0.2
+            display_rpc(
+                {
+                    "op": "character",
+                    "activity": "speaking",
+                    "style": current_character()["style"],
+                    "emotion": emotion,
+                    "intensity": intensity,
+                    "envelope": levels,
+                    "start_at": start,
+                }
+            )
+            try:
+                if result.get("accepted"):
+                    time.sleep(seconds + 0.3)
+            finally:
+                display_rpc({"op": "character", "activity": "idle", "emotion": "neutral"})
+            metrics.update(
+                audio_target="beam", audio_s=seconds, total_s=round(time.time() - speech_started, 3)
+            )
+            timing.write("speech", metrics)
+            return dict(
+                result,
+                spoken=result.get("accepted", False),
+                duration_seconds=seconds,
+                audio_target="beam",
+            )
         if speech.engine() in ("openai", "local"):
             return stream_speak(text, emotion, intensity, voice, metrics)
         with tempfile.TemporaryDirectory() as tmp:
@@ -149,7 +215,8 @@ def speak(text, emotion="neutral", intensity=None, voice="default"):
             }
 
 
-def stream_speak(text, emotion, intensity, voice, metrics):
+def stream_speak(text, emotion, intensity, voice, metrics, output=None):
+    output = output or voice_rpc
     if (
         not text.strip()
         or len(text) > 600
@@ -170,7 +237,7 @@ def stream_speak(text, emotion, intensity, voice, metrics):
             if stream_id is None:
                 metrics["first_chunk_s"] = round(time.time() - metrics["started_at"], 3)
                 stream_started = time.monotonic()
-                stream_id = voice_rpc({"op": "stream_start"})["stream_id"]
+                stream_id = output({"op": "stream_start"})["stream_id"]
                 metrics["stream_open_s"] = round(time.monotonic() - stream_started, 3)
                 character = current_character()
                 # A cold display SSH tunnel must not delay the first speaker chunk.
@@ -186,7 +253,7 @@ def stream_speak(text, emotion, intensity, voice, metrics):
                     },
                 )
             chunk_started = time.monotonic()
-            result = voice_rpc(
+            result = output(
                 {
                     "op": "stream_chunk",
                     "stream_id": stream_id,
@@ -228,7 +295,7 @@ def stream_speak(text, emotion, intensity, voice, metrics):
                 timing.write("speech", metrics)
         if stream_id is None:
             raise RuntimeError("Speech provider returned no audio")
-        result = voice_rpc({"op": "stream_end", "stream_id": stream_id})
+        result = output({"op": "stream_end", "stream_id": stream_id})
         metrics.update(total_s=round(time.time() - metrics["started_at"], 3), audio_s=total / 48000)
         timing.write("speech", metrics)
         return {
@@ -240,7 +307,7 @@ def stream_speak(text, emotion, intensity, voice, metrics):
     except Exception:
         if stream_id:
             try:
-                voice_rpc({"op": "stream_abort", "stream_id": stream_id})
+                output({"op": "stream_abort", "stream_id": stream_id})
             except Exception:
                 pass
         raise

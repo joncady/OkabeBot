@@ -76,6 +76,10 @@ def poll(context):
             identifier,
             due,
             start.timestamp(),
+            sender_id="".join(c for c in str(event.get("ORGANIZER", "")) if ord(c) >= 32).strip()[
+                :160
+            ]
+            or None,
         )
         with context.inbox.connect() as db:
             updated = dict(

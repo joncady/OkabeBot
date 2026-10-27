@@ -81,6 +81,8 @@ class GitHubWebhook:
                         "important",
                         "workflow-" + str(run["id"]) + "-" + str(run.get("run_attempt", 1)),
                         audio="chime",
+                        sender_id=str(payload.get("sender", {}).get("login", "")).lower()[:160]
+                        or None,
                     )
             elif event == "deployment_status":
                 self.deployment(repo, payload)

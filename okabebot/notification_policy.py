@@ -16,6 +16,7 @@ DEFAULTS = {
     "quiet_hours": {"enabled": False, "start": "22:00", "end": "08:00", "timezone": "local"},
     "snoozed_until": 0,
     "sources": {},
+    "senders": [],
 }
 
 
@@ -30,6 +31,8 @@ class NotificationPolicy:
 
     @staticmethod
     def validate(value):
+        if isinstance(value, dict) and "senders" not in value:
+            value = dict(value, senders=[])  # Backward-compatible preference migration.
         if not isinstance(value, dict) or set(value) != set(DEFAULTS):
             raise ValueError("Invalid notification preferences")
         q = value["quiet_hours"]
@@ -66,6 +69,41 @@ class NotificationPolicy:
                 or rule["audio"] not in ("default", "silent", "chime", "speech")
             ):
                 raise ValueError("Source rules need enabled and audio")
+        rules = value["senders"]
+        if not isinstance(rules, list) or len(rules) > 100:
+            raise ValueError("Choose at most 100 literal sender rules")
+        seen = set()
+        for rule in rules:
+            if not isinstance(rule, dict) or set(rule) != {
+                "source",
+                "sender_id",
+                "enabled",
+                "audio",
+                "priority",
+            }:
+                raise ValueError("Invalid sender rule fields")
+            if not isinstance(rule["source"], str) or not re.fullmatch(
+                r"[a-z][a-z0-9_-]{0,29}", rule["source"]
+            ):
+                raise ValueError("Invalid sender source")
+            identity = rule["sender_id"]
+            if (
+                not isinstance(identity, str)
+                or not 1 <= len(identity) <= 160
+                or identity != identity.strip()
+                or any(ord(c) < 32 for c in identity)
+            ):
+                raise ValueError("Sender identity must be literal text, 1–160 characters")
+            if (
+                type(rule["enabled"]) is not bool
+                or rule["audio"] not in ("default", "silent", "chime", "speech")
+                or rule["priority"] not in ("default", "low", "normal", "important", "urgent")
+            ):
+                raise ValueError("Invalid sender delivery preference")
+            key = (rule["source"], identity)
+            if key in seen:
+                raise ValueError("Duplicate sender rule")
+            seen.add(key)
         return deepcopy(value)
 
     def update(self, changes):
@@ -87,6 +125,48 @@ class NotificationPolicy:
             temporary.replace(self.path)
             self.settings = candidate
             return self.snapshot()
+
+    def sender_rule(self, item):
+        with self.lock:
+            return next(
+                (
+                    dict(r)
+                    for r in self.settings["senders"]
+                    if r["source"] == item["source"] and r["sender_id"] == item.get("sender_id")
+                ),
+                {},
+            )
+
+    def enabled_item(self, item):
+        return self.enabled(item["source"]) and self.sender_rule(item).get("enabled", True)
+
+    def priority(self, item):
+        value = self.sender_rule(item).get("priority", "default")
+        return item["priority"] if value == "default" else value
+
+    def set_sender(self, source, sender_id, enabled=True, audio="default", priority="default"):
+        with self.lock:
+            rule = dict(
+                source=source, sender_id=sender_id, enabled=enabled, audio=audio, priority=priority
+            )
+            rules = [
+                r
+                for r in self.settings["senders"]
+                if (r["source"], r["sender_id"]) != (source, sender_id)
+            ]
+            return self.update({"senders": rules + [rule]})
+
+    def delete_sender(self, source, sender_id):
+        with self.lock:
+            return self.update(
+                {
+                    "senders": [
+                        r
+                        for r in self.settings["senders"]
+                        if (r["source"], r["sender_id"]) != (source, sender_id)
+                    ]
+                }
+            )
 
     def quiet(self, now=None):
         q = self.settings["quiet_hours"]
@@ -115,10 +195,13 @@ class NotificationPolicy:
     def audio(self, item, now=None):
         mode = self.settings["sources"].get(item["source"], {}).get("audio", "default")
         explicit = item.get("audio", "default")
-        if self.quiet(now) or explicit == "silent" or mode == "silent":
+        sender = self.sender_rule(item).get("audio", "default")
+        if self.quiet(now) or explicit == "silent" or mode == "silent" or sender == "silent":
             return "silent"
         if explicit == "chime":
             return "chime"
+        if sender != "default":
+            return sender
         if mode != "default":
             return mode
         return (

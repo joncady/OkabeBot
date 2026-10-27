@@ -1,0 +1,50 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "little lab",
+      "intents": [
+        {
+          "name": "LabStatusIntent",
+          "samples": [
+            "lab status",
+            "how is the lab",
+            "check the lab"
+          ]
+        },
+        {
+          "name": "LabLocationsIntent",
+          "samples": [
+            "available screens",
+            "where can you go",
+            "list locations"
+          ]
+        },
+        {
+          "name": "VoiceDemoIntent",
+          "samples": [
+            "a voice demo",
+            "say hello",
+            "try your voice"
+          ]
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        }
+      ],
+      "types": []
+    }
+  }
+}

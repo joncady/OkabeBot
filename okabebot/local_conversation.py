@@ -14,8 +14,10 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 from .config import get_config
 from .profiles import current_character
+from . import locations
 
 READ_TOOLS = {
+    "get_companion_locations",
     "get_current_media",
     "get_device_health",
     "get_calendar_agenda",
@@ -27,6 +29,7 @@ READ_TOOLS = {
     "get_bot_status",
 }
 TARGETS = {
+    "move_companion": locations.MOVE_VERB,
     "set_speaker_volume": r"\b(volume|speaker|mute)\b",
     "control_focus_session": r"\b(focus|timer)\b",
     "control_spotify": r"\bspotify\b",
@@ -37,12 +40,101 @@ TARGETS = {
     "create_reminder": r"\b(remind|reminder)\b",
     "cancel_reminder": r"\breminders?\b",
     "show_calendar_agenda": r"\b(calendar|agenda|schedule)\b",
+    "set_notification_source": r"\b(alerts?|notifications?)\b",
+    "set_sender_notification_rule": r"\b(alerts?|notifications?|sender)\b",
 }
 
 
+DOMAINS = (
+    (r"\b(volume|speaker|mute|unmute)\b", {"set_speaker_volume", "get_device_health"}),
+    (r"\b(spotify)\b", {"control_spotify", "get_current_media", "list_spotify_devices"}),
+    (r"\b(tv|television|playing|music|video|song|watching)\b", {"get_current_media"}),
+    (r"\b(switch\s*bot|wave)\b", {"press_bot", "get_bot_status"}),
+    (r"\b(focus|timer)\b", {"control_focus_session", "get_focus_session"}),
+    (r"\b(remind|reminders?)\b", {"create_reminder", "cancel_reminder", "list_reminders"}),
+    (
+        r"\b(calendar|agenda|schedule|appointments?)\b",
+        {"get_calendar_agenda", "show_calendar_agenda"},
+    ),
+    (
+        r"\b(alerts?|notifications?|inbox|missed)\b",
+        {
+            "get_recent_notifications",
+            "snooze_notifications",
+            "dismiss_notification",
+            "set_notification_source",
+            "set_sender_notification_rule",
+        },
+    ),
+    (r"\b(echo|sonos)\b|\bon\s+show\b", {"speak_on_echo", "list_echo_speakers"}),
+    (r"\b(connected|online|health|devices?|working)\b", {"get_device_health"}),
+)
+NEGATED = r"\b(don['’]t|do not|never|shouldn['’]t|wouldn['’]t|without|no need to|not now)\b"
+HYPOTHETICAL = r"\b(hypothetically|suppose|pretend|imagine|explain|describe|would happen)\b"
+
+
+def shortlist(text, available):
+    if locations.movement_request(text) and "move_companion" in available:
+        return ["move_companion"]
+    if re.search(
+        r"\b(where|which|what)\b.*\b(locations?|destinations?|screens?|you.*go|you.*are|are you)\b",
+        text,
+        re.I,
+    ):
+        return ["get_companion_locations"] if "get_companion_locations" in available else []
+    names = set()
+    for pattern, candidates in DOMAINS:
+        if re.search(pattern, text, re.I):
+            names.update(candidates)
+    question = bool(re.match(r"\s*(what|which|is|are|how|why)\b", text, re.I))
+    # Explicit verbs narrow the domain, but never add a tool absent from that domain.
+    choices = (
+        ("control_spotify", r"\b(play|resume|pause|stop|skip|next|previous)\b"),
+        ("control_focus_session", r"\b(start|begin|set|cancel|stop|end)\b"),
+        ("set_speaker_volume", r"\b(set|turn|lower|raise|reduce|increase|mute|unmute)\b"),
+        ("press_bot", r"\b(press|wave)\b"),
+        ("speak_on_echo", r"\b(say|speak|tell|announce)\b"),
+        ("snooze_notifications", r"\bsnooze\b"),
+        ("create_reminder", r"\bremind\b"),
+        ("cancel_reminder", r"\b(cancel|delete)\b"),
+        ("show_calendar_agenda", r"\bshow\b"),
+    )
+    if not question:
+        for name, pattern in choices:
+            if name in names and re.search(pattern, text, re.I):
+                return [name] if name in available else []
+    if question:
+        names -= set(TARGETS)
+    return sorted(names & set(available))
+
+
+def preflight(text):
+    if re.search(locations.MOVE_VERB, text, re.I) and (
+        re.search(NEGATED, text, re.I) or re.search(HYPOTHETICAL, text, re.I)
+    ):
+        return "I haven't moved anywhere."
+    if re.search(r"\bturn\s+(it|that|this)\s+(on|off)\b", text, re.I):
+        return "Which device do you mean?"
+    if re.search(
+        r"\b(and|then|also)\b.*\b(set|turn|pause|play|press|wave|start|cancel|mute|snooze)\b",
+        text,
+        re.I,
+    ):
+        return "Please ask for one action at a time."
+    if re.search(
+        r"\b(set|turn|press|wave|pause|start|cancel|snooze|dismiss|play|mute)\b", text, re.I
+    ) and (re.search(NEGATED, text, re.I) or re.search(HYPOTHETICAL, text, re.I)):
+        return "I haven't changed anything."
+    return None
+
+
 def validate_call(text, call, specs, policy, request_id):
+    if not isinstance(call, dict):
+        raise ValueError("I need one valid tool request.")
+    if preflight(text):
+        raise ValueError(preflight(text))
     name, args = call.get("name"), call.get("arguments", {})
-    if name not in specs or not isinstance(args, dict):
+    if name not in specs or name not in shortlist(text, specs) or not isinstance(args, dict):
         raise ValueError("That command is not available locally. Could you be more specific?")
     args = dict(args)
     if name in ("press_bot", "create_reminder"):
@@ -63,6 +155,31 @@ def validate_call(text, call, specs, policy, request_id):
             or re.match(r"\s*(what|why|how|explain|describe)\b", text, re.I)
         ):
             raise ValueError("Which device or action do you mean? Please name it explicitly.")
+        if name == "move_companion":
+            if locations.destination(text) != args.get("location_id"):
+                raise ValueError("Please name one configured destination explicitly.")
+        if name == "control_spotify":
+            if args.get("uri") and args["uri"] not in text:
+                raise ValueError("Please provide an exact Spotify URI, or ask to resume playback.")
+            verbs = {
+                "play": r"\b(play|resume|start)\b",
+                "pause": r"\b(pause|stop)\b",
+                "next": r"\b(next|skip)\b",
+                "previous": r"\b(previous|back)\b",
+            }
+            if not re.search(verbs[args["action"]], text, re.I):
+                raise ValueError("Please state the Spotify action explicitly.")
+        if name == "control_focus_session":
+            pattern = (
+                r"\b(cancel|stop|end)\b" if args["action"] == "cancel" else r"\b(start|begin|set)\b"
+            )
+            if not re.search(pattern, text, re.I):
+                raise ValueError("Please state the timer action explicitly.")
+        if name in ("set_notification_source", "set_sender_notification_rule"):
+            if args["source"].casefold() not in text.casefold():
+                raise ValueError("Please name the notification source explicitly.")
+            if name == "set_sender_notification_rule" and args["sender_id"] not in text:
+                raise ValueError("Please give the exact sender identity shown in your inbox.")
         if name == "set_speaker_volume":
             if not re.search(
                 r"\b(set|turn|lower|raise|reduce|increase|mute|unmute|make)\b", text, re.I
@@ -120,9 +237,50 @@ def validate_call(text, call, specs, policy, request_id):
     return name, args
 
 
+def parse_tool_call(output):
+    """Accept one complete native call; some tokenizers omit the closing stop token."""
+    value = output.strip()
+    native = value.startswith("<tool_call>")
+    if native:
+        if value.count("<tool_call>") != 1:
+            raise ValueError("Please ask for one action at a time.")
+        value = value[len("<tool_call>") :].strip()
+        if value.endswith("</tool_call>"):
+            value = value[: -len("</tool_call>")].strip()
+    elif "<tool_call>" in value:
+        raise ValueError("I could not validate one tool request.")
+    if native or value.startswith("{"):
+        try:
+            obj = json.loads(value)
+        except ValueError:
+            raise ValueError(
+                "I could not validate the command. Please repeat it explicitly."
+            ) from None
+        if not isinstance(obj, dict):
+            raise ValueError("I need one valid tool request.")
+        if "name" in obj:
+            if set(obj) != {"name", "arguments"}:
+                raise ValueError("Unexpected tool request fields.")
+            return obj
+        if native:
+            raise ValueError("Missing tool name.")
+    return None
+
+
 def acknowledgement(name, result):
     if isinstance(result, dict) and result.get("error"):
         return "The request failed. Please check the dashboard before trying again."
+    if name == "move_companion":
+        return (
+            ("I'm already at " if result.get("already_there") else "Heading to ")
+            + result["destination_name"]
+            + "."
+        )
+    if name == "get_companion_locations":
+        state = result.get("surfaces", {})
+        return (
+            "My destinations are " + ", ".join(p["name"] for p in state.get("locations", [])) + "."
+        )
     if name == "set_speaker_volume":
         return "Speaker volume is now %s percent." % result["percent"]
     if name == "press_bot":
@@ -137,7 +295,7 @@ def acknowledgement(name, result):
         return "Spotify accepted the request. Playback is not independently confirmed."
     if name == "speak_on_echo":
         return "The message was sent to the selected Echo."
-    if name == "snooze_notifications":
+    if name in ("snooze_notifications", "set_notification_source", "set_sender_notification_rule"):
         return "Notification preferences updated."
     if name == "dismiss_notification":
         return "Notification dismissed."
@@ -202,17 +360,18 @@ def acknowledgement(name, result):
 class LocalConversation:
     label = "Local model"
 
-    def __init__(self, folder, notify, completed):
+    def __init__(self, folder, notify, completed, executor=None, settings=None):
         from . import server
 
         self.notify, self.completed = notify, completed
+        self.executor = executor
         self.lock = threading.RLock()
         self.approvals = {}
         self.busy = False
         self.thread_id = "local-conversation"
         self.cancelled = threading.Event()
         self.closed = False
-        self.settings = get_config()["conversation"]
+        self.settings = settings or get_config()["conversation"]
         self.policy = get_config()["approvals"]
         allowed = READ_TOOLS | set(TARGETS)
 
@@ -228,6 +387,7 @@ class LocalConversation:
             for t in asyncio.run(tools())
             if t.name in allowed
         }
+        self.refresh_locations()
         worker_specs = copy.deepcopy(self.specs)
         for name in ("press_bot", "create_reminder"):
             worker_specs[name]["parameters"]["properties"].pop("request_id", None)
@@ -235,6 +395,12 @@ class LocalConversation:
             worker_specs[name]["parameters"]["required"] = [
                 k for k in required if k != "request_id"
             ]
+        worker_specs["press_bot"]["description"] = (
+            "Wave or press the SwitchBot once. Takes no arguments; the application assigns its ID."
+        )
+        worker_specs["get_device_health"]["description"] = (
+            "Check whether the Pi, display, speaker and other configured devices are connected or online."
+        )
         env = dict(os.environ)
         env["PYTHONPATH"] = str(Path(__file__).resolve().parent.parent)
         self.log = (Path(folder) / "local-model.log").open("a")
@@ -272,15 +438,26 @@ class LocalConversation:
             self.close()
             raise
         try:
-            self.process.stdin.write(
-                json.dumps(
-                    {"text": "Hello.", "persona": current_character()["persona"], "warmup": True}
+            for text in (
+                "Hello.",
+                "Set speaker volume to five percent.",
+                "What is playing on TV?",
+                "Wave with SwitchBot.",
+            ):
+                self.process.stdin.write(
+                    json.dumps(
+                        {
+                            "text": text,
+                            "persona": current_character()["persona"],
+                            "tool_names": shortlist(text, self.specs),
+                            "warmup": True,
+                        }
+                    )
+                    + "\n"
                 )
-                + "\n"
-            )
-            self.process.stdin.flush()
-            if self._read(120).get("error"):
-                raise RuntimeError("Local warmup failed")
+                self.process.stdin.flush()
+                if self._read(120).get("error"):
+                    raise RuntimeError("Local warmup failed")
         except Exception:
             self.close()
             raise
@@ -304,13 +481,88 @@ class LocalConversation:
             self.cancelled.clear()
         threading.Thread(target=self._turn, args=(text,), daemon=True).start()
 
+    def compose_welcome(self, character, reference):
+        """One tool-free generation on the warm worker, separate from user chat."""
+        from .welcome import EXAMPLES, validate_intro
+
+        with self.lock:
+            if self.busy or self.closed or self.process.poll() is not None:
+                raise ValueError("Local model unavailable for welcome")
+            self.busy = True
+            self.cancelled.clear()
+        try:
+            style = character.get("style", "configured")
+            history = getattr(self, "welcome_history", {})
+            self.process.stdin.write(
+                json.dumps(
+                    {
+                        "task": "welcome",
+                        "text": "Welcome the user home with a fresh, natural line in your own personality.",
+                        "persona": character.get("welcome_persona") or character["persona"],
+                        "reference": reference,
+                        "examples": EXAMPLES.get(style, EXAMPLES["pip"]),
+                        "recent": history.get(style, [])[-3:],
+                        "tool_names": [],
+                    }
+                )
+                + "\n"
+            )
+            self.process.stdin.flush()
+            result = self._read()
+            if self.cancelled.is_set():
+                raise InterruptedError("Welcome cancelled")
+            if result.get("error") or result.get("tool_call"):
+                raise ValueError("Welcome generation failed")
+            intro = validate_intro(result.get("text"))
+            history[style] = (history.get(style, []) + [intro])[-3:]
+            self.welcome_history = history
+            self.notify("welcome_generation", {"selection_s": result.get("selection_s")})
+            return intro
+        finally:
+            with self.lock:
+                self.busy = False
+
+    def refresh_locations(self):
+        if "move_companion" not in self.specs:
+            return
+        from . import locations
+
+        places = locations.configured()
+        self.specs["move_companion"]["parameters"]["properties"]["location_id"]["enum"] = [
+            p["id"] for p in places
+        ]
+        self.specs["move_companion"]["description"] = (
+            "Move companion to one configured location: "
+            + "; ".join(
+                p["id"] + " = " + p["name"] + " (" + ", ".join(p["aliases"]) + ")" for p in places
+            )
+        )
+
     def _turn(self, text):
         from . import server
 
         status = "completed"
         try:
+            self.refresh_locations()
+            clarification = preflight(text)
+            if clarification:
+                self.notify("assistant", {"text": clarification, "phase": "final_answer"})
+                if not self.cancelled.is_set():
+                    self.completed(clarification, status)
+                return
             self.process.stdin.write(
-                json.dumps({"text": text[:2000], "persona": current_character()["persona"]}) + "\n"
+                json.dumps(
+                    {
+                        "text": text[:2000],
+                        "location_tool": {
+                            "type": "function",
+                            "function": self.specs.get("move_companion"),
+                        },
+                        "persona": current_character()["persona"],
+                        "tool_names": shortlist(text, self.specs),
+                    }
+                )
+                + "\n"
             )
             self.process.stdin.flush()
             result = self._read()
@@ -322,21 +574,19 @@ class LocalConversation:
                 "local_model",
                 {
                     k: result[k]
-                    for k in ("selection_s", "prompt_tokens", "generated_tokens")
+                    for k in (
+                        "selection_s",
+                        "prompt_tokens",
+                        "generated_tokens",
+                        "cached_tokens",
+                        "prefill_s",
+                    )
                     if k in result
                 },
             )
             output = result["text"].strip()
-            matches = re.findall(r"<tool_call>\s*(.*?)\s*</tool_call>", output, re.S)
-            if matches:
-                if len(matches) != 1 or output.count("<tool_call>") != 1:
-                    raise ValueError("Please ask for one action at a time.")
-                try:
-                    call = json.loads(matches[0])
-                except ValueError:
-                    raise ValueError(
-                        "I could not validate the command. Please repeat it explicitly."
-                    ) from None
+            call = result["tool_call"] if "tool_call" in result else parse_tool_call(output)
+            if call is not None:
                 name, args = validate_call(
                     text, call, self.specs, self.policy, "local-" + uuid.uuid4().hex
                 )
@@ -344,7 +594,11 @@ class LocalConversation:
                     return
                 self.notify("local_tool", {"tool": name, "selection_s": result["selection_s"]})
                 tool_started = time.monotonic()
-                actual = getattr(server, name)(**args)
+                actual = (
+                    self.executor(name, args)
+                    if getattr(self, "executor", None)
+                    else getattr(server, name)(**args)
+                )
                 self.notify(
                     "local_execution",
                     {"tool": name, "duration_s": round(time.monotonic() - tool_started, 3)},
@@ -355,7 +609,7 @@ class LocalConversation:
                     output = json.loads(output).get("clarify", "Please name the device and action.")
                 except ValueError:
                     output = "Please name the device and action."
-            if not matches and re.search(
+            if call is None and re.search(
                 r"\b(set|turn|press|wave|pause|start|cancel|snooze|dismiss|remind|show|play|mute)\b",
                 text,
                 re.I,
@@ -398,4 +652,8 @@ class LocalConversation:
             self.process.wait(timeout=5)
         except subprocess.TimeoutExpired:
             self.process.kill()
+        if self.process.stdin:
+            self.process.stdin.close()
+        if self.process.stdout:
+            self.process.stdout.close()
         self.log.close()

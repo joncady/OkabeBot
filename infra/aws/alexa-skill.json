@@ -1,0 +1,248 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Little Lab development skill: skill-scoped Lambda, generic audio and optional APL scene. No household tools or public endpoint.",
+  "Parameters": {
+    "SkillId": {
+      "Type": "String",
+      "AllowedPattern": "amzn1\\.ask\\.skill\\.[a-zA-Z0-9-]+"
+    },
+    "EnableVisuals": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "true",
+        "false"
+      ]
+    }
+  },
+  "Resources": {
+    "Audio": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "CorsConfiguration": {
+          "CorsRules": [
+            {
+              "AllowedHeaders": [
+                "*"
+              ],
+              "AllowedMethods": [
+                "GET",
+                "HEAD"
+              ],
+              "AllowedOrigins": [
+                "*"
+              ],
+              "MaxAge": 300
+            }
+          ]
+        }
+      }
+    },
+    "AudioPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "Audio"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "Audio",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${Audio.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "Role": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "GenericDemoAssetsOnly",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:GetObject",
+                  "Resource": [
+                    {
+                      "Fn::Sub": "${Audio.Arn}/generic/demo.mp3"
+                    },
+                    {
+                      "Fn::Sub": "${Audio.Arn}/generic/scene/idle.png"
+                    },
+                    {
+                      "Fn::Sub": "${Audio.Arn}/generic/scene/talk-a.png"
+                    },
+                    {
+                      "Fn::Sub": "${Audio.Arn}/generic/scene/talk-b.png"
+                    },
+                    {
+                      "Fn::Sub": "${Audio.Arn}/generic/scene/blink.png"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "Skill": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Runtime": "python3.12",
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "Role",
+            "Arn"
+          ]
+        },
+        "Timeout": 7,
+        "MemorySize": 512,
+        "ReservedConcurrentExecutions": 2,
+        "Environment": {
+          "Variables": {
+            "SKILL_ID": {
+              "Ref": "SkillId"
+            },
+            "AUDIO_BUCKET": {
+              "Ref": "Audio"
+            },
+            "VISUALS_ENABLED": {
+              "Ref": "EnableVisuals"
+            }
+          }
+        },
+        "Code": {
+          "ZipFile": "# Filled by deploy-alexa-skill.py"
+        }
+      }
+    },
+    "Logs": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${Skill}"
+        },
+        "RetentionInDays": 7
+      }
+    },
+    "LogPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "BoundedSkillLogs",
+        "Roles": [
+          {
+            "Ref": "Role"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${Skill}:*"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "AlexaPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "Skill"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "alexa-appkit.amazon.com",
+        "EventSourceToken": {
+          "Ref": "SkillId"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "FunctionArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Skill",
+          "Arn"
+        ]
+      }
+    },
+    "FunctionName": {
+      "Value": {
+        "Ref": "Skill"
+      }
+    },
+    "AudioBucket": {
+      "Value": {
+        "Ref": "Audio"
+      }
+    }
+  }
+}

@@ -44,3 +44,105 @@ class LocalSpeechTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CharacterBackendTests(unittest.TestCase):
+    def test_switching_characters_falls_back_locally_and_switches_back(self):
+        profile = {"style": "kurisu"}
+        with (
+            patch.object(speech, "requested_engine", return_value="local"),
+            patch.object(
+                speech, "get_config", return_value={"speech": {"local_fallback": "system"}}
+            ),
+            patch.object(speech, "local_characters", return_value=("okabe", "kurisu")),
+            patch.object(speech.platform, "system", return_value="Darwin"),
+            patch("okabebot.profiles.current_character", side_effect=lambda: profile),
+        ):
+            for style, expected in [
+                ("kurisu", "local"),
+                ("sonic", "say"),
+                ("pip", "say"),
+                ("okabe", "local"),
+                ("kurisu", "local"),
+            ]:
+                profile["style"] = style
+                self.assertEqual(speech.engine(), expected)
+
+    def test_outage_does_not_silently_change_a_supported_voice(self):
+        with (
+            patch.object(speech, "requested_engine", return_value="local"),
+            patch.object(
+                speech, "get_config", return_value={"speech": {"local_fallback": "system"}}
+            ),
+            patch.object(speech, "local_characters", side_effect=ConnectionError),
+        ):
+            self.assertEqual(speech.engine(), "local")
+
+    def test_fallback_can_be_explicitly_disabled(self):
+        with (
+            patch.object(speech, "requested_engine", return_value="local"),
+            patch.object(speech, "get_config", return_value={"speech": {"local_fallback": "none"}}),
+            patch.object(speech, "local_characters") as capabilities,
+        ):
+            self.assertEqual(speech.engine(), "local")
+            capabilities.assert_not_called()
+
+    def test_system_fallback_produces_the_shared_pcm_contract_without_cloud(self):
+        import wave
+
+        pcm = b"\x01\x00" * 30000
+
+        def synthesize(text, emotion, voice, target, sample_rate):
+            self.assertEqual(sample_rate, 24000)
+            with wave.open(str(target), "wb") as wav:
+                wav.setparams((1, 2, sample_rate, 0, "NONE", "not compressed"))
+                wav.writeframes(pcm)
+
+        with (
+            patch.object(speech, "engine", return_value="say"),
+            patch.object(speech, "synthesize", side_effect=synthesize),
+            patch.object(speech, "urlopen") as cloud,
+        ):
+            chunks = list(speech.pcm_chunks("Hello", "neutral", "warm"))
+        self.assertEqual(b"".join(chunks), pcm)
+        self.assertTrue(all(0 < len(c) <= 24000 and len(c) % 2 == 0 for c in chunks))
+        cloud.assert_not_called()
+
+    def test_fallback_health_explains_effective_and_requested_backends(self):
+        with (
+            patch.object(speech, "engine", return_value="say"),
+            patch.object(speech, "requested_engine", return_value="local"),
+            patch.object(speech.shutil, "which", return_value="/usr/bin/say"),
+        ):
+            status = speech.health()
+        self.assertTrue(status["available"])
+        self.assertTrue(status["fallback"])
+        self.assertEqual(status["requested_backend"], "local")
+        self.assertEqual(status["backend"], "say")
+
+    def test_capabilities_refresh_when_worker_endpoint_changes(self):
+        import os
+        import tempfile
+        from pathlib import Path
+
+        speech._local_characters.cache_clear()
+        self.addCleanup(speech._local_characters.cache_clear)
+        with tempfile.TemporaryDirectory() as folder:
+            endpoint = Path(folder) / "voice.sock"
+            endpoint.touch()
+            with (
+                patch.object(
+                    speech, "get_config", return_value={"speech": {"local_socket": str(endpoint)}}
+                ),
+                patch.object(
+                    speech,
+                    "local_worker_status",
+                    side_effect=[{"characters": ["kurisu"]}, {"characters": ["kurisu", "sonic"]}],
+                ) as status,
+            ):
+                self.assertEqual(speech.local_characters(), ("kurisu",))
+                self.assertEqual(speech.local_characters(), ("kurisu",))
+                timestamp = endpoint.stat().st_mtime_ns + 1000000000
+                os.utime(endpoint, ns=(timestamp, timestamp))
+                self.assertEqual(speech.local_characters(), ("kurisu", "sonic"))
+                self.assertEqual(status.call_count, 2)

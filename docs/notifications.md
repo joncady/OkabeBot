@@ -1,6 +1,9 @@
 # Notifications and tablet controller
 
-Run the controller on one host at a time. The Mac can control the existing display and voice Pis over SSH; deployment to a different controller is a separate step.
+Run the controller on one host at a time. The current Mac controls one combined
+display/voice Pi over SSH; separate Pis remain supported. See the
+[deployment inventory](deployment.md) for active settings. Migration to a different
+controller is a separate step.
 
 ## Tablet access
 
@@ -40,7 +43,9 @@ lookback is `notifications.workflow_lookback_days` (default 30, range 1–90): r
 of runs created before that window are outside coverage. All pages within the window
 are read, so large repositories may consume substantial GitHub API quota. Access
 failures appear in source health; this does not cover third-party check providers.
-Signed webhooks remain a future option for faster, lower-quota delivery.
+These paragraphs describe the optional polling adapters. The current deployment
+instead uses the signed AWS webhook/SQS path below with GitHub API polling
+disabled; it does not run both observation approaches by default.
 
 Google Calendar starts with its read-only private iCal feed. Put `ICAL_FEED="https://..."` in `.env` beside the local JSON, or set the environment variable. Never commit the secret feed. Google Calendar → Settings → calendar → Integrate calendar → Secret address in iCal format. Do not make the calendar public.
 

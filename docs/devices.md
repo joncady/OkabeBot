@@ -2,6 +2,11 @@
 
 Run `service.py` for the display/camera/Bluetooth role and `voice_service.py` for the audio/button role. They can share one Pi or run separately. Device scripts are intentionally independent of the Python 3.10+ controller package so legacy Python 3.7 satellites remain usable.
 
+For what is actually deployed, see the [current deployment inventory](deployment.md)
+and [README topology diagram](../README.md#current-deployment-map). The active
+satellite is a single Pi Zero W running both services; the commands below are
+generic installation examples, not a second live deployment.
+
 ## Dependencies and hardware
 
 On a compatible Raspberry Pi OS installation, the baseline packages are:
@@ -73,7 +78,9 @@ After 35 seconds of quiet idle, Okabe/Kurisu silently use a phone and Sonic wags
 Open **Dev → Speaker volume** to adjust 0–100% or mute/unmute. Changes apply
 immediately to speech and chimes, including audio already playing. The Voice
 service saves `volume.local.json` on the speaker device and restores it when
-restarted; the current setup is left at a quiet 15%.
+restarted. Read the current saved/live level in Dev; there is no universal safe
+percentage across different ALSA mixers, and documentation does not pin a user's
+changing volume preference.
 
 The device configuration accepts `audio_mixer_control` (default `Master`) and
 `audio_mixer_card` (default empty, using the ALSA default card). These select the

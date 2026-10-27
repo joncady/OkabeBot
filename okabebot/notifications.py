@@ -51,7 +51,19 @@ class Inbox:
         audio="default",
         group_key=None,
         group_title=None,
+        sender_id=None,
+        sender_label=None,
     ):
+        for value, limit in ((sender_id, 160), (sender_label, 80)):
+            if value is not None and (
+                not isinstance(value, str)
+                or not 1 <= len(value) <= limit
+                or value != value.strip()
+                or any(ord(c) < 32 for c in value)
+            ):
+                raise ValueError("Invalid literal sender metadata")
+        if sender_label is not None and sender_id is None:
+            raise ValueError("Sender label requires a stable sender_id")
         now = time.time()
         if group_key is not None and (
             not isinstance(group_key, str) or not 1 <= len(group_key) <= 100
@@ -86,6 +98,16 @@ class Inbox:
         identifier = uuid.uuid4().hex
         payload = dict(id=identifier, source=source, title=title, body=body, priority=priority)
         payload["audio"] = audio
+        if sender_id is not None:
+            payload.update(sender_id=sender_id, sender_label=sender_label or sender_id)
+            from .notification_policy import NotificationPolicy
+
+            priority = NotificationPolicy(self.path.parent).priority(payload)
+            payload["priority"] = priority
+            if group_key:
+                import hashlib
+
+                group_key += ":sender-" + hashlib.sha256(sender_id.encode()).hexdigest()[:16]
         if group_key:
             payload.update(group_key=group_key, group_title=group_title or "Related activity")
         with self.connect() as db:

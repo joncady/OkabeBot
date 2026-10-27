@@ -1,6 +1,6 @@
 # AI Hardware Lab — OkabeBot
 
-A push-to-talk Codex companion with a talking pixel character and MCP tools for real hardware. Hold a button, speak, and release. Local speech recognition transcribes the recording; Codex can answer aloud, change expressions, show a picture, use a camera, or press a SwitchBot.
+A push-to-talk companion with a talking pixel character and shared dashboard/MCP tools for real hardware. Hold a button, speak, and release. The current deployment runs speech recognition, Qwen conversation and Qwen speech locally on a Mac; Codex remains an optional backend and the repository default for fresh configurations. The companion can answer aloud, change expressions, show pictures, use a camera, and press a SwitchBot.
 
 The default character is an original pixel-art interpretation of **Rintaro Okabe from Steins;Gate**: dark hair, lab coat, expressive eyes, and an audio-driven mouth. This is an unofficial fan project, with no affiliation or endorsement. The artwork is drawn in code; no anime frames or actor voice recordings are included. Pip, the original robot face, remains an option.
 
@@ -26,8 +26,74 @@ messages, not screenshots of private account activity.
 
 Each device endpoint independently selects `local` or `ssh`. Both use the same loopback HTTP protocol. SSH connections use your existing verified host keys; no hardware service needs an exposed network port.
 
-The existing deployment uses a Mac controller and one legacy Pi Zero WH satellite
-combining display, camera, Bluetooth, audio and button services. **The all-in-one ARM64 setup is an architectural option, not yet hardware-validated.** A Pi Zero cannot run this controller stack. Use a modern 64-bit Pi with sufficient RAM and supported dependencies for local Whisper and Codex CLI. Codex model inference still requires the OpenAI service; “local” refers to transcription, speech synthesis, and tool execution.
+The existing deployment uses a Mac controller and one legacy **Pi Zero W** satellite
+combining display, camera, Bluetooth, audio and button services. **The all-in-one ARM64 setup is an architectural option, not yet hardware-validated.** A Pi Zero cannot run this controller stack. The current MLX conversation and voice workers require Apple Silicon; Linux/Dell or an ARM64 Pi needs different inference workers or a supported remote backend. Selecting Codex uses the OpenAI service for conversation; selecting the deployed local Qwen backend does not.
+
+## Current deployment map
+
+Last verified **2026-10-26**. The Mac hosts inference, orchestration and Home
+Assistant; the Pi handles physical I/O and renders the character. A tablet is a
+browser controller, not a backend. See the [live configuration inventory](docs/deployment.md)
+for device status, model settings, ports, private configuration and recovery.
+
+```mermaid
+flowchart TB
+    Tablet["Tablet or laptop browser"] -->|"Remembered-auth dashboard: 8768"| App
+    subgraph Mac["Mac - active controller"]
+        Supervisor["Login LaunchAgent and runtime supervisor"] --> App["OkabeBot controller and shared actions"]
+        Supervisor --> Speech["Warm Qwen TTS worker"]
+        App --> ASR["Whisper base.en transcription"]
+        App --> Chat["Warm Qwen 4B MLX conversation worker"]
+        App -->|"Private Unix socket"| Speech
+        App -->|"Characters without Qwen references"| SystemVoice["macOS system voice fallback"]
+        HA["Home Assistant Container: 8123"] -->|"Scoped notifications, Alexa schedules and arrivals"| App
+        MCP["Optional stdio MCP server"] --> App
+        App --> Places["Configured and paired destinations; spatial layout and shared move interface"]
+        MacPanel["Native floating Mac companion"] <-->|"Paired surface, hold-to-talk and streamed audio: localhost 8768"| App
+    end
+    subgraph Pi["One Pi Zero W - hardware satellite"]
+        Display["hardware-lab: loopback 8765"] --> LCD["UCTRONICS 3.5 inch LCD: 480 x 320"]
+        Display --- Camera["CSI camera and IR LED boards"]
+        Display <-->|"Bluetooth LE"| Bot["SwitchBot Bot"]
+        Voice["hardware-voice: loopback 8766"] --- Bonnet["AIY Voice Bonnet: mic, speaker and button"]
+    end
+    App <-->|"Verified SSH: scenes, camera and Bot tools"| Display
+    App <-->|"Verified SSH: recordings, PCM and button events"| Voice
+    TV["Vizio TV / Cast receiver"] -->|"Cast media callbacks"| App
+    App -->|"Explicit DashCast launch and scoped TV dashboard: 8768"| TV
+    Places -->|"Acknowledged character handoff; Pi away sign"| Display
+    Places -->|"Doorway ingress and room monitors"| TV
+    Beam["Sonos Beam - announcement overlay trial accepted"]
+    App -.->|"Native audioClip trial; production routing pending"| Beam
+    App <-->|"Playback control API"| Spotify["Spotify"]
+    Home["Tuya door sensor, Ring and Alexa devices"] <-->|"Provider integrations"| HA
+    Mobile["Paired mobile web companion and video PiP"] -.->|"Paired character and streamed reply audio; HTTPS 8780 for mic"| App
+    Phone["Android phone presence - not reliable while away yet"] -.-> HA
+    GitHub["GitHub signed webhooks"] --> Lambda["AWS Lambda signature verification"]
+    Lambda --> SQS["Private SQS queue and DLQ"]
+    SQS -->|"Outbound consumer on Mac"| App
+    Calendar["Google Calendar private iCal feed"] -->|"Read-only periodic fetch"| App
+    AlexaSkill["Alexa development skill: generic voice and APL scene"] --> SkillLambda["Skill-scoped AWS Lambda: us-east-1"]
+    SkillLambda -->|"Five-minute signed HTTPS asset URLs"| SkillAudio["Private S3: generic voice and pixel frames"]
+```
+
+The first door opening after 3 p.m. currently provides a once-daily welcome
+shortcut. Its spoken intro is freshly generated by the selected character's local
+model, with the important-update recap appended from verified inbox data. Set
+`notifications.generated_welcomes: false` for the fixed-quip fallback.
+Automatic phone-presence welcomes still need reliable away updates;
+The Alexa history-command bridge is disabled; a generic-voice development skill is deployed on AWS, with physical Echo acceptance pending. The Dell is not the active host,
+and the HP Stream tablet is not a validated always-on console.
+
+The dashboard lists configured and first-visit discovered locations, with screen approval, rename, movement controls and a draggable spatial layout. A native Mac floating window and mobile browser share the paired character page, with direct screen-to-screen transfers that keep the Pi away; see [browser and Mac setup](docs/browser-surfaces.md).
+The companion leaves the Pi before walking through the TV lab doorway; the
+Pi keeps a “be back soon” sign until its return. This is an explicitly launched
+DashCast prototype, with automatic return on lost receiver state. See
+[companion surfaces](docs/surfaces.md) for setup, named destinations, voice/MCP
+controls and limitations. Physical Vizio remote input is deferred after testing. The TV is a 2.5D pixel lab: updates live on its monitors
+and the character walks between room anchors.
+Sonos Beam overlay speech passed an audible trial; automatic speaker routing and
+voice following the character remain separate work.
 
 ## Quick start
 
@@ -53,7 +119,7 @@ combining display, camera, Bluetooth, audio and button services. **The all-in-on
 
 5. Open the loopback control URL printed in the terminal. It contains a private access token. Hold the hardware button while speaking, release to submit (20-second maximum). The page shows transcripts, tool activity, and any remaining approval prompts. Stop the controller with Ctrl-C.
 
-The controller resumes its saved Codex chat. The button disarms while Codex works or speaks. A renewable lease disarms it if the controller disconnects. Recordings are deduplicated before submission; uncertain actions are not automatically replayed.
+With the Codex backend, the controller resumes its saved Codex chat. With the local backend, it uses the warm configured model worker. The button disarms while a turn runs or speaks. A renewable lease disarms it if the controller disconnects. Recordings are deduplicated before submission; uncertain actions are not automatically replayed.
 
 For supervised Mac startup, run **`./scripts/start-mac.sh`** from this checkout.
 It starts the configured voice worker, waits for its warm-up, and starts the
@@ -220,7 +286,7 @@ Unit tests use mocks and do not actuate hardware. The separate `tests/*_smoke.py
 - `examples/`: public, credential-free topology/configuration examples.
 - `tests/`: offline tests and explicitly invoked live checks.
 
-Local configs (`*.local.json`), state, SSH keys, recordings, and transcripts are ignored. Keep private material outside source control. Hardware services bind only to loopback and trust local processes; they are not intended for untrusted multi-user hosts. The control page is loopback-only and token protected. For a remote controller, forward its port through SSH rather than exposing it publicly.
+Local configs (`*.local.json`), state, SSH keys, recordings, and transcripts are ignored. Keep private material outside source control. Hardware services bind only to loopback and trust local processes; they are not intended for untrusted multi-user hosts. The control page defaults to loopback and is token protected; the current tablet deployment explicitly binds a trusted LAN interface. Keep its full token-bearing URL private. Use a VPN or SSH forwarding for access beyond that LAN rather than exposing the dashboard publicly.
 
 Code is MIT licensed. Bundled DejaVu fonts retain their own license in `okabebot/assets/LICENSE-DejaVu.txt`. Steins;Gate and its characters belong to their respective rights holders; the code license does not grant rights to those characters.
 
@@ -329,9 +395,86 @@ correlate confirmed phone presence with a recent door opening. The selected
 character delivers a short quip and a bounded recap of important inbox events from
 the absence, without an extra LLM turn. Quiet hours and existing volume rules apply.
 Reliable away/home phone updates are required; door opening alone never means arrival.
+An optional [afternoon door shortcut](docs/home-assistant.md#temporary-afternoon-door-shortcut)
+can greet on the first door opening after 3 p.m. each day while phone presence is
+being configured; it summarizes today's updates without inferring an absence.
 
 An optional [local conversation backend](docs/local-conversation.md) keeps a Qwen
 4B model warm on an Apple Silicon controller for fast tool selection and casual
 chat. The Pi button still uses the same recording/transcription/action/speech path.
 Explicit targets, existing action allowlists, schema checks and durable clip IDs
 remain in force. Set `conversation.backend` back to `codex` to roll back.
+
+The [isolated local regression suite](docs/local-conversation.md#isolated-regression-suite)
+checks tool selection and optional real transcription/speech generation without
+actuating devices. An optional local inference-server worker accepts structured
+tool calls; see the [runtime comparison](docs/local-runtime-evaluation.md) before
+changing the deployed backend. Dev also retains a bounded history of turn timings.
+
+Additional destination research: [Echo Show skills, mobile browser and phone PiP](docs/surface-options.md).
+Alexa remains proposed. Paired browser and native Mac destinations are implemented; physical Android display/PiP and voice input are confirmed; the full Mac microphone/reply round trip is user-confirmed; phone speaker retest remains pending. Direct Mac ↔ TV transfers and native Mac streamed-audio completion are verified.
+
+The dashboard root is a stable bookmark. Open the authorized setup link once per
+browser; verified access is remembered and the key is removed from the address.
+See [stable dashboard setup](docs/browser-surfaces.md#stable-authenticated-dashboard-bookmark).
+
+Locations now expose a configurable audio destination. Browser/Mac replies can
+stream to that device or its OS-linked speaker after Enable sound; Pi and
+configured Sonos routing are selectable. Announcement routing stays separate.
+Mobile talk controls include hold and tap modes. See [surface audio](docs/browser-surfaces.md#audio-destinations-and-mobile-talk-controls).
+
+Approved companion pages include **Call companion here** to summon the character
+onto that screen. It uses the existing handoff and does not start recording.
+
+Surface UI conventions, activity icons, permission onboarding and per-device density are maintained in the [design language](docs/design-language.md). The Mac companion uses a transparent pixel character overlay with icon controls and expandable setup/settings.
+
+Local speech selects Qwen for characters with worker references and a local system voice for unsupported characters. `speech.local_fallback: "none"` disables that fallback; see [local speech routing](docs/local-conversation.md#per-character-speech-routing).
+
+The current local Qwen deployment includes all four character references (Okabe, Kurisu, Sonic and original synthetic Pip). Reference audio stays private; system fallback remains for unsupported characters. The Mac uses a visible six-dot drag button beside its controls.
+
+Sonic has a Green Hill-inspired home environment on web surfaces: a transparent island on Mac/phone and an outdoor TV scene. Other characters keep the pixel lab; see the [surface design language](docs/design-language.md#character-home-environments).
+
+Compact Mac/phone companions share pixel notification cards, and reply speech
+waits for screen handoffs to settle. Browser recovery discards stale audio rather
+than replaying it; see [surface behavior and acceptance](docs/browser-surfaces.md#compact-cards-and-recovery).
+
+A recording with no clear speech returns the character to idle; see
+[companion recovery](docs/browser-surfaces.md#compact-cards-and-recovery) for
+loading-state and reconnect behavior.
+
+If Little Lab animates speech silently, **Settings → Enable sound** rebuilds the
+Mac playback graph without changing volume. The native app also rebuilds it on
+wake; see [audio recovery](docs/browser-surfaces.md#compact-cards-and-recovery).
+
+Mac native rebuilds use ad-hoc signing by default and can require microphone
+consent again. Set `OKABEBOT_MAC_SIGN_IDENTITY` to a consistent installed Apple
+signing identity for stable builds; see [permission persistence](docs/browser-surfaces.md#mac-permission-persistence).
+
+Alexa timer and reminder sensors can now feed silent scheduled-time cards through
+the Home Assistant package; see [setup and polling limits](docs/alexa.md#timer-and-reminder-cards). Alexa remains responsible for the actual alarm.
+
+An opt-in Alexa voice-event bridge maps selected phrases to welcome recaps or
+registered-location movement, using a separate scoped token and persistent replay
+guards. See [configuration and limitations](docs/alexa.md#explicit-voice-event-bridge).
+
+The pinned Alexa history adapter needs original Amazon event timestamps for
+replay safety; [compatibility setup](docs/alexa.md#history-format-compatibility)
+includes the guarded check/backport and source-specific history format mapping.
+
+Alexa custom-skill work now has a [local protocol and voice prototype](docs/alexa-skill.md), with read-only shared tools and a generic Qwen MP3 trial. The generic voice-demo endpoint is deployed as a skill-scoped AWS Lambda; local household tools are not connected to that endpoint yet.
+
+The Alexa development skill can also return a [session-scoped pixel character](docs/alexa-skill.md#apl-character-prototype) on APL screens. This is a demo scene with bounded speaking/blink animation, not yet a registered spatial destination or a live notification display.
+
+### Scene-set preview
+
+Source includes two pixel-art sets per character, with Room and Companion views.
+Location assignments reserve a set per character and prevent duplicate places
+across screens. This is not yet activated in the installed deployment; hosting
+and the Current deployment map are unchanged. See [scene sets and setup rules](docs/surfaces.md#scene-sets-and-world-rules-source-preview)
+for the catalog, review gallery command and migration limitations.
+
+Scene-world setup is explicit and initializes every character's home reservation
+in one step. Assignment edits protect the occupied set and return destination;
+these source-only changes do not alter the deployed topology.
+
+![Green Hill scene-set preview](docs/green-hill-preview.png)

@@ -56,3 +56,60 @@ ledger, Whisper, configured backend and speaker path. Reuse the same clip ID aft
 an uncertain response. This route intentionally performs actual tools and speech;
 do not use it for a physical-action test unless those effects are authorized.
 It bypasses the physical button, recording and Pi-to-controller audio upload.
+
+## Isolated regression suite
+
+Run the portable suite with `python -m unittest discover -s tests`. Its full-path
+test uses deterministic ASR/model/PCM doubles, real clip handling, validation and
+application state. It verifies one dispatch per clip and byte-preserving speech
+buffering; it is not a model-quality or acoustic-quality test.
+
+With a configured local worker and model cache, run real inference separately:
+
+```sh
+python scripts/local-regression.py \
+  --fixtures tests/fixtures/local_commands.json \
+  --output .local/regression.json
+```
+
+Set `OKABEBOT_CONFIG` to the private configuration if necessary. Add `--speech` to
+generate real voice-worker PCM and inspect nonzero signal, duration and buffering;
+the PCM is discarded. Add `--audio` on macOS to synthesize input with `say` and
+exercise real Whisper/clip handling. This bypasses button capture/upload and does
+not play audio or measure perceived pronunciation. All tool dispatch uses isolated
+temporary application state and simulated external devices, never production
+SwitchBot, Spotify, Echo or speaker calls. Reports contain synthetic test text.
+
+`--case ID` selects cases. `--max-action-seconds N` adds an explicit latency budget.
+`--worker-command 'python -m okabebot.http_worker'` and `--model NAME` permit
+isolated comparisons without changing private configuration. The HTTP worker
+requires a separately running loopback inference server and never retries calls.
+Its structured responses still pass the same application-owned validation and
+request-ID rules. It is optional and does not replace the deployed worker.
+
+
+## Per-character speech routing
+
+A local Qwen worker reports the characters for which it has private reference
+material. Choosing another character no longer makes the entire voice interface
+unavailable. `speech.local_fallback` defaults to `system`: missing references use
+macOS `say` or Linux eSpeak locally. Linux also needs the existing ffmpeg
+normalization dependency. Set it to `none` to require a dedicated worker reference
+for every character. No fallback calls a cloud service or changes the saved
+speech-engine selection.
+
+The current installed worker has references for Okabe, Kurisu, Sonic and Pip.
+Sonic uses private isolated English dialogue; Pip uses an original synthetic
+reference. Both passed generated-sample transcription checks. System fallback
+remains available for future characters without references. Switching between
+configured characters does not restart the worker. The
+speaker route, volume, character appearance and personality remain independent
+of synthesis-backend choice. The dev panel reports the effective fallback;
+the engine selector continues to show the user's configured backend.
+
+System speech can produce the same bounded 24 kHz mono PCM stream used by browser,
+Pi and Beam sinks; it synthesizes a local file before streaming chunks. Existing
+Pi system output retains its WAV path. Missing references are distinct from a
+worker outage: a disconnected worker is still reported as unavailable, rather
+than silently changing a supported character's voice. Worker capability caching
+is invalidated when its socket identity changes on restart.

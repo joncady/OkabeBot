@@ -1,10 +1,23 @@
-"""Optional MLX worker: isolated from controller and voice dependencies."""
+"""Optional MLX worker: isolated dependencies and bounded per-domain prefix caches."""
 
 import copy
 import datetime
 import json
 import sys
 import time
+from collections import OrderedDict
+
+
+def system_prompt(persona):
+    return (
+        persona + " Reply in one or two short sentences. "
+        "For an explicit device/app command use at most ONE supplied tool, with no commentary. "
+        "Ambiguous or unsupported requests require clarification. Never invent devices, "
+        "observations, private data or completed actions. Questions about actions are not commands. "
+        "Questions about current device state, media, calendar or notifications MUST use a supplied read tool. "
+        "No tool means no action was performed. Do not supply request_id; the application assigns it. "
+        "Today is " + datetime.date.today().isoformat() + "."
+    )
 
 
 def main():
@@ -15,58 +28,102 @@ def main():
 
     setup = json.loads(sys.stdin.readline())
     model, tokenizer = load(setup["model"])
-    cache = prefix = previous = None
+    by_name = {t["function"]["name"]: t for t in setup["tools"]}
+    caches = OrderedDict()
     history = []
+    previous_persona = None
     print(json.dumps({"ready": True}), flush=True)
     for line in sys.stdin:
         try:
             data = json.loads(line)
-            system = (
-                data["persona"] + " Reply in one or two short sentences. "
-                "For an explicit device/app command use at most ONE supplied tool, with no commentary. "
-                "If ambiguous or unsupported, ask a short clarification. Never invent devices, "
-                "observations, measurements, private data or completed actions. Do not execute "
-                "questions about how actions work. No tool means no action was performed. "
-                "Do not supply request_id for reminders or SwitchBot; the application assigns it. "
-                "Today is " + datetime.date.today().isoformat() + "."
-            )
-            if system != previous:
+            started = time.monotonic()
+            if data.get("location_tool"):
+                by_name["move_companion"] = data["location_tool"]
+            names = tuple(sorted(set(data.get("tool_names", by_name)) & set(by_name)))
+            tools = [by_name[n] for n in names]
+            welcome = data.get("task") == "welcome"
+            if welcome:
+                tools, names = [], ()
+            system = system_prompt(data["persona"])
+            if welcome:
+                system = (
+                    data["persona"]
+                    + " Write a fresh welcome-home greeting spoken directly to the user. "
+                    "Use one or two short sentences, at most 180 characters. "
+                    "Use plain, casual spoken English, like a friend saying hello at the door. "
+                    "A small conversational joke is enough; keep it easy to understand. "
+                    "Express that you are glad they are here, with your own understated personality. "
+                    "The only known fact is their return. Keep the greeting about that and your reaction. "
+                    "Any factual updates are written separately. Output only the spoken greeting."
+                )
+            if not welcome and previous_persona != data["persona"]:
                 history = []
+                previous_persona = data["persona"]
 
-                def encode(text):
-                    return tokenizer.apply_chat_template(
-                        [{"role": "system", "content": system}, {"role": "user", "content": text}],
-                        tools=setup["tools"],
-                        tokenize=True,
-                        add_generation_prompt=True,
-                        enable_thinking=False,
-                    )
+            examples = tuple(data.get("examples", [])[:2]) if welcome else ()
 
-                a, b = encode("AAA"), encode("ZZZ")
+            def encode(messages):
+                if examples:
+                    shots = []
+                    for example in examples:
+                        shots.extend(
+                            [
+                                {"role": "user", "content": "Welcome me home, briefly."},
+                                {"role": "assistant", "content": example},
+                            ]
+                        )
+                    messages = messages[:1] + shots + messages[1:]
+                return tokenizer.apply_chat_template(
+                    messages,
+                    tools=tools,
+                    tokenize=True,
+                    add_generation_prompt=True,
+                    enable_thinking=False,
+                )
+
+            key = (system, names, examples, json.dumps(tools, sort_keys=True))
+            prefill = 0
+            if key not in caches:
+                a = encode(
+                    [{"role": "system", "content": system}, {"role": "user", "content": "AAA"}]
+                )
+                b = encode(
+                    [{"role": "system", "content": system}, {"role": "user", "content": "ZZZ"}]
+                )
                 prefix = []
                 for x, y in zip(a, b):
                     if x != y:
                         break
                     prefix.append(x)
                 cache = make_prompt_cache(model)
+                t = time.monotonic()
                 model(mx.array(prefix)[None], cache=cache)
                 mx.eval([c.state for c in cache])
-                previous = system
+                prefill = time.monotonic() - t
+                caches[key] = (prefix, cache)
+                if len(caches) > 8:
+                    caches.popitem(last=False)
+            caches.move_to_end(key)
+            prefix, cache = caches[key]
             messages = (
                 [{"role": "system", "content": system}]
-                + history
-                + [{"role": "user", "content": data["text"]}]
+                + ([] if names or welcome else history)
+                + [
+                    {
+                        "role": "user",
+                        "content": data["text"]
+                        + (
+                            "\nAvoid repeating these recent greetings: "
+                            + json.dumps(data.get("recent", [])[-3:])
+                            if welcome
+                            else ""
+                        ),
+                    }
+                ]
             )
-            tokens = tokenizer.apply_chat_template(
-                messages,
-                tools=setup["tools"],
-                tokenize=True,
-                add_generation_prompt=True,
-                enable_thinking=False,
-            )
+            tokens = encode(messages)
             if tokens[: len(prefix)] != prefix:
                 raise ValueError("Prefix mismatch")
-            started = time.monotonic()
             output = ""
             count = 0
             for response in stream_generate(
@@ -74,12 +131,66 @@ def main():
                 tokenizer,
                 prompt=tokens[len(prefix) :],
                 prompt_cache=copy.deepcopy(cache),
-                max_tokens=130,
-                sampler=make_sampler(temp=0),
+                max_tokens=80 if welcome else 130,
+                sampler=make_sampler(temp=0.4 if welcome else 0),
             ):
                 count += 1
                 output += response.text
-            if "<tool_call>" not in output and not data.get("warmup"):
+            if welcome:
+                # A tiny local editing pass keeps creative roleplay from turning
+                # into invented observations about lights, food or the user's day.
+                # This pass has no tools, external data, or conversation history.
+                review = [
+                    {
+                        "role": "system",
+                        "content": (
+                            "Edit a fictional character's welcome-home greeting. Preserve its warmth "
+                            "and distinct personality, including a simple conversational joke if present. "
+                            "Use plain casual English, not poetic imagery or riddles. "
+                            "Do not flatten it into a generic welcome or add new jokes. "
+                            "Remove concrete factual claims about objects, surroundings, "
+                            "weather, the user's appearance, monitoring, physical actions, or other events. "
+                            "Only the user's return is known. Do not add new details. Output only the "
+                            "revised spoken greeting, 1 or 2 sentences, at most 180 characters."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": "The lights are on, and you're here, just how I like it.",
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "You're here, just how I like it. Welcome back.",
+                    },
+                    {
+                        "role": "user",
+                        "content": "The coffee's cold, but this world line just improved. Welcome back.",
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "This world line just improved. Welcome back.",
+                    },
+                    {"role": "user", "content": output},
+                ]
+                review_tokens = tokenizer.apply_chat_template(
+                    review,
+                    tools=[],
+                    tokenize=True,
+                    add_generation_prompt=True,
+                    enable_thinking=False,
+                )
+                revised = ""
+                for response in stream_generate(
+                    model,
+                    tokenizer,
+                    prompt=review_tokens,
+                    max_tokens=80,
+                    sampler=make_sampler(temp=0),
+                ):
+                    count += 1
+                    revised += response.text
+                output = revised
+            if not names and not data.get("warmup") and not welcome:
                 history = (
                     history
                     + [
@@ -94,6 +205,8 @@ def main():
                         "selection_s": round(time.monotonic() - started, 3),
                         "prompt_tokens": len(tokens) - len(prefix),
                         "generated_tokens": count,
+                        "cached_tokens": len(prefix),
+                        "prefill_s": round(prefill, 3),
                     }
                 ),
                 flush=True,

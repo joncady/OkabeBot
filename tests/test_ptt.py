@@ -65,6 +65,32 @@ class PttTests(unittest.TestCase):
             bridge.handle_clip(clip)
             bridge.codex.submit.assert_called_once()
 
+    def test_rejected_or_failed_recording_clears_thinking_without_model_call(self):
+        for transcript in ("", RuntimeError("transcription unavailable")):
+            with self.subTest(transcript=str(transcript)), tempfile.TemporaryDirectory() as tmp:
+                with sqlite3.connect(Path(tmp) / "clips.sqlite3") as db:
+                    db.execute(
+                        "CREATE TABLE clips (id TEXT PRIMARY KEY,status TEXT,transcript TEXT)"
+                    )
+                bridge = mac.Bridge.__new__(mac.Bridge)
+                bridge.folder = Path(tmp)
+                bridge.show_activity = Mock()
+                bridge.notify = Mock()
+                bridge.codex = Mock()
+                bridge.transcribe = Mock()
+                if isinstance(transcript, Exception):
+                    bridge.transcribe.side_effect = transcript
+                else:
+                    bridge.transcribe.return_value = transcript
+                clip = {"clip_id": "empty", "wav_base64": base64.b64encode(b"audio").decode()}
+                if isinstance(transcript, Exception):
+                    with self.assertRaises(RuntimeError):
+                        bridge.handle_clip(clip)
+                else:
+                    bridge.handle_clip(clip)
+                bridge.show_activity.assert_called_with("idle")
+                bridge.codex.submit.assert_not_called()
+
     def test_approval_requires_explicit_supported_decision(self):
         client = Codex.__new__(Codex)
         client.lock = threading.RLock()

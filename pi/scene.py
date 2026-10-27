@@ -8,10 +8,12 @@ from PIL import Image, ImageDraw, ImageFont
 
 try:
     from . import pip_face, reactions, layout
+    from . import scene_sets
 except ImportError:
     import layout
     import pip_face
     import reactions
+    import scene_sets
 
 
 @lru_cache(maxsize=1)
@@ -119,6 +121,7 @@ def shapes(
     native_sprites=False,
     **character,
 ):
+    selected_set = character.pop("environment", "legacy")
     if character.get("activity", "idle") == "thinking" or (
         deploying and character.get("activity", "idle") == "idle"
     ):
@@ -165,6 +168,10 @@ def shapes(
         if character.get("style") == "kurisu":
             character["show_emphasis"] = False
     original = pip_face.shapes(**character)
+    if selected_set == "unassigned":
+        return original[:1]
+    if selected_set in scene_sets.SETS and not notification and gesture != "present":
+        original = original[:1] + scene_sets.dressing(selected_set) + original[1:]
     if watching:
         original = reactions.move(original, reaction, character.get("phase", 0), video.get("state"))
         if reaction:

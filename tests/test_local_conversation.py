@@ -102,7 +102,7 @@ class LocalToolTests(unittest.TestCase):
         obj = self.adapter('<tool_call>{"name":"press_bot","arguments":{}}</tool_call>')
         obj._turn("Turn it off")
         press.assert_not_called()
-        self.assertIn("explicitly", obj.completed.call_args.args[0])
+        self.assertIn("Which device", obj.completed.call_args.args[0])
 
     @patch("okabebot.server.set_speaker_volume", side_effect=TimeoutError())
     def test_unknown_action_outcome_is_not_retried_or_acknowledged_as_success(self, volume):

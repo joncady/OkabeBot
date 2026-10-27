@@ -1,0 +1,4 @@
+/* Shared surface tokens; keep type sizes and information density surface-specific. */
+:root{--pixel-bg:#101b27;--pixel-panel:#182c38;--pixel-ink:#eef3df;--pixel-muted:#a9c3bd;--pixel-edge:#668781;--pixel-accent:#91c9b8;--pixel-attention:#dfbe78;--pixel-error:#df8c7a;--pixel-font:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+button,input,select,summary{font-family:var(--pixel-font)}button,input,select{border-radius:2px!important}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--pixel-attention);outline-offset:3px}button{box-shadow:inset -2px -2px #0003,inset 2px 2px #fff1}button:active{box-shadow:inset 2px 2px #0005}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition:none!important}}

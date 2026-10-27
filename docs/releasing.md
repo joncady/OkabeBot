@@ -30,3 +30,13 @@ mean the remote workflow has run; that happens after a push/PR. Hardware, accoun
 sign-in, actual speech volume and the complete Dell cutover require separate
 live validation. Do not run two controllers against the same hardware to test
 a package build.
+
+## Documentation review
+
+Enable local hooks with `git config core.hooksPath .githooks`. Every commit needs
+a staged README update or an explanatory `README-Reviewed:` trailer. Changes to
+hosting/device/service/integration files additionally need a staged
+`docs/deployment.md` update or an explanatory `Topology-Reviewed:` trailer. A README
+edit alone does not satisfy the inventory requirement. Review the README Mermaid
+diagram as well; the hook cannot determine whether its nodes and edges are true.
+See [deployment inventory](deployment.md) and [repository instructions](../AGENTS.md).

@@ -20,3 +20,26 @@ class ReadmeHookTests(unittest.TestCase):
             )
         )
         self.assertFalse(hook.check(["okabebot/server.py"], "README-Reviewed: yes"))
+
+    def test_topology_review_is_separate_from_readme_review(self):
+        self.assertFalse(hook.topology_check(["README.md", "pi/voice_service.py"], "Update"))
+        self.assertTrue(hook.topology_check(["docs/deployment.md", "pi/service.py"], "Update"))
+        self.assertFalse(hook.topology_check(["okabebot/config.py"], "Topology-Reviewed: yes"))
+        self.assertTrue(
+            hook.topology_check(
+                ["okabebot/local_worker.py"],
+                "Fix\n\nTopology-Reviewed: Internal parsing fix; worker location and model are unchanged.",
+            )
+        )
+
+    def test_integration_and_launcher_changes_require_review_but_art_does_not(self):
+        for path in (
+            "infra/github-relay/lambda.py",
+            "examples/home-assistant/door_welcome.yaml",
+            "scripts/start-mac.sh",
+            "okabebot/adapters/media.py",
+            "docs/devices.md",
+        ):
+            with self.subTest(path=path):
+                self.assertFalse(hook.topology_check([path], "Change"))
+        self.assertTrue(hook.topology_check(["docs/okabe.png", "tests/test_character.py"], "Art"))

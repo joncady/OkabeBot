@@ -1,0 +1,17 @@
+{
+  "presentations": {"room": "Room", "companion": "Companion"},
+  "characters": {
+    "okabe": ["pixel-lab", "maid-cafe"],
+    "kurisu": ["pixel-lab", "maid-cafe"],
+    "pip": ["pip-workshop", "rooftop-garden"],
+    "sonic": ["green-hill", "star-light"]
+  },
+  "sets": {
+    "pixel-lab": {"name": "Future Gadget Lab"},
+    "maid-cafe": {"name": "May Queen Café"},
+    "pip-workshop": {"name": "Pip’s Workshop"},
+    "rooftop-garden": {"name": "Rooftop Garden"},
+    "green-hill": {"name": "Green Hill"},
+    "star-light": {"name": "Star Light"}
+  }
+}
