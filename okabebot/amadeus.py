@@ -19,6 +19,7 @@ FIELDS = {
     "media": {"app", "title", "content_id", "state", "duration_s", "position_s"},
     "calendar": {"event_id", "summary", "start_at", "end_at", "snapshot_id"},
     "calendar_snapshot": {"snapshot_id", "event_count", "start_at", "end_at"},
+    "tv_state": {"state", "device_id", "observation"},
     "phone_wake": {"state"},
     "phone_alarm": {"alarm_at"},
     "weather": {"condition", "temperature_c", "reported_at"},

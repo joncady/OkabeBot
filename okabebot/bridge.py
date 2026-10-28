@@ -58,6 +58,9 @@ class Bridge:
         from .amadeus_sources import Collector
 
         self.amadeus = Collector(state_dir() / "amadeus")
+        from .tv_prepare import TVPreparation
+
+        self.tv_preparation = TVPreparation(state_dir())
         try:
             self.enabled = json.loads((state_dir() / "button-settings.json").read_text())["enabled"]
             if type(self.enabled) is not bool:
@@ -502,6 +505,10 @@ class Bridge:
             else []
         )
 
+    def destination_input_active(self, destination):
+        cast = self.surfaces.cast_for(destination)
+        return getattr(cast.status, "is_active_input", None) if cast is not None else False
+
     def dispatch_morning(self):
         # The phone event prepares once/day. Only explicit config may move a screen;
         # no retry that could unexpectedly interrupt media later in the day.
@@ -515,6 +522,17 @@ class Bridge:
             try:
                 morning = Morning(state_dir() / "amadeus")
                 if morning.view(config["destination"]) and not self.snapshot()["busy"]:
+                    if not self.tv_preparation.prepare(
+                        config["destination"],
+                        lambda: self.destination_input_active(config["destination"]),
+                    ):
+                        return
+                    if (
+                        morning.settings() != config
+                        or not morning.view(config["destination"])
+                        or self.snapshot()["busy"]
+                    ):
+                        return
                     self.surfaces.move(
                         config["destination"],
                         "http://%s:%s" % (get_config()["web"]["host"], self.port),

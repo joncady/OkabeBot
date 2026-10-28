@@ -172,6 +172,40 @@ class Collector:
             raise ValueError("Source field too long")
         bindings = json.loads((self.folder / "ha-bindings.json").read_text())
         entity = data["entity_id"]
+        source = "door_presence"
+        if entity in bindings.get("tv", []):
+            state = data["state"]
+            if state in ("unknown", "unavailable"):
+                state = "unknown"
+            if state not in (
+                "on",
+                "off",
+                "standby",
+                "playing",
+                "paused",
+                "idle",
+                "buffering",
+                "unknown",
+            ):
+                raise ValueError("Invalid TV state")
+            return self._record(
+                "tv_usage",
+                lambda _: [
+                    (
+                        "tv_state",
+                        {
+                            "state": state,
+                            "device_id": digest(entity),
+                            "observation": "snapshot"
+                            if data["event_id"].startswith("snapshot:")
+                            else "change",
+                        },
+                        "household",
+                        digest([entity, data["event_id"], "tv_state"]),
+                        observed,
+                    )
+                ],
+            )
         if entity in bindings.get("door", []):
             kind = "door"
             state = {
@@ -193,7 +227,7 @@ class Collector:
         if state is None:
             raise ValueError("Invalid source state")
         return self._record(
-            "door_presence",
+            source,
             lambda _: [
                 (
                     kind,

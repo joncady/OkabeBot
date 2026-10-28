@@ -184,3 +184,8 @@ Amadeus history collection. New categories need separate private consent and sch
 private bindings, alarm/weather snapshots and separate owner collection/presentation
 controls. The interactive sensor must report a real off-to-on transition; periodic
 snapshots never trigger a screen wake. Room/destination IDs come from the registry.
+
+The optional Samsung preparation package and TV-state publisher are documented in
+[morning setup](morning.md#optional-tv-power-and-input-preparation). They use private
+per-TV bindings, local wake/input controls and a separate TV-state consent category;
+existing media playback metadata remains independent.

@@ -125,3 +125,10 @@ acceptance and makes partial completion explicit.
 
 This rule does not complete routine learning or general proactive delivery work.
 See [morning.md](morning.md); personal trial observations remain private.
+
+### TV preparation and household state
+
+- [x] Optional destination-bound wake/input preparation with acknowledged input readiness.
+- [x] Independently consented HA TV power/availability changes and snapshots.
+- [ ] Broader standby/wrong-input device coverage and recovery acceptance.
+- [ ] Define evidence rules for TV activity intervals; never equate power with personal viewing.

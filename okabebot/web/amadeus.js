@@ -11,7 +11,7 @@ const amadeusUI = (() => {
     for(const id of ['amadeus-setup','amadeus-controls','amadeus-memory','amadeus-morning']) $(id).hidden=true;
     $('amadeus-form').reset();$('memory-form').reset();
     $('sources').replaceChildren();$('topics').replaceChildren();$('memory-list').replaceChildren();
-    $('morning-preview').textContent='';$('morning-status').textContent='';$('morning-form').reset();$('morning-destination').replaceChildren();
+    $('morning-test-status').textContent='';$('morning-test-tv').disabled=true;$('morning-preview').textContent='';$('morning-status').textContent='';$('morning-form').reset();$('morning-destination').replaceChildren();
     $('event-list').textContent='';$('household-list').textContent='';$('coaching-state').textContent='';
   }
   async function api(path, data) {
@@ -61,6 +61,7 @@ const amadeusUI = (() => {
   async function morning() {
     const value=await api('morning');if(!value.config)return;
     const c=value.config;$('amadeus-morning').hidden=false;
+    $('morning-test-tv').disabled=!value.tv_preparation_configured;
     $('morning-start').value=c.start_hour;$('morning-end').value=c.end_hour;$('morning-unit').value=c.temperature_unit;
     $('morning-enabled').checked=c.enabled;$('morning-present').checked=c.present_on_wake;
     for(const [id,key] of [['before','before_minutes'],['after','after_minutes'],['rotation','rotation_seconds'],['duration','display_minutes']])$('morning-'+id).value=c[key];
@@ -101,6 +102,11 @@ const amadeusUI = (() => {
     message(value.collection_active ? 'Shadow metadata collection enabled · predictions and nudges off.' : 'Shadow metadata collection paused · predictions and nudges off.');
   }
   async function run(action) { try { await action(); } catch(error) { message(error.message); } }
+  $('morning-test-tv').onclick=()=>run(async()=>{
+    $('morning-test-status').textContent='Preparing TV… this may turn it on and change input.';
+    const result=await api('tv-prepare',{});
+    $('morning-test-status').textContent=result.ready?(result.input_verified?'TV ready · Chromecast input confirmed.':'TV preparation complete · input status unavailable; configured fallback used.'):'TV not confirmed ready · character stays on its current screen.';
+  });
   $('morning-form').onsubmit=event=>{event.preventDefault();run(async()=>{
     await api('morning',{start_hour:Number($('morning-start').value),end_hour:Number($('morning-end').value),temperature_unit:$('morning-unit').value,enabled:$('morning-enabled').checked,destination:$('morning-destination').value,
       present_on_wake:$('morning-present').checked,before_minutes:Number($('morning-before').value),

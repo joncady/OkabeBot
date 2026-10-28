@@ -124,6 +124,42 @@ class AmadeusHttpTests(unittest.TestCase):
             )
         self.assertEqual(caught.exception.code, 403)
 
+    def test_tv_preparation_completion_is_nonce_scoped_and_publisher_cannot_prepare(self):
+        from okabebot.tv_prepare import TVPreparation
+        from okabebot.morning import DEFAULTS
+
+        self.bridge.tv_preparation = TVPreparation(self.folder)
+        self.bridge.destination_input_active = Mock(return_value=True)
+        self.bridge.surfaces.snapshot.return_value = {
+            "locations": [{"id": "test-tv", "name": "Invented TV", "adapter": "cast"}]
+        }
+        self.request("/amadeus/api/settings", SETUP)
+        self.request("/amadeus/api/morning", dict(DEFAULTS, destination="test-tv"))
+        (self.folder / "amadeus" / "ha-source-token").write_text("s" * 43)
+        publisher = {"X-Amadeus-Source-Token": "s" * 43}
+        completion = {"request_id": "invented-nonce", "status": "input_command_sent"}
+        self.assertEqual(
+            self.request("/amadeus/source/tv-ready", completion, token="", extra=publisher),
+            {"accepted": False},
+        )
+        for path, data in [("/amadeus/api/tv-prepare", {}), ("/amadeus/api/morning", None)]:
+            with self.assertRaises(HTTPError) as caught:
+                self.request(path, data, token="", extra=publisher)
+            self.assertEqual(caught.exception.code, 403)
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/tv-prepare", {})
+        self.assertEqual(caught.exception.code, 400)
+        self.bridge.tv_preparation = Mock()
+        self.bridge.tv_preparation.configured.return_value = True
+        self.bridge.tv_preparation.prepare.return_value = True
+        self.assertEqual(
+            self.request("/amadeus/api/tv-prepare", {}), {"ready": True, "input_verified": True}
+        )
+        self.bridge.tv_preparation.prepare.assert_called_once()
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/tv-prepare", {"destination": "other-tv"})
+        self.assertEqual(caught.exception.code, 400)
+
     def test_auto_morning_configuration_rejects_an_unassigned_scene(self):
         from okabebot.morning import DEFAULTS
 

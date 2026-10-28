@@ -78,7 +78,7 @@ flowchart TB
         Morning -->|"Configured TV card rail and shared handoff"| Places
         HA -->|"Write-only phone cue / alarm / weather metadata"| Morning
         App --> Amadeus["Owner-only Amadeus setup; consent-gated shadow metadata; private SQLite; no nudges"]
-        HA -->|"Write-only, entity-bound metadata receiver"| Amadeus
+        HA -->|"Write-only, entity-bound door/presence and TV state metadata"| Amadeus
         App -->|"Existing calendar/media snapshots and interaction metadata"| Amadeus
         MacPanel["Native floating Mac companion"] <-->|"Paired surface, hold-to-talk and streamed audio: localhost 8768"| App
     end
@@ -96,6 +96,9 @@ flowchart TB
     TV["Vizio TV / Cast receiver"] -->|"Cast media callbacks"| App
     App -->|"Explicit DashCast launch and scoped TV dashboard: 8768"| TV
     App -->|"Independent Cast connection and scoped dashboard"| Samsung["Samsung TV + HDMI Chromecast"]
+    Morning -->|"Optional local wake packet"| Samsung
+    Morning <-->|"Scoped HA input webhook and nonce-bound completion"| HA
+    HA -->|"Samsung remote input selection"| Samsung
     Places -->|"Acknowledged character handoff; Pi away sign"| Display
     Places -->|"Doorway ingress and room monitors"| TV
     Beam["Sonos Beam - announcement overlay trial accepted"]

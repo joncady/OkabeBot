@@ -11,6 +11,7 @@ from .amadeus_coaching import Coaching, TOPICS
 SYSTEM = "amadeus-system"
 KEY = "onboarding"
 SOURCES = {
+    "tv_usage": "TV power/state snapshots (household context; no titles or viewer identity)",
     "phone_context": "Phone screen on/off and next-alarm time (no location, apps or health)",
     "weather": "Outdoor weather condition and temperature",
     "door_presence": "Door and presence metadata",

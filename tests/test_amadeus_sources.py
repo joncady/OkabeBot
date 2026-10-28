@@ -100,3 +100,28 @@ class SourceTests(unittest.TestCase):
         self.assertEqual(
             self.owner.store.db.execute("SELECT count(*) FROM events").fetchone()[0], 0
         )
+
+    def test_tv_usage_is_household_state_only_and_independently_consented(self):
+        bindings = json.loads((self.path / "ha-bindings.json").read_text())
+        bindings["tv"] = ["media_player.invented_tv"]
+        (self.path / "ha-bindings.json").write_text(json.dumps(bindings))
+        self.owner.save(dict(SETUP, sources=["tv_usage"]))
+        self.owner.control({"paused": False})
+        event = {
+            "entity_id": "media_player.invented_tv",
+            "state": "on",
+            "event_id": "invented-change",
+            "observed_at": self.now,
+        }
+        self.assertEqual(self.collector.home_assistant(event)["state"], "stored")
+        self.assertEqual(self.collector.home_assistant(event)["state"], "duplicate")
+        value = self.owner.memory()["household_events"][0]
+        self.assertEqual(value["subject"], "unknown")
+        self.assertEqual(value["payload"]["state"], "on")
+        self.assertEqual(value["payload"]["observation"], "change")
+        self.assertNotIn("invented_tv", json.dumps(value))
+        self.assertNotIn("title", value["payload"])
+        self.owner.save(dict(SETUP, sources=[]))
+        self.assertEqual(
+            self.collector.home_assistant(dict(event, event_id="new"))["state"], "not_permitted"
+        )

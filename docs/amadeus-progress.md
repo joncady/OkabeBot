@@ -65,3 +65,13 @@ explicit policy change; aggregation alone does not authorize it.
   richer forecasts, additional cards and real-morning acceptance remain follow-ups.
 - Next: private cue/display acceptance and configuration refinements; no participant
   observations, schedules or behavioral outcomes are published.
+
+## TV preparation and household state
+
+- Improved: optional local wake/input preparation separates command delivery from
+  active-input readiness before automatic morning handoff; failure does not retry.
+  TVs without CEC reporting have a separately configured, explicitly labeled fallback.
+- Improved: independently consented, entity-bound TV state changes and snapshots
+  omit titles/volume and retain pause, guest, freshness and retention guards.
+- Limited: on-state does not establish viewing duration, viewer identity or taste.
+  Standby/input model coverage and richer activity inference remain follow-ups.

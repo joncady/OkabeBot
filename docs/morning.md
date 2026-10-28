@@ -24,6 +24,9 @@ stay in private state, outside Git, issues and public progress logs.
    use the shared character move/handoff interface. A busy controller skips automatic
    presentation, with no delayed replay or retry to interrupt later activity. This
    can interrupt TV playback; it does not synthesize speech or change volume.
+   An optional preparation binding sends a local wake packet, waits for HA power
+   state, selects the configured input and checks Chromecast active-input status
+   before handoff. Timeout/failure leaves the character on its existing surface.
 6. On the selected full-room TV surface, shift/reduce the room into the left area
    and display rotating cards in a pixel-edged rail on the right quarter. Rotation
    does not reset on state polls. After the configured window, restore the normal
@@ -88,3 +91,53 @@ change source permissions or override pause/guest mode.
 - Follow-up: optional forecasts, configurable extra card sources, explicit manual
   re-show/dismiss, home/away suppression for travel, and more physical TV coverage.
   Missing input means abstain, not an inferred habit.
+
+## Optional TV power and input preparation
+
+Install [`samsung_morning.yaml`](../examples/home-assistant/samsung_morning.yaml)
+as a private HA package. Set secrets `morning_tv_entity`, `morning_tv_remote`,
+`morning_tv_hdmi_command`, a random `morning_tv_webhook_id`, and
+`amadeus_tv_ready_url` (controller origin plus `/amadeus/source/tv-ready`). Reuse
+only the existing write-only source token. The webhook is local-only and accepts
+one bounded request nonce; it cannot select arbitrary devices or commands.
+
+Configure `state_dir()/tv-preparation.json` privately, keyed by destination ID:
+
+```json
+{
+  "example-tv": {
+    "url": "http://127.0.0.1:8123/api/webhook/REPLACE_WITH_PRIVATE_WEBHOOK_ID",
+    "timeout_seconds": 45,
+    "wake_mac": "02:00:00:00:00:01"
+  }
+}
+```
+
+The MAC above is invented; use the TV's actual network interface privately.
+`wake_mac` is optional for already-awake displays. An optional `wake_broadcast`
+overrides the default broadcast address. The controller sends one UDP magic packet;
+HA then waits up to 35 seconds for power state and sends the configured remote key.
+A matching completion only confirms command delivery. Chromecast must additionally
+report `is_active_input=true` within 12 seconds by default. Missing or false readiness
+aborts presentation without a later retry. For a TV physically checked to use the
+right HDMI port but lacking CEC status, private `allow_unknown_input: true` permits
+an unknown status after HA confirms the input command; a known false status or
+missing Chromecast still blocks. The owner test reports this fallback distinctly
+from verified input. Unbound destinations retain existing behavior.
+
+Samsung input key support and network wake vary by model/configuration. Configure
+an explicit input key for the physical HDMI port and enable network wake on the TV
+if necessary. The owner-only **Test TV power and input** button exercises preparation
+without moving the character or fabricating a morning observation. Test standby
+and a different input physically before relying on automatic morning presentation.
+These controls add no speaker action or volume change.
+
+## Optional TV-state observations
+
+[`tv_usage.yaml`](../examples/home-assistant/tv_usage.yaml) publishes only state
+changes and five-minute snapshots for `amadeus_tv_entities`. Bind the same exact
+entities under `tv` in private `amadeus/ha-bindings.json`, and opt into `tv_usage`
+in owner setup. Existing source credentials, pause, guest mode, retention and
+freshness guards apply. Titles, applications, volume and attributes are excluded.
+The opaque endpoint reference is stable and private, not anonymous. TV-on is
+household context, not proof of viewing, identity, preference or watched duration.

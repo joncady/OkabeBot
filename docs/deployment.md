@@ -78,6 +78,27 @@ Physical acceptance of an eligible real morning, TV legibility and return to the
 normal layout remains a private human checkpoint. This deterministic rule does
 not enable routine learning, general proactive suggestions or health coaching.
 
+## TV preparation and state source (2026-10-27)
+
+The native controller includes optional per-destination TV preparation. Private
+`state_dir()/tv-preparation.json` owns the local HA webhook binding, timeout and
+optional TV Wake-on-LAN address. HA owns the selected Samsung media/remote entities,
+input key and local-only webhook secret in its private package/secrets. The source
+publisher credential can acknowledge a pending nonce but cannot initiate actions.
+HA input delivery and Chromecast active-input readiness are separate checks;
+automatic morning handoff aborts if either fails. A private per-TV opt-in can
+accept unavailable CEC status after the HDMI mapping is physically checked; known
+false input still blocks, and the owner test labels unverified fallback distinctly. No extra listener, model or
+speaker route is introduced. The warm speech worker remains independent.
+
+The Samsung integration and the preparation/state packages are installed in HA.
+Owner UI exposes an explicit preparation test; standby/wrong-input physical
+acceptance remains a separate checkpoint. TV history uses a separately consented
+`tv_usage` source, exact private entity bindings and the existing metadata receiver.
+Only power/availability states and snapshot/change markers are collected. Endpoint
+references and observations stay private; on-state does not identify a viewer.
+See [morning setup](morning.md) for configuration and readiness limitations.
+
 ## BLE proximity trial capability (2026-10-27)
 
 A standalone Python-3.7-compatible BlueZ D-Bus scanner is installed alongside the

@@ -24,7 +24,7 @@ def handle(handler, bridge, *, post=False):
         )
         handler.respond(200, (Path(__file__).parent / "web" / name).read_text(), kind)
         return True
-    if path in ("/amadeus/source/ha", "/amadeus/source/morning"):
+    if path in ("/amadeus/source/ha", "/amadeus/source/morning", "/amadeus/source/tv-ready"):
         from .config import state_dir
         from .amadeus_sources import Collector
 
@@ -52,7 +52,9 @@ def handle(handler, bridge, *, post=False):
                 raise ValueError("Invalid source size")
             handler.connection.settimeout(5)
             data = json.loads(handler.rfile.read(size))
-            if path.endswith("morning"):
+            if path.endswith("tv-ready"):
+                result = bridge.tv_preparation.complete(data)
+            elif path.endswith("morning"):
                 from .morning import Morning
 
                 result = Morning(folder).observe(data)
@@ -89,7 +91,22 @@ def handle(handler, bridge, *, post=False):
             handler.connection.settimeout(5)
             data = json.loads(handler.rfile.read(size))
         service = Onboarding(state_dir() / "amadeus")
-        if path == "/amadeus/api/morning":
+        if path == "/amadeus/api/tv-prepare" and post:
+            from .morning import Morning
+
+            destination = Morning(state_dir() / "amadeus").settings()["destination"]
+            if data != {} or not destination or bridge.snapshot().get("busy"):
+                raise ValueError("Choose an idle configured destination")
+            bridge.surfaces.ensure_scene(destination)
+            if not bridge.tv_preparation.configured(destination):
+                raise ValueError("Configure TV preparation first")
+            result = {
+                "ready": bridge.tv_preparation.prepare(
+                    destination, lambda: bridge.destination_input_active(destination)
+                ),
+                "input_verified": bridge.destination_input_active(destination) is True,
+            }
+        elif path == "/amadeus/api/morning":
             from .morning import Morning
 
             morning = Morning(state_dir() / "amadeus")
@@ -111,6 +128,10 @@ def handle(handler, bridge, *, post=False):
             result = {
                 "config": config,
                 "destination_ready": destination_ready,
+                "tv_preparation_configured": bool(
+                    getattr(bridge, "tv_preparation", None)
+                    and bridge.tv_preparation.configured(config["destination"])
+                ),
                 "summary": morning.view(preview=True),
                 "destinations": [
                     {"id": p["id"], "name": p["name"]} for p in places if p.get("adapter") == "cast"
