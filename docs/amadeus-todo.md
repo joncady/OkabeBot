@@ -6,6 +6,28 @@ The [GitHub roadmap](https://github.com/users/joncady/projects/4) contains seven
 Amadeus A0–A6 work packages; this checklist owns detailed
 acceptance and makes partial completion explicit.
 
+## Priority order for the next cycle
+
+1. **P0: publication and consent boundaries.** Keep personal trials private;
+   explicit coaching opt-in, supportive wording, stop/snooze and identity gates.
+2. **P1: authenticated onboarding and controls.** Source/subject/privacy selection,
+   optional goal/topic selection, private timeline and correction/deletion UI.
+3. **P2: live adapters and shadow context learning.** Freshness, provenance,
+   unknown identity, replay protection and synthetic replay before observation.
+4. **P3: quiet suggestions and explicit recall.** Shared attention limits and
+   feedback; integrate the offline coaching policy without enabling it by default.
+5. **P4: media, pantry and shopping drafts.** Keep approval and provider boundaries.
+6. **Deferred: audio sentiment.** Separate opt-in and local uncertain/abstaining
+   evaluation; no raw audio retention or emotion-based escalation.
+
+- [x] Add offline supportive coaching policy and synthetic regressions.
+- [x] Guard known private artifact paths at commit/CI/release boundaries.
+- [x] Add declarative public capability/regression log; personal results remain local.
+- [ ] Wire invitation, establish/reaffirm goal choices and topic controls into onboarding.
+- [ ] Integrate proposal/ACK delivery with shared attention budget and authenticated scopes.
+- [ ] Test character wording, private surfaces, accessibility, and snooze/stop physically.
+- [ ] Evaluate optional response sentiment separately; do not treat it as consent.
+
 ## A0 — specification and offline foundation
 
 - [x] Define local-first architecture, memory types, personas and permission gates.

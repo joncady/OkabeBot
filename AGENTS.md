@@ -27,3 +27,17 @@
 Hardware/account tests can have physical effects. Use isolated regressions for
 routine verification and preserve the user's current volume and state during
 read-only documentation audits.
+
+## Amadeus privacy and public reporting
+
+- Never commit participant trial results, transcripts/audio, observations,
+  health/coaching preferences, personal schedules, history, or derived user metrics.
+  Keep them in ignored private local state. This includes ostensibly anonymized
+  personal trial aggregates and excerpts; do not put them in PRs/issues either.
+- Commit core code improvements, synthetic regressions, declarative specifications
+  and deployment capability state. Use invented fixtures, never edited real data.
+- Maintain `docs/amadeus-progress.md` as a high-level capability/improvement and
+  regression log. Describe general engineering wins/losses without participant
+  details, measurements of personal behavior, dates of personal activity or quotes.
+- Do not export private results to create the public log. Review prose manually;
+  path guards and ignored folders do not prove that content is safe to publish.

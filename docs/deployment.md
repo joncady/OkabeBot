@@ -15,6 +15,12 @@ memory injection, HA automation, dashboard endpoint or MCP tool has been install
 or enabled. Existing hardware, voices, volume and personal data are untouched.
 The README diagram labels this unconnected source-only component explicitly.
 
+The subsequent coaching/privacy source slice adds an offline, opt-in health-habit
+policy and known-private-path publication checks. It has no live invitation,
+sentiment processing, health sensor input, speaker action or new hosted service.
+These source improvements do not change the installed topology. Private trial
+outcomes remain outside the repository; the public progress log is declarative.
+
 Privacy/source checkpoint A must precede live collection. Subsequent trial gates
 cover shadow prediction, quiet cards, media/pantry trials and final acceptance.
 See [the detailed checklist](amadeus-todo.md). The 14-day timeline begins after

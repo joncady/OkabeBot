@@ -31,6 +31,69 @@ AWS infrastructure. Alexa conversation parity is paused; its accepted scene/demo
 and destination behavior remain separate. Grocery/catalogue connections involve
 provider clouds even when personal inference is local.
 
+## Optional supportive habit coaching
+
+Amadeus onboarding must ask whether the user wants help establishing or
+reaffirming habits they choose. Offer choose topics, not now, and no. Nothing is
+preselected; declining must not cause repeated solicitation. General Amadeus
+consent does not authorize coaching. Later changes are available in private controls.
+
+Initial topics are optional movement breaks, winding down/rest, drink breaks and
+meal planning. The user chooses their goal, cues and comfortable schedule; no
+numeric health target, diet, weight goal or medical plan is inferred. Suggestions
+must accommodate the user's stated limitations and preferences. A missed routine
+is not a failure or evidence of poor character. Establish/reaffirm is a future UI
+goal-setting step, not an implemented inference of what a user should change.
+
+Tone is invitational and easy to decline: “Would a short movement break feel good?”
+Avoid “you should,” missed-streak warnings, comparisons, food morality, guilt,
+punishment and unsolicited body/weight commentary. Character personality may not
+turn a health nudge into teasing, coercion or moral judgment. Celebrate only when
+welcome; do not infer success from silence or absence of negative feedback.
+
+The offline policy requires explicit per-topic opt-in, confirmed identity,
+private surface, available context and an eligible opportunity. Its default
+presentation is a quiet card, at most one acknowledged coaching card per local
+calendar day with a 60-minute cooldown across midnight. It must also consume the
+shared Amadeus interruption budget once delivery is integrated; it does not gain
+an additional budget. Planning is side-effect-free; count delivery only on ACK.
+No live enforcement or notification delivery is claimed by this offline component.
+
+Explicit helpful/later/not-helpful/stop/topic-off feedback is authoritative.
+Later and not-helpful pause coaching for a day; stop disables it. Helpful never
+increases frequency, enables speech or adds a topic. Missing feedback does nothing.
+The state is private, subject-scoped, durable and removed by subject deletion.
+
+Audio sentiment is a separate deferred research item, disabled by default. If
+evaluated, process only the user's intentional response locally, discard raw audio,
+represent uncertainty and allow abstention. Separate consent and diverse synthetic
+evaluation are required before use. Never label inferred emotion as medical or
+mental-health state, infer willingness from a cheerful tone, override explicit
+words, or increase nudging from guessed emotion. A cautious future use is to
+reduce interruption or ask a neutral feedback question. Emotion recognition has
+context/interpretation limitations; see the primary research
+[ethics sheet](https://doi.org/10.1162/coli_a_00433).
+
+## Public repository and private trial records
+
+Commit core improvements, synthetic tests, declarative specifications and general
+capability/regression notes only. Do not commit trial results, personal examples,
+transcripts, health goals, responses, habit observations, schedules, receipt/media
+history or derived participant metrics. Do not publish ostensibly anonymized
+trial aggregates or paste them into PRs/issues. Synthetic test counts are engineering
+verification, not participant outcomes.
+
+Private trial records belong under ignored `.local/`, `amadeus-private/` or
+`amadeus-trials/` directories. Known artifact paths are checked by the commit hook,
+CI and release audit; this is not a content-based privacy guarantee. Manually review
+all public prose and fixtures. Never turn a real record into a fixture by changing
+its name. User-approved privacy policy changes may revise this rule later, but
+no current consent to publication is assumed.
+
+[The engineering log](amadeus-progress.md) records high-level improvements,
+limitations and regressions over time without personal details. Detailed trial
+evaluation still happens locally and informs general code fixes; it is not exported.
+
 ## Architecture and contracts
 
 ```mermaid
@@ -193,6 +256,11 @@ Implementation can continue on synthetic fixtures while waiting for reviews.
 | Days 8–10 | Quiet cards, explicit recall, feedback and interruption controls | C: approve a small suggestion budget; physically review timing/privacy |
 | Days 11–14 | Movie shortlist and pantry/recipe/local shopping draft trial | D: confirm subscriptions, dietary constraints, pantry subset and store |
 | End of trial | Evidence-based accept/adjust/stop decision | E: usefulness review; enable selected routines only |
+
+Checkpoint A also asks about optional coaching, topics and comfort with delivery;
+it does not ask for health history. Checkpoint C reviews wording and snooze/stop
+behavior using synthetic examples before optional coaching is activated. Trial
+outcomes stay local at every checkpoint; only general engineering changes are public.
 
 External OAuth consent, receipt/history imports, missing hardware signals and
 physical UX tests are the other reasons to request help. No need for the user to

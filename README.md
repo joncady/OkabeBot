@@ -8,6 +8,10 @@ A push-to-talk companion with a talking pixel character and shared dashboard/MCP
 from the first offline event/preference store. Live collection, habit inference,
 proactive suggestions and grocery actions are not enabled. Alexa conversational
 parity is paused while this work proceeds; its accepted scene/demo remains separate.
+Optional supportive habit coaching now has an offline opt-in/feedback policy;
+the onboarding prompt and live delivery are pending. Personal trial results remain
+private. The [public progress log](docs/amadeus-progress.md) describes only general
+capability improvements, limitations and regressions.
 
 The default character is an original pixel-art interpretation of **Rintaro Okabe from Steins;Gate**: dark hair, lab coat, expressive eyes, and an audio-driven mouth. This is an unofficial fan project, with no affiliation or endorsement. The artwork is drawn in code; no anime frames or actor voice recordings are included. Pip, the original robot face, remains an option.
 
