@@ -175,3 +175,24 @@ by the diagnostics.
 
 Sources: [SendEvent](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-send-event-command.html)
 and [onMount semantics](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-component.html#onmount).
+
+
+### Alexa+ launch preamble
+
+Physical testing confirmed that Alexa+ can speak a “say exit” preamble while the
+custom scene is starting. Home Assistant's `alexa_devices.send_text_command`
+sends a normal Alexa utterance (for example `open little lab`); it does not bypass
+the Alexa runtime. `send_info_skill` is for built-in info commands, not arbitrary
+custom-skill IDs. Calling the Lambda with IAM only returns a protocol response;
+it does not instruct a physical Echo to render/play it. There is no documented
+preamble-suppression switch in these Home Assistant actions.
+
+The future session-based destination should launch once, prepare its scene, and
+wait for readiness before starting character speech. Subsequent APL updates
+should stay within that session rather than repeatedly re-invoking the skill.
+Until that exists, an explicitly configured opening buffer can mitigate overlap,
+but it adds latency and is not a measured Alexa+ speech-completion event. No such
+buffer or Alexa device setting has been changed in the installed prototype.
+
+Sources: [Home Assistant Alexa Devices](https://www.home-assistant.io/integrations/alexa_devices/)
+and [text-command semantics](https://www.home-assistant.io/actions/alexa_devices.send_text_command/).

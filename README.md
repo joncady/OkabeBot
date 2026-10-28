@@ -499,5 +499,5 @@ Japanese-reference speaker-only English conditioning has an isolated
 the installed character voices.
 
 The Alexa development skill includes bounded screen diagnostics; the Show has
-been observed displaying and animating the scene. Custom-audio acceptance and
-spatial ownership integration are still pending. See [Alexa skill](docs/alexa-skill.md).
+been physically confirmed displaying/animating the scene and playing its custom
+voice. Spatial ownership integration and Alexa+ preamble timing remain pending. See [Alexa skill](docs/alexa-skill.md).

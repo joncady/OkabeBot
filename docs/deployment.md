@@ -730,3 +730,16 @@ These are observed controller timings rather than performance guarantees. The
 Pi and original first-TV scene reservations were restored afterward. Screen
 arrangement now refits on the next state update after browser/tablet resize; its
 focused browser regression covers that behavior. No hosting or port changes.
+
+
+### Echo Show physical acceptance (2026-10-27)
+
+The user confirmed the custom voice and animated character together on Show 15
+using “Alexa, open Little Lab” and allowing playback to finish. Deployed logs
+also show APL capability followed by the delayed document-mount callback. This
+completes the voice/visual demo acceptance, not spatial destination ownership.
+The user observed Alexa+'s spoken “say exit” preamble slightly overlapping the
+skill opening. Home Assistant's documented text-command action follows normal
+Alexa invocation; no documented preamble-suppression option was found. Preserve
+this timing issue for the session-destination implementation, which should wait
+until ready and avoid relaunching the skill for every subsequent update.
