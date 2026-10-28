@@ -523,3 +523,6 @@ preloading; hardware readiness is still pending a direct Show launch.
 
 Alexa destination Stop/Cancel now explicitly closes its relay session; this does
 not depend on a later SessionEnded callback. A local regression covers stale polls.
+
+Alexa actor overlay coordinates are explicitly anchored to the scene viewport;
+the direct hardware readiness check remains open.

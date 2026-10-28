@@ -23,6 +23,7 @@ class DestinationTests(unittest.TestCase):
         self.assertIn("clock < leaseUntil", actor["display"])
         self.assertIn("clock < 60000", actor["display"])
         self.assertIn("!closed", actor["display"])
+        self.assertEqual((actor["top"], actor["left"]), (0, 0))
         self.assertIn("invisible", actor["display"])
         self.assertNotIn("opacity", actor)
         ticks = root["handleTick"][0]["commands"]

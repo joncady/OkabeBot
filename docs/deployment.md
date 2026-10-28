@@ -800,3 +800,8 @@ Local review found that explicit Stop/Cancel could leave the destination record
 open after a skill-initiated end. The handler now closes it before ending speech,
 and a real-relay regression verifies that later polls cannot revive it. The fix
 is being deployed before the physical cancellation/recovery check.
+
+The direct retry still reported only the background loaded. Source inspection
+found the absolute actor overlay lacked explicit top/left anchors; it now anchors
+at viewport origin, with a regression check. This is a candidate fix pending
+deployment and direct Show verification, not a confirmed diagnosis.

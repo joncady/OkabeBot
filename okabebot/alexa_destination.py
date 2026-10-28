@@ -80,6 +80,8 @@ def document(token, background, frames):
                 "type": "Image",
                 "id": "actor",
                 "position": "absolute",
+                "top": 0,
+                "left": 0,
                 "width": "100%",
                 "height": "100%",
                 "scale": "best-fit",
