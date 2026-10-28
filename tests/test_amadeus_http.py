@@ -124,6 +124,22 @@ class AmadeusHttpTests(unittest.TestCase):
             )
         self.assertEqual(caught.exception.code, 403)
 
+    def test_auto_morning_configuration_rejects_an_unassigned_scene(self):
+        from okabebot.morning import DEFAULTS
+
+        self.bridge.surfaces.snapshot.return_value = {
+            "locations": [{"id": "test-tv", "name": "Invented TV", "adapter": "cast"}]
+        }
+        self.bridge.surfaces.ensure_scene.side_effect = ValueError("Unassigned scene")
+        self.request("/amadeus/api/settings", SETUP)
+        with self.assertRaises(HTTPError) as caught:
+            self.request(
+                "/amadeus/api/morning",
+                dict(DEFAULTS, enabled=True, present_on_wake=True, destination="test-tv"),
+            )
+        self.assertEqual(caught.exception.code, 400)
+        self.assertFalse(self.request("/amadeus/api/morning")["config"]["enabled"])
+
     def test_unpaired_publish_cross_origin_and_host_requests_cannot_open_private_store(self):
         for headers, token in [
             ({}, ""),

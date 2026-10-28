@@ -94,9 +94,23 @@ def handle(handler, bridge, *, post=False):
 
             morning = Morning(state_dir() / "amadeus")
             places = bridge.surfaces.snapshot()["locations"]
+            if post:
+                from .morning import validate
+
+                validate(data, places)
+                if data["enabled"] and data["present_on_wake"]:
+                    bridge.surfaces.ensure_scene(data["destination"])
             config = morning.configure(data, places) if post else morning.settings()
+            destination_ready = False
+            if config["destination"]:
+                try:
+                    bridge.surfaces.ensure_scene(config["destination"])
+                    destination_ready = True
+                except ValueError:
+                    pass
             result = {
                 "config": config,
+                "destination_ready": destination_ready,
                 "summary": morning.view(preview=True),
                 "destinations": [
                     {"id": p["id"], "name": p["name"]} for p in places if p.get("adapter") == "cast"

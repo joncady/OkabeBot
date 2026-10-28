@@ -41,7 +41,10 @@ Open `/amadeus/` and use **Morning window**. The versioned example values are in
 [`examples/morning.json`](../examples/morning.json). Core defaults are off and no
 TV is selected; installed owner settings may differ. Configure local hours,
 alarm window, temperature units, card interval, availability duration and a TV
-from the destination registry. Room names/hosts are not hardcoded. Use a Room view
+from the destination registry. Room names/hosts are not hardcoded. Automatic
+presentation cannot be enabled without an assigned unique scene for the current
+character and its home. The owner API also reports readiness if scene assignments
+change later, instead of silently treating a registered TV as ready. Use a Room view
 for the chosen TV scene; a compact Companion view does not show the card rail.
 
 These controls use owner-only `GET/POST /amadeus/api/morning`. Configuration is

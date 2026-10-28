@@ -70,7 +70,7 @@ const amadeusUI = (() => {
     }
     $('morning-destination').value=c.destination;
     $('morning-preview').textContent=value.summary?value.summary.cards.map(c=>c.title+' · '+c.body).join('\n\n'):'';
-    $('morning-status').textContent=c.enabled?'Morning preparation configured; phone/weather permissions and active collection are also required.':'Morning preparation off.';
+    $('morning-status').textContent=c.enabled?(c.present_on_wake&&!value.destination_ready?'TV needs a unique scene assignment in Locations before automatic presentation can work.':'Morning preparation configured; phone/weather permissions and active collection are also required.'):'Morning preparation off.';
   }
   async function load() {
     const value = await api('settings'); current = value.settings;

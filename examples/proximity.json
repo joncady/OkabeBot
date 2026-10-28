@@ -1,0 +1,13 @@
+{
+  "uuid": "00000000-0000-0000-0000-000000000001",
+  "major": 1,
+  "minor": 1,
+  "adapter": "hci0",
+  "destination": "",
+  "enter": -60,
+  "exit": -75,
+  "dwell": 4,
+  "lost": 15,
+  "cooldown": 120,
+  "sample_window": 10
+}

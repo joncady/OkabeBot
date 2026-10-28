@@ -78,6 +78,18 @@ Physical acceptance of an eligible real morning, TV legibility and return to the
 normal layout remains a private human checkpoint. This deterministic rule does
 not enable routine learning, general proactive suggestions or health coaching.
 
+## BLE proximity trial capability (2026-10-27)
+
+A standalone Python-3.7-compatible BlueZ D-Bus scanner is installed alongside the
+satellite scripts. The Pi adapter and target advertisement reception were checked;
+existing display/voice services remained active during the setup checks. A bounded
+Mac CLI trial can consume target-only events over existing SSH and request one
+configured Pi handoff. It uses no new listener, pairing, persistent SSH permission,
+Amadeus collection scope or startup service. Close/far calibration and physical
+handoff acceptance are private trial checks, not published outcomes. Continuous
+following and sustained radio/GATT/audio coexistence remain unaccepted. See
+[proximity setup](proximity.md); beacon identifiers and samples stay private.
+
 ## Devices and responsibilities
 
 | Device | Hosted role / connection | Current state and limits |

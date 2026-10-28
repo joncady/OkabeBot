@@ -86,8 +86,11 @@ flowchart TB
         Display["hardware-lab: loopback 8765"] --> LCD["UCTRONICS 3.5 inch LCD: 480 x 320"]
         Display --- Camera["CSI camera and IR LED boards"]
         Display <-->|"Bluetooth LE"| Bot["SwitchBot Bot"]
+        BeaconScan["Optional bounded BLE proximity scanner"]
         Voice["hardware-voice: loopback 8766"] --- Bonnet["AIY Voice Bonnet: mic, speaker and button"]
     end
+    BeaconScan -->|"Target-only signal events over verified SSH"| Proximity["Opt-in Mac proximity trial; one shared handoff"]
+    Proximity --> Places
     App <-->|"Verified SSH: scenes, camera and Bot tools"| Display
     App <-->|"Verified SSH: recordings, PCM and button events"| Voice
     TV["Vizio TV / Cast receiver"] -->|"Cast media callbacks"| App
@@ -582,3 +585,7 @@ ready until the audio deadline path is reliable.
 Device discovery and future household sources: [guided setup, weather, appliance,
 health and NFC/QR plan](docs/home-context-sources.md). The setup skill supports
 conversational mapping; a dashboard-wide network/BLE scan remains planned.
+
+A [bounded phone proximity trial](docs/proximity.md) can use the Pi's BLE adapter
+to request one shared character handoff. It is optional, calibrated per setup and
+separate from Amadeus history or home/away tracking; permanent following is pending.
