@@ -132,7 +132,9 @@ from verified input. Unbound destinations retain existing behavior.
 `wake_cast: true` optionally launches an empty public preparation page on the exact
 configured Chromecast before the HA power wait. This invokes HDMI-CEC wake without
 showing a character, exposing a receiver token or moving it from its current screen.
-An already-present character on that destination is not replaced. Otherwise the
+An existing character visit to the same destination refreshes its own dashboard
+session instead of showing an empty warmup or moving the actor to another screen.
+This also supports waking a TV that was switched off during an existing visit. Otherwise the
 existing receiver app is stopped once before a fresh launch so a retained DashCast
 session cannot silently suppress CEC activation. This can interrupt Cast playback,
 just like automatic presentation itself; it is not a background retry loop. The Chromecast

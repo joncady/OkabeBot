@@ -180,7 +180,7 @@ class PrepareTests(unittest.TestCase):
             self.assertFalse(self.worker.prepare("test-tv", lambda: True))
             post.assert_not_called()
 
-    def test_cast_warmup_has_no_character_token_and_does_not_replace_present_actor(self):
+    def test_cast_warmup_has_no_character_token_and_refreshes_an_existing_visit(self):
         from unittest.mock import Mock
         from okabebot.bridge import Bridge
 
@@ -202,7 +202,11 @@ class PrepareTests(unittest.TestCase):
                 "http://127.0.0.1:8768/tv/wake/", force=True
             )
             bridge.surfaces.phase, bridge.surfaces.active_id = "tv", "test-tv"
+            bridge.surfaces.refresh_receiver.return_value = True
             self.assertTrue(bridge.wake_destination_cast("test-tv"))
+            bridge.surfaces.refresh_receiver.assert_called_once_with(
+                "test-tv", "http://127.0.0.1:8768"
+            )
             self.assertEqual(controller.load_url.call_count, 1)
             bridge.surfaces.cast_for.return_value = None
             self.assertFalse(bridge.wake_destination_cast("test-tv"))

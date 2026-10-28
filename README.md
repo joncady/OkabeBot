@@ -20,7 +20,9 @@ capability improvements, limitations and regressions.
 An opt-in [morning summary](docs/morning.md) can prepare weather/calendar cards
 on the first screen-on near an alarm and optionally present them on a configured
 TV. Its local schedule, destination and pixel card rail are configurable; source
-permissions and automatic TV movement remain separate.
+permissions and automatic TV movement remain separate. Optional Cast/CEC wake
+requires independent receiver power; existing visits refresh their scoped session
+when preparing a display.
 
 The default character is an original pixel-art interpretation of **Rintaro Okabe from Steins;Gate**: dark hair, lab coat, expressive eyes, and an audio-driven mouth. This is an unofficial fan project, with no affiliation or endorsement. The artwork is drawn in code; no anime frames or actor voice recordings are included. Pip, the original robot face, remains an option.
 

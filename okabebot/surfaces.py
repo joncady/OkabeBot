@@ -194,6 +194,25 @@ class Surfaces:
                 result = self.begin(base, launch=False)
             return {k: v for k, v in dict(result, accepted=True).items() if k != "url"}
 
+    def refresh_receiver(self, location_id, base):
+        """Refresh an existing Cast visit without moving or duplicating its actor."""
+        with self.lock:
+            if self.phase != "tv" or self.active_id != location_id or self.direct:
+                return False
+            if not any(
+                p["id"] == location_id and p["adapter"] == "cast"
+                for p in self.settings["locations"]
+            ):
+                return False
+            self.receiver_session, self.receiver_active = None, False
+            self.last_seen = time.monotonic()
+            # The replaced page may send an unload/closed callback. Revoke its
+            # capability before launch so it cannot cancel the refreshed visit.
+            self.token = secrets.token_urlsafe(32)
+            url = base + "/tv/#" + self.token
+        self._launch(url, location_id=location_id)
+        return True
+
     def registered(self, token):
         try:
             return self.registry.device(token)

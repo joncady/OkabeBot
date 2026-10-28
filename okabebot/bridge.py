@@ -517,7 +517,9 @@ class Bridge:
         if cast is None:
             return False
         if self.surfaces.phase == "tv" and self.surfaces.active_id == destination:
-            return True  # Do not replace an already-present character with warmup.
+            return self.surfaces.refresh_receiver(
+                destination, "http://%s:%s" % (get_config()["web"]["host"], self.port)
+            )  # Refresh its own page, never replace its actor with empty warmup.
 
         class FreshDashCast(DashCastController):
             def launch(self, *, callback_function=None, force_launch=False):

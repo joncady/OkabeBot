@@ -90,3 +90,7 @@ explicit policy change; aggregation alone does not authorize it.
 - Improved: warmup-to-dashboard and repeated dashboard visits explicitly restart
   navigated-away receiver sessions; stale launch requests abstain before receiver
   control. Synthetic session/ownership regressions cover the transition.
+
+- Improved: refreshing an existing destination rotates its scoped capability so
+  unload events from the replaced page cannot cancel the new visit. Regression
+  coverage checks ownership preservation and old-capability revocation.

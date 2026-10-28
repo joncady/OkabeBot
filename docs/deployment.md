@@ -90,8 +90,11 @@ HDMI receiver uses independent power; standby behavior remains part of private
 physical acceptance. Cast pools now exclude disconnected/reconnecting clients and
 recreate dropped sessions instead of exposing stale availability. Warmup and
 subsequent dashboard launches use fresh DashCast sessions; stale launches cannot
-replace a newer visit. Long-standby and overnight acceptance remain separate from
-software readiness and immediate power/input checks. HA owns the selected Samsung media/remote entities,
+replace a newer visit. An already-active destination refreshes its own scoped
+receiver page with a new capability, revoking unload callbacks from the old page
+without changing character ownership. Long-standby and overnight acceptance remain
+separate from software readiness and immediate power/input checks. HA owns the
+selected Samsung media/remote entities,
 input key and local-only webhook secret in its private package/secrets. The source
 publisher credential can acknowledge a pending nonce but cannot initiate actions.
 HA input delivery and Chromecast active-input readiness are separate checks;
