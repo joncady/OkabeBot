@@ -1,5 +1,6 @@
 'use strict';
 let locationSignature='',locationDragging=false,arrangedScreen='';
+if(typeof window!=='undefined')window.addEventListener('resize',()=>{locationSignature='';});
 
 function screenDirection(a,b){const dx=b[0]-a[0],dy=b[1]-a[1];return Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down');}
 function screenArrangement(map,places,surface,save){

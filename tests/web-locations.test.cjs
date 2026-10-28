@@ -1,12 +1,12 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const catalog=require('../okabebot/assets/scene-sets.json');
 function dashboard(enabled){
- const calls=[],nodes={};
+ const calls=[],nodes={},events={};
  function element(tag){return{tag,children:[],style:{},dataset:{},classList:{toggle(){}},append(...children){this.children.push(...children);},replaceChildren(){this.children=[];},setAttribute(key,value){this[key]=value;}};}
- const context={document:{createElement:element,querySelector:selector=>nodes[selector]||=(element('div'))},api:async(path,data)=>calls.push({path,data}),action(){}};
+ const context={window:{addEventListener(name,handler){events[name]=handler;}},document:{createElement:element,querySelector:selector=>nodes[selector]||=(element('div'))},api:async(path,data)=>calls.push({path,data}),action(){}};
  vm.runInNewContext(fs.readFileSync('okabebot/web/locations.js','utf8'),context);
  const state={phase:'pi',current_location:'home',character_style:'okabe',scene_world_enabled:enabled,scene_catalog:catalog,locations:[{id:'home',name:'Home',adapter:'pi',approved:true,available:true,presentation:'companion',position:[0,0],scene_selections:enabled?{okabe:'pixel-lab'}:{}},{id:'tv',name:'TV',adapter:'cast',approved:true,available:true,presentation:'room',position:[-1,0],scene_selections:enabled?{okabe:'maid-cafe'}:{}}]};
- context.locationsUI(state);return{calls,nodes,state,context};
+ context.locationsUI(state);return{calls,nodes,state,context,events};
 }
 test('scene setup is explicit and sends one initialization transaction',async()=>{
  const d=dashboard(false),children=d.nodes['#location-list'].children,setup=children[0];
@@ -39,4 +39,15 @@ test('drag snaps to grid and rejects occupied screen space',async()=>{
  assert.equal(d.calls.length,0);assert.match(d.nodes['#location-error'].textContent,/occupied/);
  home.onpointerdown({clientX:0,clientY:0,pointerId:2});home.onpointermove({clientX:150,clientY:115});await home.onpointerup();
  assert.deepEqual(JSON.parse(JSON.stringify(d.calls[0].data)),{id:'home',position:[1,1]});
+});
+
+test('viewport resize refits screen arrangement on the next state update',()=>{
+ const d=dashboard(true),map=d.nodes['#location-map'];
+ const first=map.children[0];
+ map.clientWidth=240;map.clientHeight=160;d.events.resize();d.context.locationsUI(d.state);
+ assert.notEqual(map.children[0],first);
+ const scale=Number(map.children[0].style.transform.match(/scale\((.*)\)/)[1]);
+ assert.ok(scale<1);
+ assert.ok(parseFloat(map.children[0].style.width)*scale<=240);
+ assert.ok(parseFloat(map.children[0].style.height)*scale<=160);
 });

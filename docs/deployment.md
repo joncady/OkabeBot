@@ -722,3 +722,11 @@ ICL references remain installed. Speaker-only conditioning is feasible with the
 installed MLX-Audio version, but accent/tone acceptance remains a listening test.
 See [comparison details and measured limits](voice-conditioning.md). No training,
 model upgrade or cloud GPU was started, and no private audio was committed.
+
+
+Three subsequent silent Samsung arrival/return cycles completed with rendered
+acknowledgements: arrivals 9.15/9.23/9.21 seconds, returns 5.90/5.13/5.90 seconds.
+These are observed controller timings rather than performance guarantees. The
+Pi and original first-TV scene reservations were restored afterward. Screen
+arrangement now refits on the next state update after browser/tablet resize; its
+focused browser regression covers that behavior. No hosting or port changes.

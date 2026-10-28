@@ -490,8 +490,8 @@ controls relative to another screen. Travel follows cardinal directions. See
 [configuration and world rules](docs/surfaces.md) and the
 [multiple-TV example](examples/surfaces-multiple-tvs.json). The installed second
 receiver is connected; the user confirmed Samsung arrival without a duplicate Pi
-character, and the controller confirmed return home. Repeated-launch reliability
-remains a follow-up test.
+character, and the controller confirmed return home. Three subsequent silent Samsung arrival/return cycles passed; broader
+long-running and cross-TV testing remain follow-up work.
 Scene-set reservations remain unique, so extra screens need an unreserved set.
 
 Japanese-reference speaker-only English conditioning has an isolated
