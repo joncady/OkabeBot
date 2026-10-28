@@ -11,7 +11,7 @@ const amadeusUI = (() => {
     for(const id of ['amadeus-setup','amadeus-controls','amadeus-memory','amadeus-morning']) $(id).hidden=true;
     $('amadeus-form').reset();$('memory-form').reset();
     $('sources').replaceChildren();$('topics').replaceChildren();$('memory-list').replaceChildren();
-    $('morning-voice-form').reset();$('morning-show-status').textContent='';$('morning-test-status').textContent='';$('morning-test-tv').disabled=true;$('morning-preview').textContent='';$('morning-status').textContent='';$('morning-form').reset();$('morning-destination').replaceChildren();
+    $('morning-voice-form').reset();$('morning-person').textContent='';$('morning-show-status').textContent='';$('morning-test-status').textContent='';$('morning-test-tv').disabled=true;$('morning-preview').textContent='';$('morning-status').textContent='';$('morning-form').reset();$('morning-destination').replaceChildren();
     $('event-list').textContent='';$('household-list').textContent='';$('coaching-state').textContent='';
   }
   async function api(path, data) {
@@ -61,7 +61,7 @@ const amadeusUI = (() => {
   async function morning() {
     const value=await api('morning');if(!value.config)return;
     const c=value.config;$('amadeus-morning').hidden=false;
-    const voice=value.voice||{};$('morning-spoken').checked=!!voice.enabled;$('morning-name').value=voice.name||'';
+    const voice=value.voice||{};$('morning-person').textContent=voice.resolved_name?`Greeting name: ${voice.resolved_name} · ${voice.name_source==='home_assistant'?'Home Assistant person':'spoken override'}`:'Link a Home Assistant person or set a spoken override.';$('morning-spoken').checked=!!voice.enabled;$('morning-name').value=voice.name||'';
     $('morning-coaching').checked=!!voice.coaching;$('morning-quiet-override').checked=!!voice.quiet_override;
     $('morning-test-tv').disabled=!value.tv_preparation_configured;
     $('morning-start').value=c.start_hour;$('morning-end').value=c.end_hour;$('morning-unit').value=c.temperature_unit;

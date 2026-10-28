@@ -1057,3 +1057,15 @@ own destination; previews cannot receive audio. Announcement routing is unchange
 The installed TV routes select their own device output with separately configured
 software gain. Source changes and installed configuration are distinct from physical audio
 acceptance, which still requires listening at each TV. Hardware volume is unchanged.
+
+### Selected-person greeting identity
+
+The installed HA package publishes a single explicitly bound person's display
+name to `/amadeus/source/person` using the existing write-only source credential.
+Only entity ID, display name and snapshot time cross that route; tracker, GPS
+and account attributes are excluded. The controller stores the name as a private
+profile-linked preference, not an observation history. Active consent, pause,
+guest, freshness and deletion controls apply. The morning greeting resolves this
+name unless a private spoken override is set. No additional listener or HA owner
+credential is introduced. See the portable person-name publisher in the morning
+guide for new installations; the selected entity remains private configuration.

@@ -1,6 +1,7 @@
 """Private opt-in morning speech and grounded briefing enrichment."""
 
 import json
+from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -17,6 +18,7 @@ MORNING_COACHING = {
 }
 VOICE_KEY = "morning.voice"
 SPOKEN_KEY = "morning.spoken"
+PERSON_KEY = "morning.person"
 VOICE_DEFAULTS = {"enabled": False, "name": "", "coaching": False, "quiet_override": False}
 
 
@@ -30,10 +32,88 @@ class Briefing:
     def __init__(self, folder, *, clock=None):
         self.morning = Morning(folder, clock=clock)
 
+    def person(self, store):
+        try:
+            entity = json.loads((Path(self.morning.folder) / "ha-bindings.json").read_text()).get(
+                "greeting_person"
+            )
+        except (OSError, ValueError):
+            return None
+        setup = self.morning.preference(store, KEY)
+        value = self.morning.preference(store, PERSON_KEY, {})
+        if (
+            setup
+            and "door_presence" in setup["sources"]
+            and value.get("profile") == setup["profile"]
+            and value.get("entity_id") == entity
+            and 0 <= store.clock() - value.get("observed_at", 0) <= 86400
+        ):
+            return value
+        return None
+
+    def update_person(self, data):
+        """Selected HA person display name only; never import tracker/GPS/user attributes."""
+        if not isinstance(data, dict) or set(data) != {"entity_id", "name", "observed_at"}:
+            raise ValueError("Provide a bounded person name snapshot")
+        if not self.valid_name(data["name"]) or not data["name"].strip():
+            raise ValueError("Use a short display name")
+        binding = json.loads((Path(self.morning.folder) / "ha-bindings.json").read_text())
+        if (
+            not isinstance(data["entity_id"], str)
+            or not data["entity_id"].startswith("person.")
+            or data["entity_id"] != binding.get("greeting_person")
+        ):
+            raise PermissionError("Person is not bound to this private profile")
+        store = self.morning.store()
+        try:
+            stamp = data["observed_at"]
+            if type(stamp) not in (int, float) or not 0 <= store.clock() - stamp <= 60:
+                raise ValueError("Stale person snapshot")
+            with store.db:
+                store.db.execute("BEGIN IMMEDIATE")
+                setup = self.morning.preference(store, KEY)
+                if (
+                    not setup
+                    or setup["paused"]
+                    or setup["guest"]
+                    or "door_presence" not in setup["sources"]
+                ):
+                    return {"state": "not_permitted"}
+                old = self.morning.preference(store, PERSON_KEY, {})
+                if old.get("observed_at", 0) > stamp:
+                    return {"state": "stale"}
+                store.remember(
+                    SYSTEM,
+                    PERSON_KEY,
+                    dict(data, name=data["name"].strip(), profile=setup["profile"]),
+                )
+            return {"state": "stored"}
+        finally:
+            store.close()
+
+    @staticmethod
+    def valid_name(name):
+        return (
+            isinstance(name, str)
+            and len(name) <= 60
+            and all(c.isalpha() or c in " '-." for c in name)
+        )
+
     def settings(self):
         store = self.morning.store()
         try:
-            return dict(VOICE_DEFAULTS, **self.morning.preference(store, VOICE_KEY, {}))
+            value = dict(VOICE_DEFAULTS, **self.morning.preference(store, VOICE_KEY, {}))
+            person = self.person(store)
+            return dict(
+                value,
+                resolved_name=value["name"] or (person or {}).get("name", ""),
+                name_source="override"
+                if value["name"]
+                else "home_assistant"
+                if person
+                else "unavailable",
+                person_entity=(person or {}).get("entity_id", ""),
+            )
         finally:
             store.close()
 
@@ -43,17 +123,14 @@ class Briefing:
         if any(type(value[k]) is not bool for k in ("enabled", "coaching", "quiet_override")):
             raise ValueError("Use boolean voice choices")
         name = value["name"]
-        if (
-            not isinstance(name, str)
-            or len(name) > 60
-            or any(not c.isalpha() and c not in " '-." for c in name)
-            or (value["enabled"] and not name.strip())
-        ):
-            raise ValueError("Use a short spoken name")
+        if not self.valid_name(name):
+            raise ValueError("Use a short spoken name override")
         store = self.morning.store()
         try:
             if not self.morning.preference(store, KEY):
                 raise ValueError("Save private setup first")
+            if value["enabled"] and not name.strip() and not self.person(store):
+                raise ValueError("Link a Home Assistant person or provide a spoken name override")
             store.remember(SYSTEM, VOICE_KEY, dict(value, name=name.strip()))
             return self.settings()
         finally:
@@ -147,6 +224,7 @@ class Briefing:
             return bool(
                 setup
                 and voice["enabled"]
+                and voice["resolved_name"]
                 and (voice["quiet_override"] or not quiet(setup, store.clock()))
             )
         finally:
@@ -165,6 +243,7 @@ class Briefing:
                 voice = dict(VOICE_DEFAULTS, **self.morning.preference(store, VOICE_KEY, {}))
                 if (
                     not voice["enabled"]
+                    or not (voice["name"] or self.person(store))
                     or not self.morning.permitted(setup, config)
                     or config.get("destination") != destination
                 ):
@@ -194,7 +273,9 @@ class Briefing:
             store.close()
 
     def message(self, summary, character, composer=None):
-        name = self.settings()["name"]
+        name = self.settings()["resolved_name"]
+        if not name:
+            raise ValueError("No current person name or spoken override")
         intro = f"Good morning, {name}."
         generated = False
         if composer:

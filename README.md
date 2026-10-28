@@ -20,7 +20,8 @@ capability improvements, limitations and regressions.
 An opt-in [morning summary](docs/morning.md) can prepare weather/calendar cards
 on the first screen-on near an alarm and optionally present them on a configured
 TV. Two stacked cards rotate in its pixel rail. Optional named, persona-generated
-greetings precede a grounded rundown, respecting quiet hours. TV replies use that
+greetings use the selected Home Assistant person’s name (with an optional spoken
+override) and precede a grounded rundown, respecting quiet hours. TV replies use that
 TV’s own audio output with configurable per-location gain. Its local schedule and destination are configurable; source
 permissions and automatic TV movement remain separate. Optional Cast/CEC wake
 requires independent receiver power; existing visits refresh their scoped session
@@ -84,7 +85,7 @@ flowchart TB
         Morning -->|"Configured TV card rail and shared handoff"| Places
         HA -->|"Write-only phone cue / alarm / weather metadata"| Morning
         App --> Amadeus["Owner-only Amadeus setup; consent-gated shadow metadata; private SQLite; no nudges"]
-        HA -->|"Write-only, entity-bound door/presence and TV state metadata"| Amadeus
+        HA -->|"Write-only, entity-bound person name, door/presence and TV metadata"| Amadeus
         App -->|"Existing calendar/media snapshots and interaction metadata"| Amadeus
         MacPanel["Native floating Mac companion"] <-->|"Paired surface, hold-to-talk and streamed audio: localhost 8768"| App
     end

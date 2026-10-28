@@ -105,3 +105,12 @@ explicit policy change; aggregation alone does not authorize it.
   gain; missing receivers cannot silently redirect a briefing to another device.
 - Limited: current weather and timed events remain the source coverage; forecasts,
   all-day events and richer briefing prioritization remain follow-up work.
+
+## Explicit person identity for greetings
+
+- Improved: selected HA person names can supply greetings through a bounded,
+  write-only publisher, with an optional spoken override and visible source.
+- Improved: entity/profile binding, freshness and consent checks prevent choosing
+  another household person from activity or forwarding complete HA attributes.
+- Limited: identity still requires explicit setup; presence does not identify a
+  speaker or imply that the logged-in HA account is the current user.

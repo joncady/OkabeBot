@@ -24,7 +24,12 @@ def handle(handler, bridge, *, post=False):
         )
         handler.respond(200, (Path(__file__).parent / "web" / name).read_text(), kind)
         return True
-    if path in ("/amadeus/source/ha", "/amadeus/source/morning", "/amadeus/source/tv-ready"):
+    if path in (
+        "/amadeus/source/ha",
+        "/amadeus/source/morning",
+        "/amadeus/source/tv-ready",
+        "/amadeus/source/person",
+    ):
         from .config import state_dir
         from .amadeus_sources import Collector
 
@@ -52,7 +57,11 @@ def handle(handler, bridge, *, post=False):
                 raise ValueError("Invalid source size")
             handler.connection.settimeout(5)
             data = json.loads(handler.rfile.read(size))
-            if path.endswith("tv-ready"):
+            if path.endswith("person"):
+                from .morning_briefing import Briefing
+
+                result = Briefing(folder).update_person(data)
+            elif path.endswith("tv-ready"):
                 result = bridge.tv_preparation.complete(data)
             elif path.endswith("morning"):
                 from .morning import Morning

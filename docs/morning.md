@@ -193,3 +193,23 @@ automatically replayed. Coaching delivery is recorded only after playback comple
 The owner’s **Show today’s briefing** control reopens an existing real daily run;
 it does not fabricate a wake observation. It respects the same once-daily speech
 claim. Source freshness still applies, so missing sources remain explicit.
+
+### Name from the selected Home Assistant person
+
+The selected `person.*` entity's `friendly_name` is the default greeting name.
+A Home Assistant login account is not automatically the current household person;
+explicitly bind the intended entity as `greeting_person` in private
+`amadeus/ha-bindings.json`. Install
+[`person_name.yaml`](../examples/home-assistant/person_name.yaml) with private
+secrets `amadeus_person_entity`, `amadeus_person_name_url` (controller origin plus
+`/amadeus/source/person`) and the existing write-only `amadeus_source_token`.
+This publisher sends only entity ID, display name and snapshot time—never the
+person's tracker, coordinates, user ID or complete attributes. It imports no
+other people and needs no owner dashboard credential or HA account token.
+
+Name refresh requires active collection, door/presence consent and non-guest
+mode. The private profile-linked name expires after 24 hours without refresh;
+a missing, rebound or consent-revoked person is not guessed. Forgetting removes
+the cached name with other private preferences. Clear **Spoken name override**
+to follow Home Assistant; a nonempty override takes precedence for pronunciation
+or a preferred spoken name. The setup page displays which source is active.

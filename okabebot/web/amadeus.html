@@ -45,9 +45,9 @@
 <label class="amadeus-option"><input id="morning-present" type="checkbox"> Automatically move to the selected TV on the morning cue</label>
 <button>Save morning configuration</button></form><p id="morning-status"></p>
 <button id="morning-test-tv" type="button" disabled>Test TV power and input</button><p id="morning-test-status" role="status"></p>
-<form id="morning-voice-form"><h3>Spoken briefing</h3>
+<form id="morning-voice-form"><h3>Spoken briefing</h3><p id="morning-person"></p>
 <label class="amadeus-option"><input id="morning-spoken" type="checkbox"> Short character greeting and grounded rundown once per day</label>
-<label>Spoken name<input id="morning-name" maxlength="60" autocomplete="given-name"></label>
+<label>Spoken name override (optional with Home Assistant person)<input id="morning-name" maxlength="60" autocomplete="given-name"></label>
 <label class="amadeus-option"><input id="morning-coaching" type="checkbox"> Include one invitation from my opted-in coaching topics on this screen and in speech</label>
 <label class="amadeus-option"><input id="morning-quiet-override" type="checkbox"> Allow morning speech during quiet hours</label>
 <p>Speaks from the destination TV or its linked audio output. Adjust its voice gain in Locations. Coaching stop/snooze and source consent still apply. No health or mood inference.</p>

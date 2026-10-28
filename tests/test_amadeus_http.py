@@ -13,6 +13,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from okabebot.amadeus import Store
+from okabebot.amadeus_onboarding import SYSTEM
 from okabebot.bridge import handler
 
 
@@ -159,6 +160,49 @@ class AmadeusHttpTests(unittest.TestCase):
         with self.assertRaises(HTTPError) as caught:
             self.request("/amadeus/api/tv-prepare", {"destination": "other-tv"})
         self.assertEqual(caught.exception.code, 400)
+
+    def test_person_name_publisher_is_write_only_exactly_bound_and_forgettable(self):
+        self.request("/amadeus/api/settings", dict(SETUP, sources=["door_presence"]))
+        self.request("/amadeus/api/control", {"paused": False})
+        folder = self.folder / "amadeus"
+        (folder / "ha-source-token").write_text("s" * 43)
+        (folder / "ha-bindings.json").write_text(json.dumps({"greeting_person": "person.fixture"}))
+        data = {"entity_id": "person.fixture", "name": "Avery", "observed_at": time.time()}
+        publisher = {"X-Amadeus-Source-Token": "s" * 43}
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/source/person", data)
+        self.assertEqual(caught.exception.code, 403)
+        self.assertEqual(
+            self.request("/amadeus/source/person", data, token="", extra=publisher)["state"],
+            "stored",
+        )
+        for path in ("/amadeus/api/memory", "/amadeus/api/morning"):
+            with self.assertRaises(HTTPError) as caught:
+                self.request(path, token="", extra=publisher)
+            self.assertEqual(caught.exception.code, 403)
+        with self.assertRaises(HTTPError) as caught:
+            self.request(
+                "/amadeus/source/person",
+                dict(data, entity_id="person.other"),
+                token="",
+                extra=publisher,
+            )
+        self.assertEqual(caught.exception.code, 403)
+        with self.assertRaises(HTTPError) as caught:
+            self.request(
+                "/amadeus/source/person", dict(data, latitude=1), token="", extra=publisher
+            )
+        self.assertEqual(caught.exception.code, 400)
+        self.request("/amadeus/api/forget", {"confirm": "forget_amadeus"})
+        self.assertEqual(
+            self.request("/amadeus/source/person", data, token="", extra=publisher)["state"],
+            "not_permitted",
+        )
+        store = Store(folder)
+        try:
+            self.assertFalse(store.recall(SYSTEM)["preferences"])
+        finally:
+            store.close()
 
     def test_auto_morning_configuration_rejects_an_unassigned_scene(self):
         from okabebot.morning import DEFAULTS
