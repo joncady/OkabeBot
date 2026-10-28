@@ -514,7 +514,11 @@ class Display:
                 for item in self.sport_items:
                     self.canvas.itemconfigure(item, state="hidden")
                 shapes = pip_face.shapes(
-                    **{k: v for k, v in self.face_args().items() if k != "idle_seconds"}
+                    **{
+                        k: v
+                        for k, v in self.face_args().items()
+                        if k not in ("idle_seconds", "environment")
+                    }
                 )
                 if phase == "away":
                     self.draw_scene(shapes[:1], sx, sy)

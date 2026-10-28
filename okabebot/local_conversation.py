@@ -552,22 +552,32 @@ class LocalConversation:
                 if not self.cancelled.is_set():
                     self.completed(clarification, status)
                 return
-            self.process.stdin.write(
-                json.dumps(
-                    {
-                        "text": text[:2000],
-                        "location_tool": {
-                            "type": "function",
-                            "function": self.specs.get("move_companion"),
-                        },
-                        "persona": current_character()["persona"],
-                        "tool_names": shortlist(text, self.specs),
-                    }
+            candidates = shortlist(text, self.specs)
+            if candidates == ["get_companion_locations"]:
+                # Argument-free discovery is grounded in the live registry. Avoid
+                # a model paraphrase that can omit the tool and invent destinations.
+                result = {
+                    "text": "",
+                    "selection_s": 0,
+                    "tool_call": {"name": "get_companion_locations", "arguments": {}},
+                }
+            else:
+                self.process.stdin.write(
+                    json.dumps(
+                        {
+                            "text": text[:2000],
+                            "location_tool": {
+                                "type": "function",
+                                "function": self.specs.get("move_companion"),
+                            },
+                            "persona": current_character()["persona"],
+                            "tool_names": candidates,
+                        }
+                    )
+                    + "\n"
                 )
-                + "\n"
-            )
-            self.process.stdin.flush()
-            result = self._read()
+                self.process.stdin.flush()
+                result = self._read()
             if result.get("error"):
                 raise RuntimeError("Local generation failed; no action executed")
             if self.cancelled.is_set():

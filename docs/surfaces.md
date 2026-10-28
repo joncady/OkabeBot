@@ -175,7 +175,7 @@ preview. This is not a physical TV legibility or long-running reliability test.
 Volumes and audio routing were unchanged. See [surface options](surface-options.md)
 for research on additional destinations; Alexa has a separate APL prototype; browser/Mac status is documented in the guide above.
 
-## Scene sets and world rules (source preview)
+## Scene sets and world rules
 
 Physical locations and scene sets are separate. Each location has a **Room**
 (full cutaway) or **Companion** (compact, transparent scenery) presentation and
@@ -215,8 +215,11 @@ silently duplicating a set.
 
 Generate the isolated review gallery with
 `PYTHONPATH=. python scripts/preview-scene-sets.py`. It contains Room and Companion
-views of all eight combinations, with generic preview data. New world rules and
-scenery are source changes, not evidence of installation. The active deployment
-has not been migrated; the offline Pi still needs deployment and physical review.
+views of all eight combinations, with generic preview data. The active Mac/Pi
+deployment was updated and scene-world setup activated during the 2026-10-27
+acceptance pass. Four TV arrivals/returns and a native Mac handoff were confirmed
+by the controller. The user confirmed all four TV handoffs looked right, with
+no duplicate actor visible. The user also confirmed the phone character,
+microphone and routed audio during a real conversation turn.
 Alexa's APL artwork exporter accepts `--set`, but the Show prototype is not yet a
 registered spatial destination and does not participate in these reservations.

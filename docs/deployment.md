@@ -11,7 +11,7 @@ configuration, not this inventory.
 | Device | Hosted role / connection | Current state and limits |
 | --- | --- | --- |
 | Apple Silicon Mac, 16 GiB RAM | Controller, local transcription, conversation and speech inference, integration adapters, dashboard, private application state; separate Home Assistant Docker container | Active host. Native controller is supervised by a user login LaunchAgent; Docker/HA has a separate lifecycle. |
-| Raspberry Pi Zero W Rev 1.1 | One Wi-Fi/SSH satellite running `hardware-lab` and `hardware-voice` systemd services | Both services were previously verified active; the Pi is unreachable during the latest Alexa trials, blocking microphone capture. No conversation or speech model inference runs here. Legacy OS/AIY dependencies remain in place. |
+| Raspberry Pi Zero W Rev 1.1 | One Wi-Fi/SSH satellite running `hardware-lab` and `hardware-voice` systemd services | Reachable again during the 2026-10-27 scene acceptance pass; both services verified active. Wi-Fi logs show earlier carrier losses followed by reconnection. No conversation or speech model inference runs here. Legacy OS/AIY dependencies remain in place. |
 | UCTRONICS B010601 3.5-inch LCD | Pi X11/Tk character renderer through the existing OS display configuration | Native framebuffer verified 480×320. Screen blanking disabled by the display service. Touch is not configured; no new GPIO-display conversion is claimed. |
 | Google AIY Voice Bonnet, speaker, microphone and large button | Attached to that same Pi; ALSA audio and AIY button input | Hold-to-talk capture, streamed PCM playback and local music energy metering. PTT preempts the music meter. Dev volume controls the physical speaker mixer and persists on the Pi. |
 | CSI camera and infrared LED boards | Attached to the same Pi; camera tools invoked by `hardware-lab` | Still capture/recording tools available. Night illumination depends on the physical IR boards and lens adjustment; it is not an always-on camera stream. |
@@ -627,18 +627,49 @@ synchronization are installed for the Show. Existing character locations and
 speaker volumes are unchanged. 330 Python tests, 11 room-renderer tests and the
 package build passed. Preview evidence remains private under `.local/alexa-skill/`.
 
-### Scene-world source preview
+### Scene-world installed acceptance pass — 2026-10-27
 
-The source catalog now defines two sets per character, Room/Companion presentation
-and controller-owned per-character reservations in `surface-devices.json`.
-These changes have **not** been installed or activated in the running deployment.
-No hosting, model ownership, ports, audio routes or topology edges changed.
-The Pi compact renderer requires a later deployment and hardware review; its
-Room presentation is deliberately unsupported. The separate Alexa APL prototype
-can export a selected set but is not a registered world location. See
-[surface scene rules](surfaces.md#scene-sets-and-world-rules-source-preview).
+Updated the installed Mac controller/web package, matching native Mac app and Pi
+display service with rollback copies of code and private configuration/state.
+The warm speech worker and Pi voice service were preserved. Hosting, model
+ownership, ports and topology edges are unchanged. Scene setup was explicitly
+activated: each character's first set is reserved on the Pi and second set on the
+TV. Other screens remain unassigned under the two-set uniqueness rule. The native
+Mac temporarily reserved the TV sets for testing, then released them back.
 
-The source-only scene setup now initializes all four home assignments atomically.
-Dashboard edits protect home reservations and occupied sets; local regressions
-exercise setup and movement guards without network or hardware access. Running
-services, volume, audio routing and scene assignments remain unchanged.
+Observed all four character profiles complete simulated recorded-input voice
+turns through the current transcription, local conversation and Qwen output path.
+Completion times were 10–26 seconds including full speech; these are not
+time-to-first-audio measurements. The initial destination question produced a
+generic answer instead of a tool call. The installed correction routes this
+argument-free discovery through the validated live tool; its retest executed the
+tool in 4 ms and completed speech via the Mac sink in about 10 seconds. No physical
+microphone/button test is claimed from simulated input.
+
+Live testing caught a scene-only keyword passed to the Pi portrait walking
+renderer, which prevented departure acknowledgements. Fixed and installed;
+regression exercises real departure/away frame branches for all four styles.
+Subsequent controller-confirmed TV arrivals took 8.8–9.4 s including receiver
+startup, and returns 5.6–6.3 s. The user confirmed all four physical TV departures/arrivals/returns looked
+right with no duplicate actor. Native Mac arrival, compact cafe, room-mode Kurisu
+and silent notification card were visually checked. The Mac audio sink reported
+Playback finished. A real phone microphone clip subsequently completed a local
+conversation turn, and the user confirmed phone character, microphone and speaker
+audio all worked. Phone PiP was confirmed in an earlier session, not repeated
+in this pass. A fresh native Mac microphone/physical audibility check remains
+separate from its observed audio completion.
+Pi status reported no render error, roughly 25–28 FPS in observed samples and a
+480x320 output. The user reported the existing speaker level was too loud; it was
+lowered and verified against the physical AIY mixer. Do not use this record to
+reset the user's mutable volume preference.
+
+Direct IAM Alexa prototype checks passed for voice/status/APL replies, signed
+MP3 and four image downloads with matching hashes. This is not physical Echo
+Show playback, a connected local-tool bridge or spatial registration. The Show
+remains a standalone prototype. No household data was uploaded for that test.
+See [surface rules](surfaces.md#scene-sets-and-world-rules).
+
+After phone acceptance, temporary reservations were released back to the TV and
+Okabe was restored to the Pi once the active user turn completed. The Samsung
+TV/two-TV adapter expansion is a separate backlog item; no Samsung discovery or
+configuration was attempted during this pass.

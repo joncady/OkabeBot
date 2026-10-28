@@ -465,16 +465,16 @@ Alexa custom-skill work now has a [local protocol and voice prototype](docs/alex
 
 The Alexa development skill can also return a [session-scoped pixel character](docs/alexa-skill.md#apl-character-prototype) on APL screens. This is a demo scene with bounded speaking/blink animation, not yet a registered spatial destination or a live notification display.
 
-### Scene-set preview
+### Scene sets
 
-Source includes two pixel-art sets per character, with Room and Companion views.
+Two pixel-art sets per character support Room and Companion views.
 Location assignments reserve a set per character and prevent duplicate places
-across screens. This is not yet activated in the installed deployment; hosting
-and the Current deployment map are unchanged. See [scene sets and setup rules](docs/surfaces.md#scene-sets-and-world-rules-source-preview)
+across screens. Scene-world setup is active in the maintained Mac/Pi deployment;
+hosting and the Current deployment map are unchanged. See [scene sets and setup rules](docs/surfaces.md#scene-sets-and-world-rules)
 for the catalog, review gallery command and migration limitations.
 
 Scene-world setup is explicit and initializes every character's home reservation
 in one step. Assignment edits protect the occupied set and return destination;
-these source-only changes do not alter the deployed topology.
+the scene feature does not alter the deployed topology.
 
 ![Green Hill scene-set preview](docs/green-hill-preview.png)

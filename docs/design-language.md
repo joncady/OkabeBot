@@ -113,8 +113,9 @@ movement state. Sonic uses an original Green Hill-inspired pixel landscape:
 checkerboard cliffs, grass, palms, sunflowers and rings. Mac/phone receive a small
 transparent island; the TV receives an outdoor scene with the same movement
 anchors and an in-world wooden notification/agenda sign. Legacy deployments retain the pixel laboratory for other characters and the
-original Pi portrait scene. The source-only scene catalog below adds selectable
-alternatives; it has not yet been activated on the running installation.
+original Pi portrait scene. The scene catalog below adds selectable alternatives. Scene-world setup is now
+active in the maintained Mac/Pi installation; observed tests and remaining
+physical acceptance checks are recorded in the deployment inventory.
 
 `character-environments.js` owns theme selection and scenery; location adapters
 and content parsers do not draw it. Compact scenes must never paint an opaque
@@ -132,4 +133,4 @@ Use Room and Companion for presentation sizes. A physical location reserves one
 set per character across both sizes; never imply the same place exists on two
 screens. Unassigned screens have no actor. Preserve the movement owner and door
 directions when changing scenery. The scene catalog, ownership rules and current
-source-preview limitations are documented in [surfaces](surfaces.md#scene-sets-and-world-rules-source-preview).
+source-preview limitations are documented in [surfaces](surfaces.md#scene-sets-and-world-rules).
