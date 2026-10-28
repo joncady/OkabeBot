@@ -12,10 +12,12 @@ from okabebot.alexa_skill import response, validate_envelope
 from okabebot.alexa_visuals import attach_character, FRAME_NAMES
 
 
-def handle(event, skill_id, audio_url, frames=None):
+def handle(event, skill_id, audio_url, frames=None, destination=None):
     request = validate_envelope(event, skill_id)
     kind = request["type"]
     if kind == "Alexa.Presentation.APL.UserEvent":
+        if destination is not None and request.get("arguments", [None])[:1] == ["destination-poll"]:
+            return destination.poll(event)
         if (
             request.get("token") != "little-lab-character"
             or request.get("arguments") != ["little-lab-mounted"]
@@ -27,6 +29,8 @@ def handle(event, skill_id, audio_url, frames=None):
         # does not prove artwork loaded or transfer character ownership.
         return {"version": "1.0", "response": {}}
     if kind == "SessionEndedRequest":
+        if destination is not None:
+            destination.closed(event)
         logging.getLogger(__name__).warning("little_lab_visual session=ended")
         return {"version": "1.0", "response": {}}
     if kind == "LaunchRequest":
@@ -40,6 +44,7 @@ def handle(event, skill_id, audio_url, frames=None):
     intent = request["intent"]["name"]
     known = {
         "VoiceDemoIntent",
+        "VisitIntent",
         "LabStatusIntent",
         "LabLocationsIntent",
         "AMAZON.StopIntent",
@@ -50,6 +55,18 @@ def handle(event, skill_id, audio_url, frames=None):
     logging.getLogger(__name__).warning(
         "little_lab_request intent=%s", intent if intent in known else "Other"
     )
+    if intent == "VisitIntent":
+        if destination is None:
+            return response(
+                "The screen destination is not enabled yet. You can ask for a voice demo."
+            )
+        if "Alexa.Presentation.APL" not in event.get("context", {}).get("System", {}).get(
+            "device", {}
+        ).get("supportedInterfaces", {}):
+            return response(
+                "Please open Little Lab on a screen-capable Echo to visit this destination."
+            )
+        return destination.launch(event)
     if intent == "VoiceDemoIntent":
         result = response("", audio_url=audio_url())
         return attach_character(result, event, frames) if frames else result
@@ -87,9 +104,32 @@ def handler(event, context):
             for name in FRAME_NAMES
         ]
 
+    destination = None
+    if os.environ.get("DESTINATION_ENABLED") == "true":
+        from okabebot.alexa_destination_relay import DestinationRelay, PrivateDestinationStore
+
+        def destination_assets():
+            def sign(name):
+                return client.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": os.environ["AUDIO_BUCKET"], "Key": "surface/assets/" + name},
+                    ExpiresIn=120,
+                )
+
+            return {
+                "background": sign("background.png"),
+                "frames": [sign("actor-" + name) for name in FRAME_NAMES],
+                "character": os.environ["DESTINATION_CHARACTER"],
+                "set": os.environ["DESTINATION_SET"],
+            }
+
+        destination = DestinationRelay(
+            PrivateDestinationStore(client, os.environ["AUDIO_BUCKET"]), destination_assets
+        )
     return handle(
         event,
         os.environ["SKILL_ID"],
         audio_url,
         frames if os.environ.get("VISUALS_ENABLED") == "true" else None,
+        destination,
     )

@@ -743,3 +743,15 @@ skill opening. Home Assistant's documented text-command action follows normal
 Alexa invocation; no documented preamble-suppression option was found. Preserve
 this timing issue for the session-destination implementation, which should wait
 until ready and avoid relaunching the skill for every subsequent update.
+
+
+### Alexa destination source work (not installed)
+
+Added an opt-in session renderer, separate room/actor layer export, bounded private
+store protocol and conditional exact-object IAM policy to source. These changes
+are not deployed: the active Echo Show skill remains the accepted generic demo,
+and the Mac controller does not route spatial movement through this relay. No
+live volume, voice reference, host, port or device state changed. Renderer layers
+reconstruct the original room frames across all eight character/set combinations.
+The controller-side worker and physical Show handoff/recovery remain incomplete.
+See [prototype boundary](alexa-destination.md) before enabling deployment flags.

@@ -501,3 +501,7 @@ the installed character voices.
 The Alexa development skill includes bounded screen diagnostics; the Show has
 been physically confirmed displaying/animating the scene and playing its custom
 voice. Spatial ownership integration and Alexa+ preamble timing remain pending. See [Alexa skill](docs/alexa-skill.md).
+
+An [experimental session-destination renderer and relay](docs/alexa-destination.md)
+is under development for Echo Show. It is disabled and not connected to the
+installed controller; the confirmed Alexa voice/visual demo remains separate.

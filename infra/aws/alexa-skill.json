@@ -13,6 +13,36 @@
         "true",
         "false"
       ]
+    },
+    "EnableDestination": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "true",
+        "false"
+      ]
+    },
+    "DestinationCharacter": {
+      "Type": "String",
+      "Default": "okabe",
+      "AllowedValues": [
+        "okabe",
+        "kurisu",
+        "pip",
+        "sonic"
+      ]
+    },
+    "DestinationSet": {
+      "Type": "String",
+      "Default": "pixel-lab",
+      "AllowedValues": [
+        "pixel-lab",
+        "maid-cafe",
+        "pip-workshop",
+        "rooftop-garden",
+        "green-hill",
+        "star-light"
+      ]
     }
   },
   "Resources": {
@@ -168,6 +198,15 @@
             },
             "VISUALS_ENABLED": {
               "Ref": "EnableVisuals"
+            },
+            "DESTINATION_ENABLED": {
+              "Ref": "EnableDestination"
+            },
+            "DESTINATION_CHARACTER": {
+              "Ref": "DestinationCharacter"
+            },
+            "DESTINATION_SET": {
+              "Ref": "DestinationSet"
             }
           }
         },
@@ -223,6 +262,57 @@
           "Ref": "SkillId"
         }
       }
+    },
+    "DestinationPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Condition": "DestinationEnabled",
+      "Properties": {
+        "PolicyName": "BoundedDestinationSession",
+        "Roles": [
+          {
+            "Ref": "Role"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:GetObject",
+                "s3:PutObject"
+              ],
+              "Resource": {
+                "Fn::Sub": "${Audio.Arn}/surface/session.json"
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": "s3:GetObject",
+              "Resource": [
+                {
+                  "Fn::Sub": "${Audio.Arn}/surface/command.json"
+                },
+                {
+                  "Fn::Sub": "${Audio.Arn}/surface/assets/background.png"
+                },
+                {
+                  "Fn::Sub": "${Audio.Arn}/surface/assets/actor-idle.png"
+                },
+                {
+                  "Fn::Sub": "${Audio.Arn}/surface/assets/actor-talk-a.png"
+                },
+                {
+                  "Fn::Sub": "${Audio.Arn}/surface/assets/actor-talk-b.png"
+                },
+                {
+                  "Fn::Sub": "${Audio.Arn}/surface/assets/actor-blink.png"
+                }
+              ]
+            }
+          ]
+        }
+      }
     }
   },
   "Outputs": {
@@ -243,6 +333,16 @@
       "Value": {
         "Ref": "Audio"
       }
+    }
+  },
+  "Conditions": {
+    "DestinationEnabled": {
+      "Fn::Equals": [
+        {
+          "Ref": "EnableDestination"
+        },
+        "true"
+      ]
     }
   }
 }

@@ -42,6 +42,14 @@
         {
           "name": "AMAZON.FallbackIntent",
           "samples": []
+        },
+        {
+          "name": "VisitIntent",
+          "samples": [
+            "come here",
+            "visit this screen",
+            "bring the companion here"
+          ]
         }
       ],
       "types": []

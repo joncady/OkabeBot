@@ -68,3 +68,11 @@ or latency improvement.
 
 References: [official Qwen3-TTS cloning modes](https://github.com/QwenLM/Qwen3-TTS)
 and [MLX-Audio Qwen implementation](https://github.com/Blaizzy/mlx-audio/tree/main/mlx_audio/tts/models/qwen3_tts).
+
+
+Listening checkpoint: the user preferred the new speaker-only Japanese-reference
+English samples and accepted the current latency tradeoff. The comparison page
+also includes the original short, combined and individual Japanese clips for
+reference. Voice-synthesis optimization is tracked in the GitHub project, including
+repeatable cold/warm metrics, pronunciation coverage, caching and switching.
+This evaluates candidates; it does not replace the installed reference manifest.

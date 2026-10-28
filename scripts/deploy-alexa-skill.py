@@ -16,16 +16,65 @@ def template():
     value = json.loads((ROOT / "infra/aws/alexa-skill.json").read_text())
     protocol = (ROOT / "okabebot/alexa_skill.py").read_text()
     visuals = (ROOT / "okabebot/alexa_visuals.py").read_text()
+    destination = (ROOT / "okabebot/alexa_destination.py").read_text()
+    relay = (
+        (ROOT / "okabebot/alexa_destination_relay.py")
+        .read_text()
+        .replace("from .alexa_destination import document, update", "")
+    )
     source = (
         (ROOT / "infra/aws/alexa_skill.py")
         .read_text()
         .replace("from okabebot.alexa_skill import response, validate_envelope", "")
         .replace("from okabebot.alexa_visuals import attach_character, FRAME_NAMES", "")
+        .replace(
+            "from okabebot.alexa_destination_relay import DestinationRelay, PrivateDestinationStore",
+            "# Included above",
+        )
     )
     value["Resources"]["Skill"]["Properties"]["Code"]["ZipFile"] = (
-        protocol + "\n" + visuals + "\n" + source
+        protocol + "\n" + visuals + "\n" + destination + "\n" + relay + "\n" + source
     )
     return value
+
+
+def bootstrap_destination(aws, bucket):
+    """Seed both relay objects without overwriting an existing session/command.
+
+    The Lambda intentionally lacks ListBucket, so an absent object would produce
+    AccessDenied rather than NoSuchKey. Bootstrap uses the deployment principal.
+    """
+    with tempfile.TemporaryDirectory(prefix="okabebot-destination-") as folder:
+        path = Path(folder) / "empty.json"
+        path.write_text("{}")
+        path.chmod(0o600)
+        for key in ("surface/session.json", "surface/command.json"):
+            for attempt in range(3):
+                try:
+                    aws(
+                        "s3api",
+                        "put-object",
+                        "--bucket",
+                        bucket,
+                        "--key",
+                        key,
+                        "--body",
+                        str(path),
+                        "--if-none-match",
+                        "*",
+                        "--content-type",
+                        "application/json",
+                        "--cache-control",
+                        "no-store",
+                        "--server-side-encryption",
+                        "AES256",
+                    )
+                    break
+                except subprocess.CalledProcessError as exc:
+                    if "PreconditionFailed" in (exc.stderr or ""):
+                        break
+                    if "ConditionalRequestConflict" not in (exc.stderr or "") or attempt == 2:
+                        raise
 
 
 def main():
@@ -36,6 +85,11 @@ def main():
     )
     parser.add_argument("--profile", default="default")
     parser.add_argument("--visuals", type=Path, help="Directory of generic generated scene frames")
+    parser.add_argument(
+        "--destination-visuals",
+        type=Path,
+        help="Experimental session destination layers and scene.json; disabled when omitted",
+    )
     parser.add_argument("--region", default="us-east-1")
     parser.add_argument("--stack", default="okabebot-alexa-skill")
     parser.add_argument("--output", type=Path, default=ROOT / ".local/alexa-skill/deployment.json")
@@ -50,6 +104,16 @@ def main():
         for name in FRAME_NAMES:
             if not 100 < (args.visuals / name).stat().st_size < 2_000_000:
                 parser.error("Generate all four bounded scene frames before deploying")
+    destination_scene = {"character": "okabe", "set": "pixel-lab"}
+    destination_names = ["background.png", *["actor-" + name for name in FRAME_NAMES]]
+    if args.destination_visuals:
+        from okabebot.scene_sets import validate_selection
+
+        destination_scene = json.loads((args.destination_visuals / "scene.json").read_text())
+        validate_selection(destination_scene["character"], destination_scene["set"])
+        for name in destination_names:
+            if not 100 < (args.destination_visuals / name).stat().st_size < 2_000_000:
+                parser.error("Generate bounded destination layers before enabling the relay")
     command = ["aws", "--profile", args.profile, "--region", args.region]
 
     def aws(*argv):
@@ -81,6 +145,19 @@ def main():
         ],
         "Tags": [{"Key": "Project", "Value": "OkabeBot"}],
     }
+    request["Parameters"].extend(
+        [
+            {
+                "ParameterKey": "EnableDestination",
+                "ParameterValue": "true" if args.destination_visuals else "false",
+            },
+            {
+                "ParameterKey": "DestinationCharacter",
+                "ParameterValue": destination_scene["character"],
+            },
+            {"ParameterKey": "DestinationSet", "ParameterValue": destination_scene["set"]},
+        ]
+    )
     with tempfile.TemporaryDirectory(prefix="okabebot-alexa-") as folder:
         path = Path(folder) / "request.json"
         path.write_text(json.dumps(request))
@@ -144,11 +221,32 @@ def main():
                 "--server-side-encryption",
                 "AES256",
             )
+    if args.destination_visuals:
+        bootstrap_destination(aws, value["AudioBucket"])
+        for name in destination_names:
+            aws(
+                "s3api",
+                "put-object",
+                "--bucket",
+                value["AudioBucket"],
+                "--key",
+                "surface/assets/" + name,
+                "--body",
+                str((args.destination_visuals / name).resolve()),
+                "--content-type",
+                "image/png",
+                "--cache-control",
+                "private, max-age=120",
+                "--server-side-encryption",
+                "AES256",
+            )
     value.update(
         region=args.region,
         stack=args.stack,
         skill_id=args.skill_id,
         visuals_enabled=bool(args.visuals),
+        destination_enabled=bool(args.destination_visuals),
+        destination_scene=destination_scene if args.destination_visuals else None,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(value, indent=2) + "\n")
