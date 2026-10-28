@@ -513,3 +513,7 @@ acceptance remains pending. The confirmed voice/visual demo remains separate.
 The experimental Alexa worker now has isolated registry/HTTP handoff coverage
 and an explicit scoped-profile runner. The controller changes are installed and
 the test worker is running; physical Show arrival/return/recovery is the next gate.
+
+The first Show destination trial displayed the empty café but did not confirm
+actor artwork readiness, so no handoff was allowed. Asset diagnostics and the
+physical arrival/return check remain in progress.

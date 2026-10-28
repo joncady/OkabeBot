@@ -67,6 +67,19 @@ class RelayTests(unittest.TestCase):
         )
         return event
 
+    def test_asset_diagnostic_is_bounded_and_does_not_imply_readiness(self):
+        event = self.poll()
+        event["request"]["arguments"][4] = False
+        event["request"]["arguments"].append(9)
+        self.relay.poll(event)
+        record = self.store.get("session")
+        self.assertEqual(record["asset_status"], 9)
+        self.assertFalse(record["ready"])
+        for invalid in (True, 16, -1, "signed-url"):
+            event["request"]["arguments"][-1] = invalid
+            with self.assertRaises(ValueError):
+                self.relay.poll(event)
+
     def command(self):
         self.store.put(
             "command",

@@ -780,3 +780,10 @@ Generic voice-demo invocation, MP3 hash and four image hashes passed after the
 cloud update. No Show destination handoff has yet been physically accepted.
 Existing TV and voice routes remain unchanged; the Alexa spatial route is an
 experimental two-object S3 link over HTTPS to this optional Mac worker.
+
+The first supervised Show destination launch rendered an empty café and sent
+live poll events, but never asserted combined image readiness. The controller
+kept the character on the Pi and a requested visit remained blocked during
+preparation; it was canceled safely. A bounded asset-load diagnostic is being
+deployed to distinguish actor/background loading before another handoff test.
+This is not evidence of a completed Show destination visit.

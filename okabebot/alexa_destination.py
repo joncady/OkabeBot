@@ -1,4 +1,4 @@
-"""Session-scoped APL destination renderer. Cloud/local relay is not enabled yet.
+"""Session-scoped APL destination renderer for the opt-in cloud/local relay.
 
 No tools or device discovery here. A trusted adapter supplies signed artwork and
 only sends enter after the source's rendered-away acknowledgement. Client-side
@@ -61,6 +61,8 @@ def document(token, background, frames):
                 "closed": False,
                 "backgroundReady": False,
                 "actorReady": False,
+                "backgroundFailed": False,
+                "actorFailed": False,
                 "frame": 0,
             }.items()
         ],
@@ -72,6 +74,7 @@ def document(token, background, frames):
                 "scale": "best-fit",
                 "source": "${payload.scene.background}",
                 "onLoad": [set_value("backgroundReady", True)],
+                "onFail": [set_value("backgroundFailed", True)],
             },
             {
                 "type": "Image",
@@ -83,6 +86,7 @@ def document(token, background, frames):
                 "source": "${payload.scene.frames[frame]}",
                 "opacity": "${!closed && actorReady && clock < 60000 && clock < leaseUntil && (phase == 'entering' || phase == 'present' || phase == 'leaving') ? 1 : 0}",
                 "onLoad": [set_value("actorReady", True)],
+                "onFail": [set_value("actorFailed", True)],
             },
         ],
         "handleTick": [
@@ -143,6 +147,7 @@ def document(token, background, frames):
                             "${painted}",
                             "${backgroundReady && actorReady}",
                             "${elapsedTime}",
+                            "${(backgroundReady ? 1 : 0) + (actorReady ? 2 : 0) + (backgroundFailed ? 4 : 0) + (actorFailed ? 8 : 0)}",
                         ],
                     },
                     {"type": "Idle", "delay": 1000},

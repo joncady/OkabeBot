@@ -39,7 +39,8 @@ they never send network events. The receiver rejects out-of-order commands and
 commands arriving after their originating poll's visibility lease. Root-bound
 values are evaluated in the root tick context, rather than incorrectly reading
 them from document-level ExecuteCommands. Expiry uses elapsed time, not tick counts.
-The actor's opacity also checks the one-minute document limit independently of
+A bounded four-bit asset diagnostic reports only load/failure flags for the
+background and actor; it never records URLs or device error text. The actor's opacity also checks the one-minute document limit independently of
 remote responses. `closed` remains terminal for that document.
 
 Departure hides the actor first, then waits at least 100 ms in a subsequent tick

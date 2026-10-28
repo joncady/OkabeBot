@@ -73,9 +73,12 @@ class DestinationRelay:
     def poll(self, event):
         request = event["request"]
         args = request.get("arguments")
-        if not isinstance(args, list) or len(args) != 6 or args[0] != "destination-poll":
+        if not isinstance(args, list) or len(args) not in (6, 7) or args[0] != "destination-poll":
             raise ValueError("Invalid destination event")
-        _, token, generation, painted, ready, elapsed = args
+        _, token, generation, painted, ready, elapsed = args[:6]
+        assets = args[6] if len(args) == 7 else None
+        if assets is not None and (type(assets) is not int or not 0 <= assets <= 15):
+            raise ValueError("Invalid asset diagnostic")
         if (
             type(ready) is not bool
             or painted not in ("hidden", "pending", "entered", "departed")
@@ -104,6 +107,8 @@ class DestinationRelay:
             record.update(
                 clock=elapsed, ready=ready, painted=painted, transition=generation, updated_at=now
             )
+            if assets is not None:
+                record["asset_status"] = assets
             if self.store.compare_put("session", record, version):
                 break
         else:
