@@ -121,6 +121,8 @@ acceptance and makes partial completion explicit.
 - [x] Owner controls for units, card rotation/expiry and optional configured-TV movement.
 - [x] Selected-TV pixel card rail; pause/guest/revocation and stale-source fallbacks.
 - [ ] Private eligible-morning acceptance and user-directed configuration refinements.
+- [ ] Two vertically stacked briefing cards with rotation, less unused padding and distance-readable typography.
+- [ ] Curated source-backed briefing content: forecasts, event countdowns and relevant device-health/action cards.
 - [ ] Optional forecasts, additional card sources, manual re-show and travel suppression.
 
 This rule does not complete routine learning or general proactive delivery work.

@@ -88,6 +88,10 @@ change source permissions or override pause/guest mode.
 - Private trial: verify a real eligible morning cue, source freshness, selected-TV
   handoff, legibility and return to the normal layout. Adjust configuration from
   user feedback. Do not publish the observations or behavioral success metrics.
+- Planned layout refinement: two vertically stacked rotating cards in the rail,
+  reduced empty padding and distance-readable text. This is not the installed layout.
+- Planned content refinement: curate source-backed forecast, event-countdown and
+  relevant device-health/action cards; retain freshness, consent and missing-data states.
 - Follow-up: optional forecasts, configurable extra card sources, explicit manual
   re-show/dismiss, home/away suppression for travel, and more physical TV coverage.
   Missing input means abstain, not an inferred habit.
