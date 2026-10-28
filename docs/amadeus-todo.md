@@ -169,3 +169,6 @@ available streaming catalogue, a preferred title, a health need or observed slee
   signal before broadening autonomous media suggestions.
 - [ ] Evaluate an operational-day agenda for overnight shifts, explicitly dating
   commitments beyond midnight instead of silently assuming a midnight boundary.
+- [ ] Distinguish verified companion-owned rendering sessions from entertainment
+  playback before sharing attention gates with the live Cast morning workflow;
+  do not use a broad TV-power or app-name bypass.
