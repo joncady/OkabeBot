@@ -249,7 +249,9 @@ Voice presets are `warm`, `calm`, and `robotic`. Map them to installed voices in
 For streaming Qwen character voices on Apple Silicon, create a separate environment
 and install `mlx-audio==0.6.1`. Keep the reference manifest and audio in ignored
 private state. Each manifest key is a character style, containing `audio` (relative
-to the manifest) and `text` (its exact English transcript). References and voice
+to the manifest). Default `mode: icl` also requires `text` (its exact transcript);
+`mode: speaker_only` omits text and conditions on speaker identity. Optional
+`temperature` is per reference. References and voice
 samples are not included. Configure the supervisor with argv, without a shell:
 
 ```json
@@ -550,9 +552,9 @@ character, and the controller confirmed return home. Three subsequent silent Sam
 long-running and cross-TV testing remain follow-up work.
 Scene-set reservations remain unique, so extra screens need an unreserved set.
 
-Japanese-reference speaker-only English conditioning has an isolated
-[comparison and timing report](docs/voice-conditioning.md); it has not changed
-the installed character voices.
+The installed Okabe/Kurisu voices now use Japanese-reference speaker-only English
+conditioning; Pip and Sonic keep their existing references. The same supervised
+worker handles both modes. See [voice configuration](docs/voice-conditioning.md).
 
 The Alexa development skill's custom voice and animated scene are physically
 accepted on Show 15. Its [bounded destination adapter](docs/alexa-destination.md)

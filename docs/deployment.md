@@ -829,8 +829,8 @@ Existing two-set-per-character uniqueness remains enforced. Second-set reservati
 were temporarily moved from the first TV to the Samsung for testing and restored
 after the confirmed return. No voice defaults or speaker volume were changed. Echo Show still
 uses its separate static APL skill prototype and is not a registered spatial
-location. Japanese speaker-embedding conditioning is an isolated private trial,
-not a deployed voice change.
+location. At that checkpoint, Japanese speaker-embedding conditioning was an
+isolated private trial; see the current voice-conditioning inventory below.
 
 
 ### Alexa visual/audio diagnosis and voice experiment (2026-10-27)
@@ -845,10 +845,10 @@ Mount is not proof that artwork is visible and cannot transfer spatial ownership
 The Show remains a standalone, session-scoped demo; a live voice retest is pending.
 
 The private Japanese-reference experiment completed two English sentences per
-character/mode and a warm six-sample transcription check. The existing English
-ICL references remain installed. Speaker-only conditioning is feasible with the
+character/mode and a warm six-sample transcription check. At that checkpoint the existing English
+ICL references remained installed. Speaker-only conditioning is feasible with the
 installed MLX-Audio version, but accent/tone acceptance remains a listening test.
-See [comparison details and measured limits](voice-conditioning.md). No training,
+See [current conditioning configuration and limits](voice-conditioning.md). No training,
 model upgrade or cloud GPU was started, and no private audio was committed.
 
 
@@ -1070,3 +1070,20 @@ first name unless a private spoken override is set. Owner-requested replay is
 separate from automatic daily delivery and does not reset its durable marker. No additional listener or HA owner
 credential is introduced. See the portable person-name publisher in the morning
 guide for new installations; the selected entity remains private configuration.
+
+## Current supervised character voice conditioning
+
+The installed Mac Qwen worker supports a single private manifest with explicit
+`speaker_only` and backward-compatible `icl` modes. Okabe and Kurisu now use
+Japanese audio with speaker-only conditioning and English output; reference
+speech tokens/transcripts are omitted. Their per-reference temperature is 0.3.
+Pip and Sonic retain their existing ICL entries. The model, revision, Unix socket,
+controller host and streaming transport are unchanged. No cloud or training job
+is involved, and no speaker volume was changed for this promotion.
+
+The existing supervisor restarts and warms the worker after manifest updates.
+Local worker status exposes loaded modes, not private paths or transcripts. One
+private rollback manifest/script is retained. Superseded comparison helpers and
+generated trial audio were removed from the active workspace; the older manual
+voice smoke script is replaced by the maintained regression harness. Physical
+quality remains a listening checkpoint, separate from readiness and PCM checks.

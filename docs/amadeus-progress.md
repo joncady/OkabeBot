@@ -114,3 +114,12 @@ explicit policy change; aggregation alone does not authorize it.
   another household person from activity or forwarding complete HA attributes.
 - Limited: identity still requires explicit setup; presence does not identify a
   speaker or imply that the logged-in HA account is the current user.
+
+## Shared voice configuration maintenance
+
+- Improved: one supervised worker supports explicit speaker-only or transcript
+  conditioning, with validated references and visible loaded modes.
+- Improved: obsolete voice experiment helpers and duplicate manual smoke tooling
+  are removed; maintained protocol and end-to-end regressions remain.
+- Limited: reference conditioning is not fine-tuning, and physical audio quality
+  still requires listening rather than treating a playback receipt as acceptance.

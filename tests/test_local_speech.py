@@ -42,10 +42,6 @@ class LocalSpeechTests(unittest.TestCase):
                 self.consume(wire)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class CharacterBackendTests(unittest.TestCase):
     def test_switching_characters_falls_back_locally_and_switches_back(self):
         profile = {"style": "kurisu"}
@@ -146,3 +142,52 @@ class CharacterBackendTests(unittest.TestCase):
                 os.utime(endpoint, ns=(timestamp, timestamp))
                 self.assertEqual(speech.local_characters(), ("kurisu", "sonic"))
                 self.assertEqual(status.call_count, 2)
+
+
+class ReferenceManifestTests(unittest.TestCase):
+    def test_modes_are_explicit_legacy_compatible_and_model_ready(self):
+        import runpy
+        import tempfile
+        from pathlib import Path
+
+        loader = runpy.run_path(str(Path(__file__).parents[1] / "scripts/qwen-voice-worker.py"))[
+            "load_references"
+        ]
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "references.json"
+            (path.parent / "reference.wav").touch()
+            path.write_text(
+                json.dumps(
+                    {
+                        "first": {
+                            "audio": "reference.wav",
+                            "mode": "speaker_only",
+                            "temperature": 0.3,
+                        },
+                        "second": {"audio": "reference.wav", "text": "Invented reference."},
+                    }
+                )
+            )
+            references = loader(path)
+            self.assertIsNone(references["first"]["ref_text"])
+            self.assertEqual(references["first"]["temperature"], 0.3)
+            self.assertEqual(references["second"]["ref_text"], "Invented reference.")
+            self.assertNotIn("temperature", references["second"])
+            self.assertEqual(
+                references["first"]["ref_audio"], str((path.parent / "reference.wav").resolve())
+            )
+            for invalid in (
+                {},
+                {"audio": "missing.wav", "mode": "speaker_only"},
+                {"audio": "reference.wav"},
+                {"audio": "reference.wav", "mode": "other"},
+                {"audio": "reference.wav", "mode": "speaker_only", "text": "Unexpected ICL."},
+                {"audio": "reference.wav", "mode": "speaker_only", "temperature": True},
+            ):
+                path.write_text(json.dumps({"first": invalid}))
+                with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                    loader(path)
+
+
+if __name__ == "__main__":
+    unittest.main()
