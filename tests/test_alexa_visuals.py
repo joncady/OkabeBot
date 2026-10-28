@@ -31,9 +31,18 @@ class AplCharacterTests(unittest.TestCase):
         self.assertEqual(directive["datasources"]["scene"]["frames"], frames)
         component = directive["document"]["mainTemplate"]["items"][0]
         self.assertEqual(component["id"], "lab")
-        sequences = component["onMount"][0]["commands"]
+        diagnostic = component["onMount"][0]
+        self.assertEqual(diagnostic["sequencer"], "diagnostic")
+        self.assertEqual(
+            diagnostic["commands"],
+            [
+                {"type": "Idle", "delay": 6000},
+                {"type": "SendEvent", "arguments": ["little-lab-mounted"]},
+            ],
+        )
+        sequences = component["onMount"][1]["commands"]
         self.assertTrue(all(0 <= s["repeatCount"] < 30 for s in sequences))
-        # No SendEvent, speech command, tool or background network polling loop.
+        # Animation has no speech command, tool or background polling loop.
         allowed = {"Sequential", "Idle", "SetValue"}
         for sequence in sequences:
             self.assertTrue(all(c["type"] in allowed for c in sequence["commands"]))

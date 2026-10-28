@@ -493,3 +493,11 @@ receiver is connected; the user confirmed Samsung arrival without a duplicate Pi
 character, and the controller confirmed return home. Repeated-launch reliability
 remains a follow-up test.
 Scene-set reservations remain unique, so extra screens need an unreserved set.
+
+Japanese-reference speaker-only English conditioning has an isolated
+[comparison and timing report](docs/voice-conditioning.md); it has not changed
+the installed character voices.
+
+The Alexa development skill includes bounded screen diagnostics; the Show has
+been observed displaying and animating the scene. Custom-audio acceptance and
+spatial ownership integration are still pending. See [Alexa skill](docs/alexa-skill.md).

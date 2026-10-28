@@ -703,3 +703,22 @@ after the confirmed return. No voice defaults or speaker volume were changed. Ec
 uses its separate static APL skill prototype and is not a registered spatial
 location. Japanese speaker-embedding conditioning is an isolated private trial,
 not a deployed voice change.
+
+
+### Alexa visual/audio diagnosis and voice experiment (2026-10-27)
+
+The user confirmed the Show loaded the character and moved its mouth; audible
+custom speech remains unconfirmed after clarifying the earlier response. Deployed
+bounded capability/known-intent/session diagnostics and a single delayed APL mount
+callback in the existing skill Lambda. No IAM resources, public endpoints, local
+controller access or audio destination settings changed. The callback is delayed
+six seconds on a separate sequencer to avoid a request during the fixed short demo.
+Mount is not proof that artwork is visible and cannot transfer spatial ownership.
+The Show remains a standalone, session-scoped demo; a live voice retest is pending.
+
+The private Japanese-reference experiment completed two English sentences per
+character/mode and a warm six-sample transcription check. The existing English
+ICL references remain installed. Speaker-only conditioning is feasible with the
+installed MLX-Audio version, but accent/tone acceptance remains a listening test.
+See [comparison details and measured limits](voice-conditioning.md). No training,
+model upgrade or cloud GPU was started, and no private audio was committed.

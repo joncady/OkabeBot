@@ -75,3 +75,28 @@ class CloudSkillTests(unittest.TestCase):
             fixture("VoiceDemoIntent"), "local-prototype", lambda: "https://example.com/demo.mp3"
         )
         self.assertEqual(actual["response"]["outputSpeech"]["type"], "SSML")
+
+    def test_mount_diagnostic_is_bounded_silent_and_has_no_asset_or_tool_effect(self):
+        audio, frames = Mock(), Mock()
+        event = fixture()
+        event["request"].update(
+            type="Alexa.Presentation.APL.UserEvent",
+            token="little-lab-character",
+            arguments=["little-lab-mounted"],
+            source={"handler": "Mount"},
+        )
+        with self.assertLogs(cloud.__name__, level="WARNING") as logs:
+            result = cloud.handle(event, "local-prototype", audio, frames)
+        self.assertEqual(result, {"version": "1.0", "response": {}})
+        self.assertEqual(logs.output, ["WARNING:alexa_cloud:little_lab_visual document=mounted"])
+        audio.assert_not_called()
+        frames.assert_not_called()
+        for field, value in (
+            ("token", "old-document"),
+            ("arguments", ["arbitrary-tool"]),
+            ("source", {"handler": "Press"}),
+        ):
+            invalid = copy.deepcopy(event)
+            invalid["request"][field] = value
+            with self.assertRaises(ValueError):
+                cloud.handle(invalid, "local-prototype", audio, frames)

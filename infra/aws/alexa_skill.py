@@ -6,6 +6,7 @@ is no Function URL. Never log request envelopes or signed audio URLs.
 """
 
 import os
+import logging
 
 from okabebot.alexa_skill import response, validate_envelope
 from okabebot.alexa_visuals import attach_character, FRAME_NAMES
@@ -14,7 +15,19 @@ from okabebot.alexa_visuals import attach_character, FRAME_NAMES
 def handle(event, skill_id, audio_url, frames=None):
     request = validate_envelope(event, skill_id)
     kind = request["type"]
+    if kind == "Alexa.Presentation.APL.UserEvent":
+        if (
+            request.get("token") != "little-lab-character"
+            or request.get("arguments") != ["little-lab-mounted"]
+            or request.get("source", {}).get("handler") != "Mount"
+        ):
+            raise ValueError("Unknown visual diagnostic event")
+        logging.getLogger(__name__).warning("little_lab_visual document=mounted")
+        # Mount is diagnostic only: it can occur for invisible components and
+        # does not prove artwork loaded or transfer character ownership.
+        return {"version": "1.0", "response": {}}
     if kind == "SessionEndedRequest":
+        logging.getLogger(__name__).warning("little_lab_visual session=ended")
         return {"version": "1.0", "response": {}}
     if kind == "LaunchRequest":
         result = response("", audio_url=audio_url(), end=False)
@@ -25,6 +38,18 @@ def handle(event, skill_id, audio_url, frames=None):
     if kind != "IntentRequest":
         raise ValueError("Unsupported request type")
     intent = request["intent"]["name"]
+    known = {
+        "VoiceDemoIntent",
+        "LabStatusIntent",
+        "LabLocationsIntent",
+        "AMAZON.StopIntent",
+        "AMAZON.CancelIntent",
+        "AMAZON.HelpIntent",
+        "AMAZON.FallbackIntent",
+    }
+    logging.getLogger(__name__).warning(
+        "little_lab_request intent=%s", intent if intent in known else "Other"
+    )
     if intent == "VoiceDemoIntent":
         result = response("", audio_url=audio_url())
         return attach_character(result, event, frames) if frames else result
