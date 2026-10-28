@@ -40,7 +40,9 @@ The installed deployment selects speaker-only Japanese references for Okabe and
 Kurisu; Pip and Sonic retain their existing ICL references. Startup warms every
 configured character. Changing the manifest requires restarting the supervised
 voice worker, then checking readiness and loaded modes. It does not require
-restarting the controller or changing any speaker volume.
+restarting the controller or changing any speaker volume. The supervisor also
+respects the existing speech lock for direct tool callers, so a single-threaded
+worker is not mistaken for unhealthy while it is producing audio.
 
 ## Quality and maintenance
 

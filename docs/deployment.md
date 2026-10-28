@@ -1087,3 +1087,8 @@ private rollback manifest/script is retained. Superseded comparison helpers and
 generated trial audio were removed from the active workspace; the older manual
 voice smoke script is replaced by the maintained regression harness. Physical
 quality remains a listening checkpoint, separate from readiness and PCM checks.
+
+The supervisor's health gate also checks the existing character-speech file lock
+for speech requested outside controller turns. It skips conflicting health probes
+while that lock is held; a stale unlocked file does not inhibit recovery. No new
+worker, socket or service is introduced.

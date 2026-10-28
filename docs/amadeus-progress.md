@@ -123,3 +123,6 @@ explicit policy change; aggregation alone does not authorize it.
   are removed; maintained protocol and end-to-end regressions remain.
 - Limited: reference conditioning is not fine-tuning, and physical audio quality
   still requires listening rather than treating a playback receipt as acceptance.
+
+- Improved: the existing speech lock also protects direct tool calls from
+  conflicting supervisor health probes, without adding another service.

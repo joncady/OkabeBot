@@ -13,6 +13,18 @@ from okabebot.integration_auth import persistent_token
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_external_speech_lock_prevents_health_restart_and_clears_on_release(self):
+        import fcntl
+
+        with tempfile.TemporaryDirectory() as folder:
+            self.assertFalse(runtime.speech_active(folder))
+            with (Path(folder) / "character-speech.lock").open("w") as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                self.assertTrue(runtime.speech_active(folder))
+            self.assertFalse(
+                runtime.speech_active(folder), "A stale lock file is not active speech"
+            )
+
     def test_child_restart_backoff_and_owned_process_cleanup(self):
         with tempfile.TemporaryDirectory() as folder:
             child = runtime.Child("worker", ["python", "worker.py"], folder, Path(folder))

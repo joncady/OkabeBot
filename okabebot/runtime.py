@@ -44,6 +44,19 @@ def controller_state(folder, expected_pid=None):
         return None
 
 
+def speech_active(folder):
+    """The existing speech lock also covers callers outside a controller turn."""
+    try:
+        with (Path(folder) / "character-speech.lock").open("r") as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return True
+    except FileNotFoundError:
+        pass
+    return False
+
+
 class Child:
     def __init__(self, name, argv, cwd, folder):
         self.name, self.argv, self.cwd, self.folder = name, argv, cwd, folder
@@ -142,7 +155,7 @@ def supervise(config_path):
             if managed:
                 worker.start()
             state = controller_state(state_dir(), bridge.process.pid) if bridge.running() else None
-            busy = bool(
+            busy = speech_active(state_dir()) or bool(
                 state and (state.get("busy") or state.get("recording") or state.get("announcing"))
             )
             worker_ready = not managed
