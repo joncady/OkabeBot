@@ -56,16 +56,16 @@ function locationsUI(surface){
   button('Rename',()=>save(place.id,{name:name.value}));
   const state=document.createElement('span');state.textContent=!place.approved?'Awaiting approval':place.available?'Online':'Offline';row.append(state);
   if(!place.approved)button('Approve screen',()=>save(place.id,{approved:true}));
-  else{const missing=surface.scene_world_enabled&&!place.scene_selections?.[surface.character_style];button(missing?'Assign a set':surface.current_location===place.id?'Here':'Move here',()=>action('/surfaces/move',{location_id:place.id}),missing||!place.available||surface.current_location===place.id);if(['browser','mac'].includes(place.adapter))button('Revoke',()=>save(place.id,{approved:false}));}
+  else{const missing=surface.scene_world_enabled&&!place.scene_selections?.[surface.character_style];button(missing?'Assign a set':surface.current_location===place.id?'Here':'Move here',()=>action('/surfaces/move',{location_id:place.id}),missing||!place.available||surface.current_location===place.id);if(['browser','mac','alexa'].includes(place.adapter))button('Revoke',()=>save(place.id,{approved:false}));}
   if(surface.scene_catalog){
    const mode=document.createElement('select');mode.setAttribute('aria-label',`View for ${place.name}`);
-   for(const [id,label] of Object.entries(surface.scene_catalog.presentations)){const o=document.createElement('option');o.value=id;o.textContent=label;o.selected=id===place.presentation;o.disabled=place.adapter==='pi'&&id!=='companion';mode.append(o);}
+   for(const [id,label] of Object.entries(surface.scene_catalog.presentations)){const o=document.createElement('option');o.value=id;o.textContent=label;o.selected=id===place.presentation;o.disabled=(place.adapter==='pi'&&id!=='companion')||(place.adapter==='alexa'&&id!=='room');mode.append(o);}
    mode.onchange=()=>save(place.id,{presentation:mode.value});row.append(mode);
    const character=document.createElement('select');character.setAttribute('aria-label',`Scene character for ${place.name}`);
    for(const style of Object.keys(surface.scene_catalog.characters)){const o=document.createElement('option');o.value=style;o.textContent=style[0].toUpperCase()+style.slice(1);character.append(o);}character.value=surface.character_style;row.append(character);
    const sets=document.createElement('select');sets.disabled=!surface.scene_world_enabled;
    function setOptions(){const style=character.value;sets.replaceChildren();sets.setAttribute('aria-label',`${style} set for ${place.name}`);const empty=document.createElement('option');empty.value='';empty.textContent='Unassigned';empty.disabled=place.adapter==='pi';sets.append(empty);
-    for(const id of surface.scene_catalog.characters[style]||[]){const o=document.createElement('option'),owner=places.find(p=>p.id!==place.id&&p.scene_selections?.[style]===id);o.value=id;o.textContent=surface.scene_catalog.sets[id].name+(owner?` · ${owner.name}`:'');o.disabled=Boolean(owner);sets.append(o);}sets.value=place.scene_selections?.[style]||'';
+    for(const id of surface.scene_catalog.characters[style]||[]){const o=document.createElement('option'),owner=places.find(p=>p.id!==place.id&&p.scene_selections?.[style]===id);o.value=id;o.textContent=surface.scene_catalog.sets[id].name+(owner?` · ${owner.name}`:'');o.disabled=Boolean(owner)||(place.supported_scenes&&!place.supported_scenes[style]?.includes(id));sets.append(o);}sets.value=place.scene_selections?.[style]||'';
    }character.onchange=setOptions;setOptions();sets.onchange=()=>save(place.id,{scene_selections:{[character.value]:sets.value||null}});row.append(sets);
   }
   const audio=document.createElement('select');audio.setAttribute('aria-label',`Audio destination for ${place.name}`);
@@ -73,7 +73,7 @@ function locationsUI(surface){
   for(const [id,label] of choices){const option=document.createElement('option');option.value=id;option.textContent=label;option.disabled=id==='beam'&&!surface.beam_audio_available;option.selected=(place.audio_target||'default')===id;audio.append(option);}
   audio.onchange=()=>save(place.id,{audio_target:audio.value});row.append(audio);
 
-  if(["browser","mac"].includes(place.adapter))button("Forget",()=>save(place.id,{remove:true}));
+  if(["browser","mac","alexa"].includes(place.adapter))button("Forget",()=>save(place.id,{remove:true}));
   list.append(row);
  }
 }

@@ -120,6 +120,10 @@ class Surfaces:
 
     def ensure_scene(self, location_id, style=None):
         if not self.registry.scene_world_enabled():
+            from .locations import configured
+
+            if any(p["id"] == location_id and p["adapter"] == "alexa" for p in configured()):
+                raise ValueError("Set up scene world before moving to an Alexa destination")
             return
         from .scene_sets import environment
         from .profiles import current_character
@@ -128,10 +132,21 @@ class Surfaces:
         home = next(p for p in places if p["adapter"] == "pi")
         place = next((p for p in places if p["id"] == location_id), None)
         character = style or current_character()["style"]
+        if (
+            place is not None
+            and place.get("supported_scenes") is not None
+            and character not in place["supported_scenes"]
+        ):
+            raise ValueError("That character is not supported by this destination")
         if not environment(home, character)["assigned"]:
             raise ValueError("Assign a home scene for this character before moving or switching")
         if place is None or not environment(place, character)["assigned"]:
             raise ValueError("Assign a unique scene set to that location in the dashboard first")
+        supported = place.get("supported_scenes")
+        if supported is not None and environment(place, character)["set"] not in supported.get(
+            character, []
+        ):
+            raise ValueError("That character/set is not supported by this destination")
 
     def move(self, location_id, base):
         from .locations import configured
@@ -148,7 +163,7 @@ class Surfaces:
             if target == "pi":
                 self.pending_move = None
                 return dict(self.return_home(), accepted=True)
-            if place["adapter"] in ("browser", "mac"):
+            if place["adapter"] in ("browser", "mac", "alexa"):
                 if not any(
                     p["id"] == location_id and p.get("available") for p in self.registry.list()
                 ):

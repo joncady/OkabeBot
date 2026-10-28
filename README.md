@@ -505,3 +505,7 @@ voice. Spatial ownership integration and Alexa+ preamble timing remain pending. 
 An [experimental session-destination renderer and relay](docs/alexa-destination.md)
 is under development for Echo Show. It is disabled and not connected to the
 installed controller; the confirmed Alexa voice/visual demo remains separate.
+
+The experimental Alexa worker now has isolated registry/HTTP handoff coverage
+and an explicit scoped-profile runner. It remains off in the installed system;
+physical Show arrival/return/recovery is the next deployment gate.

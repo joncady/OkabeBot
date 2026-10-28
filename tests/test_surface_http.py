@@ -33,6 +33,7 @@ class SurfaceHttpTests(unittest.TestCase):
             surface_audio=AudioHub(),
             surfaces=self.surface,
             token="full-controller-secret",
+            notification_token="publish-only-secret",
             snapshot=lambda: {
                 "messages": ["private transcript"],
                 "approvals": ["private"],
@@ -226,4 +227,28 @@ class SurfaceHttpTests(unittest.TestCase):
         ):
             with self.request(path) as response:
                 self.assertIn(expected, response.read())
+        self.surface.rpc.assert_not_called()
+
+    def test_alexa_worker_uses_only_paired_screen_http_authority(self):
+        from okabebot.alexa_destination_bridge import SurfaceClient
+
+        client = SurfaceClient(self.base)
+        secret = "c" * 64
+        device = client(
+            "/surfaces/register",
+            {"name": "Study Echo", "kind": "alexa", "supported_scenes": {"okabe": ["maid-cafe"]}},
+            secret,
+        )
+        self.assertFalse(device["approved"])
+        with self.assertRaises(HTTPError):
+            client("/surfaces/state", None, secret)
+        self.surface.layout({"id": device["id"], "approved": True})
+        state = client("/surfaces/state", None, secret)
+        self.assertFalse({"messages", "approvals", "notifications"} & set(state))
+        registered = next(p for p in state["locations"] if p["id"] == device["id"])
+        self.assertEqual(registered["adapter"], "alexa")
+        self.assertEqual(registered["presentation"], "room")
+        self.assertEqual(registered["supported_scenes"], {"okabe": ["maid-cafe"]})
+        with self.assertRaises(HTTPError):
+            client("/surfaces/layout", {"id": device["id"], "name": "other"}, secret)
         self.surface.rpc.assert_not_called()

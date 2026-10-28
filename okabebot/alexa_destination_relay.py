@@ -57,6 +57,8 @@ class DestinationRelay:
             "painted": "hidden",
             "transition": "",
             "closed": False,
+            "summon": event["request"]["type"] == "IntentRequest"
+            and event["request"].get("intent", {}).get("name") == "VisitIntent",
             "character": assets["character"],
             "set": assets["set"],
         }

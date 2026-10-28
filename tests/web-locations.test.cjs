@@ -51,3 +51,18 @@ test('viewport resize refits screen arrangement on the next state update',()=>{
  assert.ok(parseFloat(map.children[0].style.width)*scale<=240);
  assert.ok(parseFloat(map.children[0].style.height)*scale<=160);
 });
+test('Alexa screens expose only their artwork and Room presentation, with revoke controls',()=>{
+ const d=dashboard(true);d.state.locations[1].scene_selections={};
+ d.state.locations.push({id:'echo',name:'Study Echo',adapter:'alexa',approved:true,available:true,position:[1,0],presentation:'room',scene_selections:{},supported_scenes:{okabe:['maid-cafe']}});
+ d.context.locationsUI(d.state);
+ const row=d.nodes['#location-list'].children[2],view=row.children.find(n=>n['aria-label']==='View for Study Echo');
+ assert.equal(view.children.find(n=>n.value==='companion').disabled,true);
+ const sets=row.children.find(n=>n['aria-label']==='okabe set for Study Echo');
+ assert.equal(sets.children.find(n=>n.value==='maid-cafe').disabled,false);
+ const character=row.children.find(n=>n['aria-label']==='Scene character for Study Echo');character.value='kurisu';character.onchange();
+ assert.ok(sets.children.filter(n=>n.value).every(n=>n.disabled));
+ assert.ok(row.children.some(n=>n.textContent==='Revoke'));
+ assert.ok(row.children.some(n=>n.textContent==='Forget'));
+ const audio=row.children.find(n=>n['aria-label']==='Audio destination for Study Echo');
+ assert.ok(audio.children.every(n=>n.value!=='device'));
+});

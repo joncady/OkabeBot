@@ -755,3 +755,13 @@ live volume, voice reference, host, port or device state changed. Renderer layer
 reconstruct the original room frames across all eight character/set combinations.
 The controller-side worker and physical Show handoff/recovery remain incomplete.
 See [prototype boundary](alexa-destination.md) before enabling deployment flags.
+
+
+The optional controller-side Alexa worker is now implemented in source and passes
+an isolated round trip through the real location registry/handoff state machine,
+a fake Pi, and loopback HTTP boundary tests. It has no full dashboard credential.
+Alexa registrations declare fixed artwork capabilities, require approval and a
+unique matching scene, and support Room presentation. A CLI/process lock and a
+scoped two-object consumer-policy template are provided. None of these source
+changes is installed/running yet; the live skill's destination flag was read and
+confirmed disabled. No live scene, voice, volume, host or port change was made.

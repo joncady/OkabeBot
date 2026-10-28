@@ -87,9 +87,14 @@ def handle(handler, bridge, post=False):
             item = bridge.surfaces.registry.device(token)
             handler.respond(200, bridge.surface_audio.poll(item["id"], data))
         elif path.endswith("register"):
-            item = bridge.surfaces.registry.register(
-                token, data.get("name"), data.get("kind", "browser")
-            )
+            if data.get("kind") == "alexa":
+                item = bridge.surfaces.registry.register(
+                    token, data.get("name"), "alexa", data.get("supported_scenes")
+                )
+            else:
+                item = bridge.surfaces.registry.register(
+                    token, data.get("name"), data.get("kind", "browser")
+                )
             handler.respond(
                 200, {"id": item["id"], "approved": item["approved"], "name": item["name"]}
             )

@@ -34,6 +34,10 @@ def handle(event, skill_id, audio_url, frames=None, destination=None):
         logging.getLogger(__name__).warning("little_lab_visual session=ended")
         return {"version": "1.0", "response": {}}
     if kind == "LaunchRequest":
+        if destination is not None and "Alexa.Presentation.APL" in event.get("context", {}).get(
+            "System", {}
+        ).get("device", {}).get("supportedInterfaces", {}):
+            return destination.launch(event)
         result = response("", audio_url=audio_url(), end=False)
         result["response"]["reprompt"] = {
             "outputSpeech": {"type": "PlainText", "text": "Try asking for a voice demo."}
