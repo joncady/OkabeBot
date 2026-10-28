@@ -121,10 +121,9 @@ bounded structured payload, provenance and expiry. Late events are stored as
 history, not replayed as current triggers. Source disappearance means unknown,
 not away/asleep. Reconnect/backfill must not replay greetings or actions.
 
-The first offline store accepts only explicitly allowlisted source names. It is
-not an authenticated ingestion server. Future live adapters must bind source
-identity and subject permissions at the controller boundary; a caller-supplied
-source string or subject is not authorization.
+The store accepts only explicitly allowlisted source names. Internal source hooks
+apply saved consent; Home Assistant uses a separate write-only credential and exact
+private entity bindings. Caller-supplied source or subject is not authorization.
 
 Planned high-level operations:
 
@@ -139,8 +138,9 @@ Planned high-level operations:
 | `feedback(proposal, outcome)` | Distinguish acceptance, timing rejection and preference rejection |
 
 The store/CLI and owner-only setup/memory dashboard subset are implemented.
-Semantic recall, explanations, observation adapters, planning and voice/MCP memory
-tools remain planned. Saving permissions does not activate a source.
+Shadow metadata adapters are implemented; semantic recall, explanations, planning
+and voice/MCP memory tools remain planned. Saving permissions alone leaves capture
+paused.
 
 ## Memory model
 
@@ -311,30 +311,32 @@ owner access; a new browser needs the existing dashboard setup key/link. Use HTT
 on an untrusted network. Companion/surface and publish-only tokens are rejected.
 Do not share owner access with visitors to let them view the character.
 
-Choose a private profile ID (not a full name), future source permissions, IANA
+Choose a private profile ID (not a full name), source permissions, IANA
 timezone, quiet hours, observation retention, and optional coaching topics/mode.
 Confirmed source choices may be prepared as a private draft; no personal draft is
 shipped with the repository. Nothing begins collecting after a save. The page
-always reports that collection and live nudges are unavailable in this checkpoint.
+reports shadow availability separately from active capture; live nudges remain off.
 Setup collapses after saving and can be reopened with Review private choices.
 
 Explicit preferences use `user.*` keys; saving an existing key corrects it. They
 are not inferred facts. Coaching consent uses dedicated controls, not arbitrary
-memory keys. Pause/guest choices persist but have no collector to control yet.
+memory keys. Pause/guest choices persist and gate every observation write.
 Stop/snooze survives unrelated setup edits; only explicit resume or a deliberate
 new topic opt-in changes coaching authorization. No voice/sentiment is analyzed.
 
 The recent observations view is capped at 20 records; private export includes all
-unexpired events and preferences for the configured profile plus its setup.
+unexpired events and preferences for the configured profile plus its setup and
+unattributed household observations, shown separately from personal memory.
 Downloaded exports are personal records: keep them local/private and outside Git.
 Known export filenames are ignored and blocked by publication/release guards.
 Whole-store forgetting removes setup, draft, consent, explicit preferences and
-observations, but cannot erase downloaded copies or external backups.
+observations, but cannot erase downloaded copies or external backups. Integration
+credentials and entity bindings remain; capture is blocked until new setup consent.
 
 Shorter retention immediately deletes affected observations; longer retention does
 not extend existing event deadlines or restore deleted data. Requests prune expiry;
-a scheduled retention job remains a prerequisite before continuous collection.
-The API adds no public ingestion route. One private profile is supported; changing
+the existing source-poll loop also prunes expiry, including while paused.
+The dedicated HA receiver is write-only and rejects unbound entities. One private profile is supported; changing
 its ID requires forgetting existing Amadeus state to avoid silent reassignment.
 Equal quiet-hour start/end should mean all-day quiet when future policy is wired.
 
@@ -365,3 +367,24 @@ If no source timestamp is supplied, retries retain the first local observation t
 Use fixtures rather than personal imports before checkpoint A. No background task
 is installed by these commands. Run `python -m unittest tests.test_amadeus -v` for
 isolated persistence, privacy-boundary, retention and CLI checks.
+
+## Shadow source contracts
+
+- Calendar reuses the existing timed-event feed and its two-day horizon; all-day
+  events are not supplied by that feed. Only complete snapshots define current
+  plans. Historical/partial snapshot rows do not prove attendance or cancellation.
+- Media stores bounded app/title/state and hashed content references. Freshness
+  checks reject stale snapshots; no completion, liking or personal viewing is inferred.
+- Interaction hooks store submission/turn-finished metadata without text, audio,
+  transcripts or success claims. Household identity stays unknown.
+- HA state changes are restricted to privately bound door/presence entities.
+  Unavailable states become unknown; no GPS, attributes or zone names are stored.
+- Setup is paused by default. Resume explicitly in the private UI to collect.
+  Source transport availability is distinct from live event acceptance.
+
+For HA setup, copy `examples/home-assistant/amadeus.yaml` into the private package
+folder. Set `amadeus_observation_url`, `amadeus_source_token` and `amadeus_entities`
+in private HA secrets; match entities in private `ha-bindings.json` (`door` and
+`presence` arrays). Use a random credential of at least 32 characters in the private
+`ha-source-token` file (0600). Reload RESTful Command and Automations after checking
+configuration. Keep owner dashboard credentials out of this publisher.

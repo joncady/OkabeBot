@@ -8,8 +8,9 @@ A push-to-talk companion with a talking pixel character and shared dashboard/MCP
 from the private event/preference store and owner-only setup UI. Open `/amadeus/`
 on the controller's dashboard origin to choose private permissions, optional
 coaching topics, quiet hours and retention, or edit/export/forget explicit memory.
-Live collection, habit inference,
-proactive suggestions and grocery actions are not enabled. Alexa conversational
+Consent-gated shadow metadata collection is available for calendar, media,
+companion interactions and allowlisted Home Assistant states. It starts paused;
+habit inference, proactive suggestions and grocery actions remain disabled. Alexa conversational
 parity is paused while this work proceeds; its accepted scene/demo remains separate.
 Optional supportive habit coaching has an opt-in/feedback policy and private
 onboarding controls; live delivery remains pending. Personal trial results remain
@@ -66,7 +67,9 @@ flowchart TB
         AlexaLocal --> Speech
         App -->|"Owns private adapter lifecycle"| AlexaLocal
         App --> Places["Configured and paired destinations; spatial layout and shared move interface"]
-        App --> Amadeus["Owner-only Amadeus setup and memory; private SQLite; no collectors or nudges"]
+        App --> Amadeus["Owner-only Amadeus setup; consent-gated shadow metadata; private SQLite; no nudges"]
+        HA -->|"Write-only, entity-bound metadata receiver"| Amadeus
+        App -->|"Existing calendar/media snapshots and interaction metadata"| Amadeus
         MacPanel["Native floating Mac companion"] <-->|"Paired surface, hold-to-talk and streamed audio: localhost 8768"| App
     end
     subgraph Pi["One Pi Zero W - hardware satellite"]

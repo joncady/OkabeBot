@@ -89,7 +89,7 @@ class AmadeusHttpTests(unittest.TestCase):
         exported = self.request("/amadeus/api/export")
         self.assertTrue(any(p["key"] == "user.subtitles" for p in exported["preferences"]))
         self.request("/amadeus/api/control", {"guest": True, "paused": False})
-        self.assertFalse(self.request("/amadeus/api/settings")["collection_active"])
+        self.assertFalse(self.request("/amadeus/api/settings")["collection_active"])  # guest mode
         self.request("/amadeus/api/forget", {"key": "user.subtitles"})
         self.assertFalse(
             any(
@@ -162,3 +162,38 @@ class AmadeusHttpTests(unittest.TestCase):
             self.assertIn('name="coaching"', text)
             self.assertNotIn("synthetic-owner-key", text)
         self.assertFalse((self.folder / "amadeus").exists())
+
+    def test_ha_token_is_write_only_entity_bound_and_cannot_override_pause(self):
+        self.request("/amadeus/api/settings", dict(SETUP, sources=["door_presence"]))
+        folder = self.folder / "amadeus"
+        source_token = "s" * 43
+        (folder / "ha-source-token").write_text(source_token)
+        (folder / "ha-bindings.json").write_text(json.dumps({"door": ["binary_sensor.fixture"]}))
+        event = {
+            "entity_id": "binary_sensor.fixture",
+            "state": "on",
+            "event_id": "one",
+            "observed_at": time.time(),
+        }
+        with self.assertRaises(HTTPError) as e:
+            self.request("/amadeus/source/ha", event)
+        self.assertEqual(e.exception.code, 403)
+        headers = {"X-Amadeus-Source-Token": source_token}
+        self.assertEqual(
+            self.request("/amadeus/source/ha", event, token="", extra=headers)["state"], "paused"
+        )
+        self.request("/amadeus/api/control", {"paused": False})
+        self.assertEqual(
+            self.request("/amadeus/source/ha", event, token="", extra=headers)["state"], "stored"
+        )
+        with self.assertRaises(HTTPError) as e:
+            self.request("/amadeus/api/memory", token=source_token)
+        self.assertEqual(e.exception.code, 403)
+        with self.assertRaises(HTTPError) as e:
+            self.request(
+                "/amadeus/source/ha",
+                dict(event, entity_id="binary_sensor.other"),
+                token="",
+                extra=headers,
+            )
+        self.assertEqual(e.exception.code, 403)

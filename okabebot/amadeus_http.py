@@ -1,6 +1,7 @@
 """Private Amadeus dashboard routes. Paired surfaces/publish tokens have no access."""
 
 import json
+import hmac
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -22,6 +23,42 @@ def handle(handler, bridge, *, post=False):
             else "application/javascript"
         )
         handler.respond(200, (Path(__file__).parent / "web" / name).read_text(), kind)
+        return True
+    if path == "/amadeus/source/ha":
+        from .config import state_dir
+        from .amadeus_sources import Collector
+
+        folder = state_dir() / "amadeus"
+        try:
+            expected = (folder / "ha-source-token").read_text().strip()
+        except OSError:
+            expected = ""
+        supplied = handler.headers.get("X-Amadeus-Source-Token", "")
+        try:
+            permitted = (
+                post
+                and handler.headers.get("Host") in bridge.allowed_hosts
+                and len(expected) >= 32
+                and hmac.compare_digest(supplied, expected)
+            )
+        except TypeError:
+            permitted = False
+        if not permitted:
+            handler.respond(403, {"error": "Source access forbidden"})
+            return True
+        try:
+            size = int(handler.headers.get("Content-Length", 0))
+            if not 0 < size <= 4096:
+                raise ValueError("Invalid source size")
+            handler.connection.settimeout(5)
+            data = json.loads(handler.rfile.read(size))
+            handler.respond(200, Collector(folder).home_assistant(data))
+        except PermissionError:
+            handler.respond(403, {"error": "Source binding forbidden"})
+        except (ValueError, TypeError, KeyError):
+            handler.respond(400, {"error": "Invalid or stale source metadata"})
+        except Exception:
+            handler.respond(503, {"error": "Source binding unavailable"})
         return True
     if not path.startswith("/amadeus/api/"):
         return False

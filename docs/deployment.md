@@ -12,25 +12,33 @@ configuration, not this inventory.
 existing controller origin. The private routes share dashboard host/token checks
 and reject paired-screen, publish-only and cross-origin access. Public static
 markup contains no private settings. The native Mac installation was updated and
-its authenticated settings API verified; observation and nudge availability remain
-false. A controller-only supervised restart preserved the separate inference worker
-and device settings. No physical audio or hardware acceptance is claimed here.
+its authenticated settings API verified. Shadow metadata hooks are installed; the
+software exposes availability separately from the saved pause/guest controls.
+A controller-only supervised restart preserved the separate inference worker and
+device settings. No physical source-event or audio acceptance is claimed here.
 
 Settings, explicit preferences and coaching consent live in private SQLite under
-`state_dir()/amadeus/`. The UI saves one private profile, future source permissions,
-retention, IANA timezone, quiet hours and optional coaching choices. It provides
-pause/guest settings, explicit memory correction/deletion, private record download,
-and whole-store forgetting. Shorter retention prunes eligible observations;
-increasing retention does not resurrect deleted records. Background retention
-scheduling, source adapters, inferred memory, habit learning and MCP/voice memory
-tools remain unimplemented. No Amadeus collector or nudge worker is installed.
+`state_dir()/amadeus/`. The UI provides source permissions, pause/guest controls,
+retention, timezone, quiet hours, coaching choices, memory CRUD and private export.
+Existing calendar/media polling and interaction lifecycle hooks feed a consent-
+gated collector; no additional provider polling or microphone capture was added.
+Retention pruning runs on the existing source-poll loop, including while paused.
 
-The README diagram now shows this owner-only controller/storage route, without
-connecting it to observation sources or model memory. No new port, cloud service,
-sentiment processing or microphone capture is introduced. Private trial outcomes
-and personal setup selections remain outside the repository; the public progress
-log records general engineering capabilities only. Live/private selections are
-not reproduced here.
+Home Assistant's metadata-only package is configured privately from
+`examples/home-assistant/amadeus.yaml`. Its REST publisher and automation were
+reloaded without restarting HA. The same controller port exposes
+`POST /amadeus/source/ha`; a dedicated write-only credential and exact private
+entity bindings are owned by `state_dir()/amadeus/ha-source-token` and
+`ha-bindings.json`. HA owns corresponding private secrets and the installed package.
+The publisher cannot read memory, edit setup or perform device actions. Missing
+setup, revoked source permission, pause or guest mode prevents observation writes.
+
+Door, presence, media and interaction observations remain unattributed household
+context; they do not prove personal arrival, attendance, viewing or preference.
+Calendar snapshots have completeness markers. Habit learning, semantic recall,
+voice/MCP memory tools and all proactive/health nudge delivery remain pending.
+Whole-store forgetting removes data and consent, but not integration credentials,
+downloaded exports or backups. Private trial outcomes and setup choices stay local.
 
 Privacy/source checkpoint A must precede live collection. Subsequent trial gates
 cover shadow prediction, quiet cards, media/pantry trials and final acceptance.

@@ -43,3 +43,14 @@ explicit policy change; aggregation alone does not authorize it.
   recall or live nudges. Recent observations are a bounded view, not a full timeline.
 - Next: complete private setup review, then bind authenticated metadata adapters
   and exercise shadow context learning without unsolicited output.
+
+## Consent-gated shadow metadata sources
+
+- Improved: internal calendar/media/interaction hooks and a write-only, entity-bound
+  HA publisher enforce consent, pause/guest mode, freshness, schemas and deduplication.
+- Improved: periodic retention, complete calendar snapshots and separately displayed
+  unattributed household context reduce ambiguous or stale evidence.
+- Limited: source readiness does not prove live event acceptance. Routine learning,
+  semantic recall, timeline filters and unsolicited suggestions remain pending.
+- Next: private source acceptance, then synthetic routine/evidence evaluation before
+  any proactive delivery. No personal trial outcomes are published here.

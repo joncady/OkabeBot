@@ -17,7 +17,8 @@ FIELDS = {
     "door": {"state"},
     "interaction": {"action", "surface"},
     "media": {"app", "title", "content_id", "state", "duration_s", "position_s"},
-    "calendar": {"event_id", "summary", "start_at", "end_at"},
+    "calendar": {"event_id", "summary", "start_at", "end_at", "snapshot_id"},
+    "calendar_snapshot": {"snapshot_id", "event_count", "start_at", "end_at"},
     "feedback": {"proposal_id", "outcome"},
 }
 
@@ -100,15 +101,15 @@ class Store:
         if set(payload) - FIELDS[kind]:
             raise ValueError("Unsupported event fields; raw bodies/audio are not accepted")
         for key, value in payload.items():
-            if key.endswith("_s") or key.endswith("_at"):
+            if key.endswith("_s") or key.endswith("_at") or key == "event_count":
                 if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
                     raise ValueError("Event measurements must be finite nonnegative numbers")
             elif not isinstance(value, str) or not 1 <= len(value) <= 512:
                 raise ValueError("Event text fields must contain 1–512 characters")
         if kind == "presence" and payload.get("state") not in ("home", "away", "unknown"):
             raise ValueError("Presence requires home, away or unknown")
-        if kind == "door" and payload.get("state") not in ("open", "closed"):
-            raise ValueError("Door requires open or closed")
+        if kind == "door" and payload.get("state") not in ("open", "closed", "unknown"):
+            raise ValueError("Door requires open, closed or unknown")
         raw, now = encode(payload), self.clock()
         supplied_time = observed_at is not None
         observed_at = now if observed_at is None else observed_at

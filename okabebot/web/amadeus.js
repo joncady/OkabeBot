@@ -11,7 +11,7 @@ const amadeusUI = (() => {
     for(const id of ['amadeus-setup','amadeus-controls','amadeus-memory']) $(id).hidden=true;
     $('amadeus-form').reset();$('memory-form').reset();
     $('sources').replaceChildren();$('topics').replaceChildren();$('memory-list').replaceChildren();
-    $('event-list').textContent='';$('coaching-state').textContent='';
+    $('event-list').textContent='';$('household-list').textContent='';$('coaching-state').textContent='';
   }
   async function api(path, data) {
     const epoch=accessEpoch, token=dashboardAccess.token();
@@ -50,11 +50,12 @@ const amadeusUI = (() => {
       li.append(text, remove); $('memory-list').append(li);
     }
     $('event-list').textContent = JSON.stringify(value.events, null, 2);
+    $('household-list').textContent = JSON.stringify(value.household_events || [], null, 2);
     const coaching = value.preferences.find(p => p.key === 'health.coaching');
     const chosen=Boolean(coaching?.value?.topics?.length && coaching.value.choice==='choose_topics');
     for(const id of ['coaching-later','coaching-stop','coaching-resume']) $(id).disabled=!chosen;
     $('coaching-state').textContent = !coaching || !coaching.value.enabled ? 'Coaching is off.' :
-      coaching.value.paused_until * 1000 > Date.now() ? 'Coaching is snoozed.' : 'Topics saved; live nudges remain off.';
+      coaching.value.paused_until * 1000 > Date.now() ? 'Coaching is snoozed.' : 'Topics saved; nudges remain off.';
   }
   async function load() {
     const value = await api('settings'); current = value.settings;
@@ -77,12 +78,12 @@ const amadeusUI = (() => {
     toggleTopics();
     $('amadeus-controls').hidden=!current; $('amadeus-memory').hidden=!current;
     if (current) {
-      $('amadeus-pause').textContent=current.paused?'Learning paused':'Learning permission ready';
+      $('amadeus-pause').textContent=current.paused?'Shadow collection paused':'Pause shadow collection';
       $('amadeus-pause').setAttribute('aria-pressed',String(current.paused));
       $('amadeus-guest').textContent=current.guest?'Guest mode on':'Guest mode off';
       $('amadeus-guest').setAttribute('aria-pressed',String(current.guest)); await memory();
     }
-    message('Private setup · collection and nudges are not active in this build.');
+    message(value.collection_active ? 'Shadow metadata collection enabled · predictions and nudges off.' : 'Shadow metadata collection paused · predictions and nudges off.');
   }
   async function run(action) { try { await action(); } catch(error) { message(error.message); } }
   $('amadeus-form').onsubmit = event => {

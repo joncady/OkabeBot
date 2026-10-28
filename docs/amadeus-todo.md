@@ -1,7 +1,7 @@
 # Amadeus trial checklist
 
 Specification: [amadeus.md](amadeus.md). Owner: OkabeBot controller. Status as of
-2026-10-27: private setup and explicit memory controls installed; no live collector or proactive output.
+2026-10-27: private setup, shadow source hooks and retention installed; no proactive output.
 The [GitHub roadmap](https://github.com/users/joncady/projects/4) contains
 Amadeus A0–A8 work packages; this checklist owns detailed
 acceptance and makes partial completion explicit.
@@ -40,18 +40,20 @@ acceptance and makes partial completion explicit.
 
 ## A1 — live observations and privacy controls
 
-- [x] Add private setup schema for one profile, future source permissions,
-  retention, quiet hours, timezone and coaching choices; collection remains unavailable.
+- [x] Add private setup schema for one profile, source permissions,
+  retention, quiet hours, timezone and coaching choices; capture starts paused.
 - [ ] Connect permissions to authenticated source bindings and network-denied local-only mode.
-- [ ] Bind HA/calendar/media/interaction adapters to authenticated source scopes.
-- [ ] Enforce payload schemas, field redaction, clock skew and backfill rules.
+- [x] Bind HA/calendar/media/interaction adapters to authenticated source scopes.
+- [x] Enforce payload schemas, field redaction, clock skew and backfill rules.
 - [x] Expose recent structured observations, explicit memory CRUD, pause/guest settings,
   full-profile export and whole-store forgetting through owner-only routes.
 - [ ] Add timeline filters and source/evidence explanations once adapters exist.
 - [ ] Add voice/MCP recall and explicit preference tools through shared actions.
-- [ ] Schedule retention; integrate all future caches/derived artifacts with deletion.
+- [x] Schedule structured-event retention on the existing source-poll loop.
+- [ ] Integrate future caches/derived artifacts with deletion.
 - [ ] Test restart, source dropout, DST, duplicate and reordered callback behavior.
-- [ ] Verify no raw audio, transcript, account tokens or forbidden fields enter store.
+- [x] Verify synthetic source contracts exclude raw audio, transcripts, account tokens
+  and forbidden fields. Physical source acceptance remains a separate checkpoint.
 - [x] Test owner/surface/publish scope separation, cross-origin rejection, retention
   shortening, protected consent, logout/revoked-access clearing and in-flight UI responses.
 

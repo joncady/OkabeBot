@@ -55,6 +55,9 @@ class Bridge:
         config = get_config()
         self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.lock = threading.RLock()
+        from .amadeus_sources import Collector
+
+        self.amadeus = Collector(state_dir() / "amadeus")
         try:
             self.enabled = json.loads((state_dir() / "button-settings.json").read_text())["enabled"]
             if type(self.enabled) is not bool:
@@ -227,6 +230,8 @@ class Bridge:
             self.closing.wait(5)
 
     def notify(self, kind, data):
+        if getattr(self, "amadeus", None) is not None and kind in ("user", "turn_completed"):
+            self.amadeus.interaction(kind)
         if kind == "local_model":
             self.timings["local_generation_s"] = data["selection_s"]
         if kind == "local_execution":
@@ -394,6 +399,8 @@ class Bridge:
                 if not isinstance(snapshot, MediaSnapshot):
                     raise TypeError("Media adapter must return MediaSnapshot")
                 self.media_state = snapshot
+                if getattr(self, "amadeus", None) is not None:
+                    self.amadeus.media(snapshot)
                 self.sources.errors.pop("media_source", None)
             except Exception:
                 self.sources.errors["media_source"] = "Media source unavailable; retrying"
@@ -498,6 +505,12 @@ class Bridge:
     def poll_sources(self):
         while not self.closing.is_set():
             self.sources.poll()
+            try:
+                if getattr(self, "amadeus", None) is not None:
+                    self.amadeus.calendar(self.sources.state)
+                    self.amadeus.maintain()
+            except Exception:
+                pass  # A collector failure must not affect existing notifications.
             try:
                 scene.set_deploying(bool(self.deployments()))
                 self.sources.errors.pop("display", None)

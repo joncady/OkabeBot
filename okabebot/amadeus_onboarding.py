@@ -89,8 +89,14 @@ class Onboarding:
             "draft": draft if value is None else {},
             "sources": SOURCES,
             "coaching_topics": TOPICS,
-            "collection_available": False,
-            "collection_active": False,
+            "collection_available": True,
+            "collection_active": bool(
+                value
+                and value.get("paused") is False
+                and value.get("guest") is False
+                and value.get("sources")
+            ),
+            "collection_mode": "shadow_metadata",
             "nudges_active": False,
             "profile_scope": "single_private_profile",
         }
@@ -158,7 +164,10 @@ class Onboarding:
         return value["profile"]
 
     def memory(self):
-        return self.store.recall(self.subject())
+        return dict(
+            self.store.recall(self.subject()),
+            household_events=self.store.recall("unknown")["events"],
+        )
 
     def export(self):
         result = self.memory()
@@ -167,7 +176,14 @@ class Onboarding:
             (self.subject(), self.store.clock()),
         ).fetchall()
         result["events"] = [dict(row, payload=json.loads(row["payload"])) for row in rows]
-        return dict(result, setup=self.settings(), export_scope="all_current_profile_records")
+        rows = self.store.db.execute(
+            "SELECT * FROM events WHERE subject='unknown' AND expires_at>? ORDER BY observed_at,id",
+            (self.store.clock(),),
+        ).fetchall()
+        result["household_events"] = [dict(row, payload=json.loads(row["payload"])) for row in rows]
+        return dict(
+            result, setup=self.settings(), export_scope="profile_and_unattributed_household"
+        )
 
     def control(self, data):
         if not isinstance(data, dict) or not data or set(data) - {"paused", "guest"}:

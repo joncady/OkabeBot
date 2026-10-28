@@ -12,7 +12,7 @@
 <p id="amadeus-status" role="status">Connecting privately…</p>
 <button id="amadeus-review" hidden>Review private choices</button>
 <section id="amadeus-setup" class="panel" hidden>
-<h2>Choose what belongs in your lab</h2><p>These are permissions for a future observation stage. Saving does not start collection, learning, or nudges.</p>
+<h2>Choose what belongs in your lab</h2><p>Choose observation permissions, then explicitly resume shadow collection below when ready. Saving alone does not resume collection. Predictions and nudges stay off.</p>
 <form id="amadeus-form">
 <div class="amadeus-grid"><label>Private profile ID<input id="profile" value="primary" pattern="[a-z][a-z0-9_.-]{0,79}" maxlength="80" required></label>
 <label>Timezone<input id="timezone" placeholder="Area/City" required></label>
@@ -31,14 +31,14 @@
 </form></section>
 <section id="amadeus-controls" class="panel" hidden><h2>Your boundaries</h2>
 <div class="controls"><button id="amadeus-pause" aria-pressed="true">Learning paused</button><button id="amadeus-guest" aria-pressed="false">Guest mode off</button></div>
-<p>These controls persist for future collectors. This build has no active collectors or nudges.</p>
+<p>Only permitted metadata is observed in shadow mode. Pause and guest mode stop new observations. Predictions, speech and nudges stay off.</p>
 <div class="controls"><button id="coaching-later">Snooze coaching</button><button id="coaching-stop">Stop coaching</button><button id="coaching-resume">Resume chosen topics</button></div>
 <p id="coaching-state"></p></section>
 <section id="amadeus-memory" class="panel" hidden><h2>Explicit memory</h2>
-<p>Only what you choose to save. Recent observations appear separately; none are collected by this build.</p>
+<p>Only what you choose to save. Personal calendar observations and unattributed household context appear separately.</p>
 <form id="memory-form"><label>Preference key<input id="memory-key" value="user." pattern="user\.[a-z0-9_.-]+" required></label>
 <label>Preference<input id="memory-value" maxlength="1000" placeholder="A preference you want remembered" required></label><button>Remember</button></form>
-<ul id="memory-list"></ul><details><summary>Recent structured observations</summary><pre id="event-list"></pre></details>
+<ul id="memory-list"></ul><details><summary>Recent structured observations</summary><pre id="event-list"></pre><h3>Household context · identity unknown</h3><pre id="household-list"></pre></details>
 <button id="amadeus-export">Download private records</button><p>Exports include personal settings and records. Keep downloaded files private; do not commit or share them.</p>
 <details><summary>Forget all Amadeus data</summary><p>Removes this store’s preferences, setup, coaching consent and observations. This does not erase downloaded exports, external backups or unrelated app data.</p>
 <label class="amadeus-option"><input id="forget-confirm" type="checkbox"> I want to forget all Amadeus data</label><button id="amadeus-forget">Forget Amadeus data</button></details></section>
