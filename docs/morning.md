@@ -108,7 +108,8 @@ Configure `state_dir()/tv-preparation.json` privately, keyed by destination ID:
   "example-tv": {
     "url": "http://127.0.0.1:8123/api/webhook/REPLACE_WITH_PRIVATE_WEBHOOK_ID",
     "timeout_seconds": 45,
-    "wake_mac": "02:00:00:00:00:01"
+    "wake_mac": "02:00:00:00:00:01",
+    "wake_cast": true
   }
 }
 ```
@@ -127,6 +128,24 @@ right HDMI port but lacking CEC status, private `allow_unknown_input: true` perm
 an unknown status after HA confirms the input command; a known false status or
 missing Chromecast still blocks. The owner test reports this fallback distinctly
 from verified input. Unbound destinations retain existing behavior.
+
+`wake_cast: true` optionally launches an empty public preparation page on the exact
+configured Chromecast before the HA power wait. This invokes HDMI-CEC wake without
+showing a character, exposing a receiver token or moving it from its current screen.
+An already-present character on that destination is not replaced. Otherwise the
+existing receiver app is stopped once before a fresh launch so a retained DashCast
+session cannot silently suppress CEC activation. This can interrupt Cast playback,
+just like automatic presentation itself; it is not a background retry loop. The Chromecast
+must have independent wall power and the TV's HDMI-CEC option (Samsung Anynet+)
+must be enabled. TV USB power can disconnect the receiver during standby, making
+CEC wake impossible. A missing/disconnected Cast client fails preparation before
+HA input commands; cached reconnecting clients are not reported as available.
+The temporary page has no private data, microphone, audio or control API calls.
+Physical power/input readiness is still checked through HA before character travel.
+The subsequent dashboard handoff also starts a new DashCast session after the warmup
+page; canceled/stale handoff launches cannot stop a newer receiver session.
+If preparation fails, the character stays put; a successfully loaded empty warmup
+page may remain on the TV and can be closed normally with its remote.
 
 Samsung input key support and network wake vary by model/configuration. Configure
 an explicit input key for the physical HDMI port and enable network wake on the TV

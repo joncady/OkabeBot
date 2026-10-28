@@ -19,9 +19,13 @@ class CastSurfaces:
         if not place or place["adapter"] != "cast":
             return None
         if identity == self.primary_id and not place.get("cast_host"):
-            return self.primary()
-        with self.lock:
-            return self.targets.get(identity)
+            cast = self.primary()
+        else:
+            with self.lock:
+                cast = self.targets.get(identity)
+        if cast and cast.socket_client.is_alive() and cast.socket_client.is_connected:
+            return cast
+        return None
 
     def connect(self, place):
         import pychromecast
@@ -47,7 +51,7 @@ class CastSurfaces:
                 with self.lock:
                     self.targets[place["id"]] = cast
                 while not self.stop.wait(2):
-                    if not cast.socket_client.is_alive():
+                    if not cast.socket_client.is_alive() or not cast.socket_client.is_connected:
                         break
             except Exception:
                 pass

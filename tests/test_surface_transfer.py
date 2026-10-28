@@ -115,6 +115,7 @@ class DirectTransferTests(unittest.TestCase):
         with patch("pychromecast.controllers.BaseController.launch"):
             self.s._launch("http://test/tv/#expired-token")
         self.assertEqual(self.s.receiver_session, "current")
+        cast.quit_app.assert_not_called()
 
     def test_reply_route_resolves_to_actual_destination_after_direct_handoff(self):
         from types import SimpleNamespace

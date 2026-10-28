@@ -164,3 +164,45 @@ class PrepareTests(unittest.TestCase):
                 [call.args[1] for call in sender.sendto.call_args_list],
                 [("192.0.2.10", 9), ("255.255.255.255", 9)],
             )
+
+    def test_opt_in_cast_wake_precedes_ha_readiness_and_failure_abstains(self):
+        binding = json.loads(self.worker.path.read_text())
+        binding["test-tv"]["wake_cast"] = True
+        self.worker.path.write_text(json.dumps(binding))
+        from unittest.mock import Mock
+
+        wake = Mock(return_value=True)
+        with patch("okabebot.tv_prepare.urlopen", side_effect=self.response("input_command_sent")):
+            self.assertTrue(self.worker.prepare("test-tv", lambda: True, wake_cast=wake))
+        wake.assert_called_once()
+        with patch("okabebot.tv_prepare.urlopen") as post:
+            self.assertFalse(self.worker.prepare("test-tv", lambda: True, wake_cast=lambda: False))
+            self.assertFalse(self.worker.prepare("test-tv", lambda: True))
+            post.assert_not_called()
+
+    def test_cast_warmup_has_no_character_token_and_does_not_replace_present_actor(self):
+        from unittest.mock import Mock
+        from okabebot.bridge import Bridge
+
+        controller = Mock()
+
+        class FakeDashCast:
+            def load_url(self, *args, **kwargs):
+                controller.load_url(*args, **kwargs)
+
+        bridge = Bridge.__new__(Bridge)
+        bridge.surfaces = Mock(phase="pi", active_id="other-tv")
+        bridge.port = 8768
+        with (
+            patch("pychromecast.controllers.dashcast.DashCastController", FakeDashCast),
+            patch("okabebot.bridge.get_config", return_value={"web": {"host": "127.0.0.1"}}),
+        ):
+            self.assertTrue(bridge.wake_destination_cast("test-tv"))
+            controller.load_url.assert_called_once_with(
+                "http://127.0.0.1:8768/tv/wake/", force=True
+            )
+            bridge.surfaces.phase, bridge.surfaces.active_id = "tv", "test-tv"
+            self.assertTrue(bridge.wake_destination_cast("test-tv"))
+            self.assertEqual(controller.load_url.call_count, 1)
+            bridge.surfaces.cast_for.return_value = None
+            self.assertFalse(bridge.wake_destination_cast("test-tv"))

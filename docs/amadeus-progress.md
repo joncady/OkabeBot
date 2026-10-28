@@ -79,3 +79,14 @@ explicit policy change; aggregation alone does not authorize it.
 - Improved: configurable TV-addressed wake packets complement broadcast delivery
   for adapters that cannot wake from broadcasts alone; synthetic ordering/packet
   coverage preserves bounded sends and existing handoff readiness guards.
+
+- Improved: optional Cast/CEC preparation wakes a configured TV using an empty
+  public page before HA confirms readiness; character travel remains separately
+  acknowledged. Setup now identifies independent receiver power as a prerequisite.
+- Improved: reconnecting Cast sockets no longer advertise handoff availability;
+  dropped clients are recreated. Extended standby/network recovery remains a
+  broader device-coverage checkpoint rather than an assumed guarantee.
+
+- Improved: warmup-to-dashboard and repeated dashboard visits explicitly restart
+  navigated-away receiver sessions; stale launch requests abstain before receiver
+  control. Synthetic session/ownership regressions cover the transition.

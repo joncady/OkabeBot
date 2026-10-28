@@ -338,6 +338,12 @@ class Surfaces:
         from urllib.parse import urlsplit
 
         generation = urlsplit(url).fragment
+        with self.lock:
+            if direct is not None:
+                if self.direct is not direct or generation != direct.target_token:
+                    return
+            elif self.token != generation:
+                return
         try:
             from pychromecast.controllers.dashcast import DashCastController
 
@@ -346,6 +352,13 @@ class Surfaces:
                 raise ValueError(
                     "TV Cast connection unavailable; open the TV receiver URL to test the handoff in a browser"
                 )
+
+            from pychromecast.config import APP_DASHCAST
+
+            if cast.status.app_id == APP_DASHCAST:
+                # A forced LAUNCH can reuse a navigated-away receiver session.
+                # Stop that app once so its JS can accept the new dashboard URL.
+                cast.quit_app(timeout=5)
 
             class FreshDashCast(DashCastController):
                 def launch(self, *, callback_function=None, force_launch=False):

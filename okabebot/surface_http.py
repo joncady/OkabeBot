@@ -35,6 +35,8 @@ def handle(handler, bridge, post=False):
             handler.respond(404, {"error": "No local CA configured"})
         return True
     public_files = {
+        "/tv/wake/": "tv-wake.html",
+        "/tv-wake.css": "tv-wake.css",
         "/companion/": "companion.html",
         "/companion.js": "companion.js",
         "/companion.css": "companion.css",

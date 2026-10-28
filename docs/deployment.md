@@ -83,7 +83,15 @@ not enable routine learning, general proactive suggestions or health coaching.
 The native controller includes optional per-destination TV preparation. Private
 `state_dir()/tv-preparation.json` owns the local HA webhook binding, timeout and
 optional TV Wake-on-LAN MAC, direct host and broadcast address. Direct and
-broadcast packets are bounded to one per distinct configured target. HA owns the selected Samsung media/remote entities,
+broadcast packets are bounded to one per distinct configured target. An optional
+`wake_cast` flag launches an empty, unprivileged preparation page over the existing
+Cast connection for HDMI-CEC wake before HA verifies power/input. The installed
+HDMI receiver uses independent power; standby behavior remains part of private
+physical acceptance. Cast pools now exclude disconnected/reconnecting clients and
+recreate dropped sessions instead of exposing stale availability. Warmup and
+subsequent dashboard launches use fresh DashCast sessions; stale launches cannot
+replace a newer visit. Long-standby and overnight acceptance remain separate from
+software readiness and immediate power/input checks. HA owns the selected Samsung media/remote entities,
 input key and local-only webhook secret in its private package/secrets. The source
 publisher credential can acknowledge a pending nonce but cannot initiate actions.
 HA input delivery and Chromecast active-input readiness are separate checks;

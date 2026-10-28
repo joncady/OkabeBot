@@ -157,6 +157,7 @@ class SurfaceTests(unittest.TestCase):
         with patch("pychromecast.controllers.BaseController.launch") as launch:
             surface.token = "scoped"
             surface._launch("http://example.invalid/tv/#scoped")
+        cast.quit_app.assert_called_once_with(timeout=5)
         self.assertTrue(launch.call_args.kwargs["force_launch"])
         self.assertEqual(surface.receiver_session, "owned")
 

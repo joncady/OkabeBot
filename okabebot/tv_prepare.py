@@ -35,7 +35,7 @@ class TVPreparation:
             item["event"].set()
             return {"accepted": True}
 
-    def prepare(self, destination, verify_input):
+    def prepare(self, destination, verify_input, *, wake_cast=None):
         if not self.path.exists():
             return True  # Existing destinations retain their existing Cast behavior.
         bindings = json.loads(self.path.read_text())
@@ -73,6 +73,9 @@ class TVPreparation:
                         targets.insert(0, host)
                     for target in dict.fromkeys(targets):
                         sender.sendto(packet, (target, 9))
+            if binding.get("wake_cast") is True:
+                if wake_cast is None or wake_cast() is not True:
+                    return False
             with urlopen(
                 Request(
                     url,

@@ -102,7 +102,9 @@ def handle(handler, bridge, *, post=False):
                 raise ValueError("Configure TV preparation first")
             result = {
                 "ready": bridge.tv_preparation.prepare(
-                    destination, lambda: bridge.destination_input_active(destination)
+                    destination,
+                    lambda: bridge.destination_input_active(destination),
+                    wake_cast=lambda: bridge.wake_destination_cast(destination),
                 ),
                 "input_verified": bridge.destination_input_active(destination) is True,
             }

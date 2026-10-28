@@ -105,3 +105,17 @@ class CastSurfaceTests(unittest.TestCase):
         self.assertTrue(s._location_gone("upstairs", "owned", True))
         cast.status.app_id = "a-new-user-app"
         self.assertTrue(s._location_gone("upstairs", "owned", False))
+
+    def test_reconnecting_socket_is_not_available_for_a_handoff(self):
+        settings = self.settings()["surfaces"]
+        with patch("okabebot.cast_surfaces.threading.Thread"):
+            pool = CastSurfaces(settings, lambda: None)
+        cast = Mock()
+        cast.socket_client.is_alive.return_value = True
+        cast.socket_client.is_connected = False
+        pool.targets["upstairs"] = cast
+        self.assertIsNone(pool.get("upstairs"))
+        cast.socket_client.is_connected = True
+        self.assertIs(pool.get("upstairs"), cast)
+        cast.socket_client.is_alive.return_value = False
+        self.assertIsNone(pool.get("upstairs"))

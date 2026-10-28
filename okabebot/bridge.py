@@ -509,6 +509,31 @@ class Bridge:
         cast = self.surfaces.cast_for(destination)
         return getattr(cast.status, "is_active_input", None) if cast is not None else False
 
+    def wake_destination_cast(self, destination):
+        """Launch an empty, unprivileged page for CEC wake before character travel."""
+        from pychromecast.controllers.dashcast import DashCastController
+
+        cast = self.surfaces.cast_for(destination)
+        if cast is None:
+            return False
+        if self.surfaces.phase == "tv" and self.surfaces.active_id == destination:
+            return True  # Do not replace an already-present character with warmup.
+
+        class FreshDashCast(DashCastController):
+            def launch(self, *, callback_function=None, force_launch=False):
+                return super().launch(callback_function=callback_function, force_launch=True)
+
+        # A still-running receiver can suppress CEC activation even on a forced
+        # LAUNCH. End that app once, then start a genuinely new receiver session.
+        if cast.app_id is not None:
+            cast.quit_app(timeout=5)
+        controller = FreshDashCast()
+        cast.register_handler(controller)
+        controller.load_url(
+            "http://%s:%s/tv/wake/" % (get_config()["web"]["host"], self.port), force=True
+        )
+        return True  # HA must still confirm the TV is on before handoff.
+
     def dispatch_morning(self):
         # The phone event prepares once/day. Only explicit config may move a screen;
         # no retry that could unexpectedly interrupt media later in the day.
@@ -525,6 +550,7 @@ class Bridge:
                     if not self.tv_preparation.prepare(
                         config["destination"],
                         lambda: self.destination_input_active(config["destination"]),
+                        wake_cast=lambda: self.wake_destination_cast(config["destination"]),
                     ):
                         return
                     if (
