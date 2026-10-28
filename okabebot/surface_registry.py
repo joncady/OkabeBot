@@ -56,9 +56,21 @@ class Registry:
             if identity not in data["devices"]:
                 if len(data["devices"]) >= 32:
                     raise ValueError("Device registry full; remove an unused device")
-                existing = {p["name"].casefold() for p in data["devices"].values()}
+                from .config import get_config
+                from .locations import normalized
+
+                places = [*get_config()["surfaces"]["locations"], *data["devices"].values()]
+                existing = {
+                    normalized(value)
+                    for place in places
+                    for value in [
+                        place["id"],
+                        data.get("names", {}).get(place["id"], place["name"]),
+                        *place.get("aliases", []),
+                    ]
+                }
                 label, number = name.strip(), 2
-                while label.casefold() in existing:
+                while normalized(label) in existing:
                     label = name.strip()[:35] + " " + str(number)
                     number += 1
                 data["devices"][identity] = {
@@ -131,6 +143,20 @@ class Registry:
             if "approved" in values:
                 if identity not in data["devices"] or type(values["approved"]) is not bool:
                     raise ValueError("Invalid approval")
+                if values["approved"]:
+                    from .locations import normalized
+
+                    label = values.get("name", known[identity]["name"])
+                    if not isinstance(label, str) or any(
+                        other != identity
+                        and normalized(label)
+                        in {
+                            normalized(value)
+                            for value in [place["id"], place["name"], *place.get("aliases", [])]
+                        }
+                        for other, place in known.items()
+                    ):
+                        raise ValueError("Rename this screen to an unambiguous location name first")
                 data["devices"][identity]["approved"] = values["approved"]
             if "audio_target" in values:
                 target = values["audio_target"]

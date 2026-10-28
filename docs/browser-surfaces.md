@@ -24,7 +24,10 @@ and Mac instances are discovered dynamically and stored in
 Only credential hashes are persisted there; credentials stay on the device and
 are never sent to the local model or included in dashboard links. **Revoke** drops
 a browser's access. **Forget** removes an unused browser entry; revisiting requires
-new approval. First-visit discovery is bounded to 32 devices.
+new approval. First-visit discovery is bounded to 32 devices. New screen names
+receive a numeric suffix if they collide with another location name, ID or alias
+(including persisted renames). Approval also rejects legacy ambiguous names;
+rename the pending screen before approving it.
 
 Layout coordinates determine the dominant travel axis. A receiver left of the
 origin enters from its right; one above enters from below. The Pi supports all

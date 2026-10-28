@@ -31,6 +31,30 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(len(self.registry.enrich(self.places)), 2)
         self.assertEqual(len(self.registry.enrich(self.places, True)), 3)
 
+    def test_registration_avoids_configured_aliases_ids_and_persisted_names(self):
+        from okabebot.locations import destination
+
+        self.registry.update("companion", {"name": "Desk"}, self.places)
+        for i, label in enumerate(("TV", "small-screen", "companion", "Desk")):
+            item = self.registry.register(format(i + 1, "064x"), label, "browser")
+            self.assertEqual(item["name"], label + " 2")
+            self.registry.update(item["id"], {"approved": True}, self.places)
+        with patch("okabebot.surface_registry.registry_path", return_value=self.path):
+            self.assertEqual(destination("Move to TV"), "living-room")
+            self.assertEqual(destination("Move to Desk"), "companion")
+
+    def test_approval_rejects_legacy_alias_collision_without_mutating_state(self):
+        item = self.registry.register(self.secret, "Phone", "browser")
+        data = self.registry.read()
+        data["devices"][item["id"]]["name"] = "TV"
+        self.registry.save(data)
+        before = self.path.read_bytes()
+        with self.assertRaisesRegex(ValueError, "unambiguous"):
+            self.registry.update(item["id"], {"approved": True}, self.places)
+        self.assertEqual(self.path.read_bytes(), before)
+        self.registry.update(item["id"], {"name": "Phone", "approved": True}, self.places)
+        self.assertTrue(self.registry.device(self.secret)["approved"])
+
     def test_approval_revocation_and_persistent_layout(self):
         item = self.registry.register(self.secret, "Phone", "browser")
         self.registry.update(item["id"], {"approved": True, "position": [-3, 1]}, self.places)
