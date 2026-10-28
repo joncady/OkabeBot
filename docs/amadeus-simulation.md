@@ -185,3 +185,10 @@ The overview includes up to three remaining timed entries today, while runtime
 filtering still uses imminent calendar commitments. Display persistence in a
 persona review is an explicit emulator assumption: a proposal lease is not proof
 that any physical card was rendered or remained visible.
+
+Record output and private database hashes as well as input/implementation hashes.
+Legacy event-ID ordering can vary when observations share a timestamp; an observed
+control run is not proof of byte-for-byte deterministic behavior across new UUIDs.
+Do not substitute a favorable rerun after seeing ratings. Explicit-intent inputs
+would be a different intervention and must be evaluated separately from passive
+habit prediction, rather than used to relabel a failed held-out comparison.

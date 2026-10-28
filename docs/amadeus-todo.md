@@ -172,3 +172,8 @@ available streaming catalogue, a preferred title, a health need or observed slee
 - [ ] Distinguish verified companion-owned rendering sessions from entertainment
   playback before sharing attention gates with the live Cast morning workflow;
   do not use a broad TV-power or app-name bypass.
+- [ ] Make legacy same-time event ordering deterministic and retain frozen replay
+  output hashes; input hashes alone do not cover randomly generated event IDs.
+- [ ] Add a separately consented explicit-intent adapter for preparation and media
+  choice requests (for example HA buttons or NFC), instead of treating occupancy
+  or focus-off as a request. Keep user-initiated help distinct from proactive delivery.
