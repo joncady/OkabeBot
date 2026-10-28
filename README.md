@@ -61,6 +61,8 @@ flowchart TB
         App --> Chat["Warm Qwen 4B MLX conversation worker"]
         App -->|"Private Unix socket"| Speech
         App -->|"Characters without Qwen references"| SystemVoice["macOS system voice fallback"]
+        ThinQ["LG ThinQ cloud: registered appliance integration"] --> HA
+        Forecast["Weather forecast service: configured"] --> HA
         HA["Home Assistant Container: 8123"] -->|"Scoped notifications, Alexa schedules and arrivals"| App
         MCP["Optional stdio MCP server"] --> App
         AlexaLocal["Opt-in private Alexa conversation adapter: Unix socket"] --> Chat
@@ -568,3 +570,7 @@ The subsequent spoken retry reached TalkIntent but missed both audio deadlines;
 flicker also remains open. Private stage diagnostics are installed. The tested
 lease-headroom correction is deployed; another physical conversation test is not
 ready until the audio deadline path is reliable.
+
+Device discovery and future household sources: [guided setup, weather, appliance,
+health and NFC/QR plan](docs/home-context-sources.md). The setup skill supports
+conversational mapping; a dashboard-wide network/BLE scan remains planned.

@@ -1,6 +1,6 @@
 ---
 name: okabebot-setup
-description: Set up, diagnose, or migrate this repository's personal hardware assistant on a Mac, Linux laptop, or capable Pi, with local or SSH-connected hardware and optional integrations.
+description: Set up, diagnose, or migrate this repository's personal hardware assistant on a Mac, Linux laptop, or capable Pi, with local or SSH-connected hardware and optional integrations. Also use for guided local device discovery and mapping rooms, endpoints and capabilities through text chat.
 ---
 
 Configure a working controller and the user's selected devices. Use this checkout's
@@ -58,3 +58,22 @@ actions. Keep provider failures isolated and preserve useful partial metadata.
 Finish with the exact start command, private control-page location, selected
 layout, completed checks, and the next concrete manual test. Leave credentials
 out of public artifacts and preserve rollback material during migrations.
+
+## Guided discovery and room mapping
+
+When asked to find devices or map a clean installation, use
+[home context and discovery](../../../docs/home-context-sources.md). Begin with HA
+and existing configured destinations; confirm the local interface/subnet before
+bounded mDNS/SSDP or optional reachability checks. Keep discovered-unpaired,
+configured, currently reachable and approved-for-observation distinct. A saved
+printer queue, stale restored state or friendly name alone is not live discovery.
+
+Use available BLE scanners/proxies only for an explicitly selected Bluetooth pass;
+do not assume a Zigbee hub or a macOS HA container exposes a generic radio. Do not
+pair, play audio, print, toggle devices or broaden memory consent during discovery.
+Ask only unresolved mapping questions in chat: room, duplicate endpoint, ownership,
+expected-online policy and desired observe/control/ignore capabilities. Store the
+confirmed map privately. Never publish scan results or infer a person's identity
+from room activity, RSSI or a device name. Explain unsupported discovery transports
+and the next concrete manual step. The dashboard-wide scan feature is planned;
+do not claim it already exists.

@@ -48,6 +48,18 @@ Alexa conversation work is paused with its failed audio-deadline acceptance
 recorded below; this does not remove the accepted Show demo/destination. Pausing
 development is not evidence that its manually launched cloud workers were stopped.
 
+## Additional HA source survey (2026-10-27)
+
+A read-only registry/recorded-state survey verified native LG ThinQ appliance and
+Met.no weather integrations are configured in the existing HA container. This
+adds vendor-cloud context upstream of HA, not a new Amadeus ingestion permission.
+An Echo ambient-temperature entity and native media-player entities are available;
+individual freshness/capability and physical accuracy require separate acceptance.
+No new collector, device action or health alert was enabled by this survey.
+Printer/BLE discovery and richer household source normalization remain planned.
+Public documentation contains capability status only, not the private device map,
+current readings, person state, schedules or trial outcomes.
+
 ## Devices and responsibilities
 
 | Device | Hosted role / connection | Current state and limits |
