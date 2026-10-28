@@ -138,3 +138,36 @@ MCP calls the controller API through the private control file. A controller time
 is an uncertain result, not permission to repeat a physical/audio action. Reminders
 are the exception with explicit durable request-ID deduplication. No new pollers
 are created by these tools.
+
+
+## Companion destinations
+
+`surface_registry.Registry` owns persistent browser discovery, approval, name and
+layout state. `Surfaces` owns the single character and acknowledged transfer.
+Callers use `get_companion_locations` / `move_companion(location_id)` or the shared
+HTTP application operation; they do not decide credentials, pixel offsets or
+speaker policy. `pi` and `cast` are configured adapters; `browser` and `mac` are
+registered device instances. Names and positions come from the registry, not
+user text interpreted as an executable URL. Worker tool schemas refresh location
+IDs/labels each turn and prefix caches include the schema to avoid stale IDs.
+
+A new surface must implement render-ready, entered/departed acknowledgements,
+identity-scoped heartbeat and close behavior. Prepare failures keep the origin
+visible. Only an approved active screen may submit bounded user-held WAV capture;
+this uses the ordinary clip ledger, busy gate and tool policy, without controller
+credentials. Add adapters through that contract, and verify background visibility
+semantics instead of assuming every browser behaves like a TV receiver.
+
+
+Reply audio is a separate location capability (`audio_target`), resolved once at
+speech start. `AudioHub` relays bounded PCM to an enabled paired device session;
+`BrowserStream` implements the existing stream start/chunk/end/abort contract.
+The browser cannot submit relay PCM or gain full controller authority. A future
+speaker adapter should preserve acknowledged completion and no automatic replay
+on uncertain playback. OS Bluetooth routing is not a new server-side adapter.
+
+Alexa voice history uses the narrow `/alexa/events` adapter: entity ID, event
+timestamp and an allowlisted command string. It maps only to welcome or the
+shared location move interface; provider text is never an arbitrary tool prompt.
+The separate integration token, allowlist, 90-second freshness check and durable
+event claim are enforced again at the controller boundary. See [Alexa setup](alexa.md#explicit-voice-event-bridge).

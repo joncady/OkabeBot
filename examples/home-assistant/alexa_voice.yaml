@@ -1,0 +1,64 @@
+# Deliberate voice history -> narrow structured actions. Off until enabled in HA.
+# Select the same event entity/phrase configuration in the controller's alexa_voice.
+input_boolean:
+  okabebot_alexa_voice:
+    name: OkabeBot Alexa voice commands
+    icon: mdi:account-voice
+rest_command:
+  okabebot_alexa_voice:
+    url: !secret okabebot_alexa_voice_url
+    method: POST
+    content_type: application/json
+    headers:
+      X-Alexa-Voice-Token: !secret okabebot_alexa_voice_token
+    payload: >-
+      {{ {"entity_id": entity_id, "occurred_at": occurred_at | float,
+          "command": command} | to_json }}
+    timeout: 10
+automation:
+  - id: okabebot_alexa_explicit_voice
+    alias: OkabeBot - deliberate Alexa voice commands
+    triggers:
+      - trigger: state
+        entity_id: event.replace_with_echo_voice_event
+    variables:
+      # Some Amazon accounts use title=Request, subtitle=user utterance. Opt in
+      # only after inspecting that selected device's actual history fields.
+      request_subtitle_entities: []
+      source_timestamp_ms: "{{ trigger.to_state.attributes.get('source_timestamp_ms') if trigger.to_state is not none else none }}"
+      command: >-
+        {% set new = trigger.to_state %}
+        {% set attrs = new.attributes if new is not none else {} %}
+        {{ attrs.get('voice_reply', '')
+           if trigger.entity_id in request_subtitle_entities
+              and attrs.get('voice_command') == 'Request'
+           else attrs.get('voice_command', '') }}
+      welcome_phrases: ["i m home", "i am home"]
+      summon_phrases: ["call companion"]
+      move_prefixes: ["call companion to", "send companion to", "move the companion to"]
+    conditions:
+      - condition: state
+        entity_id: input_boolean.okabebot_alexa_voice
+        state: "on"
+      - condition: template
+        value_template: >-
+          {% set new = trigger.to_state %}
+          {% set old = trigger.from_state %}
+          {% set value = command | lower | regex_replace('[^a-z0-9]+', ' ') | trim %}
+          {% set ns = namespace(allowed=value in welcome_phrases or value in summon_phrases) %}
+          {% for prefix in move_prefixes %}
+            {% if value.startswith(prefix + ' ') %}{% set ns.allowed = true %}{% endif %}
+          {% endfor %}
+          {{ old is not none and new is not none and old.state != new.state
+             and source_timestamp_ms is number and source_timestamp_ms is not boolean
+             and 0 <= as_timestamp(now()) - source_timestamp_ms / 1000 <= 90
+             and command | length <= 300 and ns.allowed }}
+    actions:
+      - action: rest_command.okabebot_alexa_voice
+        data:
+          entity_id: "{{ trigger.entity_id }}"
+          occurred_at: "{{ source_timestamp_ms / 1000 }}"
+          command: "{{ command }}"
+    mode: queued
+    max: 3
+    max_exceeded: warning

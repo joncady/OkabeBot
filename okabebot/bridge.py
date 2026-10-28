@@ -114,9 +114,25 @@ class Bridge:
         self.token = persistent_token(state_dir(), "controller-token")
         self.notification_token = notification_token(state_dir())
         self.arrival_token = persistent_token(state_dir(), "arrival-token")
+        from .alexa_voice import AlexaVoice
+
+        self.alexa_voice = AlexaVoice(state_dir(), config["alexa_voice"], self)
         self.port = port
         host = config["web"]["host"]
-        self.allowed_hosts = {"127.0.0.1:%s" % port, host + ":" + str(port)}
+        import socket
+
+        self.allowed_hosts = {"127.0.0.1:%s" % port, "localhost:%s" % port, host + ":" + str(port)}
+        hostname = socket.gethostname().split(".")[0]
+        self.allowed_hosts.add(hostname + ".local:" + str(port))
+        self.allowed_hosts.update(config["web"].get("allowed_hosts", []))
+        self.allowed_hosts.update(value.lower() for value in list(self.allowed_hosts))
+        from .surfaces import Surfaces
+
+        self.surfaces = Surfaces(scene.rpc, lambda: getattr(self.media_source, "cast", None))
+        self.resources.callback(self.surfaces.close)
+        from .surface_audio import AudioHub
+
+        self.surface_audio = AudioHub()
         self.voice_rpc = device("voice").rpc
         self.device_health = {
             name: {"available": False, "error": "Connecting"} for name in ("voice", "display")
@@ -133,7 +149,12 @@ class Bridge:
             local_files_only=True,
         )
         if not transcribe_only:
-            self.codex = Codex(self.folder, self.notify, self.reply)
+            if config["conversation"]["backend"] == "local":
+                from .local_conversation import LocalConversation
+
+                self.codex = LocalConversation(self.folder, self.notify, self.reply)
+            else:
+                self.codex = Codex(self.folder, self.notify, self.reply)
             self.resources.callback(self.codex.close)
         with sqlite3.connect(self.folder / "clips.sqlite3") as db:
             db.execute(
@@ -193,6 +214,10 @@ class Bridge:
             self.closing.wait(5)
 
     def notify(self, kind, data):
+        if kind == "local_model":
+            self.timings["local_generation_s"] = data["selection_s"]
+        if kind == "local_execution":
+            self.timings["local_tool_s"] = data["duration_s"]
         if (
             kind == "assistant"
             and "first_model_output_s" not in self.timings
@@ -201,8 +226,23 @@ class Bridge:
             self.timings["first_model_output_s"] = round(
                 time.time() - self.timings["submitted_at"], 3
             )
+        if kind == "turn_completed":
+            self.show_activity("idle")
         if kind == "turn_completed" and self.timings.get("submitted_at"):
             self.timings["codex_turn_s"] = round(time.time() - self.timings["submitted_at"], 3)
+        if kind == "turn_completed" and getattr(self, "active_clip_id", None):
+            values = dict(
+                self.timings,
+                backend=get_config()["conversation"]["backend"],
+                status=data.get("status"),
+            )
+            spoken = timing.read("speech")
+            if spoken.get("started_at", 0) >= values.get("clip_received_at", float("inf")):
+                values["speech"] = spoken
+            try:
+                timing.append_turn(self.folder, self.active_clip_id, values)
+            except Exception:
+                pass  # Timing persistence must never retry or break an action.
         entry = {"kind": kind, "data": data, "time": time.time()}
         with self.lock:
             self.messages.append(entry)
@@ -237,6 +277,39 @@ class Bridge:
         except Exception as exc:
             self.notify("error", {"message": "Speaker: " + str(exc)})
 
+    def submit_screen_clip(self, data):
+        """Claim a bounded user-recorded WAV through the ordinary speech/tool path."""
+        import re
+
+        if set(data) != {"clip_id", "wav_base64"} or not re.fullmatch(
+            r"screen-[A-Za-z0-9_-]{8,95}", data["clip_id"]
+        ):
+            raise ValueError("Invalid recording identity")
+        raw = base64.b64decode(data["wav_base64"], validate=True)
+        if len(raw) > 700000 or raw[:4] != b"RIFF" or raw[8:12] != b"WAVE":
+            raise ValueError("Invalid recording")
+        with self.lock:
+            if (
+                self.processing
+                or self.recording
+                or self.announcing
+                or not self.codex
+                or self.codex.busy
+            ):
+                raise ValueError("Wait until the current turn finishes")
+            self.processing = True
+
+        def submit():
+            try:
+                self.pi({"op": "ptt", "enabled": False})
+                self.handle_clip(dict(data, released_at=time.time()))
+            except Exception:
+                self.notify("error", {"message": "Screen recording failed; no automatic replay"})
+            finally:
+                self.processing = False
+
+        threading.Thread(target=submit, daemon=True).start()
+
     def transcribe(self, path):
         segments, _ = self.model.transcribe(
             str(path),
@@ -250,6 +323,15 @@ class Bridge:
         ).strip()
 
     def handle_clip(self, clip):
+        handed_off = False
+        try:
+            handed_off = self._handle_clip(clip)
+        finally:
+            # Rejected/failed recordings never receive a turn_completed event.
+            if not handed_off:
+                self.show_activity("idle")
+
+    def _handle_clip(self, clip):
         self.timings = {"clip_received_at": time.time()}
         if clip.get("released_at"):
             self.timings["release_to_clip_s"] = round(time.time() - clip["released_at"], 3)
@@ -259,6 +341,7 @@ class Bridge:
                 return
             # Claim before transcription/submission: never replay a command after a crash.
             db.execute("INSERT INTO clips VALUES (?, ?, ?)", (clip_id, "claimed", ""))
+        self.active_clip_id = clip_id
         self.status = "Transcribing"
         self.show_activity("thinking")
         raw = base64.b64decode(clip["wav_base64"], validate=True)
@@ -279,11 +362,14 @@ class Bridge:
                 "UPDATE clips SET status=?, transcript=? WHERE id=?", ("transcribed", text, clip_id)
             )
         if self.codex:
-            self.status = "Codex is working"
+            self.status = (
+                "Local model" if get_config()["conversation"]["backend"] == "local" else "Codex"
+            ) + " is working"
             self.timings["submitted_at"] = time.time()
             self.codex.submit(text)
             with sqlite3.connect(self.folder / "clips.sqlite3") as db:
                 db.execute("UPDATE clips SET status=? WHERE id=?", ("submitted", clip_id))
+            return True
 
     def poll_music(self):
         last = None
@@ -416,7 +502,7 @@ class Bridge:
         if not item:
             return
         try:
-            if not self.notification_policy.enabled(item["source"]):
+            if not self.notification_policy.enabled_item(item):
                 self.inbox.suppress(item["id"])
                 return
             if item["priority"] == "low":
@@ -435,9 +521,22 @@ class Bridge:
             if audio_mode == "speech":
                 self.announcing = True
                 self.pi({"op": "ptt", "enabled": False})
+                spoken = (item["title"] + ". " + item["body"])[:550]
+                if item["source"] == "arrival":
+                    from .welcome import message
+
+                    composer = (
+                        getattr(self.codex, "compose_welcome", None)
+                        if get_config()["notifications"].get("generated_welcomes", True)
+                        else None
+                    )
+                    spoken, generated = message(item, composer)
+                    self.notify("welcome", {"generated": generated, "text": spoken})
+                    scene.present(dict(item, body=spoken), 30)
                 character_tools.speak(
-                    (item["title"] + ". " + item["body"])[:550],
+                    spoken,
                     "happy" if item["source"] == "arrival" else "curious",
+                    purpose="announcement",
                 )
                 scene.present(item, 5)
                 self.notification_until = time.time() + 5
@@ -509,6 +608,7 @@ class Bridge:
                 with self.codex.lock:
                     approvals = list(self.codex.approvals.values())
             return {
+                "surfaces": self.surfaces.snapshot(),
                 "spotify": self.media_source.status(),
                 "media": self.media_source.status(),
                 "music": dict(self.media_state.music),
@@ -534,10 +634,12 @@ class Bridge:
                 "deployments": self.deployments(),
                 "announcing": self.announcing,
                 "timings": dict(self.timings),
+                "recent_timings": timing.recent_turns(self.folder),
                 "speech_timings": timing.read("speech"),
-                "speech_engine": character_tools.speech.engine(),
+                "speech_engine": character_tools.speech.requested_engine(),
                 "device_health": dict(self.device_health),
                 "speech_health": dict(self.speech_health),
+                "conversation_backend": get_config()["conversation"]["backend"],
                 "codex_alive": self.codex is None or self.codex.process.poll() is None,
                 "speaker_volume": dict(self.speaker_volume),
                 "cloud_available": bool(os.getenv("OPENAI_API_KEY")),
@@ -585,7 +687,7 @@ def handler(bridge):
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header(
                 "Content-Security-Policy",
-                "default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'",
+                "default-src 'self'; script-src 'self'; style-src 'self'; media-src 'self' blob:; frame-ancestors 'none'",
             )
             self.end_headers()
             self.wfile.write(body)
@@ -596,13 +698,44 @@ def handler(bridge):
             )
 
         def do_GET(self):
-            if self.path == "/":
+            from .surface_http import handle
+
+            if handle(self, bridge):
+                return
+            bridge.surfaces.observe(self.client_address[0], self.path)
+            if self.path in ("/tv", "/tv/"):
+                self.respond(
+                    200,
+                    (Path(__file__).parent / "web/tv.html").read_text(),
+                    "text/html; charset=utf-8",
+                )
+            elif self.path in ("/tv.js", "/tv.css", "/lab-room.js"):
+                self.respond(
+                    200,
+                    (Path(__file__).parent / "web" / self.path[1:]).read_text(),
+                    "text/css" if self.path.endswith("css") else "application/javascript",
+                )
+            elif self.path in ("/surfaces/state", "/surfaces/assets"):
+                token = self.headers.get("X-Surface-Token", "")
+                if self.headers.get(
+                    "Host"
+                ) not in bridge.allowed_hosts or not bridge.surfaces.authorized(token):
+                    self.respond(403, {"error": "Receiver session expired"})
+                    return
+                try:
+                    if self.path.endswith("assets"):
+                        self.respond(200, bridge.surfaces.character_assets(current_character()))
+                    else:
+                        self.respond(200, bridge.surfaces.view(token, bridge.snapshot()))
+                except Exception:
+                    self.respond(503, {"error": "Display unavailable; retrying"})
+            elif self.path == "/":
                 self.respond(
                     200,
                     (Path(__file__).parent / "web/index.html").read_text(),
                     "text/html; charset=utf-8",
                 )
-            elif self.path in ("/style.css", "/app.js"):
+            elif self.path in ("/style.css", "/app.js", "/locations.js", "/dashboard-auth.js"):
                 kind = "text/css" if self.path.endswith(".css") else "application/javascript"
                 self.respond(200, (Path(__file__).parent / "web" / self.path[1:]).read_text(), kind)
             elif self.path in (
@@ -629,6 +762,52 @@ def handler(bridge):
                 self.respond(403, {"error": "Open the control URL printed by the bridge"})
 
         def do_POST(self):
+            from .alexa_voice import handle as handle_alexa
+
+            if handle_alexa(self, bridge):
+                return
+            from .surface_http import handle
+
+            if handle(self, bridge, post=True):
+                return
+            bridge.surfaces.observe(self.client_address[0], self.path)
+            if self.path in (
+                "/surfaces/heartbeat",
+                "/surfaces/ack",
+                "/surfaces/return-receiver",
+                "/surfaces/input",
+                "/surfaces/closed",
+            ):
+                token = self.headers.get("X-Surface-Token", "")
+                if self.headers.get(
+                    "Host"
+                ) not in bridge.allowed_hosts or not bridge.surfaces.authorized(
+                    token, preview=False
+                ):
+                    self.respond(403, {"error": "Receiver session expired"})
+                    return
+                try:
+                    n = int(self.headers.get("Content-Length", 0))
+                    if not 0 < n <= 1024:
+                        raise ValueError("Invalid request size")
+                    self.connection.settimeout(5)
+                    data = json.loads(self.rfile.read(n))
+                    if self.path.endswith("heartbeat"):
+                        result = bridge.surfaces.heartbeat(token)
+                    elif self.path.endswith("closed"):
+                        result = bridge.surfaces.receiver_closed(token, data.get("transition_id"))
+                    elif self.path.endswith("input"):
+                        result = bridge.surfaces.input(token, data.get("key"))
+                    elif self.path.endswith("ack"):
+                        result = bridge.surfaces.acknowledge(
+                            token, data.get("kind"), data.get("transition_id")
+                        )
+                    else:
+                        result = bridge.surfaces.return_home()
+                    self.respond(200, result)
+                except Exception:
+                    self.respond(400, {"error": "Invalid receiver command"})
+                return
             if self.path == "/webhooks/github":
                 try:
                     n = int(self.headers.get("Content-Length", 0))
@@ -673,9 +852,57 @@ def handler(bridge):
                 return
             try:
                 n = int(self.headers.get("Content-Length", 0))
-                if not 0 < n <= 20000:
+                if (
+                    not 0
+                    < n
+                    <= (
+                        950000
+                        if self.path == "/conversation/test-clip"
+                        else 350000
+                        if self.path == "/audio/stream"
+                        else 20000
+                    )
+                ):
                     raise ValueError("Invalid request size")
                 data = json.loads(self.rfile.read(n))
+                if self.path == "/conversation/test-clip":
+                    # Full dashboard authentication is required above; never accepts a
+                    # publish-only token. Reuses the real clip ledger and transcription path.
+                    import re
+
+                    if set(data) != {"clip_id", "wav_base64"} or not re.fullmatch(
+                        r"test-[A-Za-z0-9_-]{8,95}", data["clip_id"]
+                    ):
+                        raise ValueError("Use a unique test clip id and WAV data")
+                    raw = base64.b64decode(data["wav_base64"], validate=True)
+                    if len(raw) > 700000 or raw[:4] != b"RIFF" or raw[8:12] != b"WAVE":
+                        raise ValueError("Invalid test WAV")
+                    with bridge.lock:
+                        if (
+                            bridge.processing
+                            or bridge.recording
+                            or bridge.announcing
+                            or not bridge.codex
+                            or bridge.codex.busy
+                        ):
+                            raise ValueError("Wait until the current turn finishes")
+                        bridge.processing = True
+
+                    def inject():
+                        try:
+                            bridge.pi({"op": "ptt", "enabled": False})
+                            bridge.handle_clip(dict(data, released_at=time.time()))
+                        except Exception:
+                            bridge.notify(
+                                "error",
+                                {"message": "Synthetic clip failed; check state before retrying"},
+                            )
+                        finally:
+                            bridge.processing = False
+
+                    threading.Thread(target=inject, daemon=True).start()
+                    self.respond(202, {"accepted": True, "clip_id": data["clip_id"]})
+                    return
                 if self.path in bridge.application.ROUTES:
                     self.respond(200, bridge.application.execute(self.path, data))
                     return
@@ -765,6 +992,9 @@ def handler(bridge):
                             if profile == "configured"
                             else {**get_config()["character"], **PROFILES[profile]}
                         )
+                        scene_location = bridge.surfaces.snapshot()["current_location"]
+                        if scene_location:
+                            bridge.surfaces.ensure_scene(scene_location, character["style"])
                         character_tools.display_rpc(
                             {
                                 "op": "character",
@@ -775,6 +1005,7 @@ def handler(bridge):
                             }
                         )
                         select_profile(profile)
+                        bridge.speech_health = character_tools.speech.health()
                         bridge.face_activity = "idle"
                     finally:
                         bridge.enabled = previous
@@ -828,6 +1059,29 @@ def main():
     except BaseException:
         server.server_close()
         raise
+    loopback = None
+    if config["web"]["host"] != "127.0.0.1":
+        try:
+            loopback = ThreadingHTTPServer(("127.0.0.1", args.port), handler(bridge))
+            threading.Thread(target=loopback.serve_forever, daemon=True).start()
+        except OSError:
+            server.server_close()
+            bridge.close()
+            raise
+    tls_server = None
+    tls = config["web"]["tls"]
+    if tls["certificate"]:
+        import ssl
+
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+        context.load_cert_chain(tls["certificate"], tls["key"])
+        tls_server = ThreadingHTTPServer((config["web"]["host"], tls["port"]), handler(bridge))
+        tls_server.socket = context.wrap_socket(tls_server.socket, server_side=True)
+        bridge.allowed_hosts.update(
+            h.rsplit(":", 1)[0] + ":" + str(tls["port"]) for h in list(bridge.allowed_hosts)
+        )
+        threading.Thread(target=tls_server.serve_forever, daemon=True).start()
     print("Control page: " + bridge.url, flush=True)
 
     def shutdown(*args):
@@ -839,6 +1093,12 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        if tls_server:
+            tls_server.shutdown()
+            tls_server.server_close()
+        if loopback:
+            loopback.shutdown()
+            loopback.server_close()
         bridge.close()
         server.server_close()
 

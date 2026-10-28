@@ -1,6 +1,6 @@
 # Home integrations: Tuya, Ring, and Alexa
 
-Spotify runs directly in OkabeBot. Home Assistant is a separate optional service for Tuya, Ring, and Alexa. The local start script below installs the container; account linking and automations still require setup.
+Spotify runs directly in OkabeBot. Home Assistant is a separate optional service for Tuya, Ring, and Alexa. The local start script below installs the container; account linking and automations still require setup. For the existing installation's enabled integrations and deployment locations, see the [current inventory](deployment.md); the steps here also cover new installations.
 
 ## Start on the Mac
 
@@ -41,7 +41,7 @@ Add **Ring** under Home Assistant integrations and enter the Ring account creden
 
 For the first automation, send a normal-priority notification with a short expiration when the doorbell event changes. Normal priority is visual-only in the current notification implementation. Add a cooldown to avoid duplicate alerts. Keep sound a separate opt-in policy; do not reuse the `important` priority for a silent Ring card.
 
-Home Assistant can call OkabeBot with a [REST command](https://www.home-assistant.io/integrations/rest_command/). The current contract is documented in [notifications.md](notifications.md): POST `/notifications`, `X-Hardware-Token` header, JSON body. Until a dedicated Ring source exists, use `source: "system"`. Store the token in Home Assistant secrets. Use the persistent publish-only token from the controller state directory’s `notification-token` file as `X-Notification-Token`; the browser control token still rotates. Do not expose port 8768 publicly to make Alexa work.
+Home Assistant calls OkabeBot with a [REST command](https://www.home-assistant.io/integrations/rest_command/): POST `/notifications`, JSON body, and the persistent publish-only `X-Notification-Token` credential from the controller state directory's `notification-token` file. Store it in HA secrets; use the package's source identity, such as `ring` for doorbell events. The full browser control token is a separate persistent credential and is unnecessary for this path. See [notifications.md](notifications.md). Do not expose port 8768 publicly to make Alexa work.
 
 ## Optional later: Alexa skill using your own AWS account
 
@@ -82,7 +82,7 @@ The automation requires an actual `off` → `on` transition, ignores startup/una
 
 Connect the official Companion app to the LAN Home Assistant URL while on Wi-Fi. Enable Background Location and Location Zone sensors; Zone Name Only is sufficient for home/away detection. Link its device tracker to your person under Settings → People. Check the home zone and location permissions on the phone.
 
-A LAN-only server cannot receive updates while the phone is away from Wi-Fi. Reliable departures require a private VPN or another chosen remote HTTPS path; do not infer departure just because a phone becomes unreachable. Until that is configured and tested, the installed automation only shows door-open cards.
+A LAN-only server cannot receive updates while the phone is away from Wi-Fi. Reliable departures require a private VPN or another chosen remote HTTPS path; do not infer departure just because a phone becomes unreachable. Until that is configured and tested, presence-based welcomes remain unverified. The separately enabled [afternoon door shortcut](#temporary-afternoon-door-shortcut) does not require phone presence.
 
 ## Additional integration packages
 
@@ -109,7 +109,7 @@ publish-only notification token. Delete it while the controller is stopped to
 rotate, then update Home Assistant. Use the trusted local network, as for the
 existing notification bridge.
 
-The controller queues one short character quip plus up to three unique titles from
+The controller queues a bounded recap of up to three unique titles from
 important/urgent inbox events recorded during the absence. Disabled sources and
 cancelled/suppressed/dismissed items are omitted. It does not fetch email, read
 notification bodies, run a Codex turn, or interpret event text as instructions.
@@ -118,8 +118,54 @@ in the world. Delivery uses the existing character voice, speaker volume, snooze
 and quiet-hours policy. Greetings expire after three minutes; request deduplication
 prevents repeated welcomes for the same departure. Uncertain speech is not retried.
 
+With `notifications.generated_welcomes: true` (default), the local conversation
+worker writes a fresh spoken intro in the character selected at delivery time.
+It receives the persona, short tone examples and up to three recent generated
+intros for variation, never inbox titles/bodies. A short tool-free local editing
+pass aims to remove invented physical observations while preserving figurative
+character humor. The verified recap is appended unchanged outside the model.
+No commands, MCP execution, Codex turn or additional model server is used for this
+generation. Casual conversation history remains separate. Tone and editing prompts
+are a starting point, not a guarantee of personality quality or factual prose.
+
+Generation happens only when notification audio policy permits speech. Quiet cards
+do not run the model. Spoken text is also shown on the card and recorded in the
+private controller transcript. If the model is unavailable, busy or returns invalid
+prose, the short reference quip is the fallback, without a generation retry. Set
+`notifications.generated_welcomes: false` to use that fixed fallback deliberately.
+A Codex-only backend currently uses the fallback as well. Local generation/editing
+adds latency; it does not change the physical speaker volume.
+
+Built-in profile `welcome_persona` fields keep social tone separate from broader
+fictional roleplay, so a greeting need not invent a scene to sound in character.
+For the configured/custom character, `character.welcome_persona` can override
+the greeting tone; an empty value uses `character.persona`. Short examples in
+`okabebot/welcome.py` guide delivery and can be tuned alongside those profiles.
+The small local model can still produce awkward or overly figurative lines;
+auditioning personalities remains ongoing. Prose validation rejects tool syntax
+and explicit sensory/monitoring claims, but is not a general truthfulness proof.
+
 Automatic arrivals depend on reliable phone presence: background location and a
 working connection to Home Assistant while away. LAN-only access may leave the
 phone stuck at home. Do not claim an arrival test passed until an actual away/home
 transition and door event have been observed. First-time installation while already
 away does not fabricate a departure or arm a welcome for that unobserved trip.
+
+### Temporary afternoon door shortcut
+
+`examples/home-assistant/door_welcome.yaml` is an opt-in convenience package using
+the same arrival-only credential. Its enabled automation greets on the first
+closed-to-open door transition after 15:00 in Home Assistant's timezone each day,
+regardless of phone presence. An already-open door or recovery from unavailable
+does not trigger it. Change the time condition or disable the automation in HA to
+configure it. The restored text helper remembers the consumed calendar date across
+restarts; no midnight-reset job is required. The day is consumed before submission,
+so an uncertain network/audio failure is not replayed on a later opening.
+
+The recap covers important connected-inbox events since local midnight and says
+"today's important updates", not an inferred absence. Normal volume, quiet hours,
+snooze and three-minute expiry still apply. Controller-side overlap suppression
+prevents a presence greeting and door greeting within three minutes from producing
+two cards. This shortcut can welcome someone leaving or a visitor opening the
+door; it is not identity or direction detection. It does not require remote phone
+connectivity. Install it only when that behavior is desired.

@@ -80,6 +80,44 @@ class ApplicationTests(unittest.TestCase):
         self.assertTrue(self.controller.focus.status()["active"])
         self.assertFalse(self.app.execute("/focus/cancel", {})["active"])
 
+    def test_reply_waits_for_destination_and_announcements_do_not_follow(self):
+        moving = {"current_location": None, "locations": []}
+        arrived = {
+            "current_location": "phone",
+            "locations": [{"id": "phone", "audio_target": "device"}],
+        }
+        self.controller.surfaces = Mock()
+        self.controller.surfaces.snapshot.side_effect = [moving, arrived]
+        self.controller.surface_audio = Mock()
+        self.controller.surface_audio.ready.return_value = True
+        with (
+            patch("okabebot.audio_output.target", return_value="pi"),
+            patch("okabebot.application.time.sleep"),
+        ):
+            self.assertEqual(
+                self.app.execute("/audio/resolve", {"purpose": "reply"}),
+                {"target": "browser", "device_id": "phone", "ready": True},
+            )
+            self.assertEqual(
+                self.app.execute("/audio/resolve", {"purpose": "announcement"}), {"target": "pi"}
+            )
+        self.assertEqual(self.controller.surfaces.snapshot.call_count, 2)
+
+    def test_unsettled_transfer_fails_without_redirecting_speech(self):
+        self.controller.surfaces = Mock()
+        self.controller.surfaces.snapshot.return_value = {"current_location": None}
+        with (
+            patch("okabebot.audio_output.target", return_value="pi"),
+            patch("okabebot.application.time.monotonic", side_effect=[0, 9]),
+        ):
+            with self.assertRaisesRegex(ValueError, "still moving"):
+                self.app.execute("/audio/resolve", {"purpose": "reply"})
+        with patch("okabebot.controller_tools.request", side_effect=ValueError("handoff failed")):
+            from okabebot.audio_output import resolve
+
+            with self.assertRaisesRegex(ValueError, "handoff failed"):
+                resolve("reply")
+
 
 class EchoTests(unittest.TestCase):
     def env(self, name):

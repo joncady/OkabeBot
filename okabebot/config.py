@@ -10,8 +10,12 @@ import json
 import os
 from pathlib import Path
 import re
+from .locations import DEFAULT_LOCATIONS
 
 HARDWARE_TOOLS = (
+    "get_companion_locations",
+    "move_companion",
+    "set_sender_notification_rule",
     "set_speaker_volume",
     "snooze_notifications",
     "dismiss_notification",
@@ -53,12 +57,29 @@ HARDWARE_TOOLS = (
 )
 APPROVABLE_TOOLS = HARDWARE_TOOLS + ("control_spotify",)
 DEFAULTS = {
+    "alexa_voice": {
+        "enabled": False,
+        "devices": [],
+        "welcome_phrases": ["I'm home", "I am home"],
+        "summon_phrases": ["call companion"],
+        "move_prefixes": ["call companion to", "send companion to", "move the companion to"],
+    },
+    "audio": {"sonos_host": "", "media_base_url": ""},
+    "surfaces": {
+        "receiver": "dashcast",
+        "remote_controls": False,
+        "locations": DEFAULT_LOCATIONS,
+        "travel_side": "left",
+        "duration_seconds": 2.2,
+        "lab": {"title": "Little Lab", "theme": "pixel-lab"},
+    },
     "state_dir": "./state",
     "character": {
         "name": "Okabe",
         "style": "okabe",
         "persona": "Portray Rintaro Okabe from Steins;Gate, lab member 001, as a playful fictional hardware companion. Use brief theatrical scientist humor while keeping technical answers accurate.",
         "default_voice": "calm",
+        "welcome_persona": "",
         "intensity": 0.6,
         "palette": {"background": "#101e25", "shell": "#accdc1", "accent": "#a5f4ce"},
     },
@@ -85,6 +106,7 @@ DEFAULTS = {
         "cloud_voices": {"warm": "coral", "calm": "onyx", "robotic": "alloy"},
         "engine": "auto",
         "local_socket": "/tmp/okabebot-tts.sock",
+        "local_fallback": "system",
         "worker_command": [],
         "worker_ready_timeout_seconds": 120,
         "sync_lead_seconds": 0.5,
@@ -92,6 +114,11 @@ DEFAULTS = {
         "linux_voices": {"warm": "en-us+f3", "calm": "en-gb", "robotic": "en"},
     },
     "transcription": {"model": "base.en", "language": "en", "compute_type": "int8", "beam_size": 5},
+    "conversation": {
+        "backend": "codex",
+        "model": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+        "command": [],
+    },
     "codex": {"binary": "codex", "thread_name": "Hardware Voice", "cwd": ".", "effort": "low"},
     "spotify": {
         "source": "api",
@@ -115,10 +142,16 @@ DEFAULTS = {
         "agenda_time": "",
         "agenda_timezone": "local",
         "speak_important": True,
+        "generated_welcomes": True,
         "group_window_seconds": 3,
         "chime_gain": 0.25,
     },
-    "web": {"port": 8768, "host": "127.0.0.1"},
+    "web": {
+        "port": 8768,
+        "host": "127.0.0.1",
+        "allowed_hosts": [],
+        "tls": {"port": 8780, "certificate": "", "key": "", "ca_certificate": ""},
+    },
 }
 
 
@@ -145,6 +178,25 @@ def load(path):
 
     settings["state_dir"] = resolve(settings["state_dir"])
     settings["codex"]["cwd"] = resolve(settings["codex"]["cwd"])
+    import ipaddress
+
+    for key in ("sonos_host",):
+        if settings["audio"][key]:
+            ipaddress.ip_address(settings["audio"][key])
+    from .locations import validate as validate_locations
+
+    validate_locations(settings["surfaces"])
+    from .alexa_voice import validate as validate_alexa_voice
+
+    validate_alexa_voice(settings["alexa_voice"])
+    if type(settings["surfaces"]["remote_controls"]) is not bool:
+        raise ValueError("remote_controls must be boolean")
+    if settings["surfaces"]["receiver"] != "dashcast":
+        raise ValueError("Only the explicit DashCast prototype receiver is currently supported")
+    if not isinstance(settings["audio"]["media_base_url"], str):
+        raise ValueError("media_base_url must be text")
+    if not isinstance(settings["character"]["welcome_persona"], str):
+        raise ValueError("character.welcome_persona must be text")
     if type(settings["approvals"]["auto_approve_hardware"]) is not bool:
         raise ValueError("auto_approve_hardware must be true or false")
     allowed = settings["approvals"]["allowed_tools"]
@@ -152,6 +204,8 @@ def load(path):
         raise ValueError("allowed_tools must contain only known hardware tools")
     if settings["speech"]["engine"] not in ("auto", "say", "espeak", "openai", "local"):
         raise ValueError("speech.engine must be auto, say, espeak, openai, or local")
+    if settings["speech"]["local_fallback"] not in ("system", "none"):
+        raise ValueError("speech.local_fallback must be system or none")
     if not isinstance(settings["speech"]["local_socket"], str):
         raise ValueError("speech.local_socket must be a path")
     settings["speech"]["local_socket"] = resolve(settings["speech"]["local_socket"])
@@ -197,13 +251,33 @@ def load(path):
         or not 1 <= settings["transcription"]["beam_size"] <= 5
     ):
         raise ValueError("transcription.beam_size must be 1–5")
+    conversation = settings["conversation"]
+    if conversation["backend"] not in ("codex", "local"):
+        raise ValueError("conversation.backend must be codex or local")
+    if not isinstance(conversation["model"], str) or not conversation["model"].strip():
+        raise ValueError("conversation.model must be a model name or path")
+    if not isinstance(conversation["command"], list) or any(
+        not isinstance(v, str) or not v for v in conversation["command"]
+    ):
+        raise ValueError("conversation.command must be an argv list")
+    if conversation["backend"] == "local" and not conversation["command"]:
+        raise ValueError("Local conversation requires a worker command")
     if settings["codex"]["effort"] not in ("low", "medium", "high"):
         raise ValueError("codex.effort must be low, medium, or high")
-    import ipaddress
-
     ipaddress.ip_address(settings["web"]["host"])
     if settings["web"]["host"] == "0.0.0.0":
         raise ValueError("Use a specific LAN address or 127.0.0.1 for web.host")
+    if not isinstance(settings["web"]["allowed_hosts"], list) or any(
+        not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9.-]+:[0-9]{4,5}", value)
+        for value in settings["web"]["allowed_hosts"]
+    ):
+        raise ValueError("web.allowed_hosts must contain explicit host:port entries")
+    tls = settings["web"]["tls"]
+    if bool(tls["certificate"]) != bool(tls["key"]):
+        raise ValueError("TLS requires both certificate and key")
+    for name in ("certificate", "key", "ca_certificate"):
+        if tls[name]:
+            tls[name] = resolve(tls[name])
     notifications = settings["notifications"]
     if not isinstance(notifications["github_polling"], bool):
         raise ValueError("github_polling must be boolean")
@@ -265,6 +339,8 @@ def load(path):
         raise ValueError("chime_gain must be 0..1")
     if type(notifications["speak_important"]) is not bool:
         raise ValueError("speak_important must be boolean")
+    if type(notifications["generated_welcomes"]) is not bool:
+        raise ValueError("generated_welcomes must be boolean")
     if any(not isinstance(notifications[k], str) for k in ("github", "calendar")):
         raise ValueError("Notification sources must be strings")
     if (
@@ -286,7 +362,11 @@ def load(path):
         ipaddress.ip_address(settings["spotify"]["cast_host"])
         if not settings["spotify"]["device_name"]:
             raise ValueError("Cast requires device_name")
-    ports = [settings["web"]["port"], settings["spotify"]["callback_port"]]
+    ports = [
+        settings["web"]["port"],
+        settings["spotify"]["callback_port"],
+        settings["web"]["tls"]["port"],
+    ]
     for endpoint in settings["devices"].values():
         ports.append(endpoint["port"])
         if endpoint["transport"] not in ("local", "ssh"):

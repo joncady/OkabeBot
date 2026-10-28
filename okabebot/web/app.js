@@ -38,6 +38,7 @@ document.querySelectorAll('[data-snooze]').forEach(button => {
 function notificationPreferencesUI(state) {
   const previous = JSON.stringify(notificationPolicy.sources);
   notificationPolicy=state.notification_policy || {};
+  senderRulesUI(notificationPolicy.senders || []);
   const quiet=notificationPolicy.quiet_hours;
   if (!quiet) return;
   document.querySelector('#notification-policy-status').textContent = notificationPolicy.snoozed
@@ -60,11 +61,12 @@ function notificationPreferencesUI(state) {
 async function api(path, data) {
   let r = await fetch(path, {
     method: data ? "POST" : "GET",
-    headers: { "X-Hardware-Token": location.hash.slice(1), "Content-Type": "application/json" },
+    headers: { "X-Hardware-Token": dashboardAccess.token(), "Content-Type": "application/json" },
     body: data ? JSON.stringify(data) : undefined,
   });
   let x = await r.json();
-  if (!r.ok) throw Error(x.error);
+  if (!r.ok) { if(r.status===403)dashboardAccess.required(); throw Error(x.error); }
+  dashboardAccess.remember();
   return x;
 }
 function el(tag, text, cls) {
@@ -213,6 +215,7 @@ function notificationUI(s) {
       row.append(img);
     }
     copy.append(el("strong", n.title), el("p", n.body));
+    if (n.sender_id) copy.append(el("small", `${n.source} · Sender ID: ${n.sender_id}`));
     if (n.status === "failed" || n.status === "uncertain")
       copy.append(el("p", n.error || n.status));
     if (n.status === "pending" && n.due_at * 1000 > Date.now())
@@ -318,6 +321,10 @@ async function refresh() {
     if (connectionError && document.querySelector("#error").textContent === connectionError) document.querySelector("#error").textContent = "";
     connectionError = "";
     enabled = s.enabled;
+    const history=document.querySelector('#timing-history'); history.replaceChildren();
+    for (const t of (s.recent_timings || [])) {
+      history.append(el('p',`${new Date(t.clip_received_at*1000).toLocaleTimeString()} · ${t.backend} · STT ${t.transcription_s ?? '?'}s · model ${t.local_generation_s ?? t.first_model_output_s ?? '?'}s · tool ${t.local_tool_s ?? '?'}s · ${t.status}`));
+    }
     notificationUI(s);
     musicUI(s);
     const parsed = s.content_parse || {}, slots = parsed.context || {};
@@ -389,16 +396,29 @@ async function refresh() {
       : "Enable microphone button";
     document.title = s.character + " · OkabeBot";
     notificationPreferencesUI(s);
+    const surface=s.surfaces||{};
+    const places=surface.locations||[];
+    locationsUI(surface);
+    const current=places.find(p=>p.id===surface.current_location);
+    const display=places.find(p=>p.adapter==='pi'),cast=places.find(p=>p.adapter==='cast');
+    document.querySelector('#surface-status').textContent=surface.error||(current?`At ${current.name}`:`Moving to ${surface.destination_name||'destination'}…`);
+    document.querySelector('#surface-tv').textContent=`Move to ${cast?.name||'destination'}`;
+    document.querySelector('#surface-tv').dataset.location=cast?.id||'';
+    document.querySelector('#surface-home').textContent=`Return to ${display?.name||'display'}`;
+    document.querySelector('#surface-home').dataset.location=display?.id||'';
+    document.querySelector('#surface-tv').disabled=surface.phase!=='pi';
+    document.querySelector('#surface-home').disabled=surface.phase==='pi';
     const components = Object.entries(s.device_health || {}).map(([name, health])=>
       `${name === 'voice' ? 'Speaker/button Pi' : 'Display Pi'}: ${health.available ? 'connected' : 'reconnecting'}`);
-    if (s.speech_health) components.push(`Voice: ${s.speech_health.available ? 'ready' : s.speech_health.error || 'warming'}`);
+    if (s.speech_health) components.push(`Voice: ${s.speech_health.available ? s.speech_health.fallback ? `${s.speech_health.backend} · system fallback (no character reference)` : 'ready' : s.speech_health.error || 'warming'}`);
     if (s.github_queue_health?.configured && !s.github_queue_health.available) components.push(s.github_queue_health.error || 'GitHub relay reconnecting');
-    if (s.codex_alive === false) components.push('Codex: reconnecting');
+    if (s.codex_alive === false) components.push(s.conversation_backend === 'local' ? 'Local model unavailable; restart controller' : 'Codex: reconnecting');
     document.querySelector('#system-health').textContent=components.join(' · ');
     document.querySelector("#thread").textContent =
       (s.auto_approve_hardware
         ? "Hardware auto-approval ON · "
         : "Manual approvals · ") +
+      (s.conversation_backend === "local" ? "Local model · " : "Codex · ") +
       (s.thread_id ? "Chat: " + s.thread_id : "Transcription only");
     requests(s.approvals);
     const root = document.querySelector("#messages");
@@ -524,4 +544,44 @@ document.querySelector('#echo-refresh').onclick = async () => {
 document.querySelector('#echo-form').onsubmit = event => {
   event.preventDefault();
   action('/echo/speak', {speaker:document.querySelector('#echo-speaker').value, text:document.querySelector('#echo-text').value});
+};
+
+
+let lastSenderRules = '';
+function senderRulesUI(rules) {
+  const signature=JSON.stringify(rules);
+  if (signature===lastSenderRules) return;
+  lastSenderRules=signature;
+  const root=document.querySelector('#sender-rules'); root.replaceChildren();
+  if (!rules.length) root.append(el('p','No sender-specific rules.'));
+  for (const rule of rules) {
+    const row=el('p',`${rule.source} / ${rule.sender_id}: ${rule.enabled ? rule.audio : 'disabled'} · ${rule.priority}`);
+    const edit=el('button','Edit'); edit.onclick=()=>{
+      document.querySelector('#sender-source').value=rule.source;
+      document.querySelector('#sender-id').value=rule.sender_id;
+      document.querySelector('#sender-enabled').checked=rule.enabled;
+      document.querySelector('#sender-audio').value=rule.audio;
+      document.querySelector('#sender-priority').value=rule.priority;
+    };
+    const remove=el('button','Remove'); remove.onclick=()=>action('/notifications/senders',{action:'delete',source:rule.source,sender_id:rule.sender_id});
+    row.append(edit,remove); root.append(row);
+  }
+}
+document.querySelector('#sender-rule-form').onsubmit=event=>{
+  event.preventDefault();
+  action('/notifications/senders',{
+    source:document.querySelector('#sender-source').value.trim(),
+    sender_id:document.querySelector('#sender-id').value.trim(),
+    enabled:document.querySelector('#sender-enabled').checked,
+    audio:document.querySelector('#sender-audio').value,
+    priority:document.querySelector('#sender-priority').value
+  });
+};
+
+document.querySelector('#surface-tv').onclick=event=>action('/surfaces/move',{location_id:event.currentTarget.dataset.location});
+document.querySelector('#surface-home').onclick=event=>action('/surfaces/move',{location_id:event.currentTarget.dataset.location});
+document.querySelector('#surface-preview').onclick=async()=>{
+  const preview=window.open('about:blank','okabebot-tv-preview');
+  try{const result=await api('/surfaces/preview',{});if(preview)preview.location=result.url;const link=document.querySelector('#surface-preview-link');link.href=result.url;link.hidden=false;}
+  catch(e){if(preview)preview.close();document.querySelector('#error').textContent=e.message;}
 };

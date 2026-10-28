@@ -6,7 +6,7 @@ from urllib.request import Request, urlopen
 from .config import state_dir
 
 
-def request(path="/state", payload=None):
+def request(path="/state", payload=None, timeout=10):
     try:
         control = json.loads((state_dir() / "ptt" / "control.json").read_text())
         url = urlsplit(control["url"])
@@ -20,7 +20,7 @@ def request(path="/state", payload=None):
             data=data,
             headers={"X-Hardware-Token": url.fragment, "Content-Type": "application/json"},
         )
-        with urlopen(req, timeout=10) as response:
+        with urlopen(req, timeout=timeout) as response:
             return json.load(response)
     except Exception:
         raise ValueError(

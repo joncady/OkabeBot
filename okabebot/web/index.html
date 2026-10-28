@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>OkabeBot · Companion</title>
     <link rel="stylesheet" href="/style.css" />
-  </head>
+  <link rel="stylesheet" href="/surface-theme.css"></head>
   <body>
     <header>
       <div>
@@ -15,6 +15,11 @@
       <button id="dev-toggle" class="small" aria-pressed="false">Dev</button>
     </header>
     <main>
+      <section id="dashboard-auth" class="panel" hidden>
+        <h2>Connect this browser</h2><p>Paste the authorized setup link once. This browser remembers access so you can bookmark this address.</p>
+        <form id="dashboard-auth-form"><input id="dashboard-access" type="password" autocomplete="off" aria-label="Authorized setup link or access key" required><button>Connect</button></form>
+        <p id="dashboard-auth-error" role="status"></p>
+      </section>
       <section class="hero panel">
         <div class="live">
           <span class="dot"></span
@@ -70,6 +75,15 @@
           <button class="character-card" data-profile="sonic" aria-pressed="false"><img src="/sonic.png" alt="" /><strong>Sonic</strong><span>Ready for the next adventure</span></button>
         </div>
       </section>
+      <section class="panel" aria-label="Companion location">
+        <h2>Locations</h2><p id="surface-status">Finding companion…</p>
+        <div class="controls"><button id="surface-tv" class="primary">Move companion</button><button id="surface-home">Return companion</button><button id="surface-preview" class="small">Preview TV dashboard</button></div>
+        <p><a id="surface-preview-link" target="_blank" rel="noopener" hidden>Open TV dashboard preview ↗</a></p>
+        <p class="muted">Open <a href="/companion/" target="_blank" rel="noopener">this stable screen link</a> on a phone to discover it. Approve it below. Drag screens to match their positions around you; arrow buttons work too.</p>
+        <div id="location-map" aria-label="Spatial arrangement of companion locations"></div>
+        <p class="muted">Choose a Room or Companion view and one set for the selected character. A set belongs to only one location; unassign it before assigning it elsewhere. Set up scene world reserves a home set for every character in one step. Keep home assigned so the character can always return.</p>
+        <div id="location-list"></div><p id="location-error" role="status"></p>
+      </section>
       <section class="panel"><h2>Time to focus</h2><p id="focus-status" role="status">Choose a session. I’ll remind you to take a break.</p><div class="focus-actions"><button data-focus="5">5 min</button><button data-focus="25">25 min</button><button data-focus="50">50 min</button><button id="focus-cancel" hidden>Cancel timer</button></div></section>
       <section class="panel"><h2>Reminders</h2>
         <form id="reminder-form" class="preference-form">
@@ -117,6 +131,16 @@
           <button type="submit">Save source</button>
         </form>
         <p class="hint">Explicitly silent events stay silent. Source changes apply to future deliveries.</p>
+        <h3>Sender rules</h3>
+        <p class="hint">Match the exact source and sender ID shown on a notification. Priority changes apply to new events; quiet hours and explicit silence still win.</p>
+        <form id="sender-rule-form" class="preference-form">
+          <label>Source <input id="sender-source" value="github" maxlength="30" pattern="[a-z][a-z0-9_-]{0,29}" required /></label>
+          <label>Sender ID <input id="sender-id" maxlength="160" required /></label>
+          <label><input id="sender-enabled" type="checkbox" checked /> Show cards</label>
+          <label>Audio <select id="sender-audio"><option value="default">Source default</option><option value="silent">Silent</option><option value="chime">Chime</option><option value="speech">Read aloud</option></select></label>
+          <label>Priority <select id="sender-priority"><option value="default">Provider default</option><option>low</option><option>normal</option><option>important</option><option>urgent</option></select></label>
+          <button type="submit">Save sender rule</button>
+        </form><div id="sender-rules" role="status"></div>
       </section>
       <div id="approvals"></div>
       <section id="developer" hidden>
@@ -166,7 +190,7 @@
             <button type="submit">Speak on selected Echo</button>
           </form>
           <button id="test-notification">Test calendar card</button>
-          <div id="timings" class="muted"></div>
+          <div id="timings" class="muted"></div><details><summary>Recent request timings</summary><div id="timing-history"></div></details>
           <div id="thread"></div>
         </div>
         <div class="panel">
@@ -174,8 +198,8 @@
           <div id="messages">Waiting for your first message.</div>
         </div>
       </section>
-    </main>
+    <button id="dashboard-forget" class="small">Forget browser access</button></main>
     <footer>OKABEBOT <span>Make room for a little curiosity.</span></footer>
-    <script src="/app.js"></script>
+    <script src="/dashboard-auth.js"></script><script src="/locations.js"></script><script src="/app.js"></script>
   </body>
 </html>

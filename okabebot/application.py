@@ -9,7 +9,15 @@ from .reminders import Reminders
 class Application:
     ROUTES = {
         "/speaker/volume",
+        "/audio/resolve",
+        "/audio/stream",
+        "/surfaces/move",
+        "/surfaces/layout",
+        "/surfaces/tv",
+        "/surfaces/preview",
+        "/surfaces/return",
         "/notifications/preferences",
+        "/notifications/senders",
         "/notifications/snooze",
         "/notifications/dismiss",
         "/focus/start",
@@ -28,12 +36,63 @@ class Application:
 
     def execute(self, path, data):
         b = self.controller
+        if path == "/audio/stream":
+            return b.surface_audio.command(data["device_id"], data["command"])
+        if path == "/audio/resolve":
+            from . import audio_output
+
+            purpose = data.get("purpose", "reply")
+            fallback = audio_output.target(purpose)
+            if purpose == "announcement":
+                return {"target": fallback}
+            # Resolve once after movement settles. Never choose an incidental Pi
+            # fallback while the character is between screens.
+            deadline = time.monotonic() + 8
+            while True:
+                state = b.surfaces.snapshot()
+                if state["current_location"] is not None:
+                    break
+                if time.monotonic() >= deadline:
+                    raise ValueError("Companion is still moving; speech was not redirected")
+                time.sleep(0.1)
+            place = next(
+                (p for p in state["locations"] if p["id"] == state["current_location"]), None
+            )
+            target = (place or {}).get("audio_target", "default")
+            if target == "device":
+                return {
+                    "target": "browser",
+                    "device_id": place["id"],
+                    "ready": b.surface_audio.ready(place["id"]),
+                }
+            return {"target": fallback if target == "default" else target}
+        if path.startswith("/surfaces/"):
+            base = "http://%s:%s" % (get_config()["web"]["host"], b.port)
+            if path == "/surfaces/layout":
+                return b.surfaces.layout(data)
+            if path == "/surfaces/move":
+                return b.surfaces.move(data.get("location_id"), base)
+            if path == "/surfaces/return":
+                return b.surfaces.return_home()
+            if path == "/surfaces/preview":
+                return b.surfaces.preview(base)
+            from .locations import for_adapter
+
+            return b.surfaces.move(for_adapter("cast")["id"], base)
         if path == "/speaker/volume":
             value = data.get("percent")
             if type(value) is not int or not 0 <= value <= 100:
                 raise ValueError("Volume must be an integer from 0 to 100")
             b.speaker_volume = b.pi({"op": "volume", "percent": value})
             return b.speaker_volume
+        if path == "/notifications/senders":
+            if data.get("action") == "delete":
+                return b.notification_policy.delete_sender(data["source"], data["sender_id"])
+            if data.get("action", "set") != "set":
+                raise ValueError("Unknown sender rule action")
+            return b.notification_policy.set_sender(
+                **{k: v for k, v in data.items() if k != "action"}
+            )
         if path == "/notifications/preferences":
             return b.notification_policy.update(data)
         if path == "/notifications/snooze":

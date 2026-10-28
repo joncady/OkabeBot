@@ -1,5 +1,9 @@
 # TV companion
 
+For the explicitly launched large-screen dashboard and Pi/TV character movement,
+see [companion surfaces](surfaces.md). The media-observation paths below remain
+separate and never launch that dashboard on their own.
+
 The first pass is a silent **Now playing on TV** card using a Home Assistant media player's actual `media_title`. It uses the existing character notification layout. It does not play audio, change the TV, identify scenes, or generate movie facts. The package is prepared but disabled until the TV and its streaming app have been tested.
 
 ## Connect the playback device

@@ -1,11 +1,12 @@
-include LICENSE README.md
+include LICENSE README.md AGENTS.md
 recursive-include pi *.py *.service
 recursive-include examples *.json *.yaml
 recursive-include docs *.md *.png
-recursive-include tests *.py
+recursive-include tests *.py *.cjs
+recursive-include tests/fixtures *.json
 recursive-exclude * __pycache__
 global-exclude *.pyc *.local.json
-recursive-include scripts *.sh *.py
+recursive-include scripts *.sh *.py *.cjs
 
 recursive-include pi/assets *.png *.json *.md
 
@@ -19,3 +20,4 @@ exclude okabebot/assets/teams.json okabebot/assets/crests.json
 recursive-include .githooks *
 
 recursive-include infra *.py *.json
+recursive-include mac *.swift

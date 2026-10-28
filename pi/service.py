@@ -21,6 +21,7 @@ import scene
 import layout
 import reactions
 import prop_art
+import travel
 from device_config import load
 from display_power import keep_awake
 import math
@@ -55,6 +56,9 @@ class Display:
         self.frame_work = 0
         self.frame_started = None
         self.character = None
+        self.motion = travel.Motion()
+        self.travel_sign = None
+        self.travel_photo = None
         self.notification = None
         self.notification_until = 0
         self.card_photo = None
@@ -140,8 +144,12 @@ class Display:
             for k, v in palette.items()
         ):
             raise ValueError("Invalid character palette")
+        environment = data.get("environment", (self.character or {}).get("environment", "legacy"))
+        if environment not in ("legacy", "unassigned") + scene.scene_sets.SETS:
+            raise ValueError("Unknown companion scene set")
         self.character = dict(
             style=style,
+            environment=environment,
             palette=palette,
             emotion=emotion,
             intensity=intensity,
@@ -179,7 +187,12 @@ class Display:
         )
         buf = io.BytesIO()
         overlay.save(buf, format="PNG")
-        self.card_photo = tk.PhotoImage(data=base64.b64encode(buf.getvalue()).decode("ascii"))
+        photo = tk.PhotoImage(data=base64.b64encode(buf.getvalue()).decode("ascii"))
+        # Rebind before releasing the old Python image reference. A cleared card
+        # may stay hidden for many frames; its Tk item must not retain a deleted image.
+        if self.notification_item is not None:
+            self.canvas.itemconfigure(self.notification_item, image=photo)
+        self.card_photo = photo
         return self.status()
 
     def cache_crest(self, data):
@@ -256,6 +269,7 @@ class Display:
             phase=time.monotonic(),
             activity=data["activity"],
             style=data["style"],
+            environment=data.get("environment", "legacy"),
             palette=data["palette"],
         )
 
@@ -459,6 +473,23 @@ class Display:
 
     def animate(self):
         started = time.monotonic()
+        try:
+            self.animate_frame()
+            self.animation_error = None
+        except Exception as exc:
+            self.animation_error = type(exc).__name__ + ": " + str(exc)[:160]
+            if started - getattr(self, "animation_error_at", 0) > 5:
+                import traceback
+
+                traceback.print_exc()
+                self.animation_error_at = started
+        finally:
+            # One transient canvas/asset failure must not stop leased returns.
+            work = time.monotonic() - started
+            self.root.after(max(1, round((1 / 30 - work) * 1000)), self.animate)
+
+    def animate_frame(self):
+        started = time.monotonic()
         if self.frame_started is not None:
             period = started - self.frame_started
             self.frame_period = (
@@ -472,6 +503,45 @@ class Display:
             self.notification = None
         if self.character:
             sx, sy = self.root.winfo_screenwidth() / 480, self.root.winfo_screenheight() / 320
+            phase, dx, dy = self.motion.sample(started)
+            travelling = phase != "home"
+            if travelling:
+                if self.media_panel:
+                    self.media_panel.place_forget()
+                    self.media_shown = False
+                if self.notification_item:
+                    self.canvas.itemconfigure(self.notification_item, state="hidden")
+                for item in self.sport_items:
+                    self.canvas.itemconfigure(item, state="hidden")
+                shapes = pip_face.shapes(
+                    **{k: v for k, v in self.face_args().items() if k != "idle_seconds"}
+                )
+                if phase == "away":
+                    self.draw_scene(shapes[:1], sx, sy)
+                    if self.travel_photo is None:
+                        im = travel.sign().resize((round(480 * sx), round(320 * sy)), Image.NEAREST)
+                        buf = io.BytesIO()
+                        im.save(buf, format="PNG")
+                        self.travel_photo = tk.PhotoImage(
+                            data=base64.b64encode(buf.getvalue()).decode("ascii")
+                        )
+                        self.travel_sign = self.canvas.create_image(
+                            0, 0, anchor="nw", image=self.travel_photo
+                        )
+                    self.canvas.itemconfigure(self.travel_sign, state="normal")
+                    self.canvas.tag_raise(self.travel_sign)
+                else:
+                    if self.travel_sign:
+                        self.canvas.itemconfigure(self.travel_sign, state="hidden")
+                    self.draw_scene(travel.shifted(shapes, dx, dy), sx, sy)
+                self.motion.rendered = phase
+                self.frame_work = time.monotonic() - started
+                return
+            if self.travel_sign:
+                self.canvas.itemconfigure(self.travel_sign, state="hidden")
+            self.motion.rendered = "home"
+            for item in self.sport_items:
+                self.canvas.itemconfigure(item, state="normal")
             self.draw_scene(
                 scene.shapes(
                     notification=self.notification,
@@ -504,7 +574,6 @@ class Display:
                     self.media_shown = False
         work = time.monotonic() - started
         self.frame_work = work if not self.frame_work else 0.9 * self.frame_work + 0.1 * work
-        self.root.after(max(1, round((1 / 30 - work) * 1000)), self.animate)
 
     def apply(self, data):
         duration = data.get("duration_seconds", 0)
@@ -538,9 +607,14 @@ class Display:
             render_metrics={
                 "fps": round(1 / self.frame_period, 1) if self.frame_period else 0,
                 "work_ms": round(self.frame_work * 1000, 1),
+                "frame_age_seconds": round(time.monotonic() - self.frame_started, 2)
+                if self.frame_started
+                else None,
+                "error": getattr(self, "animation_error", None),
             },
             canvas_size=[480, 320],
             output_size=[self.root.winfo_screenwidth(), self.root.winfo_screenheight()],
+            presence=self.motion.status(),
         )
 
     def drain(self):
@@ -554,6 +628,29 @@ class Display:
                     elif op == "clear":
                         self.clear()
                         result = self.status()
+                    elif op == "presence":
+                        result = self.motion.command(data)
+                    elif op == "character_assets":
+                        style = data.get("style", "okabe")
+                        emotion = data.get("emotion", "neutral")
+                        if (
+                            style not in ("okabe", "kurisu", "pip", "sonic")
+                            or emotion not in pip_face.EMOTIONS
+                        ):
+                            raise ValueError("Unknown character asset")
+                        result = {
+                            "frames": [
+                                pip_face.shapes(
+                                    style=style,
+                                    emotion=emotion,
+                                    mouth=m,
+                                    phase=p,
+                                    palette=data.get("palette"),
+                                )
+                                for p in (1, 0)
+                                for m in (0, 0.5, 1)
+                            ]
+                        }
                     elif op == "deployments":
                         if type(data.get("active")) is not bool:
                             raise ValueError("active must be boolean")
@@ -584,7 +681,11 @@ class Display:
                     elif op == "character":
                         result = self.set_character(data)
                     elif op == "preview":
-                        if self.character:
+                        if self.motion.phase == "away":
+                            buf = io.BytesIO()
+                            travel.sign().save(buf, format="PNG")
+                            self.png = buf.getvalue()
+                        elif self.character:
                             buf = io.BytesIO()
                             scene.render(
                                 notification=self.notification,
@@ -648,6 +749,8 @@ def main():
                     "music",
                     "music_pulse",
                     "cache_crest",
+                    "presence",
+                    "character_assets",
                 ):
                     result = display.request(data)
                 else:

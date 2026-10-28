@@ -1,0 +1,45 @@
+# Convenience fallback, NOT proof of presence. Disable this automation to opt out.
+# Replace the door entity; 15:00 uses Home Assistant's configured local timezone.
+input_text:
+  okabebot_door_welcome_date:
+    name: OkabeBot last afternoon door welcome
+    max: 10
+    # No initial value: restore the consumed day across HA restarts.
+
+rest_command:
+  okabebot_door_welcome:
+    url: !secret okabebot_arrival_url
+    method: POST
+    content_type: application/json
+    headers:
+      X-Arrival-Token: !secret okabebot_arrival_token
+    payload: >-
+      {{ {"trigger": "door_after_time",
+          "recap_since": as_timestamp(today_at('00:00')),
+          "arrived_at": as_timestamp(now())} | to_json }}
+    timeout: 10
+
+automation:
+  - id: okabebot_afternoon_door_welcome
+    alias: OkabeBot - first door opening after 3 pm
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.door_sensor_door
+        from: "off"
+        to: "on"
+    conditions:
+      - condition: time
+        after: "15:00:00"
+      - condition: template
+        value_template: >-
+          {{ states('input_text.okabebot_door_welcome_date') != now().date().isoformat() }}
+    actions:
+      # Consume before sending. Unknown network/audio outcomes must not replay.
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.okabebot_door_welcome_date
+        data:
+          value: "{{ now().date().isoformat() }}"
+      - action: rest_command.okabebot_door_welcome
+    mode: single
+    max_exceeded: silent

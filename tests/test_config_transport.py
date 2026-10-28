@@ -22,6 +22,23 @@ class ConfigTests(unittest.TestCase):
         settings = self.config({"approvals": {"allowed_tools": ["control_spotify"]}})
         self.assertEqual(["control_spotify"], settings["approvals"]["allowed_tools"])
 
+    def test_local_conversation_requires_explicit_worker_and_preserves_codex_default(self):
+        self.assertEqual(self.config({})["conversation"]["backend"], "codex")
+        for data in [{"backend": "other"}, {"backend": "local"}, {"command": "python"}]:
+            with self.subTest(data=data), self.assertRaises(ValueError):
+                self.config({"conversation": data})
+        self.assertEqual(
+            self.config(
+                {
+                    "conversation": {
+                        "backend": "local",
+                        "command": ["python", "-m", "okabebot.local_worker"],
+                    }
+                }
+            )["conversation"]["backend"],
+            "local",
+        )
+
     def test_defaults_are_local_okabe_and_scoped_auto_approval(self):
         c = self.config({})
         self.assertEqual(c["character"]["name"], "Okabe")

@@ -11,6 +11,7 @@ import wave
 import socket
 import struct
 from pathlib import Path
+from functools import lru_cache
 
 from .config import get_config, state_dir
 
@@ -18,13 +19,41 @@ PRESETS = ("warm", "calm", "robotic")
 RATES = {"neutral": 175, "happy": 182, "curious": 168, "concerned": 155, "excited": 192}
 
 
-def engine():
+def requested_engine():
     name = get_config()["speech"]["engine"]
     try:
         name = json.loads((state_dir() / "speech-settings.json").read_text())["engine"]
     except (OSError, ValueError, KeyError):
         pass
     return ("say" if platform.system() == "Darwin" else "espeak") if name == "auto" else name
+
+
+@lru_cache(maxsize=4)
+def _local_characters(path, inode, modified):
+    # Capabilities are immutable for a worker lifetime. Socket identity changes
+    # on restart; do not probe the serial synthesis socket on every PCM chunk.
+    return tuple(local_worker_status().get("characters", []))
+
+
+def local_characters():
+    path = get_config()["speech"]["local_socket"]
+    info = Path(path).stat()
+    return _local_characters(path, info.st_ino, info.st_mtime_ns)
+
+
+def engine():
+    backend = requested_engine()
+    if backend != "local" or get_config()["speech"].get("local_fallback", "system") == "none":
+        return backend
+    from .profiles import current_character
+
+    try:
+        supported = current_character()["style"] in local_characters()
+    except Exception:
+        # A genuinely unavailable worker is still an outage, never a reason to
+        # silently change an otherwise configured character's voice.
+        return backend
+    return backend if supported else ("say" if platform.system() == "Darwin" else "espeak")
 
 
 def voices():
@@ -36,9 +65,19 @@ def voices():
     return get_config()["speech"][key]
 
 
-def normalize(source, target):
+def normalize(source, target, sample_rate=16000):
     if platform.system() == "Darwin":
-        args = ["afconvert", "-f", "WAVE", "-d", "LEI16@16000", "-c", "1", str(source), str(target)]
+        args = [
+            "afconvert",
+            "-f",
+            "WAVE",
+            "-d",
+            f"LEI16@{sample_rate}",
+            "-c",
+            "1",
+            str(source),
+            str(target),
+        ]
     else:
         args = [
             "ffmpeg",
@@ -49,7 +88,7 @@ def normalize(source, target):
             "-i",
             str(source),
             "-ar",
-            "16000",
+            str(sample_rate),
             "-ac",
             "1",
             "-c:a",
@@ -59,7 +98,7 @@ def normalize(source, target):
     subprocess.run(args, check=True, capture_output=True, timeout=20)
 
 
-def synthesize(text, emotion, voice, target):
+def synthesize(text, emotion, voice, target, sample_rate=16000):
     if not text.strip() or len(text) > 600 or emotion not in RATES or voice not in PRESETS:
         raise ValueError("Use 1–600 characters and a known emotion/voice")
     with tempfile.TemporaryDirectory() as tmp:
@@ -77,7 +116,7 @@ def synthesize(text, emotion, voice, target):
                     wav.writeframes(chunk)
             if not count:
                 raise RuntimeError("Speech provider returned no audio")
-            normalize(audio, target)
+            normalize(audio, target, sample_rate)
             return
         if engine() == "say":
             audio = Path(tmp) / "speech.aiff"
@@ -108,14 +147,29 @@ def synthesize(text, emotion, voice, target):
                 str(audio),
             ]
         subprocess.run(args, check=True, capture_output=True, timeout=30)
-        normalize(audio, target)
+        normalize(audio, target, sample_rate)
 
 
 def pcm_chunks(text, emotion, voice):
     """Stream 24 kHz PCM; one HTTP request, no retries after audio begins."""
-    if engine() == "local":
+    backend = engine()
+    if backend == "local":
         yield from local_pcm_chunks(text, emotion, voice)
         return
+    if backend in ("say", "espeak"):
+        # System fallback is generated locally, then normalized to the same
+        # bounded PCM contract used by Pi, browser and Beam sinks.
+        with tempfile.TemporaryDirectory() as tmp:
+            audio = Path(tmp) / "fallback.wav"
+            synthesize(text, emotion, voice, audio, sample_rate=24000)
+            with wave.open(str(audio), "rb") as wav:
+                if wav.getparams()[:3] != (1, 2, 24000) or wav.getnframes() > 30 * 24000:
+                    raise ValueError("Invalid or excessive system speech PCM")
+                while chunk := wav.readframes(12000):
+                    yield chunk
+        return
+    if backend != "openai":
+        raise ValueError("Unknown speech backend")
     key = os.environ.get("OPENAI_API_KEY")
     if not key:
         raise RuntimeError("Set OPENAI_API_KEY on the controller to use cloud speech")
@@ -221,4 +275,9 @@ def health():
         "backend": backend,
         "available": available,
         "error": None if available else "Speech backend is not configured",
+        "requested_backend": requested_engine(),
+        "fallback": requested_engine() == "local" and backend != "local",
+        "fallback_reason": "Selected character has no Qwen reference; using the local system voice"
+        if requested_engine() == "local" and backend != "local"
+        else None,
     }
