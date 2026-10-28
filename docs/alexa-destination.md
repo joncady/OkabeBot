@@ -1,16 +1,15 @@
 # Experimental Alexa session destination
 
-Status: enabled in the development skill for supervised destination testing.
-The tested controller bridge is installed, and its scoped worker is running as a
-foreground test process. Both relay objects are readable through its Identity
-Center profile; writing the receiver-owned session object is denied. The generic
-custom-audio/animated-scene demo still passes cloud asset checks. Physical Show
-arrival/return/recovery remains unverified; do not treat this as an accepted
-spatial destination yet. See [deployment inventory](deployment.md).
+Status: bounded development-session destination accepted on Show 15. The user
+confirmed custom voice/scene playback, character presence on Show while the Pi
+was away, and automatic Pi return after Alexa exit. The controller also verified
+an explicit return and a second arrival. The scoped worker is installed/running
+as a manual test process, not a login service. This is not an always-on screen.
+See [deployment inventory](deployment.md) for installed state and test evidence.
 
 ## Supported boundary
 
-The proposed destination is an explicitly invoked, bounded skill session on an
+The supported prototype is an explicitly invoked, bounded skill session on an
 APL-capable Echo. It is not an always-on/wakeable replacement for a TV browser.
 Alexa+ can speak a launch preamble. The destination request starts an empty room
 without opening the microphone or playing speech; the controller may enter only
@@ -40,7 +39,7 @@ commands arriving after their originating poll's visibility lease. Root-bound
 values are evaluated in the root tick context, rather than incorrectly reading
 them from document-level ExecuteCommands. Expiry uses elapsed time, not tick counts.
 A bounded four-bit asset diagnostic reports only load/failure flags for the
-background and actor; it never records URLs or device error text. The actor's display guard also checks the one-minute document limit independently of
+background and actor; it never records URLs or device error text. The opaque cover's visibility guard also checks the one-minute document limit independently of
 remote responses. `closed` remains terminal for that document.
 
 The actor preloads behind an opaque copy of the background, which remains in
@@ -53,7 +52,8 @@ idle/blink URLs avoid an inherited source-index binding.
 Departure hides the actor first, then waits at least 100 ms in a subsequent tick
 before acknowledgement. Arrival similarly waits after applying the phase.
 APL lacks the browser's requestAnimationFrame interface: this is an approximate
-presentation acknowledgement and still requires live Show visibility tests.
+presentation acknowledgement. Direct Show arrival/exit recovery is user-confirmed;
+this does not prove frame-perfect repaint ordering across all devices.
 An isolated contract test does not prove actual device repaint timing.
 
 `DestinationRelay` scopes events to an opaque document token and hashed
@@ -100,17 +100,24 @@ character/set combinations and all four frames. Idle background time is fixed
 across mouth/blink frames to avoid unrelated scenery changes during animation.
 No private reference audio is part of these assets.
 
-## Required next checks
+## Acceptance and remaining boundaries
 
-- Deploy the optional controller worker with scoped credentials, approve the
-  discovered screen, and assign a free matching scene for physical testing.
-- Verify real image load, clock bindings, poll delivery, acknowledgement order,
-  return, session closure and visibility expiry on Show hardware.
-- Reject stale/reordered cloud records and profile/set mismatches at the local
-  bridge; exercise service restart and credential expiry recovery.
-- Confirm that background remains while the actor exits, the Pi stays absent
-  during the visit, and Alexa+'s preamble finishes before character speech.
-- Keep live defaults/volume unchanged until these checks pass.
+- Scoped object reads succeeded and writing the receiver-owned session was denied.
+- Both image layers loaded on a real Show; two arrivals, an explicit return and
+  automatic recovery after Alexa exit were observed. The user confirmed Show
+  presence/Pi absence and the final return.
+- Isolated regressions cover stale/reordered records, unsupported scene profiles,
+  worker restart sequence preservation, uncertain summon non-replay, and closure.
+  Local review findings for cancellation and mismatched layer geometry are fixed.
+- The worker is manually started. Autostart, longer sessions, multiple concurrent
+  Echo screens, dynamic artwork, live notifications and conversational Show audio
+  remain follow-up work. Identity Center credentials still require renewal.
+- Alexa+ owns its launch preamble; no bypass is claimed. Destination startup is
+  silent, and household speech is not relayed through this prototype.
+- The TV's original café reservation and the Pi's speaker level were preserved.
+  Show is approved but currently unassigned; reserve a free matching set before
+  visiting. The source VisitIntent is not built into the installed model yet;
+  use “open Little Lab” then the existing dashboard/voice/MCP movement interface.
 
 References: [APL component bindings and mount](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-component.html),
 [tick timing and fast mode](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-tick-event-handlers.html),
@@ -119,7 +126,7 @@ References: [APL component bindings and mount](https://developer.amazon.com/en-U
 Conditional storage follows [S3 PutObject preconditions](https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html).
 
 
-## Controller-side worker (source prototype)
+## Controller-side worker
 
 The worker uses a paired-screen credential derived from the opaque device hash.
 It needs no full dashboard token and cannot approve itself, rename other devices

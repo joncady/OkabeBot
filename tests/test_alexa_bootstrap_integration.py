@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from PIL import Image
 from okabebot.alexa_destination_relay import PrivateDestinationStore
 
 
@@ -60,9 +61,7 @@ class BootstrapIntegrationTests(unittest.TestCase):
                 "actor-talk-b.png",
                 "actor-blink.png",
             ):
-                (visuals / name).write_bytes(b"x" * 200)
-            from PIL import Image
-
+                Image.new("RGBA", (960, 540), (0, 0, 0, 0)).save(visuals / name)
             Image.new("RGB", (960, 540), "black").save(visuals / "background.png")
             (visuals / "scene.json").write_text(
                 json.dumps({"character": "okabe", "set": "maid-cafe"})
@@ -90,6 +89,14 @@ class BootstrapIntegrationTests(unittest.TestCase):
             self.assertEqual(objects["surface/command.json"], b"{}")
             # Covered preloading must never accept a translucent safety cover.
             Image.new("RGBA", (960, 540), (0, 0, 0, 0)).save(visuals / "background.png")
+            with patch.object(sys, "argv", args), patch.object(
+                deploy.subprocess, "run", side_effect=AssertionError("Must reject before AWS")
+            ), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as error:
+                    deploy.main()
+                self.assertEqual(error.exception.code, 2)
+            Image.new("RGB", (960, 540), "black").save(visuals / "background.png")
+            Image.new("RGBA", (128, 256), (0, 0, 0, 0)).save(visuals / "actor-idle.png")
             with patch.object(sys, "argv", args), patch.object(
                 deploy.subprocess, "run", side_effect=AssertionError("Must reject before AWS")
             ), contextlib.redirect_stderr(io.StringIO()):

@@ -112,8 +112,13 @@ def main():
         from PIL import Image
 
         with Image.open(args.destination_visuals / "background.png") as background:
+            dimensions = background.size
             if background.convert("RGBA").getchannel("A").getextrema() != (255, 255):
                 parser.error("Destination background must be opaque to cover the preloaded actor")
+        for name in destination_names[1:]:
+            with Image.open(args.destination_visuals / name) as actor:
+                if actor.size != dimensions:
+                    parser.error("All destination actor frames must match background dimensions")
         destination_scene = json.loads((args.destination_visuals / "scene.json").read_text())
         validate_selection(destination_scene["character"], destination_scene["set"])
         for name in destination_names:

@@ -19,7 +19,7 @@ configuration, not this inventory.
 | Vizio TV, named JC tv | Local Cast metadata callbacks and explicitly launched companion dashboard; Home Assistant TV integration is separate | Titles, app identity, progress and reactions depend on each app's metadata. Spotify Cast observation and authorized API playback control are configured; a receiver is not necessarily an available Spotify Connect target. Scoped TV page and bidirectional Pi handoff verified; visual timing review remains. |
 | Tuya gateway and door contact | Tuya cloud integration in Home Assistant | Door state feeds silent cards and the afternoon welcome shortcut. No general Bluetooth scanner/proxy or Tuya scene control is enabled. |
 | Ring doorbell/camera | Ring integration in Home Assistant | Doorbell notifications use the event-to-card path. Grouped door/Ring physical acceptance remains separate; camera video is not automatically relayed to the character. |
-| Echo / Echo Show and other imported Alexa devices | Alexa Devices integration in Home Assistant | Named Speak routing is available; Show speech was heard in a prior test. Silent timer/reminder schedule-card automation is enabled; real Show timer and reminder events reached delivered cards in backend verification. Context-aware room speech remains opt-in. The installed voice-history command handler is disabled. A skill-scoped AWS development endpoint serves generic Qwen audio and an APL pixel scene. Simulator rendering and remote Show invocation are verified; physical audio/visual acceptance and local-tool transport remain pending. |
+| Echo / Echo Show and other imported Alexa devices | Alexa Devices integration in Home Assistant | Named Speak routing is available; Show speech was heard in a prior test. Silent timer/reminder schedule-card automation is enabled; real Show timer and reminder events reached delivered cards in backend verification. Context-aware room speech remains opt-in. The installed voice-history command handler is disabled. A skill-scoped AWS development endpoint serves generic Qwen audio and an APL pixel scene. Custom voice/scene, two bounded destination arrivals and Pi recovery after Alexa exit are physically accepted. The optional scoped Mac worker is manually started; one-minute, fixed Okabe/café artwork, one active session. Show remains approved but unassigned after restoring the TV café. Local household-tool/conversational-audio transport to Alexa remains follow-up. |
 | Sonos Beam and bonded home-theater speakers | Mac native Sonos audioClip overlay trial | User confirmed audible Qwen speech. Trial level adjusted separately from master volume; permanent audio-routing UI and voice-following are not enabled. No native Sonos HA integration was added. |
 | Native Mac companion app | AppKit floating panel with WKWebView, loopback controller HTTP 8768 | Built and opened; approved paired location, fresh launch and direct Mac ↔ TV arrival confirmed. Qwen-to-WebAudio completion verified; user confirmed a full microphone turn and audible Mac reply after the permission-dialog lifecycle fix. |
 | Android phone | Home Assistant Companion app/person tracker; paired browser character target | Browser location approved and user confirmed visible animation. Phone PiP confirmed floating/animating; voice input confirmed; routed output retest pending. HA away updates remain unreliable with LAN-only access; automatic presence welcomes cannot be assumed. |
@@ -95,7 +95,7 @@ recovered it during testing, and its health was verified ready again.
 | Door/Ring notifications | HA package automations POST with publish-only credential to the Mac | Shared notification policy governs card grouping, quiet hours and audio. See [HA](home-assistant.md) and [Ring](ring.md). |
 | Afternoon welcome | HA `door_welcome.yaml` sends an arrival-scoped request to Mac | Enabled: first closed→open door event after 15:00 HA local time, once per calendar day with restored helper. Fresh local-model character intro plus today's grounded important inbox recap; does not establish identity or absence. |
 | Phone-based welcome | HA person state plus nearby door event | Installed/enabled, but reliable away/home transitions still need remote connectivity/background location validation. Cross-trigger overlap suppression prevents two greetings within three minutes. |
-| Alexa speaking | Mac shared action → private HA webhook → allowlisted named Speak entity | Explicit selection only. Alexa voice-triggered departure/return is proposed; no automatic geofence or custom AWS Alexa skill is deployed. |
+| Alexa speaking | Mac shared action → private HA webhook → allowlisted named Speak entity | Explicit selection only. No automatic geofence is claimed. A separate AWS custom development skill and bounded visual destination are deployed; see the acceptance notes below. |
 | Codex/job completion | Local hook/wrapper → Mac inbox → Pi screen/chime | Session/job title card and configured chime, not TTS by default; same physical speaker volume control applies. |
 
 Detailed instructions: [devices](devices.md), [notifications](notifications.md),
@@ -833,3 +833,19 @@ The Pi speaker remains at its prior 26% measured level. Physical confirmation of
 the closing/return behavior is still pending. The test worker is a manual process,
 not an automatically installed service, and the Show session is limited to one
 minute with one fixed character/set artwork profile.
+
+### Four-checkpoint acceptance closeout (2026-10-27)
+
+The user confirmed Show presence with Pi absence and automatic Pi return after
+Alexa exit. Both backend arrival/return and physical recovery now pass for the
+bounded manual-worker prototype. The final local review also required identical
+actor/background geometry; deployment validation rejects mismatched frames and
+transparent covers before any AWS operation. All installed layers were separately
+verified as 960×540 and byte-identical to their local exports. The Vizio café
+reservation is restored, Show is approved/unassigned, and Pi volume remains 26%.
+
+Samsung via the relocated HDMI Chromecast, cardinal non-overlapping arrangement,
+and the accepted Japanese-reference English comparison complete the other three
+checkpoints. No voice manifest changed. Longer-running Alexa/service lifecycle,
+dynamic artwork and voice optimization remain backlog enhancements rather than
+claims about this installed checkpoint.
