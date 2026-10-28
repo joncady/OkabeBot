@@ -787,3 +787,11 @@ kept the character on the Pi and a requested visit remained blocked during
 preparation; it was canceled safely. A bounded asset-load diagnostic is being
 deployed to distinguish actor/background loading before another handoff test.
 This is not evidence of a completed Show destination visit.
+
+The asset diagnostic on a direct Show launch reported background loaded and
+actor neither loaded nor failed. The renderer now uses `display: invisible` for
+the hidden actor (APL documents that this state still loads sources), instead of
+zero opacity. The change passes renderer/relay tests and is deployed for retry;
+it is not yet confirmed to resolve readiness on hardware. Home Assistant text
+invocations created a skill record but produced no screen callbacks, so they
+cannot substitute for the direct launch in this physical test.

@@ -20,9 +20,11 @@ class DestinationTests(unittest.TestCase):
         self.assertEqual(bindings["leaseUntil"], 0)
         self.assertEqual(bindings["sequence"], 0)
         actor = root["items"][1]
-        self.assertIn("clock < leaseUntil", actor["opacity"])
-        self.assertIn("clock < 60000", actor["opacity"])
-        self.assertIn("!closed", actor["opacity"])
+        self.assertIn("clock < leaseUntil", actor["display"])
+        self.assertIn("clock < 60000", actor["display"])
+        self.assertIn("!closed", actor["display"])
+        self.assertIn("invisible", actor["display"])
+        self.assertNotIn("opacity", actor)
         ticks = root["handleTick"][0]["commands"]
         self.assertEqual(ticks[0]["value"], "${elapsedTime}")
         self.assertTrue(

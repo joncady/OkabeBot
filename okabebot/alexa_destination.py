@@ -84,7 +84,7 @@ def document(token, background, frames):
                 "height": "100%",
                 "scale": "best-fit",
                 "source": "${payload.scene.frames[frame]}",
-                "opacity": "${!closed && actorReady && clock < 60000 && clock < leaseUntil && (phase == 'entering' || phase == 'present' || phase == 'leaving') ? 1 : 0}",
+                "display": "${!closed && actorReady && clock < 60000 && clock < leaseUntil && (phase == 'entering' || phase == 'present' || phase == 'leaving') ? 'normal' : 'invisible'}",
                 "onLoad": [set_value("actorReady", True)],
                 "onFail": [set_value("actorFailed", True)],
             },

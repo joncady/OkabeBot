@@ -40,8 +40,12 @@ commands arriving after their originating poll's visibility lease. Root-bound
 values are evaluated in the root tick context, rather than incorrectly reading
 them from document-level ExecuteCommands. Expiry uses elapsed time, not tick counts.
 A bounded four-bit asset diagnostic reports only load/failure flags for the
-background and actor; it never records URLs or device error text. The actor's opacity also checks the one-minute document limit independently of
+background and actor; it never records URLs or device error text. The actor's display guard also checks the one-minute document limit independently of
 remote responses. `closed` remains terminal for that document.
+
+The hidden actor uses APL `display: invisible` rather than zero opacity so its
+image loads before an authorized arrival. Both source departure and image-load
+readiness are still required before making it visible.
 
 Departure hides the actor first, then waits at least 100 ms in a subsequent tick
 before acknowledgement. Arrival similarly waits after applying the phase.
