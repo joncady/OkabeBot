@@ -126,7 +126,7 @@ class BriefingTests(unittest.TestCase):
         self.assertEqual(self.briefing.settings()["resolved_name"], "Avery")
         self.assertEqual(self.briefing.settings()["name_source"], "home_assistant")
         self.briefing.update_person(dict(payload, name="Avery Lee"))
-        self.assertEqual(self.briefing.settings()["resolved_name"], "Avery Lee")
+        self.assertEqual(self.briefing.settings()["resolved_name"], "Avery")
         self.assertTrue(self.briefing.allowed("test-tv"))
         self.briefing.configure(dict(self.voice, name="Mira"))
         self.assertEqual(self.briefing.settings()["resolved_name"], "Mira")

@@ -161,6 +161,23 @@ class AmadeusHttpTests(unittest.TestCase):
             self.request("/amadeus/api/tv-prepare", {"destination": "other-tv"})
         self.assertEqual(caught.exception.code, 400)
 
+    def test_morning_replay_requires_explicit_owner_request(self):
+        self.bridge.dispatch_morning = Mock(return_value=True)
+        with patch("okabebot.morning.Morning.reopen") as reopen:
+            self.assertEqual(
+                self.request("/amadeus/api/morning-present", {"replay": True}), {"accepted": True}
+            )
+            self.bridge.dispatch_morning.assert_called_once_with(manual=True, replay=True)
+            reopen.assert_called_once()
+            for invalid in ({"replay": 1}, {"replay": False}, {"replay": True, "force": True}):
+                with self.assertRaises(HTTPError) as caught:
+                    self.request("/amadeus/api/morning-present", invalid)
+                self.assertEqual(caught.exception.code, 400)
+            with self.assertRaises(HTTPError) as caught:
+                self.request("/amadeus/api/morning-present", {"replay": True}, token="")
+            self.assertEqual(caught.exception.code, 403)
+            self.assertEqual(self.bridge.dispatch_morning.call_count, 1)
+
     def test_person_name_publisher_is_write_only_exactly_bound_and_forgettable(self):
         self.request("/amadeus/api/settings", dict(SETUP, sources=["door_presence"]))
         self.request("/amadeus/api/control", {"paused": False})

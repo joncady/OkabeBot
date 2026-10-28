@@ -192,11 +192,16 @@ automatically replayed. Coaching delivery is recorded only after playback comple
 
 The owner’s **Show today’s briefing** control reopens an existing real daily run;
 it does not fabricate a wake observation. It respects the same once-daily speech
-claim. Source freshness still applies, so missing sources remain explicit.
+claim. An explicit owner-only `POST /amadeus/api/morning-present` with
+`{"replay": true}` permits a requested replay without clearing the daily marker;
+quiet hours, consent, arrival and speaker readiness still apply. Source freshness
+still applies, so missing sources remain explicit.
 
 ### Name from the selected Home Assistant person
 
-The selected `person.*` entity's `friendly_name` is the default greeting name.
+The first whitespace-delimited part of the selected `person.*` entity’s
+`friendly_name` is the default greeting name. Hyphenated first names stay intact;
+a spoken override is used verbatim.
 A Home Assistant login account is not automatically the current household person;
 explicitly bind the intended entity as `greeting_person` in private
 `amadeus/ha-bindings.json`. Install

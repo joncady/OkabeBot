@@ -106,7 +106,7 @@ class Briefing:
             person = self.person(store)
             return dict(
                 value,
-                resolved_name=value["name"] or (person or {}).get("name", ""),
+                resolved_name=value["name"] or ((person or {}).get("name", "").split() or [""])[0],
                 name_source="override"
                 if value["name"]
                 else "home_assistant"

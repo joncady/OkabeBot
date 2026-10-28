@@ -107,10 +107,16 @@ def handle(handler, bridge, *, post=False):
         elif path == "/amadeus/api/morning-present" and post:
             from .morning import Morning
 
-            if data != {} or bridge.snapshot().get("busy"):
-                raise ValueError("Wait until idle")
+            if (
+                data not in ({}, {"replay": True})
+                or (data and data.get("replay") is not True)
+                or bridge.snapshot().get("busy")
+            ):
+                raise ValueError("Wait until idle and use an explicit replay choice")
             Morning(state_dir() / "amadeus").reopen()
-            result = {"accepted": bridge.dispatch_morning(manual=True)}
+            result = {
+                "accepted": bridge.dispatch_morning(manual=True, replay=data.get("replay", False))
+            }
         elif path == "/amadeus/api/tv-prepare" and post:
             from .morning import Morning
 

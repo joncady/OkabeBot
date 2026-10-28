@@ -537,7 +537,7 @@ class Bridge:
         )
         return True  # HA must still confirm the TV is on before handoff.
 
-    def dispatch_morning(self, *, manual=False):
+    def dispatch_morning(self, *, manual=False, replay=False):
         """One bounded wake/handoff/optional briefing, never replay failed speech."""
         from .morning import Morning
         from .morning_briefing import Briefing
@@ -597,9 +597,11 @@ class Bridge:
                     self.closing.wait(0.2)
                 if not self.surface_audio.ready(config["destination"]):
                     return
-                if not briefing.claim(config["destination"]):
+                claimed = briefing.claim(config["destination"])
+                if not claimed and not (
+                    manual and replay and briefing.allowed(config["destination"])
+                ):
                     return
-                claimed = True
                 summary = briefing.enrich(morning.view(config["destination"]), self.snapshot())
                 spoken, generated, coach = briefing.message(
                     summary, current_character(), getattr(self.codex, "compose_morning", None)

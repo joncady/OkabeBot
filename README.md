@@ -20,7 +20,7 @@ capability improvements, limitations and regressions.
 An opt-in [morning summary](docs/morning.md) can prepare weather/calendar cards
 on the first screen-on near an alarm and optionally present them on a configured
 TV. Two stacked cards rotate in its pixel rail. Optional named, persona-generated
-greetings use the selected Home Assistant person’s name (with an optional spoken
+greetings use the selected Home Assistant person’s first name (with an optional spoken
 override) and precede a grounded rundown, respecting quiet hours. TV replies use that
 TV’s own audio output with configurable per-location gain. Its local schedule and destination are configurable; source
 permissions and automatic TV movement remain separate. Optional Cast/CEC wake

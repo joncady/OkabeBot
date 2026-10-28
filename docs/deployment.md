@@ -1066,6 +1066,7 @@ Only entity ID, display name and snapshot time cross that route; tracker, GPS
 and account attributes are excluded. The controller stores the name as a private
 profile-linked preference, not an observation history. Active consent, pause,
 guest, freshness and deletion controls apply. The morning greeting resolves this
-name unless a private spoken override is set. No additional listener or HA owner
+first name unless a private spoken override is set. Owner-requested replay is
+separate from automatic daily delivery and does not reset its durable marker. No additional listener or HA owner
 credential is introduced. See the portable person-name publisher in the morning
 guide for new installations; the selected entity remains private configuration.
