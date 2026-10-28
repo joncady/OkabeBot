@@ -524,6 +524,74 @@ class LocalConversation:
             with self.lock:
                 self.busy = False
 
+    def compose_alexa(self, text, session, character, deadline):
+        """Tool-free, isolated Alexa turn on the existing warm model.
+
+        The caller can time out independently; this method still consumes the
+        worker reply before releasing busy, so no late output leaks into chat.
+        """
+        from .alexa_conversation import audio_eligible
+        from .profiles import PROFILES
+        import re
+        import time
+
+        if not isinstance(text, str) or not 1 <= len(text.strip()) <= 600:
+            raise ValueError("Use a short question")
+        if not re.fullmatch(r"[a-f0-9]{64}", session):
+            raise ValueError("Use an opaque conversation session")
+        if not 0 < deadline - time.time() <= 8:
+            raise TimeoutError("Conversation deadline expired")
+        with self.lock:
+            if self.busy or self.closed or self.process.poll() is not None:
+                raise ValueError("Local model unavailable for Alexa")
+            self.busy = True
+            self.cancelled.clear()
+        try:
+            history = getattr(self, "alexa_history", {})
+            key = (session, character["style"])
+            self.process.stdin.write(
+                json.dumps(
+                    {
+                        "task": "alexa",
+                        "text": text,
+                        "persona": PROFILES[character["style"]]["persona"],
+                        "history": history.get(key, [])[-4:],
+                        "tool_names": [],
+                    }
+                )
+                + "\n"
+            )
+            self.process.stdin.flush()
+            result = self._read()
+            if time.time() >= deadline or self.cancelled.is_set():
+                raise TimeoutError("Conversation deadline expired")
+            if result.get("error") or result.get("tool_call"):
+                raise ValueError("Conversation generation failed")
+            answer = json.loads(result["text"])
+            safe = audio_eligible(text, answer)
+            if safe:
+                history[key] = (
+                    history.get(key, [])
+                    + [
+                        {"role": "user", "content": text},
+                        {"role": "assistant", "content": answer["text"]},
+                    ]
+                )[-4:]
+                while len(history) > 12:
+                    del history[next(iter(history))]
+            else:
+                history.pop(key, None)
+            self.alexa_history = history
+            return {
+                "text": answer["text"],
+                "audio_safe": safe,
+                "character": character["style"],
+                "model_s": result.get("selection_s"),
+            }
+        finally:
+            with self.lock:
+                self.busy = False
+
     def refresh_locations(self):
         if "move_companion" not in self.specs:
             return
@@ -552,22 +620,32 @@ class LocalConversation:
                 if not self.cancelled.is_set():
                     self.completed(clarification, status)
                 return
-            self.process.stdin.write(
-                json.dumps(
-                    {
-                        "text": text[:2000],
-                        "location_tool": {
-                            "type": "function",
-                            "function": self.specs.get("move_companion"),
-                        },
-                        "persona": current_character()["persona"],
-                        "tool_names": shortlist(text, self.specs),
-                    }
+            candidates = shortlist(text, self.specs)
+            if candidates == ["get_companion_locations"]:
+                # Argument-free discovery is grounded in the live registry. Avoid
+                # a model paraphrase that can omit the tool and invent destinations.
+                result = {
+                    "text": "",
+                    "selection_s": 0,
+                    "tool_call": {"name": "get_companion_locations", "arguments": {}},
+                }
+            else:
+                self.process.stdin.write(
+                    json.dumps(
+                        {
+                            "text": text[:2000],
+                            "location_tool": {
+                                "type": "function",
+                                "function": self.specs.get("move_companion"),
+                            },
+                            "persona": current_character()["persona"],
+                            "tool_names": candidates,
+                        }
+                    )
+                    + "\n"
                 )
-                + "\n"
-            )
-            self.process.stdin.flush()
-            result = self._read()
+                self.process.stdin.flush()
+                result = self._read()
             if result.get("error"):
                 raise RuntimeError("Local generation failed; no action executed")
             if self.cancelled.is_set():

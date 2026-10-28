@@ -1,5 +1,8 @@
 """Small APL adapter over pre-rendered shared pixel artwork, not a browser port."""
 
+import logging
+
+
 FRAME_NAMES = ("idle.png", "talk-a.png", "talk-b.png", "blink.png")
 
 
@@ -13,7 +16,9 @@ def attach_character(result, event, frames):
         event.get("context", {}).get("System", {}).get("device", {}).get("supportedInterfaces", {})
     )
     if "Alexa.Presentation.APL" not in supported:
+        logging.getLogger(__name__).warning("little_lab_visual capability=audio_only")
         return result
+    logging.getLogger(__name__).warning("little_lab_visual capability=apl")
     urls = frames()
     if len(urls) != 4 or not all(isinstance(u, str) and u.startswith("https://") for u in urls):
         raise ValueError("Four trusted HTTPS character frames are required")
@@ -52,6 +57,14 @@ def attach_character(result, event, frames):
                     "onMount": [
                         {
                             "type": "Sequential",
+                            "sequencer": "diagnostic",
+                            "commands": [
+                                {"type": "Idle", "delay": 6000},
+                                {"type": "SendEvent", "arguments": ["little-lab-mounted"]},
+                            ],
+                        },
+                        {
+                            "type": "Sequential",
                             "sequencer": "character",
                             "commands": [
                                 {
@@ -77,7 +90,7 @@ def attach_character(result, event, frames):
                                     ],
                                 },
                             ],
-                        }
+                        },
                     ],
                 }
             ],

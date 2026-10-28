@@ -147,3 +147,52 @@ References: [APL interface and capability check](https://developer.amazon.com/en
 [dynamic Image sources](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-image.html),
 [screen-session behavior](https://developer.amazon.com/en-US/docs/alexa/custom-skills/manage-skill-session-and-session-attributes.html),
 [recommended document timeout](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-document-v1-8.html).
+
+
+## Screen diagnostics and destination boundary
+
+The development endpoint records only bounded capability/mount/session markers
+and known intent names. It never logs request envelopes, account/device IDs,
+utterances or signed asset URLs. A screen response emits one APL `SendEvent`
+(`little-lab-mounted`) six seconds after mount, on a separate sequencer so the
+short demo can finish before the callback; the endpoint accepts only the expected document
+token, argument and Mount source. The response is silent and performs no tools or
+asset signing. This is not a background heartbeat.
+
+Mount confirms that APL executed the component handler, **not** that its artwork
+is visible: Amazon documents that mount can run for invisible components. It must
+not hide the Pi or grant spatial ownership. A future destination adapter needs a
+scoped, session-bound cloud/local transport plus loaded/visible acknowledgements,
+unique scene reservations and a visibility lease before transfer. An Alexa skill
+response alone does not create an always-on or remotely wakeable screen.
+
+For a live test, say “Alexa, open Little Lab” on the Show. Separate these outcomes:
+no Lambda invocation (invocation/account/skill setup); audio-only capability;
+APL capability without mount; mounted document with broken artwork; visible scene
+and audible custom audio. An IAM Lambda invocation and HTTP 200 asset download do
+not prove the last outcome. The local controller is not connected to this skill
+by the diagnostics.
+
+Sources: [SendEvent](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-send-event-command.html)
+and [onMount semantics](https://developer.amazon.com/en-US/docs/alexa/alexa-presentation-language/apl-component.html#onmount).
+
+
+### Alexa+ launch preamble
+
+Physical testing confirmed that Alexa+ can speak a “say exit” preamble while the
+custom scene is starting. Home Assistant's `alexa_devices.send_text_command`
+sends a normal Alexa utterance (for example `open little lab`); it does not bypass
+the Alexa runtime. `send_info_skill` is for built-in info commands, not arbitrary
+custom-skill IDs. Calling the Lambda with IAM only returns a protocol response;
+it does not instruct a physical Echo to render/play it. There is no documented
+preamble-suppression switch in these Home Assistant actions.
+
+The future session-based destination should launch once, prepare its scene, and
+wait for readiness before starting character speech. Subsequent APL updates
+should stay within that session rather than repeatedly re-invoking the skill.
+Until that exists, an explicitly configured opening buffer can mitigate overlap,
+but it adds latency and is not a measured Alexa+ speech-completion event. No such
+buffer or Alexa device setting has been changed in the installed prototype.
+
+Sources: [Home Assistant Alexa Devices](https://www.home-assistant.io/integrations/alexa_devices/)
+and [text-command semantics](https://www.home-assistant.io/actions/alexa_devices.send_text_command/).

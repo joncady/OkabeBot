@@ -6,7 +6,6 @@ Device secrets are client generated, hashed at rest and never appear in snapshot
 
 import hashlib
 import json
-import math
 import re
 import threading
 import time
@@ -45,14 +44,44 @@ class Registry:
             raise PermissionError("Invalid device credential")
         return "screen-" + hashlib.sha256(secret.encode()).hexdigest()[:20]
 
-    def register(self, secret, name, kind):
+    def register(self, secret, name, kind, supported_scenes=None):
         identity = self.identity(secret)
-        if kind not in ("browser", "mac"):
+        if kind not in ("browser", "mac", "alexa"):
             raise ValueError("Unknown surface kind")
         if not isinstance(name, str) or not 1 <= len(name.strip()) <= 40:
             raise ValueError("Use a short device name")
+        if kind == "alexa":
+            from .scene_sets import validate_selection
+
+            if (
+                not isinstance(supported_scenes, dict)
+                or not supported_scenes
+                or len(supported_scenes) > 4
+            ):
+                raise ValueError("Alexa destinations must declare supported character sets")
+            for style, sets in supported_scenes.items():
+                if (
+                    not isinstance(sets, list)
+                    or not 1 <= len(sets) <= 2
+                    or any(not isinstance(selected, str) for selected in sets)
+                    or len(set(sets)) != len(sets)
+                ):
+                    raise ValueError("Use supported scene set lists")
+                for selected in sets:
+                    if selected is None:
+                        raise ValueError("Declare concrete supported scene sets")
+                    validate_selection(style, selected)
+        elif supported_scenes is not None:
+            raise ValueError("Scene capability declarations currently belong to Alexa destinations")
         with _LOCK:
             data = self.read()
+            previous = data["devices"].get(identity)
+            if previous and (
+                previous["adapter"] != kind or previous.get("supported_scenes") != supported_scenes
+            ):
+                raise ValueError(
+                    "Forget and reapprove this screen before changing its adapter or capabilities"
+                )
             if identity not in data["devices"]:
                 if len(data["devices"]) >= 32:
                     raise ValueError("Device registry full; remove an unused device")
@@ -80,6 +109,10 @@ class Registry:
                     "aliases": [],
                     "approved": False,
                 }
+                if kind == "alexa":
+                    data["devices"][identity]["supported_scenes"] = {
+                        key: list(sets) for key, sets in supported_scenes.items()
+                    }
                 self.save(data)
             self.seen[identity] = time.monotonic()
             return dict(data["devices"][identity])
@@ -173,6 +206,8 @@ class Registry:
                     raise ValueError("Choose Room or Companion presentation")
                 if known[identity]["adapter"] == "pi" and values["presentation"] != "companion":
                     raise ValueError("The current Pi adapter supports Companion presentation only")
+                if known[identity]["adapter"] == "alexa" and values["presentation"] != "room":
+                    raise ValueError("The current Alexa adapter supports Room presentation only")
                 data.setdefault("presentations", {})[identity] = values["presentation"]
             if "scene_selections" in values:
                 from .scene_sets import validate_selection
@@ -182,6 +217,13 @@ class Registry:
                     raise ValueError("Provide character scene selections")
                 for character, selected in choices.items():
                     validate_selection(character, selected)
+                    supported = known[identity].get("supported_scenes")
+                    if (
+                        selected is not None
+                        and supported is not None
+                        and selected not in supported.get(character, [])
+                    ):
+                        raise ValueError("That set is not supported by this destination's artwork")
                     if selected is not None and any(
                         other != identity and mapping.get(character) == selected
                         for other, mapping in data.get("scenes", {}).items()
@@ -191,18 +233,28 @@ class Registry:
                 # Legacy scenes remain unchanged until the first explicit setup.
                 # Thereafter missing assignments block movement, never reuse a set.
                 data["scene_world_enabled"] = True
-            position = values.get("position")
-            if position is not None:
-                if (
-                    not isinstance(position, list)
-                    or len(position) != 2
-                    or any(
-                        type(v) not in (int, float) or not math.isfinite(v) or abs(v) > 10
-                        for v in position
-                    )
-                ):
-                    raise ValueError("Position must contain two coordinates within -10..10")
-                data["layout"][identity] = position
+            if "position" in values or "relative_to" in values or "placement" in values:
+                from .surface_layout import positions, validate, DIRECTIONS
+
+                layout = positions(list(known.values()), data["layout"])
+                if "relative_to" in values or "placement" in values:
+                    anchor, side = values.get("relative_to"), values.get("placement")
+                    if (
+                        "position" in values
+                        or anchor not in known
+                        or anchor == identity
+                        or side not in DIRECTIONS
+                    ):
+                        raise ValueError("Choose another screen and a cardinal placement")
+                    delta = DIRECTIONS[side]
+                    point = [layout[anchor][i] + delta[i] for i in range(2)]
+                else:
+                    point = values["position"]
+                validate(point)
+                if any(key != identity and point == other for key, other in layout.items()):
+                    raise ValueError("That screen space is occupied; choose an empty grid cell")
+                layout[identity] = point
+                data["layout"] = layout
             if "name" in values:
                 name = values["name"]
                 if not isinstance(name, str) or not 1 <= len(name.strip()) <= 40:
@@ -228,20 +280,21 @@ class Registry:
         data = self.read()
         values = [dict(p, approved=True) for p in places]
         values += [dict(p) for p in data["devices"].values() if include_pending or p["approved"]]
-        for i, item in enumerate(values):
+        from .surface_layout import positions
+
+        all_places = [*places, *data["devices"].values()]
+        layout = positions(all_places, data["layout"])
+        for item in values:
             item["presentation"] = data.get("presentations", {}).get(
-                item["id"], "room" if item["adapter"] == "cast" else "companion"
+                item["id"], "room" if item["adapter"] in ("cast", "alexa") else "companion"
             )
             item["scene_selections"] = dict(data.get("scenes", {}).get(item["id"], {}))
             item["name"] = data.get("names", {}).get(item["id"], item["name"])
             item["audio_target"] = data.get("audio", {}).get(
                 item["id"], "device" if item["adapter"] in ("browser", "mac") else "default"
             )
-            item["position"] = data["layout"].get(
-                item["id"],
-                [0 if item["adapter"] == "pi" else -1 if item["adapter"] == "cast" else i, 0],
-            )
-            if item["adapter"] in ("browser", "mac"):
+            item["position"] = layout[item["id"]]
+            if item["adapter"] in ("browser", "mac", "alexa"):
                 item["available"] = time.monotonic() - self.seen.get(item["id"], -1000) < 6
         return values
 
@@ -251,7 +304,6 @@ class Registry:
     def direction(self, origin, target, places):
         positions = {p["id"]: p["position"] for p in self.enrich(places)}
         a, b = positions[origin], positions[target]
-        dx, dy = b[0] - a[0], b[1] - a[1]
-        return (
-            ("left" if dx < 0 else "right") if abs(dx) >= abs(dy) else ("up" if dy < 0 else "down")
-        )
+        from .surface_layout import direction
+
+        return direction(a, b)

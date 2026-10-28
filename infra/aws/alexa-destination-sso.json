@@ -1,0 +1,101 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Identity Center permission set scoped to the OkabeBot Alexa destination relay",
+  "Parameters": {
+    "InstanceArn": {
+      "Type": "String"
+    },
+    "PrincipalId": {
+      "Type": "String"
+    },
+    "AccountId": {
+      "Type": "String",
+      "AllowedPattern": "[0-9]{12}"
+    },
+    "PermissionSetName": {
+      "Type": "String",
+      "Default": "OkabeBotAlexaDestination",
+      "MaxLength": 32
+    },
+    "BucketName": {
+      "Type": "String",
+      "AllowedPattern": "[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]"
+    }
+  },
+  "Resources": {
+    "ConsumerPermission": {
+      "Type": "AWS::SSO::PermissionSet",
+      "Properties": {
+        "InstanceArn": {
+          "Ref": "InstanceArn"
+        },
+        "Name": {
+          "Ref": "PermissionSetName"
+        },
+        "Description": "Read Alexa destination session and update its command; no household tools",
+        "SessionDuration": "PT12H",
+        "InlinePolicy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": "s3:GetObject",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${BucketName}/surface/session.json"
+                },
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${BucketName}/surface/command.json"
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": "s3:PutObject",
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:s3:::${BucketName}/surface/command.json"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ConsumerAssignment": {
+      "Type": "AWS::SSO::Assignment",
+      "Properties": {
+        "InstanceArn": {
+          "Ref": "InstanceArn"
+        },
+        "PermissionSetArn": {
+          "Fn::GetAtt": [
+            "ConsumerPermission",
+            "PermissionSetArn"
+          ]
+        },
+        "PrincipalId": {
+          "Ref": "PrincipalId"
+        },
+        "PrincipalType": "USER",
+        "TargetId": {
+          "Ref": "AccountId"
+        },
+        "TargetType": "AWS_ACCOUNT"
+      }
+    }
+  },
+  "Outputs": {
+    "PermissionSetArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ConsumerPermission",
+          "PermissionSetArn"
+        ]
+      }
+    },
+    "PermissionSetName": {
+      "Value": {
+        "Ref": "PermissionSetName"
+      }
+    }
+  }
+}

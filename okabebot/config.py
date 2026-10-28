@@ -116,6 +116,7 @@ DEFAULTS = {
     "transcription": {"model": "base.en", "language": "en", "compute_type": "int8", "beam_size": 5},
     "conversation": {
         "backend": "codex",
+        "alexa_enabled": False,
         "model": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
         "command": [],
     },
@@ -186,6 +187,11 @@ def load(path):
     from .locations import validate as validate_locations
 
     validate_locations(settings["surfaces"])
+    cast_places = [p for p in settings["surfaces"]["locations"] if p["adapter"] == "cast"]
+    cast_hosts = [p.get("cast_host") or settings["spotify"]["cast_host"] for p in cast_places]
+    nonempty_hosts = [h for h in cast_hosts if h]
+    if len(nonempty_hosts) != len(set(nonempty_hosts)):
+        raise ValueError("Each Cast location must resolve to a different receiver host")
     from .alexa_voice import validate as validate_alexa_voice
 
     validate_alexa_voice(settings["alexa_voice"])
@@ -252,6 +258,10 @@ def load(path):
     ):
         raise ValueError("transcription.beam_size must be 1–5")
     conversation = settings["conversation"]
+    if type(conversation["alexa_enabled"]) is not bool:
+        raise ValueError("conversation.alexa_enabled must be boolean")
+    if conversation["alexa_enabled"] and conversation["backend"] != "local":
+        raise ValueError("Alexa conversation requires the local backend")
     if conversation["backend"] not in ("codex", "local"):
         raise ValueError("conversation.backend must be codex or local")
     if not isinstance(conversation["model"], str) or not conversation["model"].strip():

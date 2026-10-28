@@ -205,7 +205,7 @@ def _receive(connection, length):
     return bytes(data)
 
 
-def local_pcm_chunks(text, emotion, voice):
+def local_pcm_chunks(text, emotion, voice, *, character=None, deadline=None):
     """Private Unix socket: JSON request, length-prefixed mono PCM16 at 24 kHz."""
     from .profiles import current_character
 
@@ -213,20 +213,30 @@ def local_pcm_chunks(text, emotion, voice):
         "text": text,
         "emotion": emotion,
         "voice": voice,
-        "character": current_character()["style"],
+        "character": character or current_character()["style"],
     }
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
-        connection.settimeout(30)
+        import time
+
+        def budget():
+            remaining = 30 if deadline is None else min(30, deadline - time.time())
+            if remaining <= 0:
+                raise TimeoutError("Speech deadline expired")
+            connection.settimeout(remaining)
+
+        budget()
         connection.connect(get_config()["speech"]["local_socket"])
         connection.sendall(json.dumps(request).encode() + b"\n")
         total = 0
         while True:
+            budget()
             length = struct.unpack("!I", _receive(connection, 4))[0]
             if length == 0:
                 return
             total += length
             if length % 2 or length > 48000 or total > 30 * 48000:
                 raise RuntimeError("Invalid or excessive PCM from local speech worker")
+            budget()
             yield _receive(connection, length)
 
 

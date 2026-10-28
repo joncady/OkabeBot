@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Deploy a generic-audio development skill; never exposes the local controller."""
+"""Deploy the development skill and opt-in adapters; the Mac stays private."""
 
 import argparse
+import base64
+import zlib
 import json
 import os
 from pathlib import Path
@@ -12,20 +14,94 @@ import tempfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def template():
-    value = json.loads((ROOT / "infra/aws/alexa-skill.json").read_text())
+def source():
     protocol = (ROOT / "okabebot/alexa_skill.py").read_text()
     visuals = (ROOT / "okabebot/alexa_visuals.py").read_text()
+    destination = (ROOT / "okabebot/alexa_destination.py").read_text()
+    relay = (
+        (ROOT / "okabebot/alexa_destination_relay.py")
+        .read_text()
+        .replace("from .alexa_destination import document, update", "")
+    )
+    conversation = (
+        (ROOT / "okabebot/alexa_conversation.py")
+        .read_text()
+        .replace("from .alexa_skill import response, validate_envelope", "# Included above")
+        .replace("from .alexa_destination_relay import DestinationRelay", "# Included above")
+    )
+    exchange = (
+        (ROOT / "okabebot/alexa_conversation_relay.py")
+        .read_text()
+        .replace("from .alexa_conversation import digest", "# Included above")
+    )
     source = (
         (ROOT / "infra/aws/alexa_skill.py")
         .read_text()
         .replace("from okabebot.alexa_skill import response, validate_envelope", "")
         .replace("from okabebot.alexa_visuals import attach_character, FRAME_NAMES", "")
+        .replace("from okabebot.alexa_conversation import ConversationSkill", "# Included above")
+        .replace(
+            "from okabebot.alexa_conversation_relay import aws_exchange, bounded_call",
+            "# Included above",
+        )
+        .replace(
+            "from okabebot.alexa_destination_relay import DestinationRelay, PrivateDestinationStore",
+            "# Included above",
+        )
     )
+    return "\n".join((protocol, visuals, destination, relay, conversation, exchange, source))
+
+
+def template():
+    value = json.loads((ROOT / "infra/aws/alexa-skill.json").read_text())
+    packed = base64.b64encode(zlib.compress(source().encode(), level=9)).decode()
     value["Resources"]["Skill"]["Properties"]["Code"]["ZipFile"] = (
-        protocol + "\n" + visuals + "\n" + source
+        "# Deterministic wrapper for reviewed source; avoids CFN's 51 KiB template limit.\n"
+        "import base64, zlib\n"
+        + "exec(compile(zlib.decompress(base64.b64decode("
+        + repr(packed)
+        + ")), 'little_lab_skill.py', 'exec'))\n"
     )
     return value
+
+
+def bootstrap_destination(aws, bucket):
+    """Seed both relay objects without overwriting an existing session/command.
+
+    The Lambda intentionally lacks ListBucket, so an absent object would produce
+    AccessDenied rather than NoSuchKey. Bootstrap uses the deployment principal.
+    """
+    with tempfile.TemporaryDirectory(prefix="okabebot-destination-") as folder:
+        path = Path(folder) / "empty.json"
+        path.write_text("{}")
+        path.chmod(0o600)
+        for key in ("surface/session.json", "surface/command.json"):
+            for attempt in range(3):
+                try:
+                    aws(
+                        "s3api",
+                        "put-object",
+                        "--bucket",
+                        bucket,
+                        "--key",
+                        key,
+                        "--body",
+                        str(path),
+                        "--if-none-match",
+                        "*",
+                        "--content-type",
+                        "application/json",
+                        "--cache-control",
+                        "no-store",
+                        "--server-side-encryption",
+                        "AES256",
+                    )
+                    break
+                except subprocess.CalledProcessError as exc:
+                    if "PreconditionFailed" in (exc.stderr or ""):
+                        break
+                    if "ConditionalRequestConflict" not in (exc.stderr or "") or attempt == 2:
+                        raise
 
 
 def main():
@@ -36,6 +112,16 @@ def main():
     )
     parser.add_argument("--profile", default="default")
     parser.add_argument("--visuals", type=Path, help="Directory of generic generated scene frames")
+    parser.add_argument(
+        "--destination-visuals",
+        type=Path,
+        help="Experimental session destination layers and scene.json; disabled when omitted",
+    )
+    parser.add_argument(
+        "--conversation-deployment",
+        type=Path,
+        help="Private conversation transport metadata; disabled when omitted",
+    )
     parser.add_argument("--region", default="us-east-1")
     parser.add_argument("--stack", default="okabebot-alexa-skill")
     parser.add_argument("--output", type=Path, default=ROOT / ".local/alexa-skill/deployment.json")
@@ -50,6 +136,42 @@ def main():
         for name in FRAME_NAMES:
             if not 100 < (args.visuals / name).stat().st_size < 2_000_000:
                 parser.error("Generate all four bounded scene frames before deploying")
+    destination_scene = {"character": "okabe", "set": "pixel-lab"}
+    destination_names = ["background.png", *["actor-" + name for name in FRAME_NAMES]]
+    if args.destination_visuals:
+        from okabebot.scene_sets import validate_selection
+
+        from PIL import Image
+
+        with Image.open(args.destination_visuals / "background.png") as background:
+            dimensions = background.size
+            if background.convert("RGBA").getchannel("A").getextrema() != (255, 255):
+                parser.error("Destination background must be opaque to cover the preloaded actor")
+        for name in destination_names[1:]:
+            with Image.open(args.destination_visuals / name) as actor:
+                if actor.size != dimensions:
+                    parser.error("All destination actor frames must match background dimensions")
+        destination_scene = json.loads((args.destination_visuals / "scene.json").read_text())
+        validate_selection(destination_scene["character"], destination_scene["set"])
+        for name in destination_names:
+            if not 100 < (args.destination_visuals / name).stat().st_size < 2_000_000:
+                parser.error("Generate bounded destination layers before enabling the relay")
+    conversation = None
+    if args.conversation_deployment:
+        conversation = json.loads(args.conversation_deployment.read_text())
+        required = (
+            "ConversationQueueUrl",
+            "ConversationQueueArn",
+            "ConversationTableName",
+            "ConversationAudioBucket",
+            "paired_identity",
+        )
+        if any(not isinstance(conversation.get(k), str) or not conversation[k] for k in required):
+            parser.error("Incomplete private conversation deployment metadata")
+        if conversation.get("region") != args.region:
+            parser.error("Conversation transport and skill must share a region")
+        if not re.fullmatch(r"[a-f0-9]{64}", conversation["paired_identity"]):
+            parser.error("Pair one approved Echo before enabling conversation")
     command = ["aws", "--profile", args.profile, "--region", args.region]
 
     def aws(*argv):
@@ -81,6 +203,35 @@ def main():
         ],
         "Tags": [{"Key": "Project", "Value": "OkabeBot"}],
     }
+    request["Parameters"].extend(
+        [
+            {
+                "ParameterKey": "EnableDestination",
+                "ParameterValue": "true" if args.destination_visuals else "false",
+            },
+            {
+                "ParameterKey": "DestinationCharacter",
+                "ParameterValue": destination_scene["character"],
+            },
+            {"ParameterKey": "DestinationSet", "ParameterValue": destination_scene["set"]},
+        ]
+    )
+    request["Parameters"].append(
+        {
+            "ParameterKey": "EnableConversation",
+            "ParameterValue": "true" if conversation else "false",
+        }
+    )
+    for parameter, key in (
+        ("ConversationQueueUrl", "ConversationQueueUrl"),
+        ("ConversationQueueArn", "ConversationQueueArn"),
+        ("ConversationTableName", "ConversationTableName"),
+        ("ConversationAudioBucket", "ConversationAudioBucket"),
+        ("ConversationIdentity", "paired_identity"),
+    ):
+        request["Parameters"].append(
+            {"ParameterKey": parameter, "ParameterValue": conversation[key] if conversation else ""}
+        )
     with tempfile.TemporaryDirectory(prefix="okabebot-alexa-") as folder:
         path = Path(folder) / "request.json"
         path.write_text(json.dumps(request))
@@ -144,11 +295,33 @@ def main():
                 "--server-side-encryption",
                 "AES256",
             )
+    if args.destination_visuals:
+        bootstrap_destination(aws, value["AudioBucket"])
+        for name in destination_names:
+            aws(
+                "s3api",
+                "put-object",
+                "--bucket",
+                value["AudioBucket"],
+                "--key",
+                "surface/assets/" + name,
+                "--body",
+                str((args.destination_visuals / name).resolve()),
+                "--content-type",
+                "image/png",
+                "--cache-control",
+                "private, max-age=120",
+                "--server-side-encryption",
+                "AES256",
+            )
     value.update(
         region=args.region,
         stack=args.stack,
         skill_id=args.skill_id,
         visuals_enabled=bool(args.visuals),
+        conversation_enabled=bool(conversation),
+        destination_enabled=bool(args.destination_visuals),
+        destination_scene=destination_scene if args.destination_visuals else None,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(value, indent=2) + "\n")

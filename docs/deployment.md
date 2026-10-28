@@ -11,7 +11,7 @@ configuration, not this inventory.
 | Device | Hosted role / connection | Current state and limits |
 | --- | --- | --- |
 | Apple Silicon Mac, 16 GiB RAM | Controller, local transcription, conversation and speech inference, integration adapters, dashboard, private application state; separate Home Assistant Docker container | Active host. Native controller is supervised by a user login LaunchAgent; Docker/HA has a separate lifecycle. |
-| Raspberry Pi Zero W Rev 1.1 | One Wi-Fi/SSH satellite running `hardware-lab` and `hardware-voice` systemd services | Both services were previously verified active; the Pi is unreachable during the latest Alexa trials, blocking microphone capture. No conversation or speech model inference runs here. Legacy OS/AIY dependencies remain in place. |
+| Raspberry Pi Zero W Rev 1.1 | One Wi-Fi/SSH satellite running `hardware-lab` and `hardware-voice` systemd services | Reachable again during the 2026-10-27 scene acceptance pass; both services verified active. Wi-Fi logs show earlier carrier losses followed by reconnection. No conversation or speech model inference runs here. Legacy OS/AIY dependencies remain in place. |
 | UCTRONICS B010601 3.5-inch LCD | Pi X11/Tk character renderer through the existing OS display configuration | Native framebuffer verified 480×320. Screen blanking disabled by the display service. Touch is not configured; no new GPIO-display conversion is claimed. |
 | Google AIY Voice Bonnet, speaker, microphone and large button | Attached to that same Pi; ALSA audio and AIY button input | Hold-to-talk capture, streamed PCM playback and local music energy metering. PTT preempts the music meter. Dev volume controls the physical speaker mixer and persists on the Pi. |
 | CSI camera and infrared LED boards | Attached to the same Pi; camera tools invoked by `hardware-lab` | Still capture/recording tools available. Night illumination depends on the physical IR boards and lens adjustment; it is not an always-on camera stream. |
@@ -19,7 +19,7 @@ configuration, not this inventory.
 | Vizio TV, named JC tv | Local Cast metadata callbacks and explicitly launched companion dashboard; Home Assistant TV integration is separate | Titles, app identity, progress and reactions depend on each app's metadata. Spotify Cast observation and authorized API playback control are configured; a receiver is not necessarily an available Spotify Connect target. Scoped TV page and bidirectional Pi handoff verified; visual timing review remains. |
 | Tuya gateway and door contact | Tuya cloud integration in Home Assistant | Door state feeds silent cards and the afternoon welcome shortcut. No general Bluetooth scanner/proxy or Tuya scene control is enabled. |
 | Ring doorbell/camera | Ring integration in Home Assistant | Doorbell notifications use the event-to-card path. Grouped door/Ring physical acceptance remains separate; camera video is not automatically relayed to the character. |
-| Echo / Echo Show and other imported Alexa devices | Alexa Devices integration in Home Assistant | Named Speak routing is available; Show speech was heard in a prior test. Silent timer/reminder schedule-card automation is enabled; real Show timer and reminder events reached delivered cards in backend verification. Context-aware room speech remains opt-in. The installed voice-history command handler is disabled. A skill-scoped AWS development endpoint serves generic Qwen audio and an APL pixel scene. Simulator rendering and remote Show invocation are verified; physical audio/visual acceptance and local-tool transport remain pending. |
+| Echo / Echo Show and other imported Alexa devices | Alexa Devices integration in Home Assistant | Named Speak routing is available; Show speech was heard in a prior test. Silent timer/reminder schedule-card automation is enabled; real Show timer and reminder events reached delivered cards in backend verification. Context-aware room speech remains opt-in. The installed voice-history command handler is disabled. A skill-scoped AWS development endpoint serves generic Qwen audio and an APL pixel scene. Custom voice/scene, two bounded destination arrivals and Pi recovery after Alexa exit are physically accepted. The optional scoped Mac worker is manually started; one-minute, fixed Okabe/café artwork, one active session. Show remains approved but unassigned after restoring the TV café. Local household-tool/conversational-audio transport to Alexa remains follow-up. |
 | Sonos Beam and bonded home-theater speakers | Mac native Sonos audioClip overlay trial | User confirmed audible Qwen speech. Trial level adjusted separately from master volume; permanent audio-routing UI and voice-following are not enabled. No native Sonos HA integration was added. |
 | Native Mac companion app | AppKit floating panel with WKWebView, loopback controller HTTP 8768 | Built and opened; approved paired location, fresh launch and direct Mac ↔ TV arrival confirmed. Qwen-to-WebAudio completion verified; user confirmed a full microphone turn and audible Mac reply after the permission-dialog lifecycle fix. |
 | Android phone | Home Assistant Companion app/person tracker; paired browser character target | Browser location approved and user confirmed visible animation. Phone PiP confirmed floating/animating; voice input confirmed; routed output retest pending. HA away updates remain unreliable with LAN-only access; automatic presence welcomes cannot be assumed. |
@@ -95,7 +95,7 @@ recovered it during testing, and its health was verified ready again.
 | Door/Ring notifications | HA package automations POST with publish-only credential to the Mac | Shared notification policy governs card grouping, quiet hours and audio. See [HA](home-assistant.md) and [Ring](ring.md). |
 | Afternoon welcome | HA `door_welcome.yaml` sends an arrival-scoped request to Mac | Enabled: first closed→open door event after 15:00 HA local time, once per calendar day with restored helper. Fresh local-model character intro plus today's grounded important inbox recap; does not establish identity or absence. |
 | Phone-based welcome | HA person state plus nearby door event | Installed/enabled, but reliable away/home transitions still need remote connectivity/background location validation. Cross-trigger overlap suppression prevents two greetings within three minutes. |
-| Alexa speaking | Mac shared action → private HA webhook → allowlisted named Speak entity | Explicit selection only. Alexa voice-triggered departure/return is proposed; no automatic geofence or custom AWS Alexa skill is deployed. |
+| Alexa speaking | Mac shared action → private HA webhook → allowlisted named Speak entity | Explicit selection only. No automatic geofence is claimed. A separate AWS custom development skill and bounded visual destination are deployed; see the acceptance notes below. |
 | Codex/job completion | Local hook/wrapper → Mac inbox → Pi screen/chime | Session/job title card and configured chime, not TTS by default; same physical speaker volume control applies. |
 
 Detailed instructions: [devices](devices.md), [notifications](notifications.md),
@@ -627,18 +627,286 @@ synchronization are installed for the Show. Existing character locations and
 speaker volumes are unchanged. 330 Python tests, 11 room-renderer tests and the
 package build passed. Preview evidence remains private under `.local/alexa-skill/`.
 
-### Scene-world source preview
+### Scene-world installed acceptance pass — 2026-10-27
 
-The source catalog now defines two sets per character, Room/Companion presentation
-and controller-owned per-character reservations in `surface-devices.json`.
-These changes have **not** been installed or activated in the running deployment.
-No hosting, model ownership, ports, audio routes or topology edges changed.
-The Pi compact renderer requires a later deployment and hardware review; its
-Room presentation is deliberately unsupported. The separate Alexa APL prototype
-can export a selected set but is not a registered world location. See
-[surface scene rules](surfaces.md#scene-sets-and-world-rules-source-preview).
+Updated the installed Mac controller/web package, matching native Mac app and Pi
+display service with rollback copies of code and private configuration/state.
+The warm speech worker and Pi voice service were preserved. Hosting, model
+ownership, ports and topology edges are unchanged. Scene setup was explicitly
+activated: each character's first set is reserved on the Pi and second set on the
+TV. Other screens remain unassigned under the two-set uniqueness rule. The native
+Mac temporarily reserved the TV sets for testing, then released them back.
 
-The source-only scene setup now initializes all four home assignments atomically.
-Dashboard edits protect home reservations and occupied sets; local regressions
-exercise setup and movement guards without network or hardware access. Running
-services, volume, audio routing and scene assignments remain unchanged.
+Observed all four character profiles complete simulated recorded-input voice
+turns through the current transcription, local conversation and Qwen output path.
+Completion times were 10–26 seconds including full speech; these are not
+time-to-first-audio measurements. The initial destination question produced a
+generic answer instead of a tool call. The installed correction routes this
+argument-free discovery through the validated live tool; its retest executed the
+tool in 4 ms and completed speech via the Mac sink in about 10 seconds. No physical
+microphone/button test is claimed from simulated input.
+
+Live testing caught a scene-only keyword passed to the Pi portrait walking
+renderer, which prevented departure acknowledgements. Fixed and installed;
+regression exercises real departure/away frame branches for all four styles.
+Subsequent controller-confirmed TV arrivals took 8.8–9.4 s including receiver
+startup, and returns 5.6–6.3 s. The user confirmed all four physical TV departures/arrivals/returns looked
+right with no duplicate actor. Native Mac arrival, compact cafe, room-mode Kurisu
+and silent notification card were visually checked. The Mac audio sink reported
+Playback finished. A real phone microphone clip subsequently completed a local
+conversation turn, and the user confirmed phone character, microphone and speaker
+audio all worked. Phone PiP was confirmed in an earlier session, not repeated
+in this pass. A fresh native Mac microphone/physical audibility check remains
+separate from its observed audio completion.
+Pi status reported no render error, roughly 25–28 FPS in observed samples and a
+480x320 output. The user reported the existing speaker level was too loud; it was
+lowered and verified against the physical AIY mixer. Do not use this record to
+reset the user's mutable volume preference.
+
+Direct IAM Alexa prototype checks passed for voice/status/APL replies, signed
+MP3 and four image downloads with matching hashes. This is not physical Echo
+Show playback, a connected local-tool bridge or spatial registration. The Show
+remains a standalone prototype. No household data was uploaded for that test.
+See [surface rules](surfaces.md#scene-sets-and-world-rules).
+
+After phone acceptance, temporary reservations were released back to the TV and
+Okabe was restored to the Pi once the active user turn completed. The Samsung
+TV/two-TV adapter expansion is a separate backlog item; no Samsung discovery or
+configuration was attempted during this pass.
+
+
+### Second TV and arrangement checkpoint (2026-10-27)
+
+Installed the independent Cast connection pool and grid arrangement editor on the
+Mac controller. The first TV retains its existing Cast media-observation route;
+additional `surfaces.locations[].cast_host` entries establish exact-host passive
+connections independently. Controller/model hosting, ports and audio routing are
+unchanged. The dashboard fits all screen tiles into view, rejects occupied grid
+cells and supports cardinal placement relative to any registered screen.
+
+Discovered a Samsung Q60B with local Tizen REST capability and a separate HDMI
+Chromecast. The user moved that dongle from the Vizio to the Samsung. Both the
+Vizio built-in receiver and the additional Chromecast report connected. The first
+Samsung visit loaded a receiver page but returned before accepted arrival; a
+standby flag without confirmed active input caused the return. The installed fix
+trusts standby only after active input has been observed, while retaining app-exit
+and visibility-lease recovery. The second visit timed out waiting for page readiness. A third visit completed
+receiver readiness, Pi rendered-away acknowledgement and TV entered acknowledgement,
+then remained at the Samsung destination. The user confirmed the café appeared on Samsung with the character absent
+from the Pi. Return reached the Pi rendered-home acknowledgement and the original
+first-TV set reservations were restored. Cold/repeated-launch reliability remains
+a test item.
+
+Existing two-set-per-character uniqueness remains enforced. Second-set reservations
+were temporarily moved from the first TV to the Samsung for testing and restored
+after the confirmed return. No voice defaults or speaker volume were changed. Echo Show still
+uses its separate static APL skill prototype and is not a registered spatial
+location. Japanese speaker-embedding conditioning is an isolated private trial,
+not a deployed voice change.
+
+
+### Alexa visual/audio diagnosis and voice experiment (2026-10-27)
+
+The user confirmed the Show loaded the character and moved its mouth; audible
+custom speech remains unconfirmed after clarifying the earlier response. Deployed
+bounded capability/known-intent/session diagnostics and a single delayed APL mount
+callback in the existing skill Lambda. No IAM resources, public endpoints, local
+controller access or audio destination settings changed. The callback is delayed
+six seconds on a separate sequencer to avoid a request during the fixed short demo.
+Mount is not proof that artwork is visible and cannot transfer spatial ownership.
+The Show remains a standalone, session-scoped demo; a live voice retest is pending.
+
+The private Japanese-reference experiment completed two English sentences per
+character/mode and a warm six-sample transcription check. The existing English
+ICL references remain installed. Speaker-only conditioning is feasible with the
+installed MLX-Audio version, but accent/tone acceptance remains a listening test.
+See [comparison details and measured limits](voice-conditioning.md). No training,
+model upgrade or cloud GPU was started, and no private audio was committed.
+
+
+Three subsequent silent Samsung arrival/return cycles completed with rendered
+acknowledgements: arrivals 9.15/9.23/9.21 seconds, returns 5.90/5.13/5.90 seconds.
+These are observed controller timings rather than performance guarantees. The
+Pi and original first-TV scene reservations were restored afterward. Screen
+arrangement now refits on the next state update after browser/tablet resize; its
+focused browser regression covers that behavior. No hosting or port changes.
+
+
+### Echo Show physical acceptance (2026-10-27)
+
+The user confirmed the custom voice and animated character together on Show 15
+using “Alexa, open Little Lab” and allowing playback to finish. Deployed logs
+also show APL capability followed by the delayed document-mount callback. This
+completes the voice/visual demo acceptance, not spatial destination ownership.
+The user observed Alexa+'s spoken “say exit” preamble slightly overlapping the
+skill opening. Home Assistant's documented text-command action follows normal
+Alexa invocation; no documented preamble-suppression option was found. Preserve
+this timing issue for the session-destination implementation, which should wait
+until ready and avoid relaunching the skill for every subsequent update.
+
+
+### Alexa destination source work (not installed)
+
+Added an opt-in session renderer, separate room/actor layer export, bounded private
+store protocol and conditional exact-object IAM policy to source. These changes
+are not deployed: the active Echo Show skill remains the accepted generic demo,
+and the Mac controller does not route spatial movement through this relay. No
+live volume, voice reference, host, port or device state changed. Renderer layers
+reconstruct the original room frames across all eight character/set combinations.
+The controller-side worker and physical Show handoff/recovery remain incomplete.
+See [prototype boundary](alexa-destination.md) before enabling deployment flags.
+
+
+The optional controller-side Alexa worker is now implemented in source and passes
+an isolated round trip through the real location registry/handoff state machine,
+a fake Pi, and loopback HTTP boundary tests. It has no full dashboard credential.
+Alexa registrations declare fixed artwork capabilities, require approval and a
+unique matching scene, and support Room presentation. A CLI/process lock and a
+scoped two-object consumer-policy template are provided. None of these source
+changes is installed/running yet; the live skill's destination flag was read and
+confirmed disabled. No live scene, voice, volume, host or port change was made.
+
+
+### Alexa destination development deployment (2026-10-27)
+
+The tested controller bridge/registry/HTTP changes are now installed on the Mac.
+The controller restarted and reported Pi ownership with the existing speaker
+level preserved. The development skill's optional destination flag is enabled
+with Okabe/café artwork. An Identity Center permission set and local named profile
+scope the test worker to reading the two relay objects and writing only the
+command object. Live reads succeeded and a session-object write was denied.
+The worker is running as a supervised foreground test, not a login service.
+Generic voice-demo invocation, MP3 hash and four image hashes passed after the
+cloud update. No Show destination handoff has yet been physically accepted.
+Existing TV and voice routes remain unchanged; the Alexa spatial route is an
+experimental two-object S3 link over HTTPS to this optional Mac worker.
+
+The first supervised Show destination launch rendered an empty café and sent
+live poll events, but never asserted combined image readiness. The controller
+kept the character on the Pi and a requested visit remained blocked during
+preparation; it was canceled safely. A bounded asset-load diagnostic is being
+deployed to distinguish actor/background loading before another handoff test.
+This is not evidence of a completed Show destination visit.
+
+The asset diagnostic on a direct Show launch reported background loaded and
+actor neither loaded nor failed. The renderer now uses `display: invisible` for
+the hidden actor (APL documents that this state still loads sources), instead of
+zero opacity. The change passes renderer/relay tests and is deployed for retry;
+it is not yet confirmed to resolve readiness on hardware. Home Assistant text
+invocations created a skill record but produced no screen callbacks, so they
+cannot substitute for the direct launch in this physical test.
+
+Local review found that explicit Stop/Cancel could leave the destination record
+open after a skill-initiated end. The handler now closes it before ending speech,
+and a real-relay regression verifies that later polls cannot revive it. The fix
+is being deployed before the physical cancellation/recovery check.
+
+The direct retry still reported only the background loaded. Source inspection
+found the absolute actor overlay lacked explicit top/left anchors; it now anchors
+at viewport origin, with a regression check. This is a candidate fix pending
+deployment and direct Show verification, not a confirmed diagnosis.
+
+The anchored retry still reported background-only readiness. The next diagnostic
+renderer removes the actor's inherited frame-index source expression: its initial
+source is the validated idle URL, with explicit idle/blink source commands. This
+remains a candidate fix until a fresh Show launch reports the actor loaded.
+
+The direct-source retry still reported background-only readiness. The renderer
+now preloads the actor behind a matching opaque background cover, exposing it
+only on the original readiness/ownership/lease checks. The test background alpha
+range was verified as 255..255; the deployment helper now rejects transparency.
+This new loading strategy remains pending direct Show verification.
+
+Covered preload resolved the measured image-readiness gate on a direct Show
+launch: background/cover and actor flags were both loaded, and `ready` was true.
+The installed controller then reached Show ownership (`tv` phase for the paired
+Alexa screen) and returned to Pi ownership after an explicit return, with no
+controller errors. Private arrival/return receipts were saved locally; speaker
+level remained 26%. The user confirmed Okabe visible in the Show café with the Pi away.
+Closure/expiry recovery remains required before accepting the checkpoint.
+
+A second direct launch also loaded both image layers and reached Show ownership.
+The session subsequently reported closed and the controller recovered Pi
+ownership without error. The original Vizio café reservation was restored after
+the test; Show remains approved but unassigned, preserving unique scene rules.
+The Pi speaker remains at its prior 26% measured level. Physical confirmation of
+the closing/return behavior is still pending. The test worker is a manual process,
+not an automatically installed service, and the Show session is limited to one
+minute with one fixed character/set artwork profile.
+
+### Four-checkpoint acceptance closeout (2026-10-27)
+
+The user confirmed Show presence with Pi absence and automatic Pi return after
+Alexa exit. Both backend arrival/return and physical recovery now pass for the
+bounded manual-worker prototype. The final local review also required identical
+actor/background geometry; deployment validation rejects mismatched frames and
+transparent covers before any AWS operation. All installed layers were separately
+verified as 960×540 and byte-identical to their local exports. The Vizio café
+reservation is restored, Show is approved/unassigned, and Pi volume remains 26%.
+
+Samsung via the relocated HDMI Chromecast, cardinal non-overlapping arrangement,
+and the accepted Japanese-reference English comparison complete the other three
+checkpoints. No voice manifest changed. Longer-running Alexa/service lifecycle,
+dynamic artwork and voice optimization remain backlog enhancements rather than
+claims about this installed checkpoint.
+
+### Private Alexa conversation checkpoint (2026-10-27)
+
+The Mac controller enables `conversation.alexa_enabled` and owns a mode-0600
+Unix socket under its private state directory (`alexa/conversation.sock`). It
+shares the warm local conversation and Qwen workers, with tool-free, isolated
+follow-up history and deadline-bounded MP3 generation. The installed encoder
+extra is present. No new LAN port or dashboard credential is exposed.
+
+A separate AWS conversation stack now hosts an encrypted FIFO request queue,
+a private DynamoDB request/reply ledger, and a private generated-audio bucket in
+the skill's region. The manually run `scripts/run-alexa-conversation.py` consumer
+uses the dedicated `okabebot-alexa-conversation` Identity Center profile. Its
+permissions are receive/delete, ledger get/update, and generated-audio-prefix
+upload only. This is separate from the existing visual destination worker.
+The consumer is not installed as an automatically restarted service.
+
+Real silent queue/local/media trials completed two warm turns in 5.030 and 2.793
+seconds, with MP3 fetches adding about 0.27 seconds. A cold turn timed out safely.
+No physical playback occurred; these are not Alexa round-trip measurements.
+The live Lambda handler is now connected to this transport with scoped
+queue/ledger/audio permissions. Its English (US) Alexa TalkIntent model is now built; Show
+two-question physical acceptance remains pending. An IAM-only fixed-question
+Lambda harness returned generated audio for two warm turns in 4.285 and 4.707
+seconds, plus roughly 0.25–0.33 seconds to fetch each MP3. The ephemeral harness
+was deleted and does not prove real Alexa recognition or playback. The handler
+uses Lambda-aware deadlines and a separate APLA audio track; its speaking cue
+requires an already-visible, current, matching actor and never summons it.
+The installed Alexa model prompt requests a shorter sentence to fit the deadline.
+Voice references, volume and Pi ownership were preserved. See [conversation cycle](alexa-conversation.md) for boundaries,
+retention and detailed evidence.
+
+
+The Developer Console confirms successful English (US) build 4 at 8:27 PM local
+on 2026-10-27, with the new TalkIntent/SearchQuery carriers. The deployed handler
+also handles the automatically added NavigateHomeIntent as exit/cancellation.
+For the physical test, Okabe's café reservation was temporarily moved to
+Show instead of the living-room TV. After the failed retry, original assignments
+were restored from the private backup. Other character reservations and
+Pi speaker volume are unchanged. No new physical acceptance is claimed yet.
+
+
+The first conversational physical attempt reached Show, but the user reported
+flicker and the question routed to FallbackIntent; no generated answer was
+accepted. The Mac visual relay worker was refreshed to coalesce newer valid
+receiver polls instead of starving renewals during controller reads. The Lambda
+renderer now preloads four actor poses behind the cover and animates opacity,
+while retaining the same four-second visibility lease and session limits.
+Display polls skip conversation transport initialization. Fallback/Help keeps
+listening without inference. Both changes are deployed and 432 isolated tests
+pass; physical stability, custom-voice playback and follow-up listening remain
+pending. The temporary Show café reservation was later restored to the TV after the failed retry.
+
+The next physical retry reached TalkIntent twice but missed both audio deadlines;
+custom conversational playback is still unaccepted. A receiver trace confirmed a
+temporary visibility-lease lapse. Installed private RPC diagnostics now identify
+model/synthesis/encoding failures without exposing utterances or exception messages.
+Silent timing reproduced a synthesis timeout even with shorter replies, so that
+experiment was discarded. The isolated-tested remaining-grant lease correction deployed after AWS
+reauthorization; its physical stability is not yet accepted. No ownership topology, voice
+reference, or volume setting changed. Further physical retries are paused.

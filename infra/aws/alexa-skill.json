@@ -13,6 +13,66 @@
         "true",
         "false"
       ]
+    },
+    "EnableDestination": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "true",
+        "false"
+      ]
+    },
+    "DestinationCharacter": {
+      "Type": "String",
+      "Default": "okabe",
+      "AllowedValues": [
+        "okabe",
+        "kurisu",
+        "pip",
+        "sonic"
+      ]
+    },
+    "DestinationSet": {
+      "Type": "String",
+      "Default": "pixel-lab",
+      "AllowedValues": [
+        "pixel-lab",
+        "maid-cafe",
+        "pip-workshop",
+        "rooftop-garden",
+        "green-hill",
+        "star-light"
+      ]
+    },
+    "EnableConversation": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "true",
+        "false"
+      ]
+    },
+    "ConversationQueueUrl": {
+      "Type": "String",
+      "Default": ""
+    },
+    "ConversationQueueArn": {
+      "Type": "String",
+      "Default": ""
+    },
+    "ConversationTableName": {
+      "Type": "String",
+      "Default": ""
+    },
+    "ConversationAudioBucket": {
+      "Type": "String",
+      "Default": ""
+    },
+    "ConversationIdentity": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^[a-f0-9]{64}$",
+      "NoEcho": true
     }
   },
   "Resources": {
@@ -168,6 +228,30 @@
             },
             "VISUALS_ENABLED": {
               "Ref": "EnableVisuals"
+            },
+            "DESTINATION_ENABLED": {
+              "Ref": "EnableDestination"
+            },
+            "DESTINATION_CHARACTER": {
+              "Ref": "DestinationCharacter"
+            },
+            "DESTINATION_SET": {
+              "Ref": "DestinationSet"
+            },
+            "CONVERSATION_ENABLED": {
+              "Ref": "EnableConversation"
+            },
+            "CONVERSATION_QUEUE": {
+              "Ref": "ConversationQueueUrl"
+            },
+            "CONVERSATION_TABLE": {
+              "Ref": "ConversationTableName"
+            },
+            "CONVERSATION_AUDIO_BUCKET": {
+              "Ref": "ConversationAudioBucket"
+            },
+            "CONVERSATION_IDENTITY": {
+              "Ref": "ConversationIdentity"
             }
           }
         },
@@ -223,6 +307,98 @@
           "Ref": "SkillId"
         }
       }
+    },
+    "DestinationPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Condition": "DestinationEnabled",
+      "Properties": {
+        "PolicyName": "BoundedDestinationSession",
+        "Roles": [
+          {
+            "Ref": "Role"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "s3:GetObject",
+                "s3:PutObject"
+              ],
+              "Resource": {
+                "Fn::Sub": "${Audio.Arn}/surface/session.json"
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": "s3:GetObject",
+              "Resource": [
+                {
+                  "Fn::Sub": "${Audio.Arn}/surface/command.json"
+                },
+                {
+                  "Fn::Sub": "${Audio.Arn}/surface/assets/background.png"
+                },
+                {
+                  "Fn::Sub": "${Audio.Arn}/surface/assets/actor-idle.png"
+                },
+                {
+                  "Fn::Sub": "${Audio.Arn}/surface/assets/actor-talk-a.png"
+                },
+                {
+                  "Fn::Sub": "${Audio.Arn}/surface/assets/actor-talk-b.png"
+                },
+                {
+                  "Fn::Sub": "${Audio.Arn}/surface/assets/actor-blink.png"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "ConversationPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Condition": "ConversationEnabled",
+      "Properties": {
+        "PolicyName": "PairedConversationIngress",
+        "Roles": [
+          {
+            "Ref": "Role"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": "sqs:SendMessage",
+              "Resource": {
+                "Ref": "ConversationQueueArn"
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:PutItem",
+                "dynamodb:GetItem"
+              ],
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConversationTableName}"
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": "s3:GetObject",
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:s3:::${ConversationAudioBucket}/conversation/audio/*"
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "Outputs": {
@@ -243,6 +419,24 @@
       "Value": {
         "Ref": "Audio"
       }
+    }
+  },
+  "Conditions": {
+    "DestinationEnabled": {
+      "Fn::Equals": [
+        {
+          "Ref": "EnableDestination"
+        },
+        "true"
+      ]
+    },
+    "ConversationEnabled": {
+      "Fn::Equals": [
+        {
+          "Ref": "EnableConversation"
+        },
+        "true"
+      ]
     }
   }
 }

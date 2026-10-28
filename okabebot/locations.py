@@ -26,12 +26,32 @@ def normalized(value):
 
 def validate(settings):
     values = settings["locations"]
-    if not isinstance(values, list) or len(values) != 2:
-        raise ValueError("Configure one Pi destination and one Cast destination")
+    if not isinstance(values, list) or not 2 <= len(values) <= 9:
+        raise ValueError("Configure one Pi destination and one to eight Cast destinations")
     ids, names, adapters = set(), {}, []
     for item in values:
-        if not isinstance(item, dict) or set(item) != {"id", "name", "aliases", "adapter"}:
-            raise ValueError("Locations require id, name, aliases and adapter")
+        required = {"id", "name", "aliases", "adapter"}
+        if (
+            not isinstance(item, dict)
+            or not required <= set(item)
+            or set(item) - required - {"cast_host"}
+        ):
+            raise ValueError("Locations require id, name, aliases, adapter and optional cast_host")
+        if "cast_host" in item:
+            import ipaddress
+
+            try:
+                address = ipaddress.ip_address(item["cast_host"])
+            except (ValueError, TypeError):
+                raise ValueError("Cast host must be a private LAN IP address") from None
+            if (
+                item["adapter"] != "cast"
+                or not address.is_private
+                or address.is_loopback
+                or address.is_multicast
+                or address.is_unspecified
+            ):
+                raise ValueError("Cast host must be a private LAN IP address on a Cast location")
         if (
             not isinstance(item["id"], str)
             or not re.fullmatch(r"[a-z][a-z0-9-]{0,31}", item["id"])
@@ -53,8 +73,18 @@ def validate(settings):
             names[key] = item["id"]
         ids.add(item["id"])
         adapters.append(item["adapter"])
-    if sorted(adapters) != ["cast", "pi"]:
-        raise ValueError("This prototype supports one Pi and one Cast adapter")
+    if (
+        adapters.count("pi") != 1
+        or not 1 <= adapters.count("cast") <= 8
+        or any(a not in ("pi", "cast") for a in adapters)
+    ):
+        raise ValueError("Configure one Pi and one to eight Cast adapters")
+    casts = [p for p in values if p["adapter"] == "cast"]
+    if any(not p.get("cast_host") for p in casts[1:]):
+        raise ValueError("Additional Cast destinations require their own cast_host")
+    hosts = [p["cast_host"] for p in casts if p.get("cast_host")]
+    if len(hosts) != len(set(hosts)):
+        raise ValueError("Cast destinations must use different hosts")
     if settings["travel_side"] not in ("left", "right"):
         raise ValueError("travel_side must be left or right")
     duration = settings["duration_seconds"]

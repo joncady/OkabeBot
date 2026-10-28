@@ -104,6 +104,20 @@ class LocalToolTests(unittest.TestCase):
         press.assert_not_called()
         self.assertIn("Which device", obj.completed.call_args.args[0])
 
+    @patch("okabebot.server.get_companion_locations")
+    def test_destination_discovery_uses_live_registry_without_model_paraphrase(self, locations):
+        import copy
+
+        locations.return_value = {"locations": [{"name": "Desk"}, {"name": "TV"}]}
+        obj = self.adapter("I can help you locate screens.")
+        obj.specs = copy.deepcopy(SPECS)
+        obj.specs["get_companion_locations"] = {"parameters": {"type": "object", "properties": {}}}
+        obj._turn("Which screens can you go to?")
+        locations.assert_called_once_with()
+        obj._read.assert_not_called()
+        obj.process.stdin.write.assert_not_called()
+        obj.completed.assert_called_once_with("My destinations are Desk, TV.", "completed")
+
     @patch("okabebot.server.set_speaker_volume", side_effect=TimeoutError())
     def test_unknown_action_outcome_is_not_retried_or_acknowledged_as_success(self, volume):
         obj = self.adapter(
