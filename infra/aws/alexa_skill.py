@@ -12,7 +12,7 @@ from okabebot.alexa_skill import response, validate_envelope
 from okabebot.alexa_visuals import attach_character, FRAME_NAMES
 
 
-def handle(event, skill_id, audio_url, frames=None, destination=None):
+def handle(event, skill_id, audio_url, frames=None, destination=None, conversation=None):
     request = validate_envelope(event, skill_id)
     kind = request["type"]
     if kind == "Alexa.Presentation.APL.UserEvent":
@@ -29,6 +29,11 @@ def handle(event, skill_id, audio_url, frames=None, destination=None):
         # does not prove artwork loaded or transfer character ownership.
         return {"version": "1.0", "response": {}}
     if kind == "SessionEndedRequest":
+        if conversation is not None:
+            try:
+                conversation.cancel(event)
+            except Exception:
+                logging.getLogger(__name__).warning("little_lab_conversation cleanup_failed")
         if destination is not None:
             destination.closed(event)
         logging.getLogger(__name__).warning("little_lab_visual session=ended")
@@ -48,6 +53,7 @@ def handle(event, skill_id, audio_url, frames=None, destination=None):
     intent = request["intent"]["name"]
     known = {
         "VoiceDemoIntent",
+        "TalkIntent",
         "VisitIntent",
         "LabStatusIntent",
         "LabLocationsIntent",
@@ -59,6 +65,18 @@ def handle(event, skill_id, audio_url, frames=None, destination=None):
     logging.getLogger(__name__).warning(
         "little_lab_request intent=%s", intent if intent in known else "Other"
     )
+    if intent == "TalkIntent":
+        if conversation is None:
+            return response("Conversation is not connected yet. You can ask for a voice demo.")
+        try:
+            return conversation.handle(event)
+        except PermissionError:
+            return response("This Echo is not paired for companion conversations.")
+        except ValueError:
+            return response("Say tell me, followed by a short question.", end=False)
+        except Exception:
+            logging.getLogger(__name__).warning("little_lab_conversation unavailable")
+            return response("The companion is unavailable. Please try again shortly.", end=False)
     if intent == "VisitIntent":
         if destination is None:
             return response(
@@ -75,6 +93,11 @@ def handle(event, skill_id, audio_url, frames=None, destination=None):
         result = response("", audio_url=audio_url())
         return attach_character(result, event, frames) if frames else result
     if intent in ("AMAZON.StopIntent", "AMAZON.CancelIntent"):
+        if conversation is not None:
+            try:
+                conversation.cancel(event)
+            except Exception:
+                logging.getLogger(__name__).warning("little_lab_conversation cleanup_failed")
         if destination is not None:
             destination.closed(event)
         return response("See you in the lab.")
@@ -132,10 +155,31 @@ def handler(event, context):
         destination = DestinationRelay(
             PrivateDestinationStore(client, os.environ["AUDIO_BUCKET"]), destination_assets
         )
+    conversation = None
+    if os.environ.get("CONVERSATION_ENABLED") == "true":
+        from okabebot.alexa_conversation import ConversationSkill
+        from okabebot.alexa_conversation_relay import aws_exchange
+
+        def sign_reply(key):
+            return client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": os.environ["CONVERSATION_AUDIO_BUCKET"], "Key": key},
+                ExpiresIn=120,
+            )
+
+        conversation = ConversationSkill(
+            os.environ["SKILL_ID"],
+            os.environ["CONVERSATION_IDENTITY"],
+            aws_exchange(
+                boto3.Session(), os.environ["CONVERSATION_TABLE"], os.environ["CONVERSATION_QUEUE"]
+            ),
+            sign_reply,
+        )
     return handle(
         event,
         os.environ["SKILL_ID"],
         audio_url,
         frames if os.environ.get("VISUALS_ENABLED") == "true" else None,
         destination,
+        conversation,
     )

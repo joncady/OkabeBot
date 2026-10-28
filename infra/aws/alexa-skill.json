@@ -43,6 +43,36 @@
         "green-hill",
         "star-light"
       ]
+    },
+    "EnableConversation": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "true",
+        "false"
+      ]
+    },
+    "ConversationQueueUrl": {
+      "Type": "String",
+      "Default": ""
+    },
+    "ConversationQueueArn": {
+      "Type": "String",
+      "Default": ""
+    },
+    "ConversationTableName": {
+      "Type": "String",
+      "Default": ""
+    },
+    "ConversationAudioBucket": {
+      "Type": "String",
+      "Default": ""
+    },
+    "ConversationIdentity": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^$|^[a-f0-9]{64}$",
+      "NoEcho": true
     }
   },
   "Resources": {
@@ -207,6 +237,21 @@
             },
             "DESTINATION_SET": {
               "Ref": "DestinationSet"
+            },
+            "CONVERSATION_ENABLED": {
+              "Ref": "EnableConversation"
+            },
+            "CONVERSATION_QUEUE": {
+              "Ref": "ConversationQueueUrl"
+            },
+            "CONVERSATION_TABLE": {
+              "Ref": "ConversationTableName"
+            },
+            "CONVERSATION_AUDIO_BUCKET": {
+              "Ref": "ConversationAudioBucket"
+            },
+            "CONVERSATION_IDENTITY": {
+              "Ref": "ConversationIdentity"
             }
           }
         },
@@ -313,6 +358,47 @@
           ]
         }
       }
+    },
+    "ConversationPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Condition": "ConversationEnabled",
+      "Properties": {
+        "PolicyName": "PairedConversationIngress",
+        "Roles": [
+          {
+            "Ref": "Role"
+          }
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": "sqs:SendMessage",
+              "Resource": {
+                "Ref": "ConversationQueueArn"
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:PutItem",
+                "dynamodb:GetItem"
+              ],
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConversationTableName}"
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": "s3:GetObject",
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:s3:::${ConversationAudioBucket}/conversation/audio/*"
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "Outputs": {
@@ -340,6 +426,14 @@
       "Fn::Equals": [
         {
           "Ref": "EnableDestination"
+        },
+        "true"
+      ]
+    },
+    "ConversationEnabled": {
+      "Fn::Equals": [
+        {
+          "Ref": "EnableConversation"
         },
         "true"
       ]

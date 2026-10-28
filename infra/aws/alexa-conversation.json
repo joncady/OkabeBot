@@ -10,7 +10,10 @@
         "MessageRetentionPeriod": 60,
         "VisibilityTimeout": 10,
         "ReceiveMessageWaitTimeSeconds": 10,
-        "SqsManagedSseEnabled": true
+        "SqsManagedSseEnabled": true,
+        "QueueName": {
+          "Fn::Sub": "${AWS::StackName}-requests.fifo"
+        }
       }
     },
     "Ledger": {

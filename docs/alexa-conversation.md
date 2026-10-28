@@ -1,7 +1,8 @@
 # Alexa conversational mini-cycle
 
 Status: the private Mac adapter is installed for silent timing tests. The
-request/reply exchange is implemented and regression-tested but not deployed.
+separate queue, ledger and private audio bucket are deployed, and a manually run
+scoped consumer passed silent cloud/local tests.
 The live Alexa skill is not connected to it yet, so spoken conversational turns
 are not available. The accepted destination/demo continues separately.
 
@@ -61,8 +62,7 @@ conflicting replay bodies, fixed audio keys, timeout fallback, explicit audio
 eligibility, cross-session isolation, sensitive-input fallback, malformed model
 output and late-reply consumption. No audio was uploaded or played by these tests.
 
-Remaining gates: deploy the durable cloud transport and scoped credentials; install/benchmark
-the complete cloud/local audio deadlines; TalkIntent model build; Show speech
+Remaining gates: connect the live skill and build its TalkIntent model; Show speech
 animation and follow-up listening; measured cloud/local loop; user acceptance of
 two spoken questions, audibility and exit recovery. Record model, first PCM,
 encoding/upload and total cloud response separately. Physical audible onset still
@@ -91,7 +91,8 @@ create/claim/complete operations preserve the original deadline and make each
 request terminal after one claim. Retried sends use a FIFO deduplication ID.
 Replies stay in the private ledger; only eligible audio enters the media store.
 Expiry and permission errors are distinct, with no fallback that replays inference.
-The cloud resources, consumer and IAM wiring are not deployed yet.
+The dedicated cloud resources and scoped Mac consumer credentials are deployed.
+The consumer is manually started; the live skill is not connected yet.
 
 ## Silent installed benchmark (2026-10-27)
 
@@ -109,13 +110,32 @@ The model has no calendar access in this path. Speaker level and Pi ownership
 were preserved; no test audio was played. Broader privacy/latency evaluation is
 still required before claiming general conversational parity.
 
-The dedicated cloud transport template is prepared and passed AWS template
-validation, but has not been deployed. It defines an encrypted FIFO queue with
-one-minute retention, an encrypted request ledger with five-minute TTL markers
-and a private generated-audio bucket with a one-day lifecycle. DynamoDB TTL
-deletion is asynchronous, not an immediate five-minute purge. No public ingress
-or household-tool permissions are created by this template. Scoped runtime IAM
-and skill/consumer wiring are still required.
+The dedicated transport and Identity Center consumer permission set were deployed
+on 2026-10-27. The encrypted FIFO queue retains requests for one minute. The
+request ledger uses five-minute TTL markers; DynamoDB deletion is asynchronous.
+The private generated-audio bucket expires objects after one day. Its signed GET
+URLs last two minutes. The consumer can receive/delete requests, read/update
+ledger records, and upload only generated conversation audio. It cannot send
+new requests, invoke household tools, or access the visual mailbox.
+
+## Silent cloud/local benchmark (2026-10-27)
+
+The real queue → scoped Mac consumer → installed local adapter → private media
+store loop completed two warm public turns in 5.030 and 2.793 seconds. Fetching
+the resulting MP3 added 0.270 and 0.276 seconds. First-turn local stages were
+model 2.208, first PCM 0.926 after synthesis start, synthesis 1.617 and encoding
+0.056 seconds; follow-up stages were 0.770, 0.340, 1.287 and 0.031 seconds.
+First PCM is included in synthesis, so these columns must not be summed.
+An earlier cold cloud turn timed out safely at six seconds. These observations
+exclude Lambda startup, Alexa recognition, Show buffering and audible onset.
+They are not physical end-to-end acceptance. No test audio was played.
+
+Stop/Cancel and SessionEnded record a paired-session cancellation marker. Closed
+sessions cannot claim queued work or return a ready answer; an inference that
+finishes after exit cannot upload new audio or publish a ready reply. New sessions
+remain independent. Cancellation cannot recall audio already delivered to Alexa.
+Only built-in public character personas are sent to this path, never a user's
+configured persona or ordinary household conversation context.
 
 Local review found that ordinary SDK defaults could outlast the response budget.
 The exchange now bounds each call with the remaining request time, limits

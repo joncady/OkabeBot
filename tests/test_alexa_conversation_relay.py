@@ -18,7 +18,7 @@ class Table:
         self.items = {}
 
     def put_item(self, Item, **kwargs):
-        if Item["id"] in self.items:
+        if Item["id"] in self.items and kwargs.get("ConditionExpression"):
             raise ConditionalError()
         self.items[Item["id"]] = copy.deepcopy(Item)
 
@@ -61,6 +61,32 @@ class ExchangeTests(unittest.TestCase):
 
     def advance(self, seconds):
         self.now += seconds
+
+    def test_closed_session_blocks_queued_running_and_ready_replies(self):
+        for stage in ("queued", "processing", "ready"):
+            with self.subTest(stage=stage):
+                self.setUp()
+                self.exchange.open(self.request)
+                if stage != "queued":
+                    self.assertTrue(self.exchange.claim(self.request))
+                if stage == "ready":
+                    self.exchange.finish(
+                        self.request,
+                        {"text": "A short fact.", "audio_safe": True, "audio_ready": True},
+                    )
+                self.exchange.close_session(self.request["session"])
+                self.exchange.close_session(self.request["session"])
+                self.assertFalse(self.exchange.claim(self.request))
+                with self.assertRaises(InterruptedError):
+                    self.exchange.open(self.request)
+                with self.assertRaises(InterruptedError):
+                    self.exchange.wait(self.request, self.now + 1)
+                if stage == "processing":
+                    self.exchange.finish(self.request, {"text": "Late fact."})
+                    self.assertEqual(self.table.items[self.request["id"]]["status"], "failed")
+                fresh = dict(self.request, id="d" * 64, session="e" * 64)
+                self.exchange.open(fresh)
+                self.assertTrue(self.exchange.claim(fresh))
 
     def test_retry_preserves_deadline_and_deduplicates_before_inference(self):
         self.exchange.open(self.request)

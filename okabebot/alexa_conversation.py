@@ -79,6 +79,24 @@ class ConversationSkill:
         self.skill_id, self.paired_identity = skill_id, paired_identity
         self.exchange, self.sign_audio, self.clock = exchange, sign_audio, clock
 
+    def cancel(self, event):
+        validate_envelope(event, self.skill_id)
+        if event.get("request", {}).get("type") not in ("IntentRequest", "SessionEndedRequest"):
+            return False
+        if event["request"]["type"] == "IntentRequest" and event["request"].get("intent", {}).get(
+            "name"
+        ) not in ("AMAZON.StopIntent", "AMAZON.CancelIntent"):
+            return False
+        session = event.get("session", {}).get("sessionId")
+        try:
+            identity = DestinationRelay.identity(event)
+        except (KeyError, ValueError):
+            return False
+        if identity != self.paired_identity or not isinstance(session, str) or not session:
+            return False
+        self.exchange.close_session(digest(identity + "\0" + session))
+        return True
+
     def handle(self, event):
         end = self.clock() + 6.2
         request = question(event, self.skill_id, self.paired_identity)
@@ -86,7 +104,7 @@ class ConversationSkill:
             record = self.exchange.open(request)
             if record["body_hash"] != request["body_hash"]:
                 raise ValueError("Request ID was reused with different content")
-            request["deadline"] = record["deadline"]
+            request["deadline"] = float(record["deadline"])
             if request["deadline"] <= time.time():
                 return response(FALLBACK, end=False)
             # Transport owns bounded blocking, including its individual network calls.
@@ -96,6 +114,8 @@ class ConversationSkill:
             return reply(result, request, self.sign_audio)
         except TimeoutError:
             return response(FALLBACK, end=False)
+        except InterruptedError:
+            return response("That conversation has ended. Open Little Lab to start again.")
 
 
 def audio_eligible(question_text, answer):

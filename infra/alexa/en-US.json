@@ -50,6 +50,20 @@
             "visit this screen",
             "bring the companion here"
           ]
+        },
+        {
+          "name": "TalkIntent",
+          "slots": [
+            {
+              "name": "Query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "tell me {Query}",
+            "explain {Query}",
+            "answer {Query}"
+          ]
         }
       ],
       "types": []

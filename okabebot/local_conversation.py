@@ -531,6 +531,7 @@ class LocalConversation:
         worker reply before releasing busy, so no late output leaks into chat.
         """
         from .alexa_conversation import audio_eligible
+        from .profiles import PROFILES
         import re
         import time
 
@@ -553,7 +554,7 @@ class LocalConversation:
                     {
                         "task": "alexa",
                         "text": text,
-                        "persona": character["persona"],
+                        "persona": PROFILES[character["style"]]["persona"],
                         "history": history.get(key, [])[-4:],
                         "tool_names": [],
                     }

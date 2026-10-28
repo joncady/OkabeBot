@@ -1,0 +1,114 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Identity Center consumer for the separate private Alexa conversation transport",
+  "Parameters": {
+    "InstanceArn": {
+      "Type": "String"
+    },
+    "PrincipalId": {
+      "Type": "String"
+    },
+    "AccountId": {
+      "Type": "String",
+      "AllowedPattern": "[0-9]{12}"
+    },
+    "PermissionSetName": {
+      "Type": "String",
+      "Default": "OkabeBotAlexaConversation",
+      "MaxLength": 32
+    },
+    "QueueArn": {
+      "Type": "String"
+    },
+    "TableArn": {
+      "Type": "String"
+    },
+    "AudioBucketName": {
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "ConsumerPermission": {
+      "Type": "AWS::SSO::PermissionSet",
+      "Properties": {
+        "InstanceArn": {
+          "Ref": "InstanceArn"
+        },
+        "Name": {
+          "Ref": "PermissionSetName"
+        },
+        "Description": "Consume paired conversation requests and publish replies; no household tools",
+        "SessionDuration": "PT12H",
+        "InlinePolicy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "sqs:ReceiveMessage",
+                "sqs:DeleteMessage"
+              ],
+              "Resource": {
+                "Ref": "QueueArn"
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:GetItem",
+                "dynamodb:UpdateItem"
+              ],
+              "Resource": {
+                "Ref": "TableArn"
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": "s3:PutObject",
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:s3:::${AudioBucketName}/conversation/audio/*"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ConsumerAssignment": {
+      "Type": "AWS::SSO::Assignment",
+      "Properties": {
+        "InstanceArn": {
+          "Ref": "InstanceArn"
+        },
+        "PermissionSetArn": {
+          "Fn::GetAtt": [
+            "ConsumerPermission",
+            "PermissionSetArn"
+          ]
+        },
+        "PrincipalId": {
+          "Ref": "PrincipalId"
+        },
+        "PrincipalType": "USER",
+        "TargetId": {
+          "Ref": "AccountId"
+        },
+        "TargetType": "AWS_ACCOUNT"
+      }
+    }
+  },
+  "Outputs": {
+    "PermissionSetArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ConsumerPermission",
+          "PermissionSetArn"
+        ]
+      }
+    },
+    "PermissionSetName": {
+      "Value": {
+        "Ref": "PermissionSetName"
+      }
+    }
+  }
+}

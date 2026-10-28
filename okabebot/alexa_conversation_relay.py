@@ -88,6 +88,28 @@ class ConversationExchange:
         self.table, self.queue, self.queue_url = table, queue, queue_url
         self.wall, self.clock, self.sleep = wall, clock, sleep
 
+    def close_session(self, session):
+        import re
+
+        if not isinstance(session, str) or not re.fullmatch(r"[a-f0-9]{64}", session):
+            raise ValueError("Invalid conversation session")
+        bounded_call(
+            self.table.put_item,
+            self.wall() + 1,
+            self.wall,
+            Item={"id": "closed#" + session, "expires": int(self.wall()) + 300},
+        )
+
+    def is_closed(self, request):
+        value = bounded_call(
+            self.table.get_item,
+            request["deadline"],
+            self.wall,
+            Key={"id": "closed#" + request["session"]},
+            ConsistentRead=True,
+        )
+        return bool(value.get("Item"))
+
     def get(self, request):
         record = bounded_call(
             self.table.get_item,
@@ -106,6 +128,8 @@ class ConversationExchange:
         validate_request(request)
         if not 0 < request["deadline"] - self.wall() <= 8:
             raise ValueError("Invalid conversation lifetime")
+        if self.is_closed(request):
+            raise InterruptedError("Conversation session ended")
         record = {k: request[k] for k in ("id", "identity", "session", "body_hash")}
         record.update(
             status="queued",
@@ -143,6 +167,8 @@ class ConversationExchange:
 
     def wait(self, request, end):
         while self.clock() < end and self.wall() < request["deadline"]:
+            if self.is_closed(request):
+                raise InterruptedError("Conversation session ended")
             record = self.get(request)
             if record is None:
                 raise RuntimeError("Conversation ledger disappeared")
@@ -162,6 +188,8 @@ class ConversationExchange:
     def claim(self, request):
         validate_request(request)
         if request["deadline"] <= self.wall():
+            return False
+        if self.is_closed(request):
             return False
         record = self.get(request)
         if record is None or float(record["deadline"]) != request["deadline"]:
@@ -191,6 +219,8 @@ class ConversationExchange:
     def finish(self, request, result):
         if self.wall() >= request["deadline"]:
             return self.fail(request, "expired")
+        if self.is_closed(request):
+            return self.fail(request)
         text = result.get("text")
         if not isinstance(text, str) or not 1 <= len(text.strip()) <= 600:
             raise ValueError("Invalid generated answer")

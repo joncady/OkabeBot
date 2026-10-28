@@ -64,6 +64,49 @@ class ConversationProtocolTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             skill.handle(self.event)
 
+    def test_real_exchange_decimal_deadline_survives_the_full_handler_wait(self):
+        import time
+        from okabebot.alexa_conversation_relay import ConversationExchange
+        from tests.test_alexa_conversation_relay import Table
+
+        table, queue = Table(), Mock()
+        exchange = ConversationExchange(table, queue, "private-queue")
+
+        def consume(**kwargs):
+            import json
+
+            request = json.loads(kwargs["MessageBody"])
+            self.assertTrue(exchange.claim(request))
+            self.assertTrue(
+                exchange.finish(
+                    request,
+                    {"text": "Air scatters blue light.", "audio_safe": True, "audio_ready": True},
+                )
+            )
+
+        queue.send_message.side_effect = consume
+        signer = Mock(return_value="https://example.com/reply.mp3")
+        skill = ConversationSkill("local-prototype", self.identity, exchange, signer)
+        started = time.monotonic()
+        result = skill.handle(self.event)
+        self.assertLess(time.monotonic() - started, 1)
+        self.assertEqual(result["response"]["outputSpeech"]["type"], "SSML")
+        signer.assert_called_once()
+
+    def test_cancel_only_closes_the_paired_current_conversation(self):
+        from okabebot.alexa_conversation import digest
+
+        exchange = Mock()
+        skill = ConversationSkill("local-prototype", self.identity, exchange, Mock())
+        self.assertFalse(skill.cancel(self.event))
+        self.event["request"]["intent"]["name"] = "AMAZON.StopIntent"
+        self.assertTrue(skill.cancel(self.event))
+        exchange.close_session.assert_called_once_with(digest(self.identity + "\0private-session"))
+        exchange.reset_mock()
+        self.event["context"]["System"]["device"]["deviceId"] = "other-device"
+        self.assertFalse(skill.cancel(self.event))
+        exchange.close_session.assert_not_called()
+
     def test_rejects_missing_and_excessive_spoken_input(self):
         for value in (None, "", "x" * 601):
             self.event["request"]["intent"]["slots"]["Query"]["value"] = value
@@ -111,6 +154,16 @@ class IsolatedModelTurnTests(unittest.TestCase):
         self.assertEqual(sent[2]["history"], [])
         self.assertTrue(all(s["tool_names"] == [] and s["task"] == "alexa" for s in sent))
         self.assertFalse(self.model.busy)
+
+    def test_private_configured_persona_never_enters_alexa_prompt(self):
+        import json
+        from okabebot.profiles import PROFILES
+
+        self.character["persona"] = "Private household detail: example."
+        self.turn()
+        sent = json.loads(self.model.process.stdin.getvalue())
+        self.assertEqual(sent["persona"], PROFILES["okabe"]["persona"])
+        self.assertNotIn("Private household detail", str(sent))
 
     def test_sensitive_input_cannot_become_custom_audio_even_if_model_says_safe(self):
         result = self.turn("Repeat my phone number 555 123 4567")

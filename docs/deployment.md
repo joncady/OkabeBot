@@ -850,42 +850,28 @@ checkpoints. No voice manifest changed. Longer-running Alexa/service lifecycle,
 dynamic artwork and voice optimization remain backlog enhancements rather than
 claims about this installed checkpoint.
 
-### Alexa conversation source work (2026-10-27)
+### Private Alexa conversation checkpoint (2026-10-27)
 
-A separate paired conversation protocol and tool-free warm-model method are
-implemented and tested in source. They do not reuse the destination mailbox for
-questions or grant its worker tools. Follow-up history is isolated by session and
-character, and sensitive/uncertain replies stay native text rather than custom
-uploaded audio. Queue/ledger transport, controller adapter, synthesis/encoding,
-TalkIntent build and physical conversational acceptance remain unimplemented.
-Nothing in this source-only pass changed live routes, settings, voices or volume;
-the current deployment map is unchanged. See [conversation cycle](alexa-conversation.md).
+The Mac controller enables `conversation.alexa_enabled` and owns a mode-0600
+Unix socket under its private state directory (`alexa/conversation.sock`). It
+shares the warm local conversation and Qwen workers, with tool-free, isolated
+follow-up history and deadline-bounded MP3 generation. The installed encoder
+extra is present. No new LAN port or dashboard credential is exposed.
 
-The conversational source now includes a DynamoDB/SQS exchange and an opt-in
-private Unix-socket adapter (`conversation.alexa_enabled`, false by default).
-The adapter shares the warm model and voice worker, pins voice identity and
-generates deadline-bounded MP3 without physical playback. Isolated socket and
-ledger regressions pass. No AWS conversation resources or live adapter have been
-installed by these source changes; installed topology remains unchanged.
+A separate AWS conversation stack now hosts an encrypted FIFO request queue,
+a private DynamoDB request/reply ledger, and a private generated-audio bucket in
+the skill's region. The manually run `scripts/run-alexa-conversation.py` consumer
+uses the dedicated `okabebot-alexa-conversation` Identity Center profile. Its
+permissions are receive/delete, ledger get/update, and generated-audio-prefix
+upload only. This is separate from the existing visual destination worker.
+The consumer is not installed as an automatically restarted service.
 
-### Private Alexa conversation adapter installed (2026-10-27)
-
-The Mac controller now enables `conversation.alexa_enabled` and owns a private
-mode-0600 Unix socket under its state directory (`alexa/conversation.sock`).
-It exposes tool-free inference and MP3 generation only, not household actions.
-The source files/config were backed up before a supervised controller restart;
-the warm Qwen worker, references, character, Pi ownership and speaker level were
-preserved. The app environment now includes its MP3 encoder extra dependency.
-
-Two silent local public-question turns produced MP3s in 4.480 and 2.268 seconds;
-a private-calendar question stayed text-only with no synthesis. An earlier cold
-trial timed out. These exclude cloud/Alexa latency. No audio was uploaded/played,
-and no conversation queue, ledger or skill ingress is connected yet. The main
-README map now includes this installed private adapter, distinct from the manual
-visual-destination relay worker. See docs/alexa-conversation.md for timing details.
-
-The separate conversation transport template passed AWS template validation only;
-no queue/table/media bucket from it has been created. The source exchange now
-bounds SDK calls and disables SDK retries to protect the skill response budget.
-The installed private adapter and accepted visual relay remain the actual live
-roles; no new cloud route has been activated.
+Real silent queue/local/media trials completed two warm turns in 5.030 and 2.793
+seconds, with MP3 fetches adding about 0.27 seconds. A cold turn timed out safely.
+No physical playback occurred; these are not Alexa round-trip measurements.
+The live skill is still not connected to this transport, and its TalkIntent model
+build, Show speech/animation integration and two-question physical acceptance
+remain pending. Source includes those handler/model wiring changes; source is
+not evidence that they are deployed. Voice references, volume and Pi ownership
+were preserved. See [conversation cycle](alexa-conversation.md) for boundaries,
+retention and detailed evidence.

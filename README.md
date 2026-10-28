@@ -48,7 +48,7 @@ flowchart TB
         App -->|"Characters without Qwen references"| SystemVoice["macOS system voice fallback"]
         HA["Home Assistant Container: 8123"] -->|"Scoped notifications, Alexa schedules and arrivals"| App
         MCP["Optional stdio MCP server"] --> App
-        AlexaLocal["Opt-in private Alexa conversation adapter: Unix socket; cloud not connected"] --> Chat
+        AlexaLocal["Opt-in private Alexa conversation adapter: Unix socket"] --> Chat
         AlexaLocal --> Speech
         App -->|"Owns private adapter lifecycle"| AlexaLocal
         App --> Places["Configured and paired destinations; spatial layout and shared move interface"]
@@ -82,6 +82,10 @@ flowchart TB
     SkillLambda <-->|"Bounded session state and commands"| AlexaRelay["Private S3: two destination relay objects"]
     AlexaRelay <-->|"Scoped Identity Center profile"| AlexaWorker["Optional Mac test worker; not autostarted"]
     AlexaWorker <-->|"Paired-screen HTTP; approval required"| App
+    ConversationQueue["Separate private FIFO requests"] --> ConversationConsumer["Manual scoped Mac conversation consumer"]
+    ConversationConsumer --> AlexaLocal
+    ConversationConsumer <-->|"Conditional reply state"| ConversationLedger["Private DynamoDB ledger"]
+    ConversationConsumer --> ConversationMedia["Private generated-audio bucket; expiring GETs"]
 ```
 
 The first door opening after 3 p.m. currently provides a once-daily welcome
@@ -525,7 +529,9 @@ the accepted visual destination and generic voice demo, not conversational turns
 
 The Alexa conversation source includes an opt-in private Unix-socket adapter and
 a dedicated conditional queue/ledger exchange. The private adapter is installed;
-cloud transport remains uninstalled. No household tool access is added.
+the separate cloud transport and scoped manual consumer passed silent tests.
+No household tool access is added.
 
-The conversation transport template validates, and network-budget regressions
-pass. Cloud conversation resources and skill wiring are still not deployed.
+The cloud/local loop produced two warm audio replies in 5.03 and 2.79 seconds.
+The live skill wiring, TalkIntent build and physical conversational acceptance
+remain pending; no test audio was played.

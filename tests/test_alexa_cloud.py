@@ -140,6 +140,73 @@ class CloudSkillTests(unittest.TestCase):
             self.assertTrue(fixture_state.store.get("session")["closed"])
             self.assertFalse(fixture_state.store.get("session")["ready"])
 
+    def test_conversation_is_disabled_or_paired_and_inline_handler_signs_fixed_reply(self):
+        import os
+        from unittest.mock import patch
+        from okabebot.alexa_destination_relay import DestinationRelay
+
+        event = fixture("TalkIntent")
+        event["context"]["System"]["device"] = {"deviceId": "test-conversation"}
+        event["request"]["intent"]["slots"] = {"Query": {"value": "Why is the sky blue?"}}
+        self.assertIn(
+            "not connected",
+            cloud.handle(event, "local-prototype", Mock())["response"]["outputSpeech"]["text"],
+        )
+        spec = importlib.util.spec_from_file_location(
+            "conversation_deploy", ROOT / "scripts/deploy-alexa-skill.py"
+        )
+        deploy = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(deploy)
+        namespace = {}
+        exec(
+            compile(
+                deploy.template()["Resources"]["Skill"]["Properties"]["Code"]["ZipFile"],
+                "index.py",
+                "exec",
+            ),
+            namespace,
+        )
+        exchange = Mock()
+        exchange.open.side_effect = lambda request: request
+        exchange.wait.side_effect = lambda request, end: {
+            "id": request["id"],
+            "body_hash": request["body_hash"],
+            "text": "Air scatters blue light.",
+            "audio_safe": True,
+            "audio_ready": True,
+        }
+        namespace["aws_exchange"] = Mock(return_value=exchange)
+        sdk = Mock()
+        sdk.client.return_value.generate_presigned_url.return_value = (
+            "https://example.com/reply.mp3"
+        )
+        with (
+            patch.dict(
+                "sys.modules", {"boto3": sdk, "botocore": Mock(), "botocore.config": Mock()}
+            ),
+            patch.dict(
+                os.environ,
+                {
+                    "SKILL_ID": "local-prototype",
+                    "AUDIO_BUCKET": "generic-private",
+                    "DESTINATION_ENABLED": "false",
+                    "VISUALS_ENABLED": "false",
+                    "CONVERSATION_ENABLED": "true",
+                    "CONVERSATION_IDENTITY": DestinationRelay.identity(event),
+                    "CONVERSATION_TABLE": "table",
+                    "CONVERSATION_QUEUE": "queue",
+                    "CONVERSATION_AUDIO_BUCKET": "reply-private",
+                },
+            ),
+        ):
+            result = namespace["handler"](event, None)
+        self.assertEqual(result["response"]["outputSpeech"]["type"], "SSML")
+        self.assertFalse(result["response"]["shouldEndSession"])
+        signed = sdk.client.return_value.generate_presigned_url.call_args.kwargs["Params"]
+        self.assertEqual(signed["Bucket"], "reply-private")
+        self.assertTrue(signed["Key"].startswith("conversation/audio/"))
+        self.assertEqual(len(signed["Key"].split("/")[-1]), 68)
+
     def test_destination_iam_is_disabled_by_default_and_cannot_write_commands(self):
         value = json.loads((ROOT / "infra/aws/alexa-skill.json").read_text())
         self.assertEqual(value["Parameters"]["EnableDestination"]["Default"], "false")
@@ -160,6 +227,8 @@ class CloudSkillTests(unittest.TestCase):
         deploy = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(deploy)
         source = deploy.template()["Resources"]["Skill"]["Properties"]["Code"]["ZipFile"]
+        self.assertNotIn("from okabebot.", deploy.source())
+        self.assertLess(len(json.dumps(deploy.template()).encode()), 51200)
         self.assertNotIn("from okabebot.", source)
         self.assertNotIn("from .alexa_destination", source)
         namespace = {}
