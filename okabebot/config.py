@@ -186,6 +186,11 @@ def load(path):
     from .locations import validate as validate_locations
 
     validate_locations(settings["surfaces"])
+    cast_places = [p for p in settings["surfaces"]["locations"] if p["adapter"] == "cast"]
+    cast_hosts = [p.get("cast_host") or settings["spotify"]["cast_host"] for p in cast_places]
+    nonempty_hosts = [h for h in cast_hosts if h]
+    if len(nonempty_hosts) != len(set(nonempty_hosts)):
+        raise ValueError("Each Cast location must resolve to a different receiver host")
     from .alexa_voice import validate as validate_alexa_voice
 
     validate_alexa_voice(settings["alexa_voice"])

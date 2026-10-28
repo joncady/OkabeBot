@@ -17,7 +17,13 @@ On the ordinary controller dashboard, open **A bigger little lab**:
 - **Return to <destination>**, or the configured return button on the TV page, returns the companion
   and closes this receiver. This does not resume the previous TV app or movie.
 
-The layout defaults to Cast being left of the Pi. Saved dashboard coordinates
+The layout defaults to Cast being left of the Pi. The dashboard shows selectable
+monitor tiles on a grid, automatically fitted into view. Drag into an empty cell,
+or place the selected screen left/right/above/below a reference screen. Overlapping
+positions are rejected atomically, including positions reserved by pending screens.
+Legacy fractional positions are rounded and collisions resolved when the layout is
+next saved. Travel uses the dominant cardinal direction between any two screens
+(vertical on ties), with the reciprocal direction on return. Saved coordinates
 determine direction; `duration_seconds` configures pacing. `travel_side` remains
 a compatibility setting for older deployments. The Pi exits toward the other
 display. In the TV room, a small full-body companion walks through a doorway,
@@ -41,8 +47,9 @@ from the controller; network-speaker lip sync remains approximate.
 
 See [surfaces.json](../examples/surfaces.json) for a mergeable configuration example.
 Each destination has a stable `id`, a user-facing `name`, optional voice `aliases`
-and an `adapter`. Base configuration supports one `pi` and one `cast` adapter; approved browser/Mac
-instances extend that pair through the registry. Those
+and an `adapter`. Base configuration supports one `pi` and up to eight `cast` adapters; approved browser/Mac
+instances extend these through the registry. Additional Cast locations require their
+own private-LAN `cast_host`; duplicate receiver hosts are rejected. Those
 adapter roles are internal; neither the API nor voice commands require their IDs
 or displayed names to be “pi”, “tv”, or “shelf”. Names and aliases must be unique
 across destinations. Restart the controller after changing configuration.
@@ -76,11 +83,15 @@ messages, rather than a general promise of D-pad DOM events on all Cast TVs:
 
 ## Setup and boundaries
 
-Install the `cast` extra and configure the existing `spotify.source: cast`,
-`spotify.cast_host` and `spotify.device_name` connection. This prototype reuses
-that receiver connection; it does not yet have an independent Cast discovery
-adapter for API-only Spotify deployments. `surfaces.receiver` defaults to
-`dashcast`. There is no second receiver-host setting to keep synchronized.
+Install the `cast` extra. The first Cast location can reuse the existing
+`spotify.source: cast`, `spotify.cast_host` and `spotify.device_name` connection.
+To use independent receivers, set `cast_host` on each Cast location (required
+for the second and subsequent TVs). Each connection discovers its exact configured
+host; a similarly named or first-discovered TV is never substituted. Explicit
+connections also work without Cast-based Spotify observation.
+`surfaces.receiver` defaults to `dashcast`. A standalone Samsung can use an HDMI
+Chromecast to reuse the web renderer; native Samsung REST/WebSocket discovery
+alone does not establish support for rendering arbitrary web scenes.
 
 The configured `web.host` and controller port must be reachable from the TV on the
 trusted LAN. A loopback-only controller is suitable for a browser preview, not a
@@ -130,7 +141,9 @@ The Pi leaves only after TV artwork loads and the page is ready. The TV enters
 only after the Pi reports that an away frame was rendered. On return, the TV
 acknowledges its fully hidden final frame before the Pi enters. Duplicate/stale
 acknowledgements cannot replay movement. A confirmed Cast app exit, standby/input change after active input was observed,
-or scoped page-unload event requests return immediately. If the Pi is offline,
+or scoped page-unload event requests return immediately. Standby/input-loss flags
+are trusted only after active input has been observed for that receiver: standalone
+Chromecasts can otherwise report standby while their page is visibly loaded. If the Pi is offline,
 its desired return stays pending and retries on reconnection; the controller only
 reports arrival after a rendered-home acknowledgement. A page watchdog hides the
 TV character when live state stops arriving; a leased Pi command returns it if

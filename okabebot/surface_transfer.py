@@ -69,7 +69,7 @@ class DirectTransfer:
         elif role == "target":
             self.target_seen, self.target_ready = now, True
             if self.target_cast:
-                cast = self.owner.cast_getter()
+                cast = self.owner.cast_for(self.target_id)
                 if cast:
                     from pychromecast.config import APP_DASHCAST
 

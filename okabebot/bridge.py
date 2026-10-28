@@ -128,7 +128,13 @@ class Bridge:
         self.allowed_hosts.update(value.lower() for value in list(self.allowed_hosts))
         from .surfaces import Surfaces
 
-        self.surfaces = Surfaces(scene.rpc, lambda: getattr(self.media_source, "cast", None))
+        from .cast_surfaces import CastSurfaces
+
+        self.cast_surfaces = CastSurfaces(
+            config["surfaces"], lambda: getattr(self.media_source, "cast", None)
+        )
+        self.resources.callback(self.cast_surfaces.close)
+        self.surfaces = Surfaces(scene.rpc, cast_resolver=self.cast_surfaces.get)
         self.resources.callback(self.surfaces.close)
         from .surface_audio import AudioHub
 

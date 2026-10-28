@@ -673,3 +673,32 @@ After phone acceptance, temporary reservations were released back to the TV and
 Okabe was restored to the Pi once the active user turn completed. The Samsung
 TV/two-TV adapter expansion is a separate backlog item; no Samsung discovery or
 configuration was attempted during this pass.
+
+
+### Second TV and arrangement checkpoint (2026-10-27)
+
+Installed the independent Cast connection pool and grid arrangement editor on the
+Mac controller. The first TV retains its existing Cast media-observation route;
+additional `surfaces.locations[].cast_host` entries establish exact-host passive
+connections independently. Controller/model hosting, ports and audio routing are
+unchanged. The dashboard fits all screen tiles into view, rejects occupied grid
+cells and supports cardinal placement relative to any registered screen.
+
+Discovered a Samsung Q60B with local Tizen REST capability and a separate HDMI
+Chromecast. The user moved that dongle from the Vizio to the Samsung. Both the
+Vizio built-in receiver and the additional Chromecast report connected. The first
+Samsung visit loaded a receiver page but returned before accepted arrival; a
+standby flag without confirmed active input caused the return. The installed fix
+trusts standby only after active input has been observed, while retaining app-exit
+and visibility-lease recovery. The second visit timed out waiting for page readiness. A third visit completed
+receiver readiness, Pi rendered-away acknowledgement and TV entered acknowledgement,
+then remained at the Samsung destination. Physical Samsung appearance and exclusion
+on the Pi still need user confirmation; cold/repeated-launch reliability remains
+a test item.
+
+Existing two-set-per-character uniqueness remains enforced. Second-set reservations
+were temporarily moved from the first TV to the Samsung for testing; restore them
+after the test. No voice defaults or speaker volume were changed. Echo Show still
+uses its separate static APL skill prototype and is not a registered spatial
+location. Japanese speaker-embedding conditioning is an isolated private trial,
+not a deployed voice change.

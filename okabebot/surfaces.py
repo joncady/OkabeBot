@@ -10,7 +10,7 @@ class Surfaces:
     DURATION = 1.4
     RECEIVER_LEASE = 6
 
-    def __init__(self, rpc, cast_getter=lambda: None, start=True):
+    def __init__(self, rpc, cast_getter=lambda: None, start=True, cast_resolver=None):
         from .config import get_config
 
         self.settings = get_config()["surfaces"]
@@ -25,6 +25,7 @@ class Surfaces:
         self.travel_direction = self.settings["travel_side"]
         self.remote_input = None
         self.rpc, self.cast_getter = rpc, cast_getter
+        self.cast_resolver = cast_resolver
         self.lock = threading.RLock()
         self.phase = "pi"
         self.identifier = uuid.uuid4().hex
@@ -45,6 +46,12 @@ class Surfaces:
         if start:
             threading.Thread(target=self._run, daemon=True).start()
 
+    def cast_for(self, identity):
+        if self.cast_resolver is not None:
+            return self.cast_resolver(identity)
+        primary = next(p["id"] for p in self.settings["locations"] if p["adapter"] == "cast")
+        return self.cast_getter() if identity == primary else None
+
     def snapshot(self):
         with self.lock:
             from .config import get_config
@@ -54,7 +61,9 @@ class Surfaces:
             away = next((p for p in places if p["id"] == self.active_id), home)
             for place in places:
                 if place["adapter"] in ("pi", "cast"):
-                    place["available"] = place["adapter"] == "pi" or self.cast_getter() is not None
+                    place["available"] = (
+                        place["adapter"] == "pi" or self.cast_for(place["id"]) is not None
+                    )
             destination = (
                 away if self.phase in ("preparing", "leaving_pi", "entering_tv", "tv") else home
             )
@@ -160,7 +169,12 @@ class Surfaces:
                 home["id"], location_id, self.settings["locations"]
             )
             if place["adapter"] == "cast":
-                result = self.begin(base)
+                result = (
+                    self.begin(base, location_id=location_id)
+                    if location_id
+                    != next(p["id"] for p in self.settings["locations"] if p["adapter"] == "cast")
+                    else self.begin(base)
+                )
             else:
                 result = self.begin(base, launch=False)
             return {k: v for k, v in dict(result, accepted=True).items() if k != "url"}
@@ -280,10 +294,10 @@ class Surfaces:
             self.preview_until = time.monotonic() + 1800
             return {"url": base + "/tv/#" + self.preview_token}
 
-    def begin(self, base, launch=True):
+    def begin(self, base, launch=True, location_id=None):
         with self.lock:
             if launch:
-                self.active_id = next(
+                self.active_id = location_id or next(
                     p["id"] for p in self.settings["locations"] if p["adapter"] == "cast"
                 )
             if self.phase != "pi":
@@ -300,17 +314,19 @@ class Surfaces:
             )
             url = base + "/tv/#" + self.token
         if launch:
-            threading.Thread(target=self._launch, args=(url,), daemon=True).start()
+            threading.Thread(
+                target=self._launch, args=(url, None, self.active_id), daemon=True
+            ).start()
         return {"url": url, **self.snapshot()}
 
-    def _launch(self, url, direct=None):
+    def _launch(self, url, direct=None, location_id=None):
         from urllib.parse import urlsplit
 
         generation = urlsplit(url).fragment
         try:
             from pychromecast.controllers.dashcast import DashCastController
 
-            cast = self.cast_getter()
+            cast = self.cast_for(direct.target_id if direct else location_id or self.active_id)
             if cast is None:
                 raise ValueError(
                     "TV Cast connection unavailable; open the TV receiver URL to test the handoff in a browser"
@@ -359,7 +375,7 @@ class Surfaces:
             item = self.registered(token)
             if item:
                 self.registry.heartbeat(token)
-            cast = self.cast_getter()
+            cast = self.cast_for(self.active_id)
             if cast and not item:
                 from pychromecast.config import APP_DASHCAST
 
@@ -409,11 +425,11 @@ class Surfaces:
         return self._quit_receiver(self.active_id, self.receiver_session)
 
     def _quit_receiver(self, location_id, session):
-        if location_id != next(
-            p["id"] for p in self.settings["locations"] if p["adapter"] == "cast"
+        if not any(
+            p["id"] == location_id and p["adapter"] == "cast" for p in self.settings["locations"]
         ):
             return
-        cast = self.cast_getter()
+        cast = self.cast_for(location_id)
         if cast is None:
             return
         from pychromecast.config import APP_DASHCAST
@@ -462,11 +478,11 @@ class Surfaces:
         return self._location_gone(self.active_id, self.receiver_session, self.receiver_active)
 
     def _location_gone(self, location_id, session, active):
-        if location_id != next(
-            p["id"] for p in self.settings["locations"] if p["adapter"] == "cast"
+        if not any(
+            p["id"] == location_id and p["adapter"] == "cast" for p in self.settings["locations"]
         ):
             return False
-        cast = self.cast_getter()
+        cast = self.cast_for(location_id)
         if not cast or not session:
             return False
         from pychromecast.config import APP_DASHCAST
@@ -475,7 +491,7 @@ class Surfaces:
         return (
             status.app_id != APP_DASHCAST
             or (status.session_id is not None and status.session_id != session)
-            or getattr(status, "is_stand_by", None) is True
+            or (active and getattr(status, "is_stand_by", None) is True)
             or (active and getattr(status, "is_active_input", None) is False)
         )
 
@@ -613,7 +629,13 @@ class Surfaces:
         place_id = (
             item["id"]
             if item
+            else self.direct.source_id
+            if self.direct and self.direct.role(token) == "source"
+            else self.direct.target_id
+            if self.direct and self.direct.role(token) == "target"
             else next(p["id"] for p in status["locations"] if p["adapter"] == "cast")
+            if token == self.preview_token
+            else self.active_id
         )
         place = next(p for p in status["locations"] if p["id"] == place_id)
 

@@ -6,7 +6,6 @@ Device secrets are client generated, hashed at rest and never appear in snapshot
 
 import hashlib
 import json
-import math
 import re
 import threading
 import time
@@ -191,18 +190,28 @@ class Registry:
                 # Legacy scenes remain unchanged until the first explicit setup.
                 # Thereafter missing assignments block movement, never reuse a set.
                 data["scene_world_enabled"] = True
-            position = values.get("position")
-            if position is not None:
-                if (
-                    not isinstance(position, list)
-                    or len(position) != 2
-                    or any(
-                        type(v) not in (int, float) or not math.isfinite(v) or abs(v) > 10
-                        for v in position
-                    )
-                ):
-                    raise ValueError("Position must contain two coordinates within -10..10")
-                data["layout"][identity] = position
+            if "position" in values or "relative_to" in values or "placement" in values:
+                from .surface_layout import positions, validate, DIRECTIONS
+
+                layout = positions(list(known.values()), data["layout"])
+                if "relative_to" in values or "placement" in values:
+                    anchor, side = values.get("relative_to"), values.get("placement")
+                    if (
+                        "position" in values
+                        or anchor not in known
+                        or anchor == identity
+                        or side not in DIRECTIONS
+                    ):
+                        raise ValueError("Choose another screen and a cardinal placement")
+                    delta = DIRECTIONS[side]
+                    point = [layout[anchor][i] + delta[i] for i in range(2)]
+                else:
+                    point = values["position"]
+                validate(point)
+                if any(key != identity and point == other for key, other in layout.items()):
+                    raise ValueError("That screen space is occupied; choose an empty grid cell")
+                layout[identity] = point
+                data["layout"] = layout
             if "name" in values:
                 name = values["name"]
                 if not isinstance(name, str) or not 1 <= len(name.strip()) <= 40:
@@ -228,7 +237,11 @@ class Registry:
         data = self.read()
         values = [dict(p, approved=True) for p in places]
         values += [dict(p) for p in data["devices"].values() if include_pending or p["approved"]]
-        for i, item in enumerate(values):
+        from .surface_layout import positions
+
+        all_places = [*places, *data["devices"].values()]
+        layout = positions(all_places, data["layout"])
+        for item in values:
             item["presentation"] = data.get("presentations", {}).get(
                 item["id"], "room" if item["adapter"] == "cast" else "companion"
             )
@@ -237,10 +250,7 @@ class Registry:
             item["audio_target"] = data.get("audio", {}).get(
                 item["id"], "device" if item["adapter"] in ("browser", "mac") else "default"
             )
-            item["position"] = data["layout"].get(
-                item["id"],
-                [0 if item["adapter"] == "pi" else -1 if item["adapter"] == "cast" else i, 0],
-            )
+            item["position"] = layout[item["id"]]
             if item["adapter"] in ("browser", "mac"):
                 item["available"] = time.monotonic() - self.seen.get(item["id"], -1000) < 6
         return values
@@ -251,7 +261,6 @@ class Registry:
     def direction(self, origin, target, places):
         positions = {p["id"]: p["position"] for p in self.enrich(places)}
         a, b = positions[origin], positions[target]
-        dx, dy = b[0] - a[0], b[1] - a[1]
-        return (
-            ("left" if dx < 0 else "right") if abs(dx) >= abs(dy) else ("up" if dy < 0 else "down")
-        )
+        from .surface_layout import direction
+
+        return direction(a, b)

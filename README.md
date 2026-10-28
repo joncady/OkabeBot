@@ -61,6 +61,7 @@ flowchart TB
     App <-->|"Verified SSH: recordings, PCM and button events"| Voice
     TV["Vizio TV / Cast receiver"] -->|"Cast media callbacks"| App
     App -->|"Explicit DashCast launch and scoped TV dashboard: 8768"| TV
+    App -->|"Independent Cast connection; handoff acceptance pending"| Samsung["Samsung TV + HDMI Chromecast"]
     Places -->|"Acknowledged character handoff; Pi away sign"| Display
     Places -->|"Doorway ingress and room monitors"| TV
     Beam["Sonos Beam - announcement overlay trial accepted"]
@@ -478,3 +479,15 @@ in one step. Assignment edits protect the occupied set and return destination;
 the scene feature does not alter the deployed topology.
 
 ![Green Hill scene-set preview](docs/green-hill-preview.png)
+
+
+### Multiple TV destinations and screen arrangement
+
+The location registry now supports independent Cast receivers, selected by their
+configured private-LAN `cast_host`. The dashboard uses selectable screen tiles,
+zoom-to-fit, non-overlapping grid placement and explicit left/right/above/below
+controls relative to another screen. Travel follows cardinal directions. See
+[configuration and world rules](docs/surfaces.md) and the
+[multiple-TV example](examples/surfaces-multiple-tvs.json). The installed second
+receiver is connected; Samsung physical handoff acceptance remains pending.
+Scene-set reservations remain unique, so extra screens need an unreserved set.

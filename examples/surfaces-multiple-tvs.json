@@ -1,0 +1,42 @@
+{
+  "surfaces": {
+    "receiver": "dashcast",
+    "remote_controls": false,
+    "travel_side": "left",
+    "duration_seconds": 2.2,
+    "lab": {
+      "title": "Little Lab",
+      "theme": "pixel-lab"
+    },
+    "locations": [
+      {
+        "id": "desk",
+        "name": "Desk companion",
+        "aliases": [
+          "small screen",
+          "my desk"
+        ],
+        "adapter": "pi"
+      },
+      {
+        "id": "den",
+        "name": "Den display",
+        "aliases": [
+          "big screen",
+          "cinema"
+        ],
+        "adapter": "cast",
+        "cast_host": "192.168.1.20"
+      },
+      {
+        "id": "upstairs",
+        "name": "Upstairs display",
+        "aliases": [
+          "upstairs TV"
+        ],
+        "adapter": "cast",
+        "cast_host": "192.168.1.21"
+      }
+    ]
+  }
+}

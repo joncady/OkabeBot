@@ -382,3 +382,11 @@ footer span {
 .volume-controls input[type="range"] { flex: 1; min-width: 100px; min-height: 44px; accent-color: var(--accent, #a5f4ce); }
 .speaker-volume output { margin-left: 10px; font-variant-numeric: tabular-nums; }
 #location-map{height:280px;position:relative;overflow:hidden;margin:18px 0;border:1px solid #78988b;border-radius:12px;background:repeating-linear-gradient(0deg,transparent,transparent 33px,#78988b22 34px),repeating-linear-gradient(90deg,transparent,transparent 49px,#78988b22 50px)}.location-pin{position:absolute;transform:translate(-50%,-50%);max-width:150px;font-size:12px!important;padding:10px!important;touch-action:none;cursor:grab}.location-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0;padding:10px;border:1px solid #78988b44;border-radius:10px}.location-row input{max-width:190px}.location-row button{font-size:13px;padding:10px}.location-row span{font-size:12px}
+
+/* One non-overlapping grid cell per physical screen. No travel arrows in settings. */
+#location-map{height:420px;overflow:hidden;border-radius:0;background:#142832;scrollbar-color:#709c92 #142832}
+.location-stage{position:relative;transform-origin:top left;background:linear-gradient(#78988b18 1px,transparent 1px),linear-gradient(90deg,#78988b18 1px,transparent 1px);background-size:144px 112px}
+.location-screen{position:absolute;transform:translate(-50%,-50%);width:124px;height:78px;border:3px solid #718d8c!important;border-radius:2px!important;background:#203c47!important;color:#e0e8da!important;font:12px monospace!important;white-space:normal;overflow-wrap:anywhere;padding:6px!important;touch-action:none;user-select:none;cursor:grab;box-shadow:inset 0 0 0 4px #10232c;overflow:hidden}
+.location-screen.selected{border-color:#b6ddaa!important;box-shadow:0 0 0 2px #395747,inset 0 0 0 4px #10232c}.location-screen.collision{border-color:#ed9777!important;background:#683c3c!important}
+.location-screen[data-adapter=browser]{width:74px;height:94px}.location-screen[data-adapter=pi]{width:110px;height:78px}
+.arrangement-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}.arrangement-hint{flex-basis:100%;font:13px monospace;color:#b6cbbb}
