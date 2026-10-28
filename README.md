@@ -48,6 +48,9 @@ flowchart TB
         App -->|"Characters without Qwen references"| SystemVoice["macOS system voice fallback"]
         HA["Home Assistant Container: 8123"] -->|"Scoped notifications, Alexa schedules and arrivals"| App
         MCP["Optional stdio MCP server"] --> App
+        AlexaLocal["Opt-in private Alexa conversation adapter: Unix socket; cloud not connected"] --> Chat
+        AlexaLocal --> Speech
+        App -->|"Owns private adapter lifecycle"| AlexaLocal
         App --> Places["Configured and paired destinations; spatial layout and shared move interface"]
         MacPanel["Native floating Mac companion"] <-->|"Paired surface, hold-to-talk and streamed audio: localhost 8768"| App
     end
@@ -517,9 +520,9 @@ bypass is claimed. See [Alexa skill](docs/alexa-skill.md).
 
 A [conversational Alexa mini-cycle](docs/alexa-conversation.md) is now in progress:
 paired spoken questions, isolated local-model follow-ups and generated character
-replies. Protocol/model scaffolding is source-only; the live skill still provides
+replies. The private Mac adapter is installed for silent timing tests; the live skill still provides
 the accepted visual destination and generic voice demo, not conversational turns.
 
 The Alexa conversation source includes an opt-in private Unix-socket adapter and
-a dedicated conditional queue/ledger exchange. It remains uninstalled pending
-regressions and a silent local timing test; no household tool access is added.
+a dedicated conditional queue/ledger exchange. The private adapter is installed;
+cloud transport remains uninstalled. No household tool access is added.

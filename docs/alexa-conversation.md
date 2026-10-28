@@ -1,8 +1,9 @@
 # Alexa conversational mini-cycle
 
-Status: protocol, durable exchange and private local adapter implemented in source, not
-installed or exposed by the development skill. The accepted destination/demo
-continues operating separately. This is not yet a working spoken conversation.
+Status: the private Mac adapter is installed for silent timing tests. The
+request/reply exchange is implemented and regression-tested but not deployed.
+The live Alexa skill is not connected to it yet, so spoken conversational turns
+are not available. The accepted destination/demo continues separately.
 
 ## Target experience
 
@@ -61,7 +62,7 @@ eligibility, cross-session isolation, sensitive-input fallback, malformed model
 output and late-reply consumption. No audio was uploaded or played by these tests.
 
 Remaining gates: deploy the durable cloud transport and scoped credentials; install/benchmark
-the private adapter and audio deadlines; TalkIntent model build; Show speech
+the complete cloud/local audio deadlines; TalkIntent model build; Show speech
 animation and follow-up listening; measured cloud/local loop; user acceptance of
 two spoken questions, audibility and exit recovery. Record model, first PCM,
 encoding/upload and total cloud response separately. Physical audible onset still
@@ -70,6 +71,10 @@ requires the user or an explicitly authorized recording test.
 Sources: [SearchQuery carrier phrases](https://developer.amazon.com/en-US/docs/alexa/custom-skills/slot-type-reference.html#amazonsearchquery),
 [response deadline](https://developer.amazon.com/en-US/docs/alexa/custom-skills/send-the-user-a-progressive-response.html),
 [SSML audio and privacy requirements](https://developer.amazon.com/en-US/docs/alexa/custom-skills/speech-synthesis-markup-language-ssml-reference.html#audio).
+
+Install the optional consumer/encoder dependencies on the controller with
+`python -m pip install -e '.[alexa-conversation]'`. The adapter remains opt-in;
+installing the extra does not enable it or grant cloud permissions.
 
 ## Local adapter and durable exchange
 
@@ -87,3 +92,19 @@ request terminal after one claim. Retried sends use a FIFO deduplication ID.
 Replies stay in the private ledger; only eligible audio enters the media store.
 Expiry and permission errors are distinct, with no fallback that replays inference.
 The cloud resources, consumer and IAM wiring are not deployed yet.
+
+## Silent installed benchmark (2026-10-27)
+
+Two consecutive public questions in one isolated session generated complete MP3s
+locally without playback or upload. The first encoded turn took 4.480 seconds
+(model 1.672, first PCM 1.143 after voice start, synthesis 1.961, encoding 0.841).
+The follow-up took 2.268 seconds (model 0.761, first PCM 0.406, synthesis 1.470,
+encoding 0.034). These are individual warm observations, excluding Alexa, cloud
+transport, upload and Echo buffering; they are not full round-trip guarantees.
+An earlier cold trial exceeded six seconds. A missing encoder dependency was
+installed in the app environment before these successful measurements.
+
+A calendar question returned native-text-only eligibility with no synthesis.
+The model has no calendar access in this path. Speaker level and Pi ownership
+were preserved; no test audio was played. Broader privacy/latency evaluation is
+still required before claiming general conversational parity.
