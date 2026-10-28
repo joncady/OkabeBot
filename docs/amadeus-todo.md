@@ -121,9 +121,13 @@ acceptance and makes partial completion explicit.
 - [x] Owner controls for units, card rotation/expiry and optional configured-TV movement.
 - [x] Selected-TV pixel card rail; pause/guest/revocation and stale-source fallbacks.
 - [ ] Private eligible-morning acceptance and user-directed configuration refinements.
-- [ ] Two vertically stacked briefing cards with rotation, less unused padding and distance-readable typography.
-- [ ] Curated source-backed briefing content: forecasts, event countdowns and relevant device-health/action cards.
-- [ ] Optional forecasts, additional card sources, manual re-show and travel suppression.
+- [x] Two vertically stacked briefing cards with rotation, less unused padding and distance-readable typography.
+- [x] Grounded event countdowns, pending-important-notification counts and device-connection cards.
+- [x] Private opt-in named persona greeting and bounded spoken rundown, quiet-hours respecting and once per day.
+- [x] Optional supportive morning invitation with existing coaching consent and delivery limits.
+- [x] Manual re-show of an existing daily briefing, without a fabricated wake cue.
+- [ ] Forecasts and richer source-backed briefing prioritization.
+- [ ] Additional card sources and travel suppression.
 
 This rule does not complete routine learning or general proactive delivery work.
 See [morning.md](morning.md); personal trial observations remain private.

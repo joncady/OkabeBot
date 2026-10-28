@@ -91,7 +91,18 @@ def handle(handler, bridge, *, post=False):
             handler.connection.settimeout(5)
             data = json.loads(handler.rfile.read(size))
         service = Onboarding(state_dir() / "amadeus")
-        if path == "/amadeus/api/tv-prepare" and post:
+        if path == "/amadeus/api/morning-voice" and post:
+            from .morning_briefing import Briefing
+
+            result = Briefing(state_dir() / "amadeus").configure(data)
+        elif path == "/amadeus/api/morning-present" and post:
+            from .morning import Morning
+
+            if data != {} or bridge.snapshot().get("busy"):
+                raise ValueError("Wait until idle")
+            Morning(state_dir() / "amadeus").reopen()
+            result = {"accepted": bridge.dispatch_morning(manual=True)}
+        elif path == "/amadeus/api/tv-prepare" and post:
             from .morning import Morning
 
             destination = Morning(state_dir() / "amadeus").settings()["destination"]
@@ -110,6 +121,7 @@ def handle(handler, bridge, *, post=False):
             }
         elif path == "/amadeus/api/morning":
             from .morning import Morning
+            from .morning_briefing import Briefing
 
             morning = Morning(state_dir() / "amadeus")
             places = bridge.surfaces.snapshot()["locations"]
@@ -134,7 +146,10 @@ def handle(handler, bridge, *, post=False):
                     getattr(bridge, "tv_preparation", None)
                     and bridge.tv_preparation.configured(config["destination"])
                 ),
-                "summary": morning.view(preview=True),
+                "summary": Briefing(state_dir() / "amadeus").enrich(
+                    morning.view(preview=True), bridge.snapshot()
+                ),
+                "voice": Briefing(state_dir() / "amadeus").settings(),
                 "destinations": [
                     {"id": p["id"], "name": p["name"]} for p in places if p.get("adapter") == "cast"
                 ],

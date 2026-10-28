@@ -106,7 +106,8 @@ class MorningTests(unittest.TestCase):
         )
         cards = self.engine.view(preview=True)["cards"]
         self.assertIn("20°C", cards[0]["body"])
-        self.assertEqual(cards[1]["body"], "Invented appointment")
+        self.assertIn("Invented appointment", cards[1]["body"])
+        self.assertEqual(cards[1]["title"], "In 60 min")
         with self.assertRaises(ValueError):
             self.send(
                 "weather.test", "sunny", {"temperature": 900, "unit": "°C", "updated_at": self.now}

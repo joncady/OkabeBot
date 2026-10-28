@@ -1038,3 +1038,22 @@ Silent timing reproduced a synthesis timeout even with shorter replies, so that
 experiment was discarded. The isolated-tested remaining-grant lease correction deployed after AWS
 reauthorization; its physical stability is not yet accepted. No ownership topology, voice
 reference, or volume setting changed. Further physical retries are paused.
+
+## Morning speech and Cast audio responsibilities
+
+The native controller now enriches the configured morning rail with two stacked
+cards, available status counts and explicitly authorized supportive coaching.
+An independent private voice preference enables a once-daily named greeting and
+grounded rundown. Greeting generation runs on the existing local conversation
+worker without tools or source content; synthesis remains on the existing warm
+speech worker. Core defaults remain speech-off and quiet-hours-respecting.
+
+Both Cast destinations use their scoped TV receiver page as a streamed PCM sink
+for replies, with per-location software gain stored in the private location
+registry. HDMI carries audio to the TV’s configured output, including linked
+speakers. This uses existing controller HTTP routes and browser audio transport;
+no new port or worker is introduced. Active receiver tokens are limited to their
+own destination; previews cannot receive audio. Announcement routing is unchanged.
+The installed TV routes select their own device output with separately configured
+software gain. Source changes and installed configuration are distinct from physical audio
+acceptance, which still requires listening at each TV. Hardware volume is unchanged.

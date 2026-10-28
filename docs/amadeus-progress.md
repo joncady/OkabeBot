@@ -94,3 +94,14 @@ explicit policy change; aggregation alone does not authorize it.
 - Improved: refreshing an existing destination rotates its scoped capability so
   unload events from the replaced page cannot cancel the new visit. Regression
   coverage checks ownership preservation and old-capability revocation.
+
+## Grounded morning presentation and local destination speech
+
+- Improved: two stacked rotating cards, private named greeting preferences and a
+  bounded source-grounded rundown share the existing morning eligibility gates.
+- Improved: optional supportive coaching respects topic consent and delivery
+  limits; quiet hours apply by default, with no inferred health or sentiment.
+- Improved: Cast replies use their own authenticated audio receiver and software
+  gain; missing receivers cannot silently redirect a briefing to another device.
+- Limited: current weather and timed events remain the source coverage; forecasts,
+  all-day events and richer briefing prioritization remain follow-up work.

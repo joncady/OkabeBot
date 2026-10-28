@@ -213,6 +213,22 @@ class Surfaces:
         self._launch(url, location_id=location_id)
         return True
 
+    def audio_receiver(self, token):
+        """A transient Cast capability can receive only its active destination audio."""
+        with self.lock:
+            if (
+                not token
+                or not self.token
+                or not secrets.compare_digest(token, self.token)
+                or self.phase not in ("preparing", "leaving_pi", "entering_tv", "tv", "leaving_tv")
+                or not any(
+                    p["id"] == self.active_id and p["adapter"] == "cast"
+                    for p in self.settings["locations"]
+                )
+            ):
+                raise PermissionError("No active Cast audio receiver")
+            return self.active_id
+
     def registered(self, token):
         try:
             return self.registry.device(token)
@@ -689,10 +705,15 @@ class Surfaces:
         from .morning import Morning
         from .config import state_dir
 
-        morning = Morning(state_dir() / "amadeus").view(place_id)
+        from .morning_briefing import Briefing
+
+        morning = Briefing(state_dir() / "amadeus").enrich(
+            Morning(state_dir() / "amadeus").view(place_id), state
+        )
         return dict(
             status,
             morning=morning,
+            audio_volume=place.get("audio_volume", 20),
             environment=environment(
                 place, current_character()["style"], self.registry.scene_world_enabled()
             ),

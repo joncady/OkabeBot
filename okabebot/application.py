@@ -59,6 +59,8 @@ class Application:
                 (p for p in state["locations"] if p["id"] == state["current_location"]), None
             )
             target = (place or {}).get("audio_target", "default")
+            if (place or {}).get("adapter") == "cast" and target == "default":
+                target = "device"
             if target == "device":
                 return {
                     "target": "browser",

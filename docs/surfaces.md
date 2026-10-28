@@ -236,3 +236,18 @@ no duplicate actor visible. The user also confirmed the phone character,
 microphone and routed audio during a real conversation turn.
 Alexa's APL artwork exporter accepts `--set`, but the Show prototype is not yet a
 registered spatial destination and does not participate in these reservations.
+
+## Cast destination audio
+
+Cast locations default to `audio_target: device`. Their existing scoped receiver
+page consumes streamed PCM through Web Audio, with local mouth animation. The
+receiver capability identifies only the current Cast location; stale tokens and
+preview pages cannot receive speech. Audio must report ready before a reply can
+start; unavailable receivers fail without redirecting speech to the Pi.
+
+Locations exposes a separate per-screen voice gain (`audio_volume`, 0–100;
+Cast default 20). This is software gain, not the TV’s hardware volume. HDMI audio
+follows the TV’s configured speakers or linked sound system. Explicit Pi/Beam
+routing remains selectable. Announcement routing remains independent. Receivers
+attempt sound initialization on load; browsers that block autoplay show a small
+sound-enable button before speech is available.

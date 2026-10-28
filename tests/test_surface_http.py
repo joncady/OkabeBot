@@ -252,3 +252,18 @@ class SurfaceHttpTests(unittest.TestCase):
         with self.assertRaises(HTTPError):
             client("/surfaces/layout", {"id": device["id"], "name": "other"}, secret)
         self.surface.rpc.assert_not_called()
+
+    def test_transient_cast_audio_is_bound_to_current_receiver_and_preview_is_denied(self):
+        self.surface.begin("http://unused", launch=False)
+        token = self.surface.token
+        data = {"session": "a" * 32, "after": 0, "enabled": True}
+        with self.request("/surfaces/audio", token, data) as response:
+            self.assertEqual(json.load(response)["events"], [])
+        self.assertTrue(self.controller.surface_audio.ready(self.surface.active_id))
+        for secret in (self.surface.preview_token, self.controller.token, "wrong"):
+            with self.assertRaises(HTTPError) as caught:
+                self.request("/surfaces/audio", secret, data)
+            self.assertEqual(caught.exception.code, 403)
+        self.surface.token = "replacement"
+        with self.assertRaises(HTTPError):
+            self.request("/surfaces/audio", token, data)

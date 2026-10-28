@@ -124,6 +124,17 @@ class RegistryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.registry.update("companion", {"audio_target": "device"}, self.places)
 
+    def test_cast_device_audio_gain_is_persistent_and_bounded(self):
+        tv = next(p for p in self.places if p["adapter"] == "cast")
+        default = next(p for p in self.registry.enrich(self.places) if p["id"] == tv["id"])
+        self.assertEqual((default["audio_target"], default["audio_volume"]), ("device", 20))
+        self.registry.update(tv["id"], {"audio_target": "device", "audio_volume": 15}, self.places)
+        saved = next(p for p in Registry(self.path).enrich(self.places) if p["id"] == tv["id"])
+        self.assertEqual(saved["audio_volume"], 15)
+        for invalid in (-1, 101, True, 0.5, "20"):
+            with self.assertRaises(ValueError):
+                self.registry.update(tv["id"], {"audio_volume": invalid}, self.places)
+
     def test_schema_is_json_safe(self):
         self.registry.register(self.secret, "Phone", "browser")
         json.dumps(self.registry.enrich(self.places, True), allow_nan=False)

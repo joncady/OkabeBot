@@ -19,7 +19,9 @@ capability improvements, limitations and regressions.
 
 An opt-in [morning summary](docs/morning.md) can prepare weather/calendar cards
 on the first screen-on near an alarm and optionally present them on a configured
-TV. Its local schedule, destination and pixel card rail are configurable; source
+TV. Two stacked cards rotate in its pixel rail. Optional named, persona-generated
+greetings precede a grounded rundown, respecting quiet hours. TV replies use that
+TV’s own audio output with configurable per-location gain. Its local schedule and destination are configurable; source
 permissions and automatic TV movement remain separate. Optional Cast/CEC wake
 requires independent receiver power; existing visits refresh their scoped session
 when preparing a display.
@@ -78,7 +80,7 @@ flowchart TB
         AlexaLocal --> Speech
         App -->|"Owns private adapter lifecycle"| AlexaLocal
         App --> Places["Configured and paired destinations; spatial layout and shared move interface"]
-        App --> Morning["Opt-in first-screen/alarm morning rule; no model or speech"]
+        App --> Morning["Opt-in first-screen/alarm morning rule; grounded cards"]
         Morning -->|"Configured TV card rail and shared handoff"| Places
         HA -->|"Write-only phone cue / alarm / weather metadata"| Morning
         App --> Amadeus["Owner-only Amadeus setup; consent-gated shadow metadata; private SQLite; no nudges"]
@@ -101,6 +103,8 @@ flowchart TB
     App -->|"Explicit DashCast launch and scoped TV dashboard: 8768"| TV
     App -->|"Independent Cast connection and scoped dashboard"| Samsung["Samsung TV + HDMI Chromecast"]
     Morning -->|"Configured network / optional Cast-CEC wake"| Samsung
+    App -->|"Scoped PCM reply audio / per-location gain"| TV
+    App -->|"Scoped PCM reply audio / per-location gain"| Samsung
     Morning <-->|"Scoped HA input webhook and nonce-bound completion"| HA
     HA -->|"Samsung remote input selection"| Samsung
     Places -->|"Acknowledged character handoff; Pi away sign"| Display

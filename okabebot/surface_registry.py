@@ -168,6 +168,7 @@ class Registry:
                 data["layout"].pop(identity, None)
                 data.get("names", {}).pop(identity, None)
                 data.get("audio", {}).pop(identity, None)
+                data.get("audio_volumes", {}).pop(identity, None)
                 data.get("scenes", {}).pop(identity, None)
                 data.get("presentations", {}).pop(identity, None)
                 self.seen.pop(identity, None)
@@ -194,11 +195,16 @@ class Registry:
             if "audio_target" in values:
                 target = values["audio_target"]
                 allowed = {"default", "pi", "beam"}
-                if known[identity]["adapter"] in ("browser", "mac"):
+                if known[identity]["adapter"] in ("browser", "mac", "cast"):
                     allowed.add("device")
                 if target not in allowed:
                     raise ValueError("Invalid audio destination")
                 data.setdefault("audio", {})[identity] = target
+            if "audio_volume" in values:
+                volume = values["audio_volume"]
+                if type(volume) is not int or not 0 <= volume <= 100:
+                    raise ValueError("Audio gain must be 0–100")
+                data.setdefault("audio_volumes", {})[identity] = volume
             if "presentation" in values:
                 from .scene_sets import CATALOG
 
@@ -291,7 +297,10 @@ class Registry:
             item["scene_selections"] = dict(data.get("scenes", {}).get(item["id"], {}))
             item["name"] = data.get("names", {}).get(item["id"], item["name"])
             item["audio_target"] = data.get("audio", {}).get(
-                item["id"], "device" if item["adapter"] in ("browser", "mac") else "default"
+                item["id"], "device" if item["adapter"] in ("browser", "mac", "cast") else "default"
+            )
+            item["audio_volume"] = data.get("audio_volumes", {}).get(
+                item["id"], 20 if item["adapter"] == "cast" else 50
             )
             item["position"] = layout[item["id"]]
             if item["adapter"] in ("browser", "mac", "alexa"):

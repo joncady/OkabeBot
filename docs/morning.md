@@ -1,7 +1,8 @@
 # Configurable morning summary
 
 The morning rule is opt-in and deterministic. It does not learn a sleep schedule,
-listen to audio, infer health, or use an LLM. Existing Amadeus habit-learning and
+listen to audio or infer health. Optional speech generates only a short greeting;
+source facts remain grounded. Existing Amadeus habit-learning and
 coaching gates remain independent. Trial observations and personal configuration
 stay in private state, outside Git, issues and public progress logs.
 
@@ -23,12 +24,13 @@ stay in private state, outside Git, issues and public progress logs.
 5. If automatic presentation is explicitly enabled with a configured TV destination,
    use the shared character move/handoff interface. A busy controller skips automatic
    presentation, with no delayed replay or retry to interrupt later activity. This
-   can interrupt TV playback; it does not synthesize speech or change volume.
+   can interrupt TV playback. Optional speech uses the destination’s audio route;
+   preparation does not change hardware volume.
    An optional preparation binding sends a local wake packet, waits for HA power
    state, selects the configured input and checks Chromecast active-input status
    before handoff. Timeout/failure leaves the character on its existing surface.
 6. On the selected full-room TV surface, shift/reduce the room into the left area
-   and display rotating cards in a pixel-edged rail on the right quarter. Rotation
+   and display two vertically stacked rotating cards in a pixel-edged rail on the right quarter. Rotation
    does not reset on state polls. After the configured window, restore the normal
    centered room. Other locations do not receive morning cards.
 
@@ -169,3 +171,25 @@ in owner setup. Existing source credentials, pause, guest mode, retention and
 freshness guards apply. Titles, applications, volume and attributes are excluded.
 The opaque endpoint reference is stable and private, not anonymous. TV-on is
 household context, not proof of viewing, identity, preference or watched duration.
+
+## Optional spoken briefing
+
+Owner-only morning voice settings (`POST /amadeus/api/morning-voice`) are saved
+privately under `morning.voice`: enabled, spoken name, coaching inclusion and an
+explicit quiet-hours override. Speech defaults off; quiet hours are respected by
+default. A tool-free local model receives only the configured name and persona to
+compose the greeting. Calendar, weather and notification contents never enter its
+prompt. A bounded rundown follows from available source cards, with status counts
+and an optional supportive invitation from explicitly opted-in coaching topics.
+Existing coaching pause, stop and daily limits still apply. No inferred health
+assessment or audio sentiment is used.
+
+Speech waits for arrival and a ready destination speaker. It does not fall back to
+the Pi if a TV receiver is unavailable. Notification snooze, quiet hours, guest
+mode, collection pause and source permissions are checked before delivery. A
+private durable daily claim prevents duplicate or uncertain playback from being
+automatically replayed. Coaching delivery is recorded only after playback completes.
+
+The owner’s **Show today’s briefing** control reopens an existing real daily run;
+it does not fabricate a wake observation. It respects the same once-daily speech
+claim. Source freshness still applies, so missing sources remain explicit.

@@ -61,6 +61,7 @@ class Bridge:
         from .tv_prepare import TVPreparation
 
         self.tv_preparation = TVPreparation(state_dir())
+        self.morning_lock = threading.Lock()
         try:
             self.enabled = json.loads((state_dir() / "button-settings.json").read_text())["enabled"]
             if type(self.enabled) is not bool:
@@ -536,39 +537,99 @@ class Bridge:
         )
         return True  # HA must still confirm the TV is on before handoff.
 
-    def dispatch_morning(self):
-        # The phone event prepares once/day. Only explicit config may move a screen;
-        # no retry that could unexpectedly interrupt media later in the day.
+    def dispatch_morning(self, *, manual=False):
+        """One bounded wake/handoff/optional briefing, never replay failed speech."""
         from .morning import Morning
+        from .morning_briefing import Briefing
 
         config = Morning(state_dir() / "amadeus").settings()
-        if not config["present_on_wake"] or not config["destination"]:
-            return
+        if (not config["present_on_wake"] and not manual) or not config["destination"]:
+            return False
+        if not self.morning_lock.acquire(blocking=False):
+            return False
 
         def present():
+            claimed = False
+            owned = False
+            briefing = Briefing(state_dir() / "amadeus")
             try:
                 morning = Morning(state_dir() / "amadeus")
-                if morning.view(config["destination"]) and not self.snapshot()["busy"]:
-                    if not self.tv_preparation.prepare(
-                        config["destination"],
-                        lambda: self.destination_input_active(config["destination"]),
-                        wake_cast=lambda: self.wake_destination_cast(config["destination"]),
-                    ):
+                with self.lock:
+                    if not morning.view(config["destination"]) or self.snapshot()["busy"]:
                         return
+                    self.announcing = True
+                    owned = True
+                if not self.tv_preparation.prepare(
+                    config["destination"],
+                    lambda: self.destination_input_active(config["destination"]),
+                    wake_cast=lambda: self.wake_destination_cast(config["destination"]),
+                ):
+                    return
+                if morning.settings() != config or not morning.view(config["destination"]):
+                    return
+                self.surfaces.move(
+                    config["destination"],
+                    "http://%s:%s" % (get_config()["web"]["host"], self.port),
+                )
+                deadline = time.monotonic() + 30
+                while time.monotonic() < deadline and not self.closing.is_set():
+                    surface = self.surfaces.snapshot()
                     if (
-                        morning.settings() != config
-                        or not morning.view(config["destination"])
-                        or self.snapshot()["busy"]
+                        surface["phase"] == "tv"
+                        and surface.get("current_location") == config["destination"]
                     ):
+                        break
+                    if surface.get("error"):
                         return
-                    self.surfaces.move(
-                        config["destination"],
-                        "http://%s:%s" % (get_config()["web"]["host"], self.port),
-                    )
+                    self.closing.wait(0.25)
+                else:
+                    return
+                if self.notification_policy.settings["snoozed_until"] > time.time():
+                    return
+                if self.notification_policy.quiet() and not briefing.settings()["quiet_override"]:
+                    return
+                # A TV must acknowledge its own speaker; never redirect to the Pi.
+                deadline = time.monotonic() + 8
+                while (
+                    not self.surface_audio.ready(config["destination"])
+                    and time.monotonic() < deadline
+                ):
+                    self.closing.wait(0.2)
+                if not self.surface_audio.ready(config["destination"]):
+                    return
+                if not briefing.claim(config["destination"]):
+                    return
+                claimed = True
+                summary = briefing.enrich(morning.view(config["destination"]), self.snapshot())
+                spoken, generated, coach = briefing.message(
+                    summary, current_character(), getattr(self.codex, "compose_morning", None)
+                )
+                if not briefing.allowed(config["destination"]):
+                    return
+                if self.notification_policy.quiet() and not briefing.settings()["quiet_override"]:
+                    return
+                if self.notification_policy.settings["snoozed_until"] > time.time():
+                    return
+                if coach and briefing.coaching() != coach:
+                    spoken = spoken.replace(coach["body"], "").strip()
+                    coach = None
+                if self.surfaces.snapshot().get("current_location") != config["destination"]:
+                    return
+                # Resolve the current surface speaker; never use global announcement fallback.
+                character_tools.speak(spoken, "happy", purpose="reply")
+                briefing.complete(success=True, coach=coach)
+                claimed = False
             except Exception:
-                pass  # Keep a prepared summary without retries, speech or raw logs.
+                pass  # No transcripts, model prompts or private source data in logs.
+            finally:
+                if claimed:
+                    briefing.complete(success=False)
+                if owned:
+                    self.announcing = False
+                self.morning_lock.release()
 
         threading.Thread(target=present, daemon=True).start()
+        return True
 
     def poll_sources(self):
         while not self.closing.is_set():

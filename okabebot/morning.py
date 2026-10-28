@@ -1,4 +1,4 @@
-"""Private, deterministic morning preparation; never infers sleep or generates speech."""
+"""Private, deterministic morning preparation; never infers sleep; speech is an independently gated adapter."""
 
 from datetime import datetime
 import json
@@ -255,6 +255,39 @@ class Morning:
         finally:
             store.close()
 
+    def reopen(self):
+        store = self.store()
+        try:
+            with store.db:
+                store.db.execute("BEGIN IMMEDIATE")
+                setup = self.preference(store, KEY)
+                config = self.preference(store, CONFIG_KEY, dict(DEFAULTS))
+                if not self.permitted(setup, config):
+                    raise ValueError("Enable morning collection first")
+                row = store.db.execute(
+                    "SELECT id,payload FROM events WHERE kind='morning_summary' AND subject=? AND expires_at>? ORDER BY observed_at DESC LIMIT 1",
+                    (setup["profile"], store.clock()),
+                ).fetchone()
+                if not row:
+                    raise ValueError("No prepared morning run")
+                value = json.loads(row["payload"])
+                if (
+                    value["day"]
+                    != datetime.fromtimestamp(store.clock(), ZoneInfo(setup["timezone"]))
+                    .date()
+                    .isoformat()
+                ):
+                    raise ValueError("No run for today")
+                value.update(
+                    target=config["destination"],
+                    until_at=store.clock() + config["display_minutes"] * 60,
+                )
+                store.db.execute(
+                    "UPDATE events SET payload=? WHERE id=?", (json.dumps(value), row["id"])
+                )
+        finally:
+            store.close()
+
     def view(self, destination=None, *, preview=False):
         store = self.store()
         try:
@@ -341,10 +374,18 @@ class Morning:
                         cards.append(
                             {
                                 "kind": "calendar",
-                                "title": datetime.fromtimestamp(
+                                "title": "In "
+                                + str(max(1, round((v["start_at"] - store.clock()) / 60)))
+                                + " min",
+                                "body": datetime.fromtimestamp(
                                     v["start_at"], ZoneInfo(settings["timezone"])
-                                ).strftime("%H:%M"),
-                                "body": v["summary"],
+                                ).strftime("%H:%M")
+                                + " · "
+                                + v["summary"],
+                                "spoken": "In "
+                                + str(max(1, round((v["start_at"] - store.clock()) / 60)))
+                                + " minutes, "
+                                + v["summary"],
                             }
                         )
                     if not values:

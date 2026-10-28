@@ -86,8 +86,11 @@ def handle(handler, bridge, post=False):
             base = "http://%s:%s" % (get_config()["web"]["host"], bridge.port)
             handler.respond(200, bridge.surfaces.move(item["id"], base))
         elif path.endswith("audio"):
-            item = bridge.surfaces.registry.device(token)
-            handler.respond(200, bridge.surface_audio.poll(item["id"], data))
+            try:
+                identity = bridge.surfaces.registry.device(token)["id"]
+            except PermissionError:
+                identity = bridge.surfaces.audio_receiver(token)
+            handler.respond(200, bridge.surface_audio.poll(identity, data))
         elif path.endswith("register"):
             if data.get("kind") == "alexa":
                 item = bridge.surfaces.registry.register(

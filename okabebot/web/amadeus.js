@@ -11,7 +11,7 @@ const amadeusUI = (() => {
     for(const id of ['amadeus-setup','amadeus-controls','amadeus-memory','amadeus-morning']) $(id).hidden=true;
     $('amadeus-form').reset();$('memory-form').reset();
     $('sources').replaceChildren();$('topics').replaceChildren();$('memory-list').replaceChildren();
-    $('morning-test-status').textContent='';$('morning-test-tv').disabled=true;$('morning-preview').textContent='';$('morning-status').textContent='';$('morning-form').reset();$('morning-destination').replaceChildren();
+    $('morning-voice-form').reset();$('morning-show-status').textContent='';$('morning-test-status').textContent='';$('morning-test-tv').disabled=true;$('morning-preview').textContent='';$('morning-status').textContent='';$('morning-form').reset();$('morning-destination').replaceChildren();
     $('event-list').textContent='';$('household-list').textContent='';$('coaching-state').textContent='';
   }
   async function api(path, data) {
@@ -61,6 +61,8 @@ const amadeusUI = (() => {
   async function morning() {
     const value=await api('morning');if(!value.config)return;
     const c=value.config;$('amadeus-morning').hidden=false;
+    const voice=value.voice||{};$('morning-spoken').checked=!!voice.enabled;$('morning-name').value=voice.name||'';
+    $('morning-coaching').checked=!!voice.coaching;$('morning-quiet-override').checked=!!voice.quiet_override;
     $('morning-test-tv').disabled=!value.tv_preparation_configured;
     $('morning-start').value=c.start_hour;$('morning-end').value=c.end_hour;$('morning-unit').value=c.temperature_unit;
     $('morning-enabled').checked=c.enabled;$('morning-present').checked=c.present_on_wake;
@@ -99,13 +101,19 @@ const amadeusUI = (() => {
       $('amadeus-guest').textContent=current.guest?'Guest mode on':'Guest mode off';
       $('amadeus-guest').setAttribute('aria-pressed',String(current.guest)); await memory(); await morning();
     }
-    message(value.collection_active ? 'Shadow metadata collection enabled · predictions and nudges off.' : 'Shadow metadata collection paused · predictions and nudges off.');
+    message(value.collection_active ? 'Shadow metadata collection enabled · general predictions and nudges off; morning options are separate.' : 'Shadow metadata collection paused · general predictions and nudges off; morning options are separate.');
   }
   async function run(action) { try { await action(); } catch(error) { message(error.message); } }
   $('morning-test-tv').onclick=()=>run(async()=>{
     $('morning-test-status').textContent='Preparing TV… this may turn it on and change input.';
     const result=await api('tv-prepare',{});
     $('morning-test-status').textContent=result.ready?(result.input_verified?'TV ready · Chromecast input confirmed.':'TV preparation complete · input status unavailable; configured fallback used.'):'TV not confirmed ready · character stays on its current screen.';
+  });
+  $('morning-voice-form').onsubmit=event=>{event.preventDefault();run(async()=>{
+    await api('morning-voice',{enabled:$('morning-spoken').checked,name:$('morning-name').value,coaching:$('morning-coaching').checked,quiet_override:$('morning-quiet-override').checked});await morning();message('Morning voice choices saved.');
+  });};
+  $('morning-show').onclick=()=>run(async()=>{
+    const result=await api('morning-present',{});$('morning-show-status').textContent=result.accepted?'Preparing today’s briefing. Speech respects quiet hours and the daily limit.':'Briefing is already preparing or unavailable.';
   });
   $('morning-form').onsubmit=event=>{event.preventDefault();run(async()=>{
     await api('morning',{start_hour:Number($('morning-start').value),end_hour:Number($('morning-end').value),temperature_unit:$('morning-unit').value,enabled:$('morning-enabled').checked,destination:$('morning-destination').value,

@@ -524,6 +524,38 @@ class LocalConversation:
             with self.lock:
                 self.busy = False
 
+    def compose_morning(self, character, name):
+        """Generate one named greeting; no household facts, tools or chat history."""
+        from .welcome import validate_intro
+
+        with self.lock:
+            if self.busy or self.closed or self.process.poll() is not None:
+                raise ValueError("Local model unavailable for morning greeting")
+            self.busy = True
+            self.cancelled.clear()
+        try:
+            self.process.stdin.write(
+                json.dumps(
+                    {
+                        "task": "morning",
+                        "text": "Say good morning to " + name + ".",
+                        "persona": character.get("welcome_persona") or character["persona"],
+                        "tool_names": [],
+                    }
+                )
+                + "\n"
+            )
+            self.process.stdin.flush()
+            result = self._read()
+            if self.cancelled.is_set():
+                raise InterruptedError("Morning greeting cancelled")
+            if result.get("error") or result.get("tool_call"):
+                raise ValueError("Morning greeting generation failed")
+            return validate_intro(result.get("text"))
+        finally:
+            with self.lock:
+                self.busy = False
+
     def compose_alexa(self, text, session, character, deadline):
         """Tool-free, isolated Alexa turn on the existing warm model.
 
