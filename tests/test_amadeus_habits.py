@@ -35,6 +35,13 @@ class HabitTests(unittest.TestCase):
         self.planner = HabitPlanner(self.store)
         self.counter = 0
 
+    def test_partial_config_preserves_explicit_policy(self):
+        configure(self.store, enabled=True, min_days=6, max_daily=1)
+        result = configure(self.store, enabled=False)
+        self.assertEqual(result["min_days"], 6)
+        self.assertEqual(result["max_daily"], 1)
+        self.assertFalse(result["enabled"])
+
     def event(self, day, hour, source, kind, payload, subject="unknown"):
         self.counter += 1
         return self.store.observe(

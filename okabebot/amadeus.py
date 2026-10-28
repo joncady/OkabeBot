@@ -16,9 +16,10 @@ FIELDS = {
     "presence": {"state", "room"},
     "door": {"state"},
     "interaction": {"action", "surface"},
-    "media": {"app", "title", "content_id", "state", "duration_s", "position_s"},
-    "calendar": {"event_id", "summary", "start_at", "end_at", "snapshot_id"},
-    "calendar_snapshot": {"snapshot_id", "event_count", "start_at", "end_at"},
+    "media": {"app", "title", "content_id", "state", "duration_s", "position_s", "device_id"},
+    "calendar": {"event_id", "summary", "start_at", "end_at", "snapshot_id", "busy", "all_day"},
+    "calendar_snapshot": {"snapshot_id", "event_count", "start_at", "end_at", "busy_coverage"},
+    "availability": {"signal", "state", "device_id", "observation"},
     "tv_state": {"state", "device_id", "observation"},
     "phone_wake": {"state"},
     "phone_alarm": {"alarm_at"},
@@ -185,15 +186,32 @@ class Store:
                     "DELETE FROM preferences WHERE subject=? AND key=?", (subject, key)
                 ).rowcount
             count = self.db.execute("DELETE FROM preferences WHERE subject=?", (subject,)).rowcount
+            if self.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='context_exposures'"
+            ).fetchone():
+                count += self.db.execute(
+                    "DELETE FROM context_exposures WHERE subject=?", (subject,)
+                ).rowcount
             return (
                 count + self.db.execute("DELETE FROM events WHERE subject=?", (subject,)).rowcount
             )
 
     def prune(self):
         with self.db:
-            return self.db.execute(
-                "DELETE FROM events WHERE expires_at<=?", (self.clock(),)
-            ).rowcount
+            count = 0
+            if self.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='context_exposures'"
+            ).fetchone():
+                count = self.db.execute(
+                    "DELETE FROM context_exposures WHERE shown_at<=?",
+                    (self.clock() - min(self.retention, 7 * 86400),),
+                ).rowcount
+            return (
+                count
+                + self.db.execute(
+                    "DELETE FROM events WHERE expires_at<=?", (self.clock(),)
+                ).rowcount
+            )
 
 
 def main():

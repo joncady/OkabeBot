@@ -87,6 +87,11 @@ class Collector:
             if not value.get("title") and state not in ("IDLE", "UNKNOWN"):
                 return []
             payload = {"app": text(value["app"]), "state": state}
+            if "device_id" in value:
+                endpoint = value["device_id"]
+                if not isinstance(endpoint, str) or not 1 <= len(endpoint) <= 200:
+                    raise ValueError("Use a bounded media endpoint")
+                payload["device_id"] = digest(endpoint)
             if value.get("title"):
                 payload["title"] = text(value["title"])
             if value.get("content_id"):
@@ -124,21 +129,33 @@ class Collector:
         checked = state.get("calendar_checked_at")
         if type(checked) not in (int, float) or not 0 <= self.clock() - checked <= 300:
             return {"state": "stale"}
-        upcoming = state.get("calendar_upcoming")
+        upcoming = state.get("calendar_context", state.get("calendar_upcoming"))
         if not isinstance(upcoming, list) or len(upcoming) > 200:
             return {"state": "unavailable"}
         records = []
+        busy_complete = state.get("calendar_busy_complete") is True
         for item in upcoming:
-            start = item.get("start")
-            if type(start) not in (int, float) or not math.isfinite(start) or start <= checked:
+            start, end = item.get("start"), item.get("end")
+            if type(start) not in (int, float) or not math.isfinite(start):
+                busy_complete = False
                 continue
-            records.append(
-                {
-                    "event_id": digest([item.get("title"), start]),
-                    "summary": text(item.get("title")),
-                    "start_at": start,
-                }
-            )
+            valid_end = type(end) in (int, float) and math.isfinite(end) and end > start
+            if not valid_end or type(item.get("busy")) is not bool:
+                busy_complete = False
+            if start <= checked and not (valid_end and end > checked):
+                continue
+            payload = {
+                "event_id": digest([item.get("title"), start]),
+                "summary": text(item.get("title")),
+                "start_at": start,
+            }
+            if valid_end:
+                payload["end_at"] = end
+            if type(item.get("busy")) is bool:
+                payload["busy"] = "busy" if item["busy"] else "free"
+            if type(item.get("all_day")) is bool:
+                payload["all_day"] = "yes" if item["all_day"] else "no"
+            records.append(payload)
         snapshot_id = digest([records, int(checked // 300)])
         for payload in records:
             payload["snapshot_id"] = snapshot_id
@@ -152,11 +169,62 @@ class Collector:
             "event_count": len(records),
             "start_at": checked,
             "end_at": checked + 2 * 86400,
+            "busy_coverage": "complete" if busy_complete else "partial",
         }
         # Mark completeness only after every permitted record was stored.
         # Include checked time in the marker ID to avoid conflicting stable IDs.
         return self._record(
             "calendar", lambda _: [("calendar_snapshot", marker, "profile", digest(marker), None)]
+        )
+
+    def availability(self, data):
+        expected = {"entity_id", "state", "event_id", "observed_at"}
+        if not isinstance(data, dict) or set(data) != expected:
+            raise ValueError("Invalid availability envelope")
+        if (
+            not isinstance(data["entity_id"], str)
+            or not 1 <= len(data["entity_id"]) <= 200
+            or not isinstance(data["event_id"], str)
+            or not 1 <= len(data["event_id"]) <= 128
+        ):
+            raise ValueError("Use bounded availability identifiers")
+        if (
+            type(data["observed_at"]) not in (int, float)
+            or not 0 <= self.clock() - data["observed_at"] <= 60
+        ):
+            raise ValueError("Stale availability")
+        if data["state"] not in ("on", "off", "unknown", "unavailable"):
+            raise ValueError("Use normalized coarse availability states")
+        bindings = json.loads((self.folder / "ha-bindings.json").read_text()).get(
+            "availability", {}
+        )
+        signal = next(
+            (
+                k
+                for k in ("dnd", "focus", "charging", "room")
+                if data["entity_id"] in bindings.get(k, [])
+            ),
+            None,
+        )
+        if not signal:
+            raise PermissionError("Unbound availability source")
+        payload = {
+            "signal": signal,
+            "state": "unknown" if data["state"] == "unavailable" else data["state"],
+            "device_id": digest(data["entity_id"]),
+            "observation": "snapshot" if data["event_id"].startswith("snapshot:") else "change",
+        }
+        return self._record(
+            "availability",
+            lambda _: [
+                (
+                    "availability",
+                    payload,
+                    "household" if signal == "room" else "profile",
+                    digest([data["entity_id"], data["event_id"]]),
+                    data["observed_at"],
+                )
+            ],
         )
 
     def home_assistant(self, data):

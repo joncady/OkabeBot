@@ -26,6 +26,7 @@ def handle(handler, bridge, *, post=False):
         return True
     if path in (
         "/amadeus/source/ha",
+        "/amadeus/source/availability",
         "/amadeus/source/morning",
         "/amadeus/source/tv-ready",
         "/amadeus/source/person",
@@ -57,7 +58,9 @@ def handle(handler, bridge, *, post=False):
                 raise ValueError("Invalid source size")
             handler.connection.settimeout(5)
             data = json.loads(handler.rfile.read(size))
-            if path.endswith("person"):
+            if path.endswith("availability"):
+                result = Collector(folder).availability(data)
+            elif path.endswith("person"):
                 from .morning_briefing import Briefing
 
                 result = Briefing(folder).update_person(data)
@@ -112,6 +115,21 @@ def handle(handler, bridge, *, post=False):
             result = {
                 "config": preference(service.store, SYSTEM, CONFIG_KEY, DEFAULTS),
                 "preview": HabitPlanner(service.store).snapshot(),
+                "delivery_enabled": False,
+            }
+        elif path == "/amadeus/api/opportunities":
+            from .amadeus_opportunities import ContextPlanner, configure_context
+
+            if not service.settings():
+                raise ValueError("Save private setup first")
+            if post:
+                if not isinstance(data, dict) or set(data) != {"preferences", "catalog"}:
+                    raise ValueError("Provide explicit preferences and catalogue")
+                configure_context(
+                    service.store, service.subject(), data["preferences"], data["catalog"]
+                )
+            result = {
+                "preview": ContextPlanner(service.store).snapshot(),
                 "delivery_enabled": False,
             }
         elif path == "/amadeus/api/habit-feedback" and post:

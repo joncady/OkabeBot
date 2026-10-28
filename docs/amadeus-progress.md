@@ -167,3 +167,16 @@ explicit policy change; aggregation alone does not authorize it.
 
 - Improved: rest coaching is phrased as an optional invitation rather than an
   assertion that the user's schedule allows a slow start.
+
+## Context-aware shadow opportunities
+
+- Added: separately consented coarse availability and explicit busy/end calendar
+  metadata, preserving unknown state and partial coverage.
+- Added: opt-in, owner-only context previews with useful bounded facts and explicit
+  preference/catalogue filtering; delivery remains disabled.
+- Improved: recommendation timing considers ongoing meetings and multiple players;
+  quiet-room observations remain distinct from recipient identity or receptivity.
+- Added: matched offline replay and an anchored helpfulness rubric that includes
+  silent days and missed opportunities, with hidden truth separate from input.
+- Remaining: real provider coverage, recipient identity and human acceptance;
+  synthetic persona reviews cannot establish real-world usefulness.

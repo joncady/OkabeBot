@@ -61,6 +61,19 @@ class AmadeusHttpTests(unittest.TestCase):
         ) as r:
             return json.load(r)
 
+    def test_opportunities_are_owner_only_default_off_shadow(self):
+        self.request("/amadeus/api/settings", SETUP)
+        result = self.request("/amadeus/api/opportunities")
+        self.assertEqual(result["preview"]["state"], "disabled")
+        self.assertFalse(result["delivery_enabled"])
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/opportunities", token="publish-only")
+        self.assertEqual(caught.exception.code, 403)
+        with self.assertRaises(HTTPError):
+            self.request(
+                "/amadeus/api/opportunities", {"preferences": {}, "catalog": [], "profile": "other"}
+            )
+
     def test_habit_preview_is_owner_only_shadow_and_feedback_is_explicit(self):
         self.request("/amadeus/api/settings", SETUP)
         preview = self.request("/amadeus/api/habits")

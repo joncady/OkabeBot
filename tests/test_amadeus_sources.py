@@ -32,6 +32,58 @@ class SourceTests(unittest.TestCase):
         self.owner.close()
         self.folder.cleanup()
 
+    def test_availability_is_separately_consented_bound_and_coarse(self):
+        bindings = json.loads((self.path / "ha-bindings.json").read_text())
+        bindings["availability"] = {"dnd": ["binary_sensor.synthetic_dnd"]}
+        (self.path / "ha-bindings.json").write_text(json.dumps(bindings))
+        data = dict(
+            entity_id="binary_sensor.synthetic_dnd",
+            state="on",
+            event_id="synthetic-availability",
+            observed_at=self.now,
+        )
+        self.owner.control({"paused": False})
+        self.assertEqual(self.collector.availability(data)["state"], "not_permitted")
+        self.owner.save(dict(SETUP, sources=["availability"]))
+        self.assertEqual(self.collector.availability(data)["state"], "stored")
+        event = self.owner.memory()["events"][0]
+        self.assertEqual(event["payload"]["signal"], "dnd")
+        self.assertEqual(event["payload"]["state"], "on")
+        self.assertNotIn("synthetic_dnd", json.dumps(event))
+        with self.assertRaises(PermissionError):
+            self.collector.availability(dict(data, entity_id="binary_sensor.other"))
+        with self.assertRaises(ValueError):
+            self.collector.availability(dict(data, observed_at=self.now - 61))
+        with self.assertRaises(ValueError):
+            self.collector.availability(dict(data, transcript="private"))
+
+    def test_calendar_keeps_ongoing_busy_end_and_marks_partial_inputs(self):
+        self.owner.control({"paused": False})
+        data = dict(
+            calendar_checked_at=self.now,
+            calendar_busy_complete=True,
+            calendar_upcoming=[
+                dict(
+                    title="Invented meeting",
+                    start=self.now - 1800,
+                    end=self.now + 1800,
+                    busy=True,
+                    all_day=False,
+                )
+            ],
+        )
+        self.collector.calendar(data)
+        events = self.owner.memory()["events"]
+        meeting = next(e for e in events if e["kind"] == "calendar")
+        self.assertEqual(meeting["payload"]["busy"], "busy")
+        self.assertEqual(meeting["payload"]["end_at"], self.now + 1800)
+        marker = next(e for e in events if e["kind"] == "calendar_snapshot")
+        self.assertEqual(marker["payload"]["busy_coverage"], "complete")
+        self.now += 1
+        self.collector.calendar(dict(calendar_checked_at=self.now, calendar_upcoming=[]))
+        marker = next(e for e in self.owner.memory()["events"] if e["kind"] == "calendar_snapshot")
+        self.assertEqual(marker["payload"]["busy_coverage"], "partial")
+
     def test_pause_guest_source_revocation_and_forget_gate_every_event(self):
         self.assertEqual(self.collector.media(self.video)["state"], "paused")
         self.owner.control({"paused": False})
@@ -57,6 +109,15 @@ class SourceTests(unittest.TestCase):
         self.assertNotIn("liked", json.dumps(event))
         self.now += 130
         self.assertEqual(self.collector.media(self.video)["state"], "no_metadata")
+
+    def test_media_preserves_hashed_endpoints_for_same_app_players(self):
+        self.owner.control({"paused": False})
+        self.collector.media(dict(self.video, device_id="invented-tv-a"))
+        self.collector.media(dict(self.video, device_id="invented-tv-b", state="IDLE"))
+        events = self.owner.memory()["household_events"]
+        self.assertEqual(len({e["payload"]["device_id"] for e in events}), 2)
+        self.assertNotIn("invented-tv-", json.dumps(events))
+        self.assertEqual({e["payload"]["state"] for e in events}, {"PLAYING", "IDLE"})
 
     def test_stop_with_cleared_title_is_preserved_without_claiming_completion(self):
         self.owner.control({"paused": False})

@@ -18,8 +18,10 @@ private. The [public progress log](docs/amadeus-progress.md) describes only gene
 capability improvements, limitations and regressions.
 
 An initial [local shadow routine learner and accelerated replay](docs/amadeus-simulation.md)
-can preview explainable cue windows from prior observed days. Its owner-only
-previews default off, and general notification/action delivery is not enabled.
+can preview explainable cue windows from prior observed days. A separate context
+preview uses coarse availability, busy calendar intervals and saved entertainment
+preferences to propose quiet, actionable cards. Owner-only previews default off;
+general notification/action delivery is not enabled.
 This repository capability is separate from the installed deployment map below.
 
 An opt-in [morning summary](docs/morning.md) can prepare weather/calendar cards

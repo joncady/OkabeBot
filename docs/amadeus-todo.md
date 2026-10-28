@@ -149,9 +149,23 @@ See [morning.md](morning.md); personal trial observations remain private.
 - [ ] Unify morning, coaching and learned proposals under one attention ledger.
 - [ ] Add explicit defer/dismiss scope for morning speech versus silent cards.
 - [ ] Add source coverage/health evidence and shift-aware, alarm-relative wake cues.
-- [ ] Evaluate calendar end/busy state, DND/focus and room/surface availability before live delivery.
+- [x] Add shadow gates for explicit calendar end/busy coverage, DND/focus and shared-room context.
+- [ ] Validate those gates against actual selected HA entities before live delivery.
+- [ ] Add a fresh streaming-availability catalogue adapter with explicit provider entitlements.
+- [ ] Distinguish recipient identity from shared room/TV activity before personalized proactive delivery.
+- [ ] Evaluate stale sensors, multi-player disagreement and household ambiguity without fabricating availability.
 - [ ] Expand realistic household/ad/autoplay, DST, travel and sparse-data holdouts.
 - [ ] Confirm privacy/surface and recipient identity gates before any general notifications.
 
 Synthetic replay cannot replace the human acceptance checkpoints or prove an
 available streaming catalogue, a preferred title, a health need or observed sleep.
+- [ ] Distinguish publisher heartbeat from underlying phone/sensor last-seen time;
+  a refreshed HA cached value must not silently prove a device is still reporting.
+- [ ] Add explicit helpful/later/not-me card feedback without inferring sentiment
+  or health consent from silence, phone activity or shared media.
+- [ ] Validate wake intent with an alarm-dismissal or explicit sleep-mode cue;
+  sustained DND can also be work focus and does not prove sleep or waking.
+- [ ] Add retained/requestable entertainment shortlists and a browsing-intent
+  signal before broadening autonomous media suggestions.
+- [ ] Evaluate an operational-day agenda for overnight shifts, explicitly dating
+  commitments beyond midnight instead of silently assuming a midnight boundary.

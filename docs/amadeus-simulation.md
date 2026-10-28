@@ -74,7 +74,7 @@ python scripts/amadeus-evaluate.py \
   --after 2030-01-14 --report .local/experiment/evaluation.json
 ```
 
-The replay fixture explicitly opts a synthetic profile into the seven supported
+The legacy replay fixture explicitly opts a synthetic profile into all supported
 sources and four coaching topics, with Los Angeles time and 22:00–07:00 quiet
 hours. This is a declared policy-stress configuration, not a reconstruction of a
 participant's consent or a fair test of every persona's preferred setup. The
@@ -110,3 +110,78 @@ Commit only reusable code, invented focused regressions and declarative capabili
 notes. Keep generated traces, truth, reactions, reports, derived metrics and all
 participant observations private. Do not enable live suggestions solely because
 this simulation passes.
+
+## Context opportunities and helpfulness extension
+
+`ContextPlanner` is a separate opt-in shadow policy. Activity-window prediction
+remains evidence about activity, while fresh device/context changes create possible
+openings. It produces a quiet weather/calendar card, a conditional departure check,
+or a catalogue-backed choice. It does not start playback or dispatch notifications.
+The owner-only `/amadeus/api/opportunities` endpoint accepts explicit `preferences`
+and `catalog` objects and returns a preview with `delivery_enabled: false`. Routine
+learning must also be enabled. No new preference is inferred from household playback.
+
+Availability is a separately consented source. Only explicitly bound coarse
+DND/focus, charging and shared-room signals can enter `/amadeus/source/availability`.
+Use the publish-only credential and private allowlists; never forward raw phone
+attributes, app lists or audio. Unknown/stale DND/focus suppress opportunities.
+The example [HA publisher](../examples/home-assistant/availability.yaml) sends
+changes plus five-minute current-state snapshots. Snapshots are not new physical
+transitions. A shared occupancy sensor cannot identify the viewer.
+
+Calendar snapshots may include `end`, explicit Boolean `busy` and `all_day`.
+`calendar_busy_complete: true` is a provider capability declaration, not an inference
+from an empty feed: it requires ongoing intervals as well as upcoming entries.
+Partial feeds cannot establish that the user is available. Playback is checked
+across players, including TV state, rather than only the last app that updated.
+Pauses remain protected as part of an ongoing viewing session.
+
+For matched synthetic comparisons:
+
+```sh
+python scripts/amadeus-context-simulate.py \
+  --warmup .local/experiment/events-dev.json \
+  --events .local/experiment/events-test.json \
+  --profile .local/experiment/profile.json \
+  --catalog .local/experiment/catalog.json \
+  --engine context --output .local/experiment/context-test
+```
+
+Use `--engine baseline` with the same inputs for the earlier cue-window policy.
+The richer harness honors each fictional profile's explicit coaching choices.
+It evaluates shadow opportunities only; it does not invent a ready TV or combine
+existing morning dispatch with these cards. A deterministic fake catalogue tests
+filtering, not real subscription entitlement or current provider availability.
+
+Freeze telemetry, hidden truth, scoring rubric and then implementation before
+holdout scoring. Raters should not see engine labels or desired scores. Review
+**every day**, including silent days, against withheld goals and opportunities.
+Proposal helpfulness is the sum of five explicit 0–2 judgments: timing, relevance,
+grounding, actionability and respect. Daily helpfulness is a separate 0–10 judgment
+that includes missed opportunities. `amadeus_evaluation` validates completeness
+and scores; it does not infer satisfaction from silence or compute a flattering
+rating automatically. Persona stories are simulated reviews, never measured
+household benefit. Record inconvenient results and realism limitations privately.
+
+The ICS adapter now also produces a separate `calendar_context` interval view,
+including ongoing and all-day entries with explicit ends and transparency. Existing
+future appointment reminders keep their original representation. Invalid metadata
+prevents complete busy-coverage claims. This source improvement is not evidence
+that the active installed worker has been updated.
+
+A five-minute publisher heartbeat proves that HA was queried, not that a phone
+recently measured a new state. Real deployment needs source-health/last-seen evidence
+in addition to the emulator's declared outages. Do not promote a cached DND-off
+value to proof that someone is available.
+
+
+Context entertainment offers require an observed opening near a supported learned
+media-start window. Discovery without history is an explicit preference, not a
+fallback granted by an empty calendar. Known household playback suppresses further
+watching suggestions for that local day. Weekend support accumulates separately;
+a short trial can legitimately have no supported weekend routine. Quiet hours are
+not silently treated as sleep times or overridden to satisfy hidden help windows.
+The overview includes up to three remaining timed entries today, while runtime
+filtering still uses imminent calendar commitments. Display persistence in a
+persona review is an explicit emulator assumption: a proposal lease is not proof
+that any physical card was rendered or remained visible.

@@ -27,7 +27,8 @@ SOURCES = {"wake": "phone_context", "departure": "door_presence", "media": "medi
 
 
 def configure(store, **overrides):
-    value = dict(DEFAULTS, **overrides)
+    value = dict(DEFAULTS, **preference(store, SYSTEM, CONFIG_KEY, {}))
+    value.update(overrides)
     if set(value) != set(DEFAULTS) or type(value["enabled"]) is not bool:
         raise ValueError("Use supported habit configuration")
     for key, lo, hi in [

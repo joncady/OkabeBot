@@ -1125,7 +1125,15 @@ private diagnostics now distinguish failed delivery from in-progress synthesis.
 The checkout now contains a local prior-day routine planner, owner-only preview
 and explicit-feedback routes on the existing web listener, plus a socket-denied
 accelerated replay/evaluator. It reuses private SQLite and existing source consent;
-there is no new model, cloud service, port, source collector or hardware route.
+there is no new model, cloud service, port or background collection worker.
 Defaults are off and general proactive delivery cannot be enabled by these routes.
 This change has not been installed into the active controller. The current README
 topology therefore remains unchanged. See [experiment protocol](amadeus-simulation.md).
+
+The source-only context extension adds an owner preview and a publish-only coarse
+availability route on the existing bridge listener. Its HA example requires
+separate consent and private entity bindings. Calendar busy coverage is explicit;
+existing future-only feeds are not silently promoted to complete availability.
+No installed publisher, device setting, worker or notification dispatcher was
+changed for the isolated replay. Catalogue fixtures do not represent a deployed
+streaming provider connection.

@@ -11,6 +11,7 @@ from .amadeus_coaching import Coaching, TOPICS
 SYSTEM = "amadeus-system"
 KEY = "onboarding"
 SOURCES = {
+    "availability": "Selected DND/focus, charging and shared-room occupancy states (separate opt-in)",
     "tv_usage": "TV power/state snapshots (household context; no titles or viewer identity)",
     "phone_context": "Phone screen on/off and next-alarm time (no location, apps or health)",
     "weather": "Outdoor weather condition and temperature",
@@ -155,6 +156,18 @@ class Onboarding:
                 (value["retention_days"] * 86400,),
             )
             self.store.db.execute("DELETE FROM events WHERE expires_at<=?", (self.store.clock(),))
+            if previous and set(previous.get("sources", [])) - set(value["sources"]):
+                # Revocation invalidates derived opportunity state; adding a source
+                # later cannot silently resume an old personalized context trial.
+                self.store.db.execute(
+                    "DELETE FROM preferences WHERE subject=? AND key='context.enabled'", (profile,)
+                )
+                if self.store.db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='context_exposures'"
+                ).fetchone():
+                    self.store.db.execute(
+                        "DELETE FROM context_exposures WHERE subject=?", (profile,)
+                    )
             self.store.db.execute(
                 "DELETE FROM preferences WHERE subject=? AND key='draft'", (SYSTEM,)
             )
@@ -218,6 +231,10 @@ class Onboarding:
             with self.store.db:
                 self.store.db.execute("DELETE FROM events")
                 self.store.db.execute("DELETE FROM preferences")
+                if self.store.db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='context_exposures'"
+                ).fetchone():
+                    self.store.db.execute("DELETE FROM context_exposures")
             return self.snapshot()
         if not isinstance(data, dict) or set(data) != {"key"}:
             raise ValueError("Confirm deletion or provide a preference key")
