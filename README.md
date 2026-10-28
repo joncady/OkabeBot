@@ -61,7 +61,7 @@ flowchart TB
     App <-->|"Verified SSH: recordings, PCM and button events"| Voice
     TV["Vizio TV / Cast receiver"] -->|"Cast media callbacks"| App
     App -->|"Explicit DashCast launch and scoped TV dashboard: 8768"| TV
-    App -->|"Independent Cast connection; handoff acceptance pending"| Samsung["Samsung TV + HDMI Chromecast"]
+    App -->|"Independent Cast connection and scoped dashboard"| Samsung["Samsung TV + HDMI Chromecast"]
     Places -->|"Acknowledged character handoff; Pi away sign"| Display
     Places -->|"Doorway ingress and room monitors"| TV
     Beam["Sonos Beam - announcement overlay trial accepted"]
@@ -489,5 +489,7 @@ zoom-to-fit, non-overlapping grid placement and explicit left/right/above/below
 controls relative to another screen. Travel follows cardinal directions. See
 [configuration and world rules](docs/surfaces.md) and the
 [multiple-TV example](examples/surfaces-multiple-tvs.json). The installed second
-receiver is connected; Samsung physical handoff acceptance remains pending.
+receiver is connected; the user confirmed Samsung arrival without a duplicate Pi
+character, and the controller confirmed return home. Repeated-launch reliability
+remains a follow-up test.
 Scene-set reservations remain unique, so extra screens need an unreserved set.

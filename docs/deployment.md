@@ -692,13 +692,14 @@ standby flag without confirmed active input caused the return. The installed fix
 trusts standby only after active input has been observed, while retaining app-exit
 and visibility-lease recovery. The second visit timed out waiting for page readiness. A third visit completed
 receiver readiness, Pi rendered-away acknowledgement and TV entered acknowledgement,
-then remained at the Samsung destination. Physical Samsung appearance and exclusion
-on the Pi still need user confirmation; cold/repeated-launch reliability remains
+then remained at the Samsung destination. The user confirmed the café appeared on Samsung with the character absent
+from the Pi. Return reached the Pi rendered-home acknowledgement and the original
+first-TV set reservations were restored. Cold/repeated-launch reliability remains
 a test item.
 
 Existing two-set-per-character uniqueness remains enforced. Second-set reservations
-were temporarily moved from the first TV to the Samsung for testing; restore them
-after the test. No voice defaults or speaker volume were changed. Echo Show still
+were temporarily moved from the first TV to the Samsung for testing and restored
+after the confirmed return. No voice defaults or speaker volume were changed. Echo Show still
 uses its separate static APL skill prototype and is not a registered spatial
 location. Japanese speaker-embedding conditioning is an isolated private trial,
 not a deployed voice change.
