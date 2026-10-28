@@ -123,6 +123,17 @@ handoff acceptance are private trial checks, not published outcomes. Continuous
 following and sustained radio/GATT/audio coexistence remain unaccepted. See
 [proximity setup](proximity.md); beacon identifiers and samples stay private.
 
+## Current-session Mac sleep guard
+
+The active native supervisor has a separate `caffeinate -s -w <supervisor-pid>`
+assertion attached for the current session. It prevents system sleep while AC
+power is connected and permits normal display sleep. It ends when that supervisor
+exits; the LaunchAgent does not currently recreate this manual guard after logout,
+reboot or supervisor replacement. Keep the laptop on AC with its lid open for
+unattended morning presentation. Explicit sleep/lid closure is not a validated
+hosting mode. The guard adds no network route or device action. A permanent,
+configurable runtime-owned sleep policy remains a follow-up.
+
 ## Devices and responsibilities
 
 | Device | Hosted role / connection | Current state and limits |

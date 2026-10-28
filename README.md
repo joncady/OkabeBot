@@ -57,6 +57,8 @@ Last reviewed **2026-10-27**; component-specific verification is recorded in the
 Assistant; the Pi handles physical I/O and renders the character. A tablet is a
 browser controller, not a backend. See the [live configuration inventory](docs/deployment.md)
 for device status, model settings, ports, private configuration and recovery.
+The Mac currently has an AC-only, session-bound system-sleep guard; display sleep
+is allowed. It is not recreated after reboot or supervisor replacement; see the inventory.
 
 ```mermaid
 flowchart TB
