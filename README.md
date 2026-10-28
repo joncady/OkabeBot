@@ -514,3 +514,8 @@ not a login service. Show remains approved but unassigned after restoring the
 TV's café reservation. Dynamic artwork, live notifications, longer sessions and
 service lifecycle remain backlog work. Alexa+ controls its launch preamble; no
 bypass is claimed. See [Alexa skill](docs/alexa-skill.md).
+
+A [conversational Alexa mini-cycle](docs/alexa-conversation.md) is now in progress:
+paired spoken questions, isolated local-model follow-ups and generated character
+replies. Protocol/model scaffolding is source-only; the live skill still provides
+the accepted visual destination and generic voice demo, not conversational turns.

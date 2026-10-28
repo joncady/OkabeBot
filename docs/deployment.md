@@ -849,3 +849,14 @@ and the accepted Japanese-reference English comparison complete the other three
 checkpoints. No voice manifest changed. Longer-running Alexa/service lifecycle,
 dynamic artwork and voice optimization remain backlog enhancements rather than
 claims about this installed checkpoint.
+
+### Alexa conversation source work (2026-10-27)
+
+A separate paired conversation protocol and tool-free warm-model method are
+implemented and tested in source. They do not reuse the destination mailbox for
+questions or grant its worker tools. Follow-up history is isolated by session and
+character, and sensitive/uncertain replies stay native text rather than custom
+uploaded audio. Queue/ledger transport, controller adapter, synthesis/encoding,
+TalkIntent build and physical conversational acceptance remain unimplemented.
+Nothing in this source-only pass changed live routes, settings, voices or volume;
+the current deployment map is unchanged. See [conversation cycle](alexa-conversation.md).
