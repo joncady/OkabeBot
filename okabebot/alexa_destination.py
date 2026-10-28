@@ -63,7 +63,6 @@ def document(token, background, frames):
                 "actorReady": False,
                 "backgroundFailed": False,
                 "actorFailed": False,
-                "frame": 0,
             }.items()
         ],
         "items": [
@@ -85,7 +84,7 @@ def document(token, background, frames):
                 "width": "100%",
                 "height": "100%",
                 "scale": "best-fit",
-                "source": "${payload.scene.frames[frame]}",
+                "source": urls[1],
                 "display": "${!closed && actorReady && clock < 60000 && clock < leaseUntil && (phase == 'entering' || phase == 'present' || phase == 'leaving') ? 'normal' : 'invisible'}",
                 "onLoad": [set_value("actorReady", True)],
                 "onFail": [set_value("actorFailed", True)],
@@ -130,7 +129,20 @@ def document(token, background, frames):
                         "when": "${phase == 'hidden' && elapsedTime >= appliedAt + 100}",
                     },
                     {**set_value("closed", True), "when": "${elapsedTime >= 60000}"},
-                    set_value("frame", "${elapsedTime % 4000 >= 3860 ? 3 : 0}"),
+                    {
+                        "type": "SetValue",
+                        "componentId": "actor",
+                        "property": "source",
+                        "value": urls[4],
+                        "when": "${elapsedTime % 4000 >= 3860}",
+                    },
+                    {
+                        "type": "SetValue",
+                        "componentId": "actor",
+                        "property": "source",
+                        "value": urls[1],
+                        "when": "${elapsedTime % 4000 < 3860}",
+                    },
                 ],
             }
         ],

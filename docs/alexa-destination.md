@@ -45,7 +45,9 @@ remote responses. `closed` remains terminal for that document.
 
 The hidden actor uses APL `display: invisible` rather than zero opacity so its
 image loads before an authorized arrival. The absolute actor layer is explicitly
-anchored at top/left zero to align with the background viewport. Both source departure and image-load
+anchored at top/left zero to align with the background viewport. The actor uses
+a validated literal source URL; bounded tick commands select the idle/blink URLs
+directly rather than depending on an inherited frame-index binding. Both source departure and image-load
 readiness are still required before making it visible.
 
 Departure hides the actor first, then waits at least 100 ms in a subsequent tick

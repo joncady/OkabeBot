@@ -526,3 +526,6 @@ not depend on a later SessionEnded callback. A local regression covers stale pol
 
 Alexa actor overlay coordinates are explicitly anchored to the scene viewport;
 the direct hardware readiness check remains open.
+
+The experimental Alexa actor uses explicit validated idle/blink image sources;
+the outstanding Show image-readiness gate is unchanged.

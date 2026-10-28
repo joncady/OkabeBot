@@ -805,3 +805,8 @@ The direct retry still reported only the background loaded. Source inspection
 found the absolute actor overlay lacked explicit top/left anchors; it now anchors
 at viewport origin, with a regression check. This is a candidate fix pending
 deployment and direct Show verification, not a confirmed diagnosis.
+
+The anchored retry still reported background-only readiness. The next diagnostic
+renderer removes the actor's inherited frame-index source expression: its initial
+source is the validated idle URL, with explicit idle/blink source commands. This
+remains a candidate fix until a fresh Show launch reports the actor loaded.
