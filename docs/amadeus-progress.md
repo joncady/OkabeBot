@@ -75,3 +75,7 @@ explicit policy change; aggregation alone does not authorize it.
   omit titles/volume and retain pause, guest, freshness and retention guards.
 - Limited: on-state does not establish viewing duration, viewer identity or taste.
   Standby/input model coverage and richer activity inference remain follow-ups.
+
+- Improved: configurable TV-addressed wake packets complement broadcast delivery
+  for adapters that cannot wake from broadcasts alone; synthetic ordering/packet
+  coverage preserves bounded sends and existing handoff readiness guards.

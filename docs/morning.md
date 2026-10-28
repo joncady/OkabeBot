@@ -115,7 +115,10 @@ Configure `state_dir()/tv-preparation.json` privately, keyed by destination ID:
 
 The MAC above is invented; use the TV's actual network interface privately.
 `wake_mac` is optional for already-awake displays. An optional `wake_broadcast`
-overrides the default broadcast address. The controller sends one UDP magic packet;
+overrides the default broadcast address. An optional `wake_host` adds a TV-addressed
+UDP packet before the broadcast;
+use the TV's reserved local IP when broadcasts alone do not wake it. Each distinct
+target receives one packet, without a retry loop. The controller sends the packets;
 HA then waits up to 35 seconds for power state and sends the configured remote key.
 A matching completion only confirms command delivery. Chromecast must additionally
 report `is_active_input=true` within 12 seconds by default. Missing or false readiness

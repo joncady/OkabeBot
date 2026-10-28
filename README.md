@@ -96,7 +96,7 @@ flowchart TB
     TV["Vizio TV / Cast receiver"] -->|"Cast media callbacks"| App
     App -->|"Explicit DashCast launch and scoped TV dashboard: 8768"| TV
     App -->|"Independent Cast connection and scoped dashboard"| Samsung["Samsung TV + HDMI Chromecast"]
-    Morning -->|"Optional local wake packet"| Samsung
+    Morning -->|"Optional configured direct/broadcast wake packets"| Samsung
     Morning <-->|"Scoped HA input webhook and nonce-bound completion"| HA
     HA -->|"Samsung remote input selection"| Samsung
     Places -->|"Acknowledged character handoff; Pi away sign"| Display

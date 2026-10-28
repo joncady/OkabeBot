@@ -67,10 +67,12 @@ class TVPreparation:
                     return False
                 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sender:
                     sender.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-                    sender.sendto(
-                        b"\xff" * 6 + address * 16,
-                        (binding.get("wake_broadcast", "255.255.255.255"), 9),
-                    )
+                    packet = b"\xff" * 6 + address * 16
+                    targets = [binding.get("wake_broadcast", "255.255.255.255")]
+                    if host := binding.get("wake_host"):
+                        targets.insert(0, host)
+                    for target in dict.fromkeys(targets):
+                        sender.sendto(packet, (target, 9))
             with urlopen(
                 Request(
                     url,

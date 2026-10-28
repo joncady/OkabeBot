@@ -82,7 +82,8 @@ not enable routine learning, general proactive suggestions or health coaching.
 
 The native controller includes optional per-destination TV preparation. Private
 `state_dir()/tv-preparation.json` owns the local HA webhook binding, timeout and
-optional TV Wake-on-LAN address. HA owns the selected Samsung media/remote entities,
+optional TV Wake-on-LAN MAC, direct host and broadcast address. Direct and
+broadcast packets are bounded to one per distinct configured target. HA owns the selected Samsung media/remote entities,
 input key and local-only webhook secret in its private package/secrets. The source
 publisher credential can acknowledge a pending nonce but cannot initiate actions.
 HA input delivery and Chromecast active-input readiness are separate checks;

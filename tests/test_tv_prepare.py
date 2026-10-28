@@ -149,3 +149,18 @@ class PrepareTests(unittest.TestCase):
             patch("okabebot.tv_prepare.time.sleep"),
         ):
             self.assertFalse(self.worker.prepare("test-tv", lambda: False))
+
+    def test_direct_wake_target_precedes_broadcast_without_retries(self):
+        binding = json.loads(self.worker.path.read_text())
+        binding["test-tv"].update(wake_mac="02:00:00:00:00:01", wake_host="192.0.2.10")
+        self.worker.path.write_text(json.dumps(binding))
+        with (
+            patch("okabebot.tv_prepare.socket.socket") as socket_factory,
+            patch("okabebot.tv_prepare.urlopen", side_effect=self.response("input_command_sent")),
+        ):
+            self.assertTrue(self.worker.prepare("test-tv", lambda: True))
+            sender = socket_factory.return_value.__enter__.return_value
+            self.assertEqual(
+                [call.args[1] for call in sender.sendto.call_args_list],
+                [("192.0.2.10", 9), ("255.255.255.255", 9)],
+            )
