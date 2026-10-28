@@ -121,3 +121,50 @@ class ExchangeTests(unittest.TestCase):
         self.table.put_item = Mock(side_effect=PermissionError("denied"))
         with self.assertRaises(PermissionError):
             self.exchange.open(self.request)
+
+    def test_blocking_sdk_open_returns_fallback_before_late_write_finishes(self):
+        import threading
+        import time
+        from unittest.mock import patch
+        from okabebot.alexa_conversation import ConversationSkill, FALLBACK
+
+        request = dict(self.request, deadline=time.time() + 0.04)
+        entered, release = threading.Event(), threading.Event()
+        original = self.table.put_item
+
+        def blocked_put(**kwargs):
+            entered.set()
+            release.wait(1)
+            return original(**kwargs)
+
+        self.table.put_item = blocked_put
+        exchange = ConversationExchange(self.table, self.queue, "private-queue")
+        skill = ConversationSkill("unused", "unused", exchange, Mock())
+        started = time.monotonic()
+        try:
+            with patch("okabebot.alexa_conversation.question", return_value=request):
+                result = skill.handle({})
+            self.assertLess(time.monotonic() - started, 0.4)
+            self.assertTrue(entered.is_set())
+            self.assertEqual(result["response"]["outputSpeech"]["text"], FALLBACK)
+            self.queue.send_message.assert_not_called()
+        finally:
+            release.set()
+
+    def test_sdk_factory_disables_retries_and_bounds_socket_timeouts(self):
+        from okabebot.alexa_conversation_relay import aws_exchange
+
+        import sys
+        import types
+        from unittest.mock import patch
+
+        session = Mock()
+        package = types.ModuleType("botocore")
+        module = types.ModuleType("botocore.config")
+        module.Config = lambda **kwargs: types.SimpleNamespace(**kwargs)
+        with patch.dict(sys.modules, {"botocore": package, "botocore.config": module}):
+            aws_exchange(session, "private-table", "private-queue")
+        for call in (session.resource.call_args, session.client.call_args):
+            config = call.kwargs["config"]
+            self.assertLessEqual(config.connect_timeout + config.read_timeout, 0.6)
+            self.assertEqual(config.retries, {"total_max_attempts": 1})

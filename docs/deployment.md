@@ -883,3 +883,9 @@ trial timed out. These exclude cloud/Alexa latency. No audio was uploaded/played
 and no conversation queue, ledger or skill ingress is connected yet. The main
 README map now includes this installed private adapter, distinct from the manual
 visual-destination relay worker. See docs/alexa-conversation.md for timing details.
+
+The separate conversation transport template passed AWS template validation only;
+no queue/table/media bucket from it has been created. The source exchange now
+bounds SDK calls and disables SDK retries to protect the skill response budget.
+The installed private adapter and accepted visual relay remain the actual live
+roles; no new cloud route has been activated.

@@ -1,0 +1,159 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Private short-lived Alexa conversation transport. No public ingress or household tools.",
+  "Resources": {
+    "Requests": {
+      "Type": "AWS::SQS::Queue",
+      "Properties": {
+        "FifoQueue": true,
+        "ContentBasedDeduplication": false,
+        "MessageRetentionPeriod": 60,
+        "VisibilityTimeout": 10,
+        "ReceiveMessageWaitTimeSeconds": 10,
+        "SqsManagedSseEnabled": true
+      }
+    },
+    "Ledger": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "id",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "id",
+            "KeyType": "HASH"
+          }
+        ],
+        "TimeToLiveSpecification": {
+          "AttributeName": "expires",
+          "Enabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": true
+        }
+      }
+    },
+    "Audio": {
+      "Type": "AWS::S3::Bucket",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "OwnershipControls": {
+          "Rules": [
+            {
+              "ObjectOwnership": "BucketOwnerEnforced"
+            }
+          ]
+        },
+        "LifecycleConfiguration": {
+          "Rules": [
+            {
+              "Id": "ExpireGeneratedReplies",
+              "Status": "Enabled",
+              "Prefix": "conversation/audio/",
+              "ExpirationInDays": 1,
+              "AbortIncompleteMultipartUpload": {
+                "DaysAfterInitiation": 1
+              }
+            }
+          ]
+        }
+      }
+    },
+    "AudioPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "Audio"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "Audio",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Sub": "${Audio.Arn}/*"
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "ConversationQueueUrl": {
+      "Value": {
+        "Ref": "Requests"
+      }
+    },
+    "ConversationQueueArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Requests",
+          "Arn"
+        ]
+      }
+    },
+    "ConversationTableName": {
+      "Value": {
+        "Ref": "Ledger"
+      }
+    },
+    "ConversationTableArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Ledger",
+          "Arn"
+        ]
+      }
+    },
+    "ConversationAudioBucket": {
+      "Value": {
+        "Ref": "Audio"
+      }
+    },
+    "ConversationAudioBucketArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Audio",
+          "Arn"
+        ]
+      }
+    }
+  }
+}

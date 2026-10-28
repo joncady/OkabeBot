@@ -526,3 +526,6 @@ the accepted visual destination and generic voice demo, not conversational turns
 The Alexa conversation source includes an opt-in private Unix-socket adapter and
 a dedicated conditional queue/ledger exchange. The private adapter is installed;
 cloud transport remains uninstalled. No household tool access is added.
+
+The conversation transport template validates, and network-budget regressions
+pass. Cloud conversation resources and skill wiring are still not deployed.

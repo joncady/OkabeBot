@@ -82,17 +82,20 @@ class ConversationSkill:
     def handle(self, event):
         end = self.clock() + 6.2
         request = question(event, self.skill_id, self.paired_identity)
-        record = self.exchange.open(request)
-        if record["body_hash"] != request["body_hash"]:
-            raise ValueError("Request ID was reused with different content")
-        request["deadline"] = record["deadline"]
-        if request["deadline"] <= time.time():
+        try:
+            record = self.exchange.open(request)
+            if record["body_hash"] != request["body_hash"]:
+                raise ValueError("Request ID was reused with different content")
+            request["deadline"] = record["deadline"]
+            if request["deadline"] <= time.time():
+                return response(FALLBACK, end=False)
+            # Transport owns bounded blocking, including its individual network calls.
+            result = self.exchange.wait(request, end)
+            if result is None or self.clock() >= end or request["deadline"] <= time.time():
+                return response(FALLBACK, end=False)
+            return reply(result, request, self.sign_audio)
+        except TimeoutError:
             return response(FALLBACK, end=False)
-        # Transport owns bounded blocking, including its individual network calls.
-        result = self.exchange.wait(request, end)
-        if result is None or self.clock() >= end or request["deadline"] <= time.time():
-            return response(FALLBACK, end=False)
-        return reply(result, request, self.sign_audio)
 
 
 def audio_eligible(question_text, answer):

@@ -108,3 +108,18 @@ A calendar question returned native-text-only eligibility with no synthesis.
 The model has no calendar access in this path. Speaker level and Pi ownership
 were preserved; no test audio was played. Broader privacy/latency evaluation is
 still required before claiming general conversational parity.
+
+The dedicated cloud transport template is prepared and passed AWS template
+validation, but has not been deployed. It defines an encrypted FIFO queue with
+one-minute retention, an encrypted request ledger with five-minute TTL markers
+and a private generated-audio bucket with a one-day lifecycle. DynamoDB TTL
+deletion is asynchronous, not an immediate five-minute purge. No public ingress
+or household-tool permissions are created by this template. Scoped runtime IAM
+and skill/consumer wiring are still required.
+
+Local review found that ordinary SDK defaults could outlast the response budget.
+The exchange now bounds each call with the remaining request time, limits
+outstanding calls, and uses a factory with 300 ms connect/read timeouts and one
+SDK attempt. A blocked-call regression proves timeout fallback returns without
+waiting for a late SDK completion. Late enqueues retain the expired deadline and
+cannot become a fresh inference request.
