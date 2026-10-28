@@ -2,6 +2,17 @@
 
 A push-to-talk companion with a talking pixel character and shared dashboard/MCP tools for real hardware. Hold a button, speak, and release. The current deployment runs speech recognition, Qwen conversation and Qwen speech locally on a Mac; Codex remains an optional backend and the repository default for fresh configurations. The companion can answer aloud, change expressions, show pictures, use a camera, and press a SwitchBot.
 
+**Amadeus** is the new local memory and proactive-assistance trial. Its
+[specification and conditional 14-day timeline](docs/amadeus.md) and
+[implementation checklist](docs/amadeus-todo.md) separate planned capabilities
+from the first offline event/preference store. Live collection, habit inference,
+proactive suggestions and grocery actions are not enabled. Alexa conversational
+parity is paused while this work proceeds; its accepted scene/demo remains separate.
+Optional supportive habit coaching now has an offline opt-in/feedback policy;
+the onboarding prompt and live delivery are pending. Personal trial results remain
+private. The [public progress log](docs/amadeus-progress.md) describes only general
+capability improvements, limitations and regressions.
+
 The default character is an original pixel-art interpretation of **Rintaro Okabe from Steins;Gate**: dark hair, lab coat, expressive eyes, and an audio-driven mouth. This is an unofficial fan project, with no affiliation or endorsement. The artwork is drawn in code; no anime frames or actor voice recordings are included. Pip, the original robot face, remains an option.
 
 ![Okabe character](docs/okabe.png)
@@ -89,6 +100,7 @@ flowchart TB
     SkillLambda -->|"Paired conversation requests"| ConversationQueue
     ConversationLedger -->|"Bounded reply wait"| SkillLambda
     SkillLambda -->|"Two-minute signed reply audio URLs"| ConversationMedia
+    Amadeus["Amadeus: offline source/CLI only; no live controller wiring"]
 ```
 
 The first door opening after 3 p.m. currently provides a once-daily welcome

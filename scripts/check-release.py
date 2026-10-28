@@ -18,7 +18,16 @@ PRIVATE_SUFFIXES = (
     ".mp4",
     ".h264",
 )
-PRIVATE_PARTS = {".local", ".venv", "state", "__pycache__"}
+PRIVATE_PARTS = {
+    ".local",
+    ".venv",
+    "state",
+    "__pycache__",
+    "amadeus-private",
+    "amadeus-trials",
+    "trial-results",
+    "participant-data",
+}
 KEY_BLOCK = re.compile(
     rb"(?m)^-----BEGIN [A-Z ]*PRIVATE KEY-----\r?\n[A-Za-z0-9+/=\r\n]{100,}-----END [A-Z ]*PRIVATE KEY-----"
 )
@@ -52,7 +61,7 @@ def audit(path):
             or ".." in parts
             or name.startswith("/")
         ):
-            errors.append("Private/unsafe path: " + name)
+            errors.append("Private/unsafe path detected (artifact name redacted)")
         if KEY_BLOCK.search(raw) or TOKEN.search(raw):
             errors.append("Possible credential in: " + name)
     if path.suffix != ".whl":

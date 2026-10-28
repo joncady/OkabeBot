@@ -35,3 +35,12 @@ class ReleaseTests(unittest.TestCase):
                 self.assertTrue((skill.parent / target).resolve().exists(), target)
         interface = yaml.safe_load((skill.parent / "agents/openai.yaml").read_text())
         self.assertIn("$okabebot-setup", interface["interface"]["default_prompt"])
+
+    def test_participant_trial_artifacts_are_rejected_without_exposing_their_names(self):
+        with tempfile.TemporaryDirectory() as folder:
+            wheel = Path(folder) / "example.whl"
+            with zipfile.ZipFile(wheel, "w") as archive:
+                archive.writestr("amadeus-trials/synthetic-person-summary.json", "{}")
+            errors = release.audit(wheel)
+            self.assertTrue(any("Private/unsafe path" in e for e in errors))
+            self.assertNotIn("synthetic-person", "\n".join(errors))

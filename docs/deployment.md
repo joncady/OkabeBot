@@ -6,6 +6,29 @@ shows the connections. Keep both documents in sync when roles or hosting change.
 Private IPs, credentials, account IDs and token-bearing URLs belong in local
 configuration, not this inventory.
 
+## Amadeus trial boundary (source checkpoint 2026-10-27)
+
+[Amadeus](amadeus.md) is a proposed Mac-local learning/memory subsystem. Its first
+source checkpoint supplies an offline CLI and private SQLite ledger for synthetic
+events and explicit preferences. No Amadeus collector, scheduled task, model
+memory injection, HA automation, dashboard endpoint or MCP tool has been installed
+or enabled. Existing hardware, voices, volume and personal data are untouched.
+The README diagram labels this unconnected source-only component explicitly.
+
+The subsequent coaching/privacy source slice adds an offline, opt-in health-habit
+policy and known-private-path publication checks. It has no live invitation,
+sentiment processing, health sensor input, speaker action or new hosted service.
+These source improvements do not change the installed topology. Private trial
+outcomes remain outside the repository; the public progress log is declarative.
+
+Privacy/source checkpoint A must precede live collection. Subsequent trial gates
+cover shadow prediction, quiet cards, media/pantry trials and final acceptance.
+See [the detailed checklist](amadeus-todo.md). The 14-day timeline begins after
+source/privacy review and sufficient observation, not automatically on publication.
+Alexa conversation work is paused with its failed audio-deadline acceptance
+recorded below; this does not remove the accepted Show demo/destination. Pausing
+development is not evidence that its manually launched cloud workers were stopped.
+
 ## Devices and responsibilities
 
 | Device | Hosted role / connection | Current state and limits |

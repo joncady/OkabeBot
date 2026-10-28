@@ -19,6 +19,10 @@ __pycache__/
 build/
 dist/
 .ruff_cache/
+amadeus-private/
+amadeus-trials/
+trial-results/
+participant-data/
 
 pi/assets/crests/
 pi/assets/app-logos/
