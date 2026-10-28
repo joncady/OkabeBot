@@ -1,6 +1,7 @@
 """Private opt-in morning speech and grounded briefing enrichment."""
 
 import json
+import re
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -8,7 +9,6 @@ from zoneinfo import ZoneInfo
 from .amadeus_coaching import Coaching, SETTINGS, DELIVERY, valid_settings
 from .amadeus_onboarding import KEY, SYSTEM
 from .morning import Morning
-from .welcome import validate_intro
 
 MORNING_COACHING = {
     "movement": "Would a short stretch feel good before the day gets busy?",
@@ -276,34 +276,95 @@ class Briefing:
         name = self.settings()["resolved_name"]
         if not name:
             raise ValueError("No current person name or spoken override")
-        intro = f"Good morning, {name}."
-        generated = False
+        cards = summary["cards"]
+        slots = {"name": name}
+        weather_hint = "unavailable"
+        weather = next((c for c in cards if c["kind"] == "weather"), None)
+        if weather:
+            condition, temperature = weather.get("condition"), weather.get("temperature_c")
+            if condition and type(temperature) in (int, float):
+                fahrenheit = weather.get("temperature_unit") == "°F"
+                degrees = round(temperature * 9 / 5 + 32 if fahrenheit else temperature)
+                unit = "Fahrenheit" if fahrenheit else "Celsius"
+                description = condition.replace("-", " ").replace("partlycloudy", "partly cloudy")[
+                    :32
+                ]
+                slots["weather"] = (
+                    f"it is {description} right now, {degrees} degrees {unit} outside"
+                )
+                rainy = condition in ("rainy", "pouring", "lightning-rainy")
+                cold = temperature <= 15
+                weather_hint = "rainy" if rainy else "cool" if cold else "current conditions"
+                gear = (["a jacket"] if cold else []) + (["an umbrella"] if rainy else [])
+                if gear:
+                    slots["advice"] = "if you head out, take " + " and ".join(gear)
+            else:
+                slots["weather"] = "the weather update is not available yet"
+        calendar = [c for c in cards if c["kind"] == "calendar"][:1]
+        if calendar:
+            values = []
+            for card in calendar:
+                if card["body"] == "No upcoming timed events in this feed":
+                    values.append("your connected calendar has no more timed events listed today")
+                elif card.get("spoken"):
+                    values.append(
+                        card["spoken"].rstrip(".")
+                        if len(card["spoken"]) <= 85
+                        else "another upcoming event is listed in your connected calendar"
+                    )
+                else:
+                    values.append("your calendar is waiting for a fresh update")
+            slots["calendar"] = "; ".join(values)
+        important = [c["body"] for c in cards if c.get("important")]
+        if important:
+            slots["status"] = "; ".join(important)[:160]
+        coach = self.coaching()
+        if coach:
+            slots["coaching"] = coach["body"]
+
+        # Only placeholder names and a coarse weather category reach the model.
+        # Event titles, temperatures, person names and notifications remain local slots.
+        def fallback():
+            return (
+                "Good morning, {name}. "
+                + ". ".join("{" + k + "}" for k in slots if k != "name")
+                + "."
+            )
+
+        if len(fallback().format_map(slots)) > 300 and "coaching" in slots:
+            del slots["coaching"]
+            coach = None
+        if len(fallback().format_map(slots)) > 340 and "status" in slots:
+            slots["status"] = "there are status updates to check"
+        if len(fallback().format_map(slots)) > 360:
+            raise ValueError("Briefing exceeds the short speech budget")
+        template, generated = fallback(), False
         if composer:
             try:
-                value = validate_intro(composer(character, name))
-                if name.casefold() not in value.casefold() or "morning" not in value.casefold():
-                    raise ValueError("Greeting needs morning and configured name")
-                intro, generated = value, True
+                value = composer(character, {"tokens": list(slots), "weather": weather_hint})
+                value = " ".join(value.split()).strip('"')
+                tokens = re.findall(r"\{([a-z]+)\}", value)
+                plain = re.sub(r"\{[a-z]+\}", "", value)
+                if (
+                    not 8 <= len(value) <= 180
+                    or sorted(tokens) != sorted(slots)
+                    or "good morning" not in value.casefold()
+                    or any(
+                        not re.search(r"(?:^|[.!?]\s+)\{" + key + r"\}[.!?](?:\s|$)", value)
+                        for key in slots
+                        if key != "name"
+                    )
+                    or re.search(r"[0-9<>{}\[\]`]|https?://", plain)
+                ):
+                    raise ValueError("Briefing must preserve every grounded slot exactly once")
+                if len(value.format_map(slots)) > 360:
+                    raise ValueError("Keep the morning briefing short")
+                template, generated = value, True
             except InterruptedError:
                 raise
             except Exception:
                 pass
-        # Calendar/notification contents never enter a model or tool-enabled prompt.
-        cards = summary["cards"]
-        chosen = (
-            [c for c in cards if c.get("important")]
-            + [c for c in cards if c["kind"] == "calendar"][:2]
-            + [c for c in cards if c["kind"] == "weather"][:1]
-        )
-        coach = self.coaching()
-        facts = []
-        for card in chosen:
-            line = (card.get("spoken") or (card["title"] + ". " + card["body"]))[:130].strip()
-            if line and sum(len(x) + 1 for x in facts) + len(line) <= 300:
-                facts.append(line.rstrip(".") + ".")
-        if coach:
-            facts.append(coach["body"])
-        return (intro + " " + " ".join(facts))[:550], generated, coach
+        return template.format_map(slots), generated, coach
 
     def complete(self, *, success, coach=None):
         store = self.morning.store()

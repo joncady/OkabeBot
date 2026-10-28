@@ -322,6 +322,9 @@ class Morning:
                             {
                                 "kind": "weather",
                                 "title": "Outside",
+                                "condition": value["condition"],
+                                "temperature_c": value["temperature_c"],
+                                "temperature_unit": config["temperature_unit"],
                                 "body": value["condition"].replace("-", " ")
                                 + " · "
                                 + str(

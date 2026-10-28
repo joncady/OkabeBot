@@ -524,10 +524,8 @@ class LocalConversation:
             with self.lock:
                 self.busy = False
 
-    def compose_morning(self, character, name):
-        """Generate one named greeting; no household facts, tools or chat history."""
-        from .welcome import validate_intro
-
+    def compose_morning(self, character, slots):
+        """Style the whole briefing around typed slots, without private source contents."""
         with self.lock:
             if self.busy or self.closed or self.process.poll() is not None:
                 raise ValueError("Local model unavailable for morning greeting")
@@ -538,8 +536,8 @@ class LocalConversation:
                 json.dumps(
                     {
                         "task": "morning",
-                        "text": "Say good morning to " + name + ".",
-                        "persona": character.get("welcome_persona") or character["persona"],
+                        "text": json.dumps(slots),
+                        "persona": character["persona"],
                         "tool_names": [],
                     }
                 )
@@ -551,7 +549,7 @@ class LocalConversation:
                 raise InterruptedError("Morning greeting cancelled")
             if result.get("error") or result.get("tool_call"):
                 raise ValueError("Morning greeting generation failed")
-            return validate_intro(result.get("text"))
+            return result.get("text")
         finally:
             with self.lock:
                 self.busy = False

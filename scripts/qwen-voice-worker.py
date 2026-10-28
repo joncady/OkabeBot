@@ -3,6 +3,8 @@
 import argparse
 import json
 import math
+import re
+import textwrap
 import os
 from pathlib import Path
 import socket
@@ -47,6 +49,46 @@ def load_references(path):
     return references
 
 
+def speaker_text(text):
+    """Keep speaker-only decoding on short sentences instead of one long prefill."""
+    # Treat clause punctuation as boundaries; do not split decimals or thousands.
+    sentences = re.split(r"(?<=[.!?;])\s+|[—–]|,(?!\d)\s+", text.strip())
+    parts = (
+        part
+        for sentence in sentences
+        for part in textwrap.wrap(
+            sentence.strip(), width=100, break_long_words=False, break_on_hyphens=False
+        )
+    )
+    return "\n".join(part if part[-1] in ".!?;" else part + "." for part in parts)
+
+
+def speaker_generate(model, text, options):
+    """Never publish a clause that stopped at the generation limit instead of EOS."""
+    for clause in speaker_text(text).splitlines():
+        limit = max(75, min(250, len(clause.split()) * 15))
+        for attempt in range(2):
+            settings = dict(options)
+            if attempt:
+                settings["temperature"] = max(0.7, settings.get("temperature", 0.7))
+            # A complete codec decode avoids incremental decoder seam artifacts.
+            results = list(
+                model.generate(
+                    text=clause,
+                    **settings,
+                    lang_code="English",
+                    max_tokens=limit,
+                    stream=False,
+                    verbose=False,
+                )
+            )
+            if results and all(0 < result.token_count < limit for result in results):
+                yield from results
+                break
+        else:
+            raise ValueError("Speech clause did not finish within its generation budget")
+
+
 def main():
     parent_pid = os.environ.get("OKABEBOT_PARENT_PID")
     if parent_pid:
@@ -84,20 +126,27 @@ def main():
     mx.eval(model.parameters())
 
     def generate(text, character):
-        yield from model.generate(
-            text=text,
-            **manifest[character],
-            lang_code="English",
-            max_tokens=375,
-            stream=True,
-            streaming_interval=0.32,
-            verbose=False,
-        )
+        if manifest[character]["ref_text"] is None:
+            yield from speaker_generate(model, text, manifest[character])
+        else:
+            yield from model.generate(
+                text=text,
+                **manifest[character],
+                lang_code="English",
+                max_tokens=375,
+                stream=True,
+                streaming_interval=0.32,
+                verbose=False,
+            )
 
     for character in manifest:
-        for result in generate("Hello. I am ready.", character):
-            mx.eval(result.audio)
-        print("WARM", character, flush=True)
+        try:
+            for result in generate("Hello. I am ready.", character):
+                mx.eval(result.audio)
+            print("WARM", character, flush=True)
+        except ValueError:
+            # Text-specific decoding failure must not create a supervisor restart loop.
+            print("WARM_SAMPLE_FAILED", character, flush=True)
 
     args.socket.parent.mkdir(parents=True, exist_ok=True)
     # Never unlink a live worker's endpoint.

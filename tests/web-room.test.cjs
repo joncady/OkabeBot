@@ -14,7 +14,7 @@ async function browser(phase='tv',broken=false,audio=false){
  function node(id){return nodes[id]||=( {textContent:'',classList:{toggle(){}},setAttribute(){},addEventListener(){},focus(){},getContext(){return {clearRect(){}};}} );}
  const state={phase,remote_controls:true,transition_id:'transfer',duration_seconds:2,visibility_lease_seconds:6,character:{style:'okabe',name:'Companion'},lab:{title:'Custom room'},return_location:{name:'Desk nook'},destination_name:'Den screen',server_time:1000};
  const audioCalls=[];
- const context={...(audio?{BrowserAudio:class{setVolume(v){audioCalls.push(['volume',v]);}poll(){}async enable(){audioCalls.push(['enable']);}close(){audioCalls.push(['close']);}presenter(){return null;}}}:{}),console,LabRoom:{Room:class{constructor(){this.actor={position:[8,4],transfer(){return [[1,1],[2,2]];}};}setAssets(){}render(){if(broken)throw Error("Broken renderer");}}},location:{hash:'#scoped',reload(){}},performance:{now:()=>100},Date,requestAnimationFrame(){},setTimeout(){},document:{getElementById:id=>node("#"+id),querySelector:selector=>node(selector),addEventListener:(event,fn)=>events[event]=fn},window:{addEventListener:(event,fn)=>events[event]=fn},fetch:async(path,options)=>{calls.push({path,data:options.body&&JSON.parse(options.body)});return{ok:true,json:async()=>path==='/surfaces/state'?state:{frames:[[]]}};}};
+ const context={...(audio?{BrowserAudio:class{setVolume(v){audioCalls.push(['volume',v]);}poll(){}async enable(){audioCalls.push(['enable']);if(audio==='blocked')await new Promise(()=>{});}close(){audioCalls.push(['close']);}presenter(){return null;}}}:{}),console,LabRoom:{Room:class{constructor(){this.actor={position:[8,4],transfer(){return [[1,1],[2,2]];}};}setAssets(){}render(){if(broken)throw Error("Broken renderer");}}},location:{hash:'#scoped',reload(){}},performance:{now:()=>100},Date,requestAnimationFrame(){},setTimeout(){},document:{getElementById:id=>node("#"+id),querySelector:selector=>node(selector),addEventListener:(event,fn)=>events[event]=fn},window:{addEventListener:(event,fn)=>events[event]=fn},fetch:async(path,options)=>{calls.push({path,data:options.body&&JSON.parse(options.body)});return{ok:true,json:async()=>path==='/surfaces/state'?state:{frames:[[]]}};}};
  vm.runInNewContext(fs.readFileSync('okabebot/web/tv.js','utf8'),context);await new Promise(setImmediate);return{calls,events,nodes,audioCalls};
 }
 test('remote Enter keyCode and Back each request exactly one return',async()=>{
@@ -102,4 +102,10 @@ test('live Cast page initializes its own audio but preview stays silent',async()
  live.events.pagehide();assert.ok(live.audioCalls.some(c=>c[0]==='close'));
  const preview=await browser('preview',false,true);
  assert.equal(preview.audioCalls.filter(c=>c[0]==='enable').length,0);
+});
+
+test('blocked sound permission never blocks visual readiness or receiver heartbeat',async()=>{
+ const b=await browser('tv',false,'blocked');
+ assert.ok(b.calls.some(c=>c.path==='/surfaces/heartbeat'));
+ assert.equal(b.nodes['#enable-sound'].hidden,false);
 });

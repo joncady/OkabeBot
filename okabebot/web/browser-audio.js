@@ -4,7 +4,7 @@
 // getRandomValues also works on LAN HTTP, where randomUUID is unavailable.
 function sessionID(){return Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');}
 class BrowserAudio{
- constructor(request,onStatus){this.request=request;this.onStatus=onStatus;this.context=null;this.gain=null;this.cursor=0;this.epoch=null;this.session=sessionID();this.stream=null;this.finished=null;this.closed=false;this.volume=.5;}
+ constructor(request,onStatus,{prebuffer=false}={}){this.prebuffer=prebuffer;this.request=request;this.onStatus=onStatus;this.context=null;this.gain=null;this.cursor=0;this.epoch=null;this.session=sessionID();this.stream=null;this.finished=null;this.closed=false;this.volume=.5;}
  async enable(){
   if(!this.context){this.context=new AudioContext();this.context.onstatechange=()=>{if(this.context.state!=='running')this.stop();};this.gain=this.context.createGain();this.gain.gain.value=this.volume;this.gain.connect(this.context.destination);}
   await this.context.resume();
@@ -23,17 +23,20 @@ class BrowserAudio{
  setVolume(percent){this.volume=Math.max(0,Math.min(100,Number(percent)))/100;if(this.gain)this.gain.gain.value=this.volume;}
  stop(){if(this.stream){this.stream.aborted=true;for(const source of this.stream.sources)try{source.stop();}catch{}this.stream=null;}}
  receive(event){
-  if(event.kind==='start'){this.stop();this.stream={id:event.stream_id,next:this.context.currentTime+.15,sources:new Set(),ended:false,aborted:false,envelope:[],start_at:0};}
+  if(event.kind==='start'){this.stop();this.stream={id:event.stream_id,next:this.context.currentTime+.15,sources:new Set(),ended:false,aborted:false,envelope:[],pending:[],start_at:0};}
   const s=this.stream;if(!s||s.id!==event.stream_id)return;
   if(event.kind==='abort'){this.stop();return;}
   if(event.kind==='chunk'){
    const raw=atob(event.pcm_base64),data=new DataView(Uint8Array.from(raw,c=>c.charCodeAt(0)).buffer),count=data.byteLength/2,buffer=this.context.createBuffer(1,count,24000),samples=buffer.getChannelData(0);
    for(let i=0;i<count;i++)samples[i]=data.getInt16(i*2,true)/32768;
-   const start=Math.max(s.next,this.context.currentTime+.04);if(!s.start_at)s.start_at=Date.now()/1000+start-this.context.currentTime;
    for(let i=0;i<count;i+=1200){let sum=0,n=Math.min(1200,count-i);for(let j=0;j<n;j++)sum+=samples[i+j]**2;s.envelope.push(Math.min(1,Math.sqrt(sum/n)*6.5));}
-   const source=this.context.createBufferSource();source.buffer=buffer;source.connect(this.gain);s.sources.add(source);source.onended=()=>{s.sources.delete(source);this.complete(s);};source.start(start);s.next=start+buffer.duration;
+   if(this.prebuffer)s.pending.push(buffer);else this.schedule(s,buffer);
   }
-  if(event.kind==='end'){s.ended=true;this.complete(s);}
+  if(event.kind==='end'){if(this.prebuffer&&s.pending.length){const count=s.pending.reduce((n,b)=>n+b.length,0),joined=this.context.createBuffer(1,count,24000),samples=joined.getChannelData(0);let offset=0;for(const b of s.pending){samples.set(b.getChannelData(0),offset);offset+=b.length;}s.pending=[];s.next=this.context.currentTime+.15;this.schedule(s,joined);}s.ended=true;this.complete(s);}
+ }
+ schedule(s,buffer){
+  const start=Math.max(s.next,this.context.currentTime+.04);if(!s.start_at)s.start_at=Date.now()/1000+start-this.context.currentTime;
+  const source=this.context.createBufferSource();source.buffer=buffer;source.connect(this.gain);s.sources.add(source);source.onended=()=>{s.sources.delete(source);this.complete(s);};source.start(start);s.next=start+buffer.duration;
  }
  complete(s){if(s.ended&&!s.sources.size&&!s.aborted){this.finished=s.id;this.onStatus('Playback finished');}}
  presenter(){const s=this.stream;if(!s||s.aborted||!s.start_at||s.ended&&!s.sources.size)return null;return{activity:'speaking',start_at:s.start_at,envelope:s.envelope};}

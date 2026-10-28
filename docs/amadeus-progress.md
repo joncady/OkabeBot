@@ -126,3 +126,27 @@ explicit policy change; aggregation alone does not authorize it.
 
 - Improved: the existing speech lock also protects direct tool calls from
   conflicting supervisor health probes, without adding another service.
+
+## Whole-briefing character framing and playback continuity
+
+- Improved: character framing surrounds the full briefing, with exact fact slots
+  rather than a styled greeting followed by an unstyled list. Source values stay
+  outside the tool-free model prompt.
+- Improved: fresh rain/cool conditions can produce conditional outdoor gear advice;
+  missing weather and limited calendar coverage remain explicit.
+- Improved: TV-only prebuffering separates audio continuity from chunk-arrival
+  timing. Other interactive surfaces retain streaming playback.
+- Tradeoff: TV speech starts after complete synthesis/transfer; physical quality
+  still requires listening and is not inferred from transport acknowledgements.
+
+- Improved: speaker-only synthesis uses short sentence segments through the
+  existing model API; ICL behavior is unchanged. This bounds problematic long
+  decoding contexts without filtering waveforms or cutting words from recordings.
+
+- Improved: speaker-only clauses reject token-limit termination and allow one
+  bounded retry before audio publication. Complete clause decoding avoids relying
+  on incremental codec seams. Repeated failures remain explicit instead of
+  silently substituting another voice.
+- Regression risk: clause buffering and retries can increase speech startup time;
+  source completion, delivery acknowledgement and perceived quality remain
+  separate checks.

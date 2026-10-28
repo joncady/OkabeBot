@@ -59,3 +59,17 @@ reference merely because an experiment generated successfully.
 
 References: [Qwen3-TTS cloning modes](https://github.com/QwenLM/Qwen3-TTS) and
 [MLX-Audio Qwen implementation](https://github.com/Blaizzy/mlx-audio/tree/main/mlx_audio/tts/models/qwen3_tts).
+
+Speaker-only input is split into short sentence segments before decoding, using
+the model's existing newline segmentation. This limits multi-sentence generation
+degeneration without trimming silence from waveforms or removing spoken words.
+Clauses are split at commas/dashes and wrapped at short word boundaries with
+terminal punctuation; decimals remain intact. ICL input remains unchanged. The
+shared PCM duration limit still applies to the complete utterance.
+
+Speaker-only clauses use complete codec decoding, then travel over the same PCM
+socket/relay. A word-scaled token budget must finish before its limit; a capped
+clause is discarded and retried once with higher-temperature sampling. A second cap fails
+cleanly rather than publishing truncated speech. This adds clause buffering and
+can add retry latency; it does not prove perceptual voice quality. ICL streaming
+and the complete-utterance duration cap remain unchanged.

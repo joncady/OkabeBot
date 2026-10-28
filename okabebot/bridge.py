@@ -617,12 +617,16 @@ class Bridge:
                     coach = None
                 if self.surfaces.snapshot().get("current_location") != config["destination"]:
                     return
+                # Private capability diagnostics only; never log the spoken text or facts.
+                timing.write("morning", {"generated_framing": generated, "state": "speaking"})
                 # Resolve the current surface speaker; never use global announcement fallback.
                 character_tools.speak(spoken, "happy", purpose="reply")
+                timing.write("morning", {"generated_framing": generated, "state": "delivered"})
                 briefing.complete(success=True, coach=coach)
                 claimed = False
             except Exception:
-                pass  # No transcripts, model prompts or private source data in logs.
+                # No transcripts, model prompts or private source data in diagnostics.
+                timing.write("morning", {"state": "failed"})
             finally:
                 if claimed:
                     briefing.complete(success=False)

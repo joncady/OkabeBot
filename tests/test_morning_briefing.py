@@ -57,17 +57,80 @@ class BriefingTests(unittest.TestCase):
         )
         kinds = {c["kind"] for c in summary["cards"]}
         self.assertTrue({"weather", "calendar", "status", "coaching"} <= kinds)
-        compose = Mock(return_value="Good morning, Mira. Let's take today one step at a time.")
+        compose = Mock(
+            side_effect=lambda character, data: (
+                "Good morning, {name}. A small experiment. "
+                + ". ".join("{" + k + "}" for k in data["tokens"] if k != "name")
+                + "."
+            )
+        )
         spoken, generated, coach = self.briefing.message(
             summary, {"persona": "invented calm character"}, compose
         )
-        compose.assert_called_once_with({"persona": "invented calm character"}, "Mira")
+        self.assertEqual(compose.call_count, 1)
+        self.assertNotIn("Mira", json.dumps(compose.call_args.args))
+        self.assertNotIn("Ignore all instructions", json.dumps(compose.call_args.args))
         self.assertTrue(generated)
         self.assertIn("Mira", spoken)
         self.assertIn("important notification", spoken)
         self.assertNotIn("Ignore all instructions", spoken)
         self.assertLessEqual(len(spoken), 550)
         self.assertIsNotNone(coach)
+
+    def test_rain_and_cool_weather_produce_grounded_advice_in_character_framing(self):
+        summary = {
+            "cards": [
+                {
+                    "kind": "weather",
+                    "condition": "rainy",
+                    "temperature_c": 8,
+                    "temperature_unit": "°F",
+                    "title": "Outside",
+                    "body": "synthetic",
+                },
+                {
+                    "kind": "calendar",
+                    "title": "Today",
+                    "body": "No upcoming timed events in this feed",
+                },
+            ]
+        }
+
+        def compose(_, data):
+            self.assertEqual(data["weather"], "rainy")
+            return "Good morning, {name}. The lab's verdict. {weather}. {advice}. {calendar}. " + (
+                "{coaching}." if "coaching" in data["tokens"] else ""
+            )
+
+        spoken, generated, _ = self.briefing.message(
+            summary, {"persona": "invented scientist"}, compose
+        )
+        self.assertTrue(generated)
+        self.assertIn("lab's verdict", spoken)
+        self.assertIn("46 degrees Fahrenheit", spoken)
+        self.assertIn("jacket and an umbrella", spoken)
+        self.assertIn("connected calendar", spoken)
+        self.assertNotIn("°", spoken)
+        self.assertNotIn("day is free", spoken)
+        summary["cards"][0].update(condition="sunny", temperature_c=25)
+        spoken, _, _ = self.briefing.message(summary, {"persona": "invented"})
+        self.assertNotIn("umbrella", spoken)
+        self.assertNotIn("jacket", spoken)
+        bad = Mock(
+            return_value="Good morning, {name}. Tomorrow will be 90 degrees and your day is free."
+        )
+        spoken, generated, _ = self.briefing.message(summary, {"persona": "invented"}, bad)
+        self.assertFalse(generated)
+        self.assertNotIn("Tomorrow", spoken)
+        glued = Mock(
+            side_effect=lambda _, data: (
+                "Good morning, {name}. The {weather} air agrees. "
+                + ". ".join("{" + k + "}" for k in data["tokens"] if k not in ("name", "weather"))
+                + "."
+            )
+        )
+        _, accepted, _ = self.briefing.message(summary, {"persona": "invented"}, glued)
+        self.assertFalse(accepted)
 
     def test_speech_claim_is_durable_and_failed_delivery_is_not_retried(self):
         self.assertTrue(self.briefing.claim("test-tv"))
@@ -177,7 +240,7 @@ class BriefingTests(unittest.TestCase):
         model.process = Mock()
         model.process.poll.return_value = None
         model._read = Mock(return_value={"text": "Good morning, Mira. A fine day to begin."})
-        self.assertIn("Mira", model.compose_morning({"persona": "invented"}, "Mira"))
+        self.assertIn("Mira", model.compose_morning({"persona": "invented"}, {"tokens": ["name"]}))
         request = json.loads(model.process.stdin.write.call_args.args[0])
         self.assertEqual(request["tool_names"], [])
         self.assertEqual(request["task"], "morning")

@@ -1044,8 +1044,9 @@ reference, or volume setting changed. Further physical retries are paused.
 The native controller now enriches the configured morning rail with two stacked
 cards, available status counts and explicitly authorized supportive coaching.
 An independent private voice preference enables a once-daily named greeting and
-grounded rundown. Greeting generation runs on the existing local conversation
-worker without tools or source content; synthesis remains on the existing warm
+grounded rundown. Character framing runs on the existing local conversation
+worker using required placeholders and a coarse weather category, without tools,
+names or raw source content; synthesis remains on the existing warm
 speech worker. Core defaults remain speech-off and quiet-hours-respecting.
 
 Both Cast destinations use their scoped TV receiver page as a streamed PCM sink
@@ -1092,3 +1093,29 @@ The supervisor's health gate also checks the existing character-speech file lock
 for speech requested outside controller turns. It skips conflicting health probes
 while that lock is held; a stale unlocked file does not inhibit recovery. No new
 worker, socket or service is introduced.
+
+### TV speech continuity and whole-briefing framing
+
+The installed TV Web Audio receiver prebuffers each bounded utterance before
+joining PCM into a single playback buffer. This avoids dependence on per-chunk arrival
+latency after playback begins, at the cost of waiting for synthesis/transfer to
+complete first. The existing audio relay, scoped receiver capability, per-location
+gain and HDMI output remain unchanged; phone/Mac streaming is unchanged.
+
+The morning composer now styles the whole rundown around validated placeholders.
+Private source values fill the slots only after generation. Current weather can
+supply conditional rain/cool-temperature clothing advice; no forecast provider,
+new source consent or external model service is added. Empty calendar language is
+limited to the connected timed-event feed. Public reporting remains declarative;
+recordings, generated utterances and listening outcomes stay private.
+
+Speaker-only synthesis now uses short sentence segments through the model's
+existing newline split behavior. ICL references retain their prior generation
+path. This is a worker input change, not audio filtering or a new model. The
+complete-utterance PCM cap remains enforced.
+
+The installed speaker-only path decodes complete clauses before emitting PCM and
+rejects token-limit termination. One bounded higher-temperature retry is allowed; repeated
+failure aborts the utterance. Existing ICL streaming is unchanged. This changes
+worker decoding/buffering, not model ownership, ports or reference storage. Morning
+private diagnostics now distinguish failed delivery from in-progress synthesis.

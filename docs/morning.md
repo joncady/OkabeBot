@@ -1,9 +1,9 @@
 # Configurable morning summary
 
 The morning rule is opt-in and deterministic. It does not learn a sleep schedule,
-listen to audio or infer health. Optional speech generates only a short greeting;
-source facts remain grounded. Existing Amadeus habit-learning and
-coaching gates remain independent. Trial observations and personal configuration
+listen to audio or infer health. Optional speech generates character framing for
+the whole briefing; source facts remain grounded. Existing Amadeus habit-learning
+and coaching gates remain independent. Trial observations and personal configuration
 stay in private state, outside Git, issues and public progress logs.
 
 ## Behavior
@@ -177,10 +177,13 @@ household context, not proof of viewing, identity, preference or watched duratio
 Owner-only morning voice settings (`POST /amadeus/api/morning-voice`) are saved
 privately under `morning.voice`: enabled, spoken name, coaching inclusion and an
 explicit quiet-hours override. Speech defaults off; quiet hours are respected by
-default. A tool-free local model receives only the configured name and persona to
-compose the greeting. Calendar, weather and notification contents never enter its
-prompt. A bounded rundown follows from available source cards, with status counts
-and an optional supportive invitation from explicitly opted-in coaching topics.
+default. A tool-free local model receives the persona, required placeholder names
+and a coarse weather category to frame the whole briefing conversationally. Names,
+temperatures, event titles and notification contents remain outside its prompt.
+Every required placeholder must occur exactly once, and the rendered speech must
+fit the bounded output contract; malformed output falls back to grounded speech.
+Verified source facts fill those slots afterward, with status counts and an
+optional supportive invitation from explicitly opted-in coaching topics.
 Existing coaching pause, stop and daily limits still apply. No inferred health
 assessment or audio sentiment is used.
 
@@ -218,3 +221,19 @@ a missing, rebound or consent-revoked person is not guessed. Forgetting removes
 the cached name with other private preferences. Clear **Spoken name override**
 to follow Home Assistant; a nonempty override takes precedence for pronunciation
 or a preferred spoken name. The setup page displays which source is active.
+
+### Practical weather guidance
+
+Fresh current conditions can add conditional outdoor advice: an umbrella for
+rainy/pouring conditions and a jacket at or below 15°C. This is current weather,
+not a forecast or a prediction that the user will go outside. Unknown/stale
+weather cannot produce gear recommendations. Spoken temperatures use plain unit
+names rather than display symbols. An empty timed-event feed is described as
+that feed's coverage, never proof that the user's whole day is free.
+
+TV receivers prebuffer the short bounded utterance before playback, joining its PCM into one audio buffer rather than playing each chunk as it arrives. This trades additional
+startup delay for resilience against receiver/network stalls; phone and Mac
+receivers keep their existing streaming behavior. Readiness and playback receipts
+still do not establish physical audio quality. Private capability diagnostics
+record whether framing was generated and whether delivery completed, without
+spoken content or source facts.

@@ -240,7 +240,9 @@ registered spatial destination and does not participate in these reservations.
 ## Cast destination audio
 
 Cast locations default to `audio_target: device`. Their existing scoped receiver
-page consumes streamed PCM through Web Audio, with local mouth animation. The
+page receives PCM through Web Audio and prebuffers the bounded utterance before
+joining it into one contiguous audio buffer, with local mouth animation. Other browser and Mac
+receivers keep low-latency chunked playback. The
 receiver capability identifies only the current Cast location; stale tokens and
 preview pages cannot receive speech. Audio must report ready before a reply can
 start; unavailable receivers fail without redirecting speech to the Pi.
