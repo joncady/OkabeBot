@@ -124,6 +124,22 @@ class CloudSkillTests(unittest.TestCase):
             cloud.handle(event, "wrong-skill", audio, destination=relay)
         self.assertEqual(relay.launch.call_count, 1)
 
+    def test_stop_and_cancel_close_destination_without_session_ended_callback(self):
+        from tests.test_alexa_destination_relay import RelayTests
+
+        for intent in ("AMAZON.StopIntent", "AMAZON.CancelIntent"):
+            fixture_state = RelayTests()
+            fixture_state.setUp()
+            event = copy.deepcopy(fixture_state.event)
+            event["request"]["intent"]["name"] = intent
+            result = cloud.handle(event, "local-prototype", Mock(), destination=fixture_state.relay)
+            self.assertTrue(result["response"]["shouldEndSession"])
+            self.assertTrue(fixture_state.store.get("session")["closed"])
+            # A later APL poll cannot revive the canceled destination.
+            fixture_state.relay.poll(fixture_state.poll())
+            self.assertTrue(fixture_state.store.get("session")["closed"])
+            self.assertFalse(fixture_state.store.get("session")["ready"])
+
     def test_destination_iam_is_disabled_by_default_and_cannot_write_commands(self):
         value = json.loads((ROOT / "infra/aws/alexa-skill.json").read_text())
         self.assertEqual(value["Parameters"]["EnableDestination"]["Default"], "false")

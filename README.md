@@ -520,3 +520,6 @@ physical arrival/return check remain in progress.
 
 The hidden Alexa actor now uses APL's invisible display state to allow artwork
 preloading; hardware readiness is still pending a direct Show launch.
+
+Alexa destination Stop/Cancel now explicitly closes its relay session; this does
+not depend on a later SessionEnded callback. A local regression covers stale polls.

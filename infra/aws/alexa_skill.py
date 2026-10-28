@@ -75,6 +75,8 @@ def handle(event, skill_id, audio_url, frames=None, destination=None):
         result = response("", audio_url=audio_url())
         return attach_character(result, event, frames) if frames else result
     if intent in ("AMAZON.StopIntent", "AMAZON.CancelIntent"):
+        if destination is not None:
+            destination.closed(event)
         return response("See you in the lab.")
     if intent in ("LabStatusIntent", "LabLocationsIntent"):
         return response(

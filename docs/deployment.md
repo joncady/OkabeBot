@@ -795,3 +795,8 @@ zero opacity. The change passes renderer/relay tests and is deployed for retry;
 it is not yet confirmed to resolve readiness on hardware. Home Assistant text
 invocations created a skill record but produced no screen callbacks, so they
 cannot substitute for the direct launch in this physical test.
+
+Local review found that explicit Stop/Cancel could leave the destination record
+open after a skill-initiated end. The handler now closes it before ending speech,
+and a real-relay regression verifies that later polls cannot revive it. The fix
+is being deployed before the physical cancellation/recovery check.
