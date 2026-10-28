@@ -177,3 +177,11 @@ available streaming catalogue, a preferred title, a health need or observed slee
 - [ ] Add a separately consented explicit-intent adapter for preparation and media
   choice requests (for example HA buttons or NFC), instead of treating occupancy
   or focus-off as a request. Keep user-initiated help distinct from proactive delivery.
+- [ ] Separate preparation, retained passive cards, presentation leases and alerts;
+  expose why no candidate was created, not only why a candidate was suppressed.
+- [ ] Add explicit per-channel quiet rules for passive screen information versus
+  spoken/attention-seeking delivery; never infer an exception from a desired goal.
+- [ ] Display observation age and busy/optional calendar status; calibrate freshness
+  against provider reporting cadence rather than calling a refreshed cache current.
+- [ ] Scope attention to verified recipient/destination areas before household-wide
+  playback gates are relaxed; unknown room or viewer identity remains explicit.
