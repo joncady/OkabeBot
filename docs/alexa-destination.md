@@ -43,12 +43,12 @@ A bounded four-bit asset diagnostic reports only load/failure flags for the
 background and actor; it never records URLs or device error text. The actor's display guard also checks the one-minute document limit independently of
 remote responses. `closed` remains terminal for that document.
 
-The hidden actor uses APL `display: invisible` rather than zero opacity so its
-image loads before an authorized arrival. The absolute actor layer is explicitly
-anchored at top/left zero to align with the background viewport. The actor uses
-a validated literal source URL; bounded tick commands select the idle/blink URLs
-directly rather than depending on an inherited frame-index binding. Both source departure and image-load
-readiness are still required before making it visible.
+The actor preloads behind an opaque copy of the background, which remains in
+front until image readiness, source departure and a valid visibility lease are
+confirmed. Until the cover itself loads, the actor is invisible. This avoids
+relying on hidden-image loading behavior. The deploy script rejects a background
+with transparency. All three layers share the viewport origin. Trusted literal
+idle/blink URLs avoid an inherited source-index binding.
 
 Departure hides the actor first, then waits at least 100 ms in a subsequent tick
 before acknowledgement. Arrival similarly waits after applying the phase.

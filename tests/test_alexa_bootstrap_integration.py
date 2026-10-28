@@ -61,6 +61,9 @@ class BootstrapIntegrationTests(unittest.TestCase):
                 "actor-blink.png",
             ):
                 (visuals / name).write_bytes(b"x" * 200)
+            from PIL import Image
+
+            Image.new("RGB", (960, 540), "black").save(visuals / "background.png")
             (visuals / "scene.json").write_text(
                 json.dumps({"character": "okabe", "set": "maid-cafe"})
             )

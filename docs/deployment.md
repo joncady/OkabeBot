@@ -810,3 +810,9 @@ The anchored retry still reported background-only readiness. The next diagnostic
 renderer removes the actor's inherited frame-index source expression: its initial
 source is the validated idle URL, with explicit idle/blink source commands. This
 remains a candidate fix until a fresh Show launch reports the actor loaded.
+
+The direct-source retry still reported background-only readiness. The renderer
+now preloads the actor behind a matching opaque background cover, exposing it
+only on the original readiness/ownership/lease checks. The test background alpha
+range was verified as 255..255; the deployment helper now rejects transparency.
+This new loading strategy remains pending direct Show verification.

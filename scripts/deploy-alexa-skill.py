@@ -109,6 +109,11 @@ def main():
     if args.destination_visuals:
         from okabebot.scene_sets import validate_selection
 
+        from PIL import Image
+
+        with Image.open(args.destination_visuals / "background.png") as background:
+            if background.convert("RGBA").getchannel("A").getextrema() != (255, 255):
+                parser.error("Destination background must be opaque to cover the preloaded actor")
         destination_scene = json.loads((args.destination_visuals / "scene.json").read_text())
         validate_selection(destination_scene["character"], destination_scene["set"])
         for name in destination_names:

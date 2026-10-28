@@ -529,3 +529,6 @@ the direct hardware readiness check remains open.
 
 The experimental Alexa actor uses explicit validated idle/blink image sources;
 the outstanding Show image-readiness gate is unchanged.
+
+Alexa is testing covered actor preloading with an opaque background; readiness
+and ownership checks remain mandatory before revealing the actor.

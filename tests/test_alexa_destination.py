@@ -20,9 +20,11 @@ class DestinationTests(unittest.TestCase):
         self.assertEqual(bindings["leaseUntil"], 0)
         self.assertEqual(bindings["sequence"], 0)
         actor = root["items"][1]
-        self.assertIn("clock < leaseUntil", actor["display"])
-        self.assertIn("clock < 60000", actor["display"])
-        self.assertIn("!closed", actor["display"])
+        guard = root["items"][2]["opacity"]
+        self.assertEqual(actor["display"], "${coverReady ? 'normal' : 'invisible'}")
+        self.assertIn("clock < leaseUntil", guard)
+        self.assertIn("clock < 60000", guard)
+        self.assertIn("!closed", guard)
         self.assertEqual(actor["source"], FRAMES[0])
         self.assertEqual((actor["top"], actor["left"]), (0, 0))
         self.assertIn("invisible", actor["display"])
@@ -45,7 +47,7 @@ class DestinationTests(unittest.TestCase):
         self.assertEqual(polling["repeatCount"], 59)
         args = polling["commands"][0]["arguments"]
         self.assertEqual(args[:2], ["destination-poll", TOKEN])
-        self.assertIn("${backgroundReady && actorReady}", args)
+        self.assertIn("${backgroundReady && coverReady && actorReady}", args)
         self.assertEqual(polling["finally"][-1]["value"], 0)
         response = document(TOKEN, "https://example.com/room.png", FRAMES)["response"]
         self.assertNotIn("outputSpeech", response)
