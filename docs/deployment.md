@@ -765,3 +765,18 @@ unique matching scene, and support Room presentation. A CLI/process lock and a
 scoped two-object consumer-policy template are provided. None of these source
 changes is installed/running yet; the live skill's destination flag was read and
 confirmed disabled. No live scene, voice, volume, host or port change was made.
+
+
+### Alexa destination development deployment (2026-10-27)
+
+The tested controller bridge/registry/HTTP changes are now installed on the Mac.
+The controller restarted and reported Pi ownership with the existing speaker
+level preserved. The development skill's optional destination flag is enabled
+with Okabe/café artwork. An Identity Center permission set and local named profile
+scope the test worker to reading the two relay objects and writing only the
+command object. Live reads succeeded and a session-object write was denied.
+The worker is running as a supervised foreground test, not a login service.
+Generic voice-demo invocation, MP3 hash and four image hashes passed after the
+cloud update. No Show destination handoff has yet been physically accepted.
+Existing TV and voice routes remain unchanged; the Alexa spatial route is an
+experimental two-object S3 link over HTTPS to this optional Mac worker.

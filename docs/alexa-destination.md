@@ -1,10 +1,12 @@
 # Experimental Alexa session destination
 
-Status: source prototype only. The installed skill remains the physically
-accepted custom-audio/animated-scene demo. The controller bridge is implemented and passes isolated handoff/HTTP tests, but
-is not running in the installed deployment. No live spatial ownership is
-transferred by this prototype yet. See
-[deployment inventory](deployment.md) for observed hosting and tests.
+Status: enabled in the development skill for supervised destination testing.
+The tested controller bridge is installed, and its scoped worker is running as a
+foreground test process. Both relay objects are readable through its Identity
+Center profile; writing the receiver-owned session object is denied. The generic
+custom-audio/animated-scene demo still passes cloud asset checks. Physical Show
+arrival/return/recovery remains unverified; do not treat this as an accepted
+spatial destination yet. See [deployment inventory](deployment.md).
 
 ## Supported boundary
 
@@ -136,7 +138,8 @@ account and private bucket parameters locally. Replace the standalone policy’s
 bucket placeholder privately. It reads the two JSON objects and can
 write only the command object; no bucket-list, image-write or Lambda permission
 is needed. A process lock prevents accidentally starting two local workers with
-the same lock path. This worker is not yet installed as an automatic service.
+the same lock path. This worker is not yet installed as an automatic service. The current supervised
+test uses this runner; stopping it lets the visibility leases recover ownership.
 
 ```sh
 python -m pip install -e '.[alexa-destination]'

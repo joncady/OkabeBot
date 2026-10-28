@@ -1,6 +1,6 @@
 """Bounded skill-session relay protocol over an injected private durable store.
 
-Not enabled by the deployed skill. The store must offer get(key)/put(key, value)
+Opt-in skill transport. The store must offer get(key)/put(key, value)
 with bounded JSON reads. No household tools, transcripts, raw account identifiers,
 URLs from slots, or automatic movement are accepted here.
 """
