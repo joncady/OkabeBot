@@ -816,3 +816,11 @@ now preloads the actor behind a matching opaque background cover, exposing it
 only on the original readiness/ownership/lease checks. The test background alpha
 range was verified as 255..255; the deployment helper now rejects transparency.
 This new loading strategy remains pending direct Show verification.
+
+Covered preload resolved the measured image-readiness gate on a direct Show
+launch: background/cover and actor flags were both loaded, and `ready` was true.
+The installed controller then reached Show ownership (`tv` phase for the paired
+Alexa screen) and returned to Pi ownership after an explicit return, with no
+controller errors. Private arrival/return receipts were saved locally; speaker
+level remained 26%. The user confirmed Okabe visible in the Show café with the Pi away.
+Closure/expiry recovery remains required before accepting the checkpoint.

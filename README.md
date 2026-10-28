@@ -532,3 +532,7 @@ the outstanding Show image-readiness gate is unchanged.
 
 Alexa is testing covered actor preloading with an opaque background; readiness
 and ownership checks remain mandatory before revealing the actor.
+
+Covered preloading now passes real Show image readiness and an acknowledged
+Show arrival/Pi return. The user confirmed Show presence with Pi absence;
+close/expiry recovery remains pending; this remains a bounded development-session destination.
