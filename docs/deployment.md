@@ -860,3 +860,10 @@ uploaded audio. Queue/ledger transport, controller adapter, synthesis/encoding,
 TalkIntent build and physical conversational acceptance remain unimplemented.
 Nothing in this source-only pass changed live routes, settings, voices or volume;
 the current deployment map is unchanged. See [conversation cycle](alexa-conversation.md).
+
+The conversational source now includes a DynamoDB/SQS exchange and an opt-in
+private Unix-socket adapter (`conversation.alexa_enabled`, false by default).
+The adapter shares the warm model and voice worker, pins voice identity and
+generates deadline-bounded MP3 without physical playback. Isolated socket and
+ledger regressions pass. No AWS conversation resources or live adapter have been
+installed by these source changes; installed topology remains unchanged.

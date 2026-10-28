@@ -519,3 +519,7 @@ A [conversational Alexa mini-cycle](docs/alexa-conversation.md) is now in progre
 paired spoken questions, isolated local-model follow-ups and generated character
 replies. Protocol/model scaffolding is source-only; the live skill still provides
 the accepted visual destination and generic voice demo, not conversational turns.
+
+The Alexa conversation source includes an opt-in private Unix-socket adapter and
+a dedicated conditional queue/ledger exchange. It remains uninstalled pending
+regressions and a silent local timing test; no household tool access is added.

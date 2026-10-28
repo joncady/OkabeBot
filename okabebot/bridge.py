@@ -162,6 +162,13 @@ class Bridge:
             else:
                 self.codex = Codex(self.folder, self.notify, self.reply)
             self.resources.callback(self.codex.close)
+            if config["conversation"]["alexa_enabled"]:
+                from .alexa_local import LocalConversationServer
+
+                adapter = LocalConversationServer(
+                    state_dir() / "alexa" / "conversation.sock", self.codex, current_character
+                )
+                self.resources.callback(adapter.close)
         with sqlite3.connect(self.folder / "clips.sqlite3") as db:
             db.execute(
                 "CREATE TABLE IF NOT EXISTS clips (id TEXT PRIMARY KEY, status TEXT, transcript TEXT)"

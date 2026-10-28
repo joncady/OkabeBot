@@ -1,6 +1,6 @@
 # Alexa conversational mini-cycle
 
-Status: protocol and tool-free local-model path implemented in source, not
+Status: protocol, durable exchange and private local adapter implemented in source, not
 installed or exposed by the development skill. The accepted destination/demo
 continues operating separately. This is not yet a working spoken conversation.
 
@@ -60,8 +60,8 @@ conflicting replay bodies, fixed audio keys, timeout fallback, explicit audio
 eligibility, cross-session isolation, sensitive-input fallback, malformed model
 output and late-reply consumption. No audio was uploaded or played by these tests.
 
-Remaining gates: durable cloud transport and scoped credentials; private local
-controller adapter; audio encoding/deadlines; TalkIntent model build; Show speech
+Remaining gates: deploy the durable cloud transport and scoped credentials; install/benchmark
+the private adapter and audio deadlines; TalkIntent model build; Show speech
 animation and follow-up listening; measured cloud/local loop; user acceptance of
 two spoken questions, audibility and exit recovery. Record model, first PCM,
 encoding/upload and total cloud response separately. Physical audible onset still
@@ -70,3 +70,20 @@ requires the user or an explicitly authorized recording test.
 Sources: [SearchQuery carrier phrases](https://developer.amazon.com/en-US/docs/alexa/custom-skills/slot-type-reference.html#amazonsearchquery),
 [response deadline](https://developer.amazon.com/en-US/docs/alexa/custom-skills/send-the-user-a-progressive-response.html),
 [SSML audio and privacy requirements](https://developer.amazon.com/en-US/docs/alexa/custom-skills/speech-synthesis-markup-language-ssml-reference.html#audio).
+
+## Local adapter and durable exchange
+
+`conversation.alexa_enabled` defaults to false and requires the local conversation
+backend. When enabled, the controller owns a mode-0600 Unix socket in the private
+state directory under `alexa/conversation.sock`. It accepts only text, opaque
+session ID and a short deadline, never an operation/tool name. It calls the same
+warm model and Qwen worker without invoking physical playback. The selected voice
+identity is pinned for the entire reply. PCM reads and MP3 encoding respect the
+remaining deadline; late audio is rejected. It adds no LAN port or dashboard key.
+
+`ConversationExchange` is the SDK-injected DynamoDB/SQS adapter. Conditional
+create/claim/complete operations preserve the original deadline and make each
+request terminal after one claim. Retried sends use a FIFO deduplication ID.
+Replies stay in the private ledger; only eligible audio enters the media store.
+Expiry and permission errors are distinct, with no fallback that replays inference.
+The cloud resources, consumer and IAM wiring are not deployed yet.

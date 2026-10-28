@@ -39,6 +39,22 @@ class ConfigTests(unittest.TestCase):
             "local",
         )
 
+    def test_alexa_adapter_is_opt_in_and_requires_local_model(self):
+        self.assertFalse(self.config({})["conversation"]["alexa_enabled"])
+        for value in (True, "yes", 1):
+            with self.assertRaises(ValueError):
+                self.config({"conversation": {"alexa_enabled": value}})
+        settings = self.config(
+            {
+                "conversation": {
+                    "backend": "local",
+                    "command": ["python", "-m", "okabebot.local_worker"],
+                    "alexa_enabled": True,
+                }
+            }
+        )
+        self.assertTrue(settings["conversation"]["alexa_enabled"])
+
     def test_defaults_are_local_okabe_and_scoped_auto_approval(self):
         c = self.config({})
         self.assertEqual(c["character"]["name"], "Okabe")
