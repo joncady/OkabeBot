@@ -177,3 +177,10 @@ weather, temperature, device-health, LG ThinQ, media-player, printer and NFC/QR
 survey. Direct LG ThinQ integration uses the vendor cloud; linking its Alexa skill
 alone does not guarantee appliance entities in HA. Discovery does not authorize
 Amadeus history collection. New categories need separate private consent and schemas.
+
+## Optional morning phone cue
+
+[Morning summary setup](morning.md) describes the metadata-only package, exact
+private bindings, alarm/weather snapshots and separate owner collection/presentation
+controls. The interactive sensor must report a real off-to-on transition; periodic
+snapshots never trigger a screen wake. Room/destination IDs come from the registry.

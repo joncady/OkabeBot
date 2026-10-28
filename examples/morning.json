@@ -1,0 +1,12 @@
+{
+  "enabled": false,
+  "start_hour": 4,
+  "end_hour": 12,
+  "temperature_unit": "°C",
+  "destination": "",
+  "present_on_wake": false,
+  "before_minutes": 30,
+  "after_minutes": 90,
+  "rotation_seconds": 12,
+  "display_minutes": 120
+}

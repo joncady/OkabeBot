@@ -1,0 +1,68 @@
+# Metadata only. Configure exact private entity bindings before enabling collection.
+# Screen changes are never synthesized by refresh/startup; alarm/weather are snapshots.
+rest_command:
+  okabebot_morning_observation:
+    url: !secret amadeus_morning_url
+    method: POST
+    content_type: application/json
+    headers:
+      X-Amadeus-Source-Token: !secret amadeus_source_token
+    payload: >-
+      {{ {"entity_id": entity_id, "state": state, "event_id": event_id,
+          "observed_at": observed_at | float, "details": details} | to_json }}
+    timeout: 5
+
+automation:
+  - id: okabebot_morning_changes
+    alias: Amadeus - morning source changes
+    triggers:
+      - trigger: state
+        entity_id: !secret amadeus_morning_entities
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state is not none and trigger.to_state is not none
+             and (trigger.from_state.state != trigger.to_state.state
+                  or trigger.from_state.attributes.get('temperature') != trigger.to_state.attributes.get('temperature'))
+             and (not trigger.entity_id.startswith('binary_sensor.')
+                  or (trigger.from_state.state in ['on', 'off'] and trigger.to_state.state in ['on', 'off'])) }}
+    actions:
+      - action: rest_command.okabebot_morning_observation
+        data:
+          entity_id: "{{ trigger.entity_id }}"
+          state: "{{ trigger.to_state.state }}"
+          event_id: "{{ trigger.to_state.context.id }}"
+          observed_at: "{{ as_timestamp(trigger.to_state.last_updated) }}"
+          details: >-
+            {{ {"temperature": trigger.to_state.attributes.get('temperature'),
+                "unit": trigger.to_state.attributes.get('temperature_unit'),
+                "updated_at": as_timestamp(trigger.to_state.last_updated)}
+               if trigger.entity_id.startswith('weather.') else
+               ({'previous_state': trigger.from_state.state} if trigger.entity_id.startswith('binary_sensor.') else {}) }}
+    mode: queued
+    max: 10
+    max_exceeded: silent
+
+  - id: okabebot_morning_snapshots
+    alias: Amadeus - alarm and weather snapshots
+    triggers:
+      - trigger: time_pattern
+        minutes: "/5"
+      - trigger: homeassistant
+        event: start
+    actions:
+      - repeat:
+          for_each: !secret amadeus_morning_snapshot_entities
+          sequence:
+            - action: rest_command.okabebot_morning_observation
+              data:
+                entity_id: "{{ repeat.item }}"
+                state: "{{ states(repeat.item) }}"
+                event_id: "{{ 'snapshot:' ~ as_timestamp(now()) }}"
+                observed_at: "{{ as_timestamp(now()) }}"
+                details: >-
+                  {{ {"temperature": state_attr(repeat.item, 'temperature'),
+                      "unit": state_attr(repeat.item, 'temperature_unit'),
+                      "updated_at": as_timestamp(states[repeat.item].last_updated)}
+                     if repeat.item.startswith('weather.') else {} }}
+    mode: single

@@ -17,6 +17,11 @@ onboarding controls; live delivery remains pending. Personal trial results remai
 private. The [public progress log](docs/amadeus-progress.md) describes only general
 capability improvements, limitations and regressions.
 
+An opt-in [morning summary](docs/morning.md) can prepare weather/calendar cards
+on the first screen-on near an alarm and optionally present them on a configured
+TV. Its local schedule, destination and pixel card rail are configurable; source
+permissions and automatic TV movement remain separate.
+
 The default character is an original pixel-art interpretation of **Rintaro Okabe from Steins;Gate**: dark hair, lab coat, expressive eyes, and an audio-driven mouth. This is an unofficial fan project, with no affiliation or endorsement. The artwork is drawn in code; no anime frames or actor voice recordings are included. Pip, the original robot face, remains an option.
 
 ![Okabe character](docs/okabe.png)
@@ -69,6 +74,9 @@ flowchart TB
         AlexaLocal --> Speech
         App -->|"Owns private adapter lifecycle"| AlexaLocal
         App --> Places["Configured and paired destinations; spatial layout and shared move interface"]
+        App --> Morning["Opt-in first-screen/alarm morning rule; no model or speech"]
+        Morning -->|"Configured TV card rail and shared handoff"| Places
+        HA -->|"Write-only phone cue / alarm / weather metadata"| Morning
         App --> Amadeus["Owner-only Amadeus setup; consent-gated shadow metadata; private SQLite; no nudges"]
         HA -->|"Write-only, entity-bound metadata receiver"| Amadeus
         App -->|"Existing calendar/media snapshots and interaction metadata"| Amadeus

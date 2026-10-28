@@ -19,6 +19,10 @@ FIELDS = {
     "media": {"app", "title", "content_id", "state", "duration_s", "position_s"},
     "calendar": {"event_id", "summary", "start_at", "end_at", "snapshot_id"},
     "calendar_snapshot": {"snapshot_id", "event_count", "start_at", "end_at"},
+    "phone_wake": {"state"},
+    "phone_alarm": {"alarm_at"},
+    "weather": {"condition", "temperature_c", "reported_at"},
+    "morning_summary": {"day", "target", "until_at"},
     "feedback": {"proposal_id", "outcome"},
 }
 
@@ -80,6 +84,7 @@ class Store:
                     expires_at REAL NOT NULL, payload TEXT NOT NULL,
                     UNIQUE(source, external_id));
                 CREATE INDEX IF NOT EXISTS event_subject_time ON events(subject, observed_at);
+                CREATE INDEX IF NOT EXISTS event_kind_time ON events(kind, subject, observed_at);
                 CREATE TABLE IF NOT EXISTS preferences (
                     subject TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL,
                     updated_at REAL NOT NULL, PRIMARY KEY(subject, key));
@@ -101,7 +106,15 @@ class Store:
         if set(payload) - FIELDS[kind]:
             raise ValueError("Unsupported event fields; raw bodies/audio are not accepted")
         for key, value in payload.items():
-            if key.endswith("_s") or key.endswith("_at") or key == "event_count":
+            if key.endswith("_s") or key.endswith("_at") or key in ("event_count", "temperature_c"):
+                if key == "temperature_c":
+                    if (
+                        type(value) not in (int, float)
+                        or not math.isfinite(value)
+                        or not -100 <= value <= 100
+                    ):
+                        raise ValueError("Use a supported weather temperature")
+                    continue
                 if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
                     raise ValueError("Event measurements must be finite nonnegative numbers")
             elif not isinstance(value, str) or not 1 <= len(value) <= 512:

@@ -60,6 +60,70 @@ class AmadeusHttpTests(unittest.TestCase):
         ) as r:
             return json.load(r)
 
+    def test_morning_owner_configuration_and_write_only_phone_ingestion(self):
+        from okabebot.morning import DEFAULTS
+
+        self.bridge.dispatch_morning = Mock()
+        self.bridge.surfaces.snapshot.return_value = {
+            "locations": [{"id": "test-tv", "name": "Invented TV", "adapter": "cast"}]
+        }
+        self.request("/amadeus/api/settings", dict(SETUP, sources=["phone_context", "weather"]))
+        config = dict(DEFAULTS, enabled=True, destination="test-tv", start_hour=0, end_hour=24)
+        self.assertEqual(self.request("/amadeus/api/morning", config)["config"], config)
+        folder = self.folder / "amadeus"
+        (folder / "ha-source-token").write_text("s" * 43)
+        (folder / "ha-bindings.json").write_text(
+            json.dumps(
+                {"interactive": ["binary_sensor.test_screen"], "alarm": ["sensor.test_alarm"]}
+            )
+        )
+        event = {
+            "entity_id": "binary_sensor.test_screen",
+            "state": "on",
+            "event_id": "invented-wake",
+            "observed_at": time.time(),
+            "details": {"previous_state": "off"},
+        }
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/source/morning", event)
+        self.assertEqual(caught.exception.code, 403)
+        result = self.request(
+            "/amadeus/source/morning", event, token="", extra={"X-Amadeus-Source-Token": "s" * 43}
+        )
+        self.assertEqual(result["state"], "paused")
+        self.request("/amadeus/api/control", {"paused": False})
+        result = self.request(
+            "/amadeus/source/morning", event, token="", extra={"X-Amadeus-Source-Token": "s" * 43}
+        )
+        self.assertEqual(result["state"], "stored")
+        self.assertFalse(result["prepared"], "No alarm means no morning action")
+        alarm_event = dict(
+            event,
+            entity_id="sensor.test_alarm",
+            state=time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime()),
+            details={},
+            event_id="invented-alarm",
+            observed_at=time.time(),
+        )
+        self.request(
+            "/amadeus/source/morning",
+            alarm_event,
+            token="",
+            extra={"X-Amadeus-Source-Token": "s" * 43},
+        )
+        event.update(event_id="second-wake", observed_at=time.time())
+        result = self.request(
+            "/amadeus/source/morning", event, token="", extra={"X-Amadeus-Source-Token": "s" * 43}
+        )
+        self.assertTrue(result["prepared"])
+        self.bridge.dispatch_morning.assert_called_once()
+        self.assertTrue(self.request("/amadeus/api/morning")["summary"]["cards"])
+        with self.assertRaises(HTTPError) as caught:
+            self.request(
+                "/amadeus/api/morning", token="", extra={"X-Amadeus-Source-Token": "s" * 43}
+            )
+        self.assertEqual(caught.exception.code, 403)
+
     def test_unpaired_publish_cross_origin_and_host_requests_cannot_open_private_store(self):
         for headers, token in [
             ({}, ""),

@@ -80,3 +80,14 @@ test('Sonic avatar keeps sprite colors and a full quill/ear crop instead of huma
  assert.ok(!colors.has('#283a48'));assert.ok(!colors.has('#2a3e4a'));
  const [,x,y,w,h]=images[0];assert.ok(x<=100&&y<=28&&x+w>=352&&y+h>=204);
 });
+
+test('morning layout clips and shifts room, draws a quarter-width rail, rotates without poll reset',()=>{
+ const {Room}=require('../okabebot/web/lab-room.js');const r=new Room(),calls=[];
+ const c=new Proxy({measureText:s=>({width:s.length*8})},{get:(o,k)=>k in o?o[k]:(...a)=>calls.push([k,...a]),set:(o,k,v)=>(o[k]=v,true)});
+ r.renderScene=()=>calls.push(['scene']);
+ const model={now:1000,state:{receivedAt:1000,server_time:1012,environment:{presentation:'room'},morning:{rotation_seconds:12,prepared_at:1000,cards:[{kind:'weather',title:'OUTSIDE',body:'Invented weather'},{kind:'calendar',title:'08:00',body:'Invented appointment'}]}}};
+ r.render(c,model);assert.ok(calls.some(a=>a[0]==='translate'&&a[1]===-72));
+ assert.ok(calls.some(a=>a[0]==='rect'&&a[3]===716));assert.ok(calls.some(a=>a[0]==='fillText'&&a[1]==='08:00'));
+ assert.ok(calls.some(a=>a[0]==='fillRect'&&a[1]===728));
+ calls.length=0;model.state.morning=null;r.render(c,model);assert.deepEqual(calls,[['scene']]);
+});

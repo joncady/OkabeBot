@@ -54,3 +54,14 @@ explicit policy change; aggregation alone does not authorize it.
   semantic recall, timeline filters and unsolicited suggestions remain pending.
 - Next: private source acceptance, then synthetic routine/evidence evaluation before
   any proactive delivery. No personal trial outcomes are published here.
+
+## Deterministic morning preparation
+
+- Improved: narrowly typed phone/alarm/weather sources support a configurable,
+  durable first-screen cue without sleep inference or model latency.
+- Improved: selected-TV cards use the shared scene/handoff interface and a pixel
+  rail; alarm rollover/cancellation, DST, duplicates and stale sources have guards.
+- Limited: current-weather and timed-calendar cards only. Travel suppression,
+  richer forecasts, additional cards and real-morning acceptance remain follow-ups.
+- Next: private cue/display acceptance and configuration refinements; no participant
+  observations, schedules or behavioral outcomes are published.

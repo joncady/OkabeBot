@@ -177,6 +177,29 @@ class Room{
   }
   idleEnvironment(c,now,state,opacity=1){const set=environments.theme(state.character,state.environment);if(state.environment||set==='green-hill')environments.compact(c,now,opacity,set);}
   render(c,model){
+    const morning=model.state.morning;
+    if(!morning||model.state.environment?.presentation==='companion')return this.renderScene(c,model);
+    c.imageSmoothingEnabled=false;c.fillStyle='#101b27';c.fillRect(0,0,W,H);
+    c.save();c.beginPath();c.rect(0,0,716,H);c.clip();c.translate(-72,30);c.scale(.9,.9);
+    this.renderScene(c,model);c.restore();this.morningCards(c,model,morning);
+  }
+  morningCards(c,model,morning){
+    const cards=Array.isArray(morning.cards)?morning.cards:[];if(!cards.length)return;
+    const elapsed=Math.max(0,(model.state.server_time||0)+(model.now-(model.state.receivedAt||model.now))/1000-(morning.prepared_at||0));
+    const index=Math.floor(elapsed/Math.max(5,morning.rotation_seconds||12))%cards.length,card=cards[index];
+    // Stepped pixel edges: no rounded dashboard chrome over the room.
+    c.fillStyle='#080f1b';c.fillRect(728,64,220,472);
+    c.fillStyle='#6e9996';c.fillRect(736,56,204,488);c.fillRect(728,64,220,472);
+    c.fillStyle='#16323a';c.fillRect(736,64,204,472);
+    c.fillStyle='#d7bd7a';c.fillRect(748,82,28,5);label(c,'MORNING',748,119,18,'#e3dcb7');
+    c.fillStyle=card.kind==='weather'?'#e0c47d':'#b8d3ce';
+    if(card.kind==='weather'){c.fillRect(756,166,24,24);c.fillRect(764,154,8,48);c.fillRect(744,174,48,8);}
+    else{c.fillRect(748,158,40,40);c.fillStyle='#16323a';c.fillRect(752,170,32,24);c.fillRect(758,154,5,12);c.fillRect(774,154,5,12);}
+    lines(c,String(card.title).replace(/(\S{14})(?=\S)/g,'$1 '),748,238,180,2,19,'#e3dcb7');
+    lines(c,String(card.body).replace(/(\S{18})(?=\S)/g,'$1 '),748,306,180,8,16,'#d3e4d0');
+    for(let i=0;i<cards.length;i++){c.fillStyle=i===index?'#e0c47d':'#365861';c.fillRect(748+i*16,510,8,5);}
+  }
+  renderScene(c,model){
     const set=environments.theme(model.state.character,model.state.environment);
     if(this.scene!==set){this.scene=set;this.background=null;}
     if(model.state.environment?.assigned===false){c.clearRect(0,0,W,H);return;}

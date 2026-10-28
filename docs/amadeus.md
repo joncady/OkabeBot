@@ -388,3 +388,13 @@ in private HA secrets; match entities in private `ha-bindings.json` (`door` and
 `presence` arrays). Use a random credential of at least 32 characters in the private
 `ha-source-token` file (0600). Reload RESTful Command and Automations after checking
 configuration. Keep owner dashboard credentials out of this publisher.
+
+## Deterministic morning rule
+
+An independently opt-in [first-screen/alarm morning rule](morning.md) now connects
+bounded phone and outdoor weather metadata to selected-TV weather/calendar cards.
+It is a configured automation, not evidence of learned habits or sleep. Core
+source and presentation defaults remain off; private owner configuration can
+activate them. Routine inference, coaching and general proactive delivery gates
+remain separate. The rule's private human checkpoint is a real eligible morning;
+configuration refinements must not publish personal observations or outcomes.

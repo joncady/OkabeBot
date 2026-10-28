@@ -20,7 +20,7 @@ function update(s){
   const set=s.environment?.name||s.lab.title;
   document.title=set;canvas.setAttribute('aria-label',`${s.character.name} in ${set}`);
   text('name',s.lab.title);text('mode',s.phase==='preview'?'PREVIEW':'');
-  text('summary',s.notification?`${s.notification.title}. ${s.notification.body||''}`:`${s.character.name} at ${s.destination_name}.`);
+  text('summary',s.morning?`${s.morning.title}. ${s.morning.cards.map(c=>c.title+': '+c.body).join('. ')}`:s.notification?`${s.notification.title}. ${s.notification.body||''}`:`${s.character.name} at ${s.destination_name}.`);
   document.querySelector('#remote-controls').hidden=!s.remote_controls;
   const button=document.querySelector('#return');button.hidden=s.phase==='preview';button.textContent=`→ ${s.return_location.name}`;
   text('connection','');

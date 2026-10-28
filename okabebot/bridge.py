@@ -502,6 +502,28 @@ class Bridge:
             else []
         )
 
+    def dispatch_morning(self):
+        # The phone event prepares once/day. Only explicit config may move a screen;
+        # no retry that could unexpectedly interrupt media later in the day.
+        from .morning import Morning
+
+        config = Morning(state_dir() / "amadeus").settings()
+        if not config["present_on_wake"] or not config["destination"]:
+            return
+
+        def present():
+            try:
+                morning = Morning(state_dir() / "amadeus")
+                if morning.view(config["destination"]) and not self.snapshot()["busy"]:
+                    self.surfaces.move(
+                        config["destination"],
+                        "http://%s:%s" % (get_config()["web"]["host"], self.port),
+                    )
+            except Exception:
+                pass  # Keep a prepared summary without retries, speech or raw logs.
+
+        threading.Thread(target=present, daemon=True).start()
+
     def poll_sources(self):
         while not self.closing.is_set():
             self.sources.poll()

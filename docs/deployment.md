@@ -36,7 +36,7 @@ setup, revoked source permission, pause or guest mode prevents observation write
 Door, presence, media and interaction observations remain unattributed household
 context; they do not prove personal arrival, attendance, viewing or preference.
 Calendar snapshots have completeness markers. Habit learning, semantic recall,
-voice/MCP memory tools and all proactive/health nudge delivery remain pending.
+voice/MCP memory tools and learned proactive/health nudge delivery remain pending.
 Whole-store forgetting removes data and consent, but not integration credentials,
 downloaded exports or backups. Private trial outcomes and setup choices stay local.
 
@@ -59,6 +59,24 @@ No new collector, device action or health alert was enabled by this survey.
 Printer/BLE discovery and richer household source normalization remain planned.
 Public documentation contains capability status only, not the private device map,
 current readings, person state, schedules or trial outcomes.
+
+## Deterministic morning checkpoint (2026-10-27)
+
+The installed controller now includes a consent-gated phone-screen/alarm rule and
+weather/calendar card builder. Owner configuration lives in private Amadeus system
+preferences (`morning.config`), not the public controller defaults. The installed
+metadata package was configuration-checked and its REST publisher/automations
+reloaded. Automatic presentation uses the existing configured-TV registry and
+character handoff; it adds no port, inference model or speaker action. See
+[morning setup](morning.md) for the typed envelope, private bindings and controls.
+
+Software/API readiness and isolated synthetic cue-to-summary regressions were
+verified. The native deployment enables authorized collection and opt-in morning
+preparation/presentation; personal selections and live source readings are not
+reproduced here. The separate speech worker and device settings were preserved.
+Physical acceptance of an eligible real morning, TV legibility and return to the
+normal layout remains a private human checkpoint. This deterministic rule does
+not enable routine learning, general proactive suggestions or health coaching.
 
 ## Devices and responsibilities
 

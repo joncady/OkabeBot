@@ -8,9 +8,10 @@ const amadeusUI = (() => {
     accessEpoch++;
     current=null;
     editing=false;$('amadeus-review').hidden=true;
-    for(const id of ['amadeus-setup','amadeus-controls','amadeus-memory']) $(id).hidden=true;
+    for(const id of ['amadeus-setup','amadeus-controls','amadeus-memory','amadeus-morning']) $(id).hidden=true;
     $('amadeus-form').reset();$('memory-form').reset();
     $('sources').replaceChildren();$('topics').replaceChildren();$('memory-list').replaceChildren();
+    $('morning-preview').textContent='';$('morning-status').textContent='';$('morning-form').reset();$('morning-destination').replaceChildren();
     $('event-list').textContent='';$('household-list').textContent='';$('coaching-state').textContent='';
   }
   async function api(path, data) {
@@ -57,6 +58,20 @@ const amadeusUI = (() => {
     $('coaching-state').textContent = !coaching || !coaching.value.enabled ? 'Coaching is off.' :
       coaching.value.paused_until * 1000 > Date.now() ? 'Coaching is snoozed.' : 'Topics saved; nudges remain off.';
   }
+  async function morning() {
+    const value=await api('morning');if(!value.config)return;
+    const c=value.config;$('amadeus-morning').hidden=false;
+    $('morning-start').value=c.start_hour;$('morning-end').value=c.end_hour;$('morning-unit').value=c.temperature_unit;
+    $('morning-enabled').checked=c.enabled;$('morning-present').checked=c.present_on_wake;
+    for(const [id,key] of [['before','before_minutes'],['after','after_minutes'],['rotation','rotation_seconds'],['duration','display_minutes']])$('morning-'+id).value=c[key];
+    $('morning-destination').replaceChildren();
+    for(const p of [{id:'',name:'Prepare only · no TV selected'},...value.destinations]){
+      const option=document.createElement('option');option.value=p.id;option.textContent=p.name;$('morning-destination').append(option);
+    }
+    $('morning-destination').value=c.destination;
+    $('morning-preview').textContent=value.summary?value.summary.cards.map(c=>c.title+' · '+c.body).join('\n\n'):'';
+    $('morning-status').textContent=c.enabled?'Morning preparation configured; phone/weather permissions and active collection are also required.':'Morning preparation off.';
+  }
   async function load() {
     const value = await api('settings'); current = value.settings;
     $('amadeus-setup').hidden = Boolean(current) && !editing;
@@ -81,11 +96,17 @@ const amadeusUI = (() => {
       $('amadeus-pause').textContent=current.paused?'Shadow collection paused':'Pause shadow collection';
       $('amadeus-pause').setAttribute('aria-pressed',String(current.paused));
       $('amadeus-guest').textContent=current.guest?'Guest mode on':'Guest mode off';
-      $('amadeus-guest').setAttribute('aria-pressed',String(current.guest)); await memory();
+      $('amadeus-guest').setAttribute('aria-pressed',String(current.guest)); await memory(); await morning();
     }
     message(value.collection_active ? 'Shadow metadata collection enabled · predictions and nudges off.' : 'Shadow metadata collection paused · predictions and nudges off.');
   }
   async function run(action) { try { await action(); } catch(error) { message(error.message); } }
+  $('morning-form').onsubmit=event=>{event.preventDefault();run(async()=>{
+    await api('morning',{start_hour:Number($('morning-start').value),end_hour:Number($('morning-end').value),temperature_unit:$('morning-unit').value,enabled:$('morning-enabled').checked,destination:$('morning-destination').value,
+      present_on_wake:$('morning-present').checked,before_minutes:Number($('morning-before').value),
+      after_minutes:Number($('morning-after').value),rotation_seconds:Number($('morning-rotation').value),
+      display_minutes:Number($('morning-duration').value)});await morning();
+  });};
   $('amadeus-form').onsubmit = event => {
     event.preventDefault(); run(async () => {
       const choice=coachingChoice();

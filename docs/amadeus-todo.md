@@ -113,3 +113,15 @@ acceptance and makes partial completion explicit.
   Keep the accepted destination/demo separate from unaccepted conversation.
 - Live consumer order history, automatic YouTube search collection, broad inbox
   ingestion, camera identity and any autonomous checkout remain out of this trial.
+
+## Deterministic morning checkpoint
+
+- [x] Typed, consent-gated phone-interactive/alarm and outdoor weather inputs.
+- [x] Configurable local hours/window, durable once/day rule and alarm rollover guards.
+- [x] Owner controls for units, card rotation/expiry and optional configured-TV movement.
+- [x] Selected-TV pixel card rail; pause/guest/revocation and stale-source fallbacks.
+- [ ] Private eligible-morning acceptance and user-directed configuration refinements.
+- [ ] Optional forecasts, additional card sources, manual re-show and travel suppression.
+
+This rule does not complete routine learning or general proactive delivery work.
+See [morning.md](morning.md); personal trial observations remain private.

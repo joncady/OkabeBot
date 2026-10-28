@@ -24,7 +24,7 @@ def handle(handler, bridge, *, post=False):
         )
         handler.respond(200, (Path(__file__).parent / "web" / name).read_text(), kind)
         return True
-    if path == "/amadeus/source/ha":
+    if path in ("/amadeus/source/ha", "/amadeus/source/morning"):
         from .config import state_dir
         from .amadeus_sources import Collector
 
@@ -52,7 +52,15 @@ def handle(handler, bridge, *, post=False):
                 raise ValueError("Invalid source size")
             handler.connection.settimeout(5)
             data = json.loads(handler.rfile.read(size))
-            handler.respond(200, Collector(folder).home_assistant(data))
+            if path.endswith("morning"):
+                from .morning import Morning
+
+                result = Morning(folder).observe(data)
+                if result.get("prepared") and hasattr(bridge, "dispatch_morning"):
+                    bridge.dispatch_morning()
+            else:
+                result = Collector(folder).home_assistant(data)
+            handler.respond(200, result)
         except PermissionError:
             handler.respond(403, {"error": "Source binding forbidden"})
         except (ValueError, TypeError, KeyError):
@@ -81,7 +89,20 @@ def handle(handler, bridge, *, post=False):
             handler.connection.settimeout(5)
             data = json.loads(handler.rfile.read(size))
         service = Onboarding(state_dir() / "amadeus")
-        if not post and path == "/amadeus/api/settings":
+        if path == "/amadeus/api/morning":
+            from .morning import Morning
+
+            morning = Morning(state_dir() / "amadeus")
+            places = bridge.surfaces.snapshot()["locations"]
+            config = morning.configure(data, places) if post else morning.settings()
+            result = {
+                "config": config,
+                "summary": morning.view(preview=True),
+                "destinations": [
+                    {"id": p["id"], "name": p["name"]} for p in places if p.get("adapter") == "cast"
+                ],
+            }
+        elif not post and path == "/amadeus/api/settings":
             result = service.snapshot()
         elif not post and path in ("/amadeus/api/memory", "/amadeus/api/export"):
             result = service.export() if path.endswith("export") else service.memory()

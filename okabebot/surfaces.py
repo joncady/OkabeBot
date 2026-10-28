@@ -654,8 +654,13 @@ class Surfaces:
         )
         place = next(p for p in status["locations"] if p["id"] == place_id)
 
+        from .morning import Morning
+        from .config import state_dir
+
+        morning = Morning(state_dir() / "amadeus").view(place_id)
         return dict(
             status,
+            morning=morning,
             environment=environment(
                 place, current_character()["style"], self.registry.scene_world_enabled()
             ),
