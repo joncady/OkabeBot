@@ -88,6 +88,14 @@ class BootstrapIntegrationTests(unittest.TestCase):
             self.assertTrue(json.loads(metadata.read_text())["destination_enabled"])
             self.assertEqual(objects["surface/session.json"], b"{}")
             self.assertEqual(objects["surface/command.json"], b"{}")
+            # Covered preloading must never accept a translucent safety cover.
+            Image.new("RGBA", (960, 540), (0, 0, 0, 0)).save(visuals / "background.png")
+            with patch.object(sys, "argv", args), patch.object(
+                deploy.subprocess, "run", side_effect=AssertionError("Must reject before AWS")
+            ), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as error:
+                    deploy.main()
+                self.assertEqual(error.exception.code, 2)
 
         class NoListClient:
             def get_object(self, *, Bucket, Key):
