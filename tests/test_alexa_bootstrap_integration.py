@@ -89,17 +89,25 @@ class BootstrapIntegrationTests(unittest.TestCase):
             self.assertEqual(objects["surface/command.json"], b"{}")
             # Covered preloading must never accept a translucent safety cover.
             Image.new("RGBA", (960, 540), (0, 0, 0, 0)).save(visuals / "background.png")
-            with patch.object(sys, "argv", args), patch.object(
-                deploy.subprocess, "run", side_effect=AssertionError("Must reject before AWS")
-            ), contextlib.redirect_stderr(io.StringIO()):
+            with (
+                patch.object(sys, "argv", args),
+                patch.object(
+                    deploy.subprocess, "run", side_effect=AssertionError("Must reject before AWS")
+                ),
+                contextlib.redirect_stderr(io.StringIO()),
+            ):
                 with self.assertRaises(SystemExit) as error:
                     deploy.main()
                 self.assertEqual(error.exception.code, 2)
             Image.new("RGB", (960, 540), "black").save(visuals / "background.png")
             Image.new("RGBA", (128, 256), (0, 0, 0, 0)).save(visuals / "actor-idle.png")
-            with patch.object(sys, "argv", args), patch.object(
-                deploy.subprocess, "run", side_effect=AssertionError("Must reject before AWS")
-            ), contextlib.redirect_stderr(io.StringIO()):
+            with (
+                patch.object(sys, "argv", args),
+                patch.object(
+                    deploy.subprocess, "run", side_effect=AssertionError("Must reject before AWS")
+                ),
+                contextlib.redirect_stderr(io.StringIO()),
+            ):
                 with self.assertRaises(SystemExit) as error:
                     deploy.main()
                 self.assertEqual(error.exception.code, 2)
