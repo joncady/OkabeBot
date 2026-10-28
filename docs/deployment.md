@@ -869,9 +869,14 @@ The consumer is not installed as an automatically restarted service.
 Real silent queue/local/media trials completed two warm turns in 5.030 and 2.793
 seconds, with MP3 fetches adding about 0.27 seconds. A cold turn timed out safely.
 No physical playback occurred; these are not Alexa round-trip measurements.
-The live skill is still not connected to this transport, and its TalkIntent model
-build, Show speech/animation integration and two-question physical acceptance
-remain pending. Source includes those handler/model wiring changes; source is
-not evidence that they are deployed. Voice references, volume and Pi ownership
-were preserved. See [conversation cycle](alexa-conversation.md) for boundaries,
+The live Lambda handler is now connected to this transport with scoped
+queue/ledger/audio permissions. Its Alexa TalkIntent model build and Show
+two-question physical acceptance remain pending. An IAM-only fixed-question
+Lambda harness returned generated audio for two warm turns in 4.285 and 4.707
+seconds, plus roughly 0.25–0.33 seconds to fetch each MP3. The ephemeral harness
+was deleted and does not prove real Alexa recognition or playback. The handler
+uses Lambda-aware deadlines and a separate APLA audio track; its speaking cue
+requires an already-visible, current, matching actor and never summons it.
+The installed Alexa model prompt requests a shorter sentence to fit the deadline.
+Voice references, volume and Pi ownership were preserved. See [conversation cycle](alexa-conversation.md) for boundaries,
 retention and detailed evidence.

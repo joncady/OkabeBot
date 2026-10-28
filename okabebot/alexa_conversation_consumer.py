@@ -84,6 +84,8 @@ class ConversationConsumer:
                     "text": result["text"],
                     "audio_safe": result["audio_safe"],
                     "audio_ready": ready,
+                    "character": result.get("character", ""),
+                    "audio_duration_ms": result.get("audio_duration_ms", 0),
                 },
             )
             return {

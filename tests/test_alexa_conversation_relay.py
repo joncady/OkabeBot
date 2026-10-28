@@ -35,7 +35,13 @@ class Table:
             raise ConditionalError()
         item["status"] = v.get(":terminal", v.get(":ready", "processing"))
         if ":text" in v:
-            item.update(text=v[":text"], audio_safe=v[":safe"], audio_ready=v[":audio"])
+            item.update(
+                text=v[":text"],
+                audio_safe=v[":safe"],
+                audio_ready=v[":audio"],
+                character=v.get(":character", ""),
+                audio_duration_ms=v.get(":duration", 0),
+            )
 
 
 class ExchangeTests(unittest.TestCase):
@@ -176,6 +182,26 @@ class ExchangeTests(unittest.TestCase):
             self.queue.send_message.assert_not_called()
         finally:
             release.set()
+
+    def test_python_310_future_timeout_is_normalized_to_builtin_timeout(self):
+        import time
+        from unittest.mock import patch
+        from okabebot.alexa_conversation_relay import bounded_call
+
+        class LegacyTimeout(Exception):
+            pass
+
+        future, executor = Mock(), Mock()
+        future.result.side_effect = LegacyTimeout()
+        future.add_done_callback.side_effect = lambda callback: callback(future)
+        executor.submit.return_value = future
+        with (
+            patch("okabebot.alexa_conversation_relay._NETWORK", executor),
+            patch("okabebot.alexa_conversation_relay.FutureTimeoutError", LegacyTimeout),
+        ):
+            with self.assertRaises(TimeoutError):
+                bounded_call(lambda: None, time.time() + 1, time.time)
+        future.cancel.assert_called_once()
 
     def test_sdk_factory_disables_retries_and_bounds_socket_timeouts(self):
         from okabebot.alexa_conversation_relay import aws_exchange

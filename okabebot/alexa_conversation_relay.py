@@ -4,7 +4,7 @@ Injected DynamoDB Table and SQS clients use narrowly scoped IAM credentials.
 No prompts are stored in the ledger or logs; queue bodies expire quickly.
 """
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 import threading
 from decimal import Decimal
 import json
@@ -34,7 +34,7 @@ def bounded_call(function, deadline, wall, *args, **kwargs):
     future.add_done_callback(lambda completed: _SLOTS.release())
     try:
         return future.result(timeout=remaining)
-    except TimeoutError:
+    except (FutureTimeoutError, TimeoutError):
         future.cancel()
         raise TimeoutError("Conversation network deadline expired") from None
 
@@ -179,6 +179,8 @@ class ConversationExchange:
                     "text": record["text"],
                     "audio_safe": record.get("audio_safe") is True,
                     "audio_ready": record.get("audio_ready") is True,
+                    "character": record.get("character", ""),
+                    "audio_duration_ms": int(record.get("audio_duration_ms", 0)),
                 }
             if record["status"] in ("failed", "expired"):
                 return None
@@ -224,21 +226,28 @@ class ConversationExchange:
         text = result.get("text")
         if not isinstance(text, str) or not 1 <= len(text.strip()) <= 600:
             raise ValueError("Invalid generated answer")
+        duration, character = result.get("audio_duration_ms", 0), result.get("character", "")
+        if type(duration) is not int or not 0 <= duration <= 20000:
+            raise ValueError("Invalid audio duration")
+        if character not in ("", "okabe", "kurisu", "sonic", "pip"):
+            raise ValueError("Invalid reply character")
         try:
             bounded_call(
                 self.table.update_item,
                 request["deadline"],
                 self.wall,
                 Key={"id": request["id"]},
-                UpdateExpression="SET #s = :ready, #t = :text, audio_safe = :safe, audio_ready = :audio",
+                UpdateExpression="SET #s = :ready, #t = :text, audio_safe = :safe, audio_ready = :audio, #c = :character, audio_duration_ms = :duration",
                 ConditionExpression="#s = :processing AND deadline > :now AND body_hash = :hash",
-                ExpressionAttributeNames={"#s": "status", "#t": "text"},
+                ExpressionAttributeNames={"#s": "status", "#t": "text", "#c": "character"},
                 ExpressionAttributeValues={
                     ":ready": "ready",
                     ":processing": "processing",
                     ":text": text,
                     ":safe": result.get("audio_safe") is True,
                     ":audio": result.get("audio_ready") is True,
+                    ":character": character,
+                    ":duration": duration,
                     ":now": Decimal(str(self.wall())),
                     ":hash": request["body_hash"],
                 },

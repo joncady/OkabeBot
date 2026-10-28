@@ -103,7 +103,11 @@ def render(model, text, session, character, deadline, *, pcm=None, encode=encode
         encoding_s=round(time.monotonic() - encoding_started, 3),
         local_total_s=round(time.monotonic() - started, 3),
     )
-    answer.update(audio_ready=True, mp3=base64.b64encode(clip).decode())
+    answer.update(
+        audio_ready=True,
+        mp3=base64.b64encode(clip).decode(),
+        audio_duration_ms=round(count / 48),
+    )
     return answer
 
 

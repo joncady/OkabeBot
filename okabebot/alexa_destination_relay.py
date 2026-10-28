@@ -130,14 +130,57 @@ class DestinationRelay:
             receiver_elapsed_ms=command["receiver_elapsed_ms"],
         )
 
-    def closed(self, event):
+    def speech(self, event, character, duration_ms):
+        """Decorate an already-visible, matching actor; never imply ownership."""
+        if type(duration_ms) is not int or not 1 <= duration_ms <= 20000:
+            return None
+        record = self.store.get("session")
+        now = self.clock()
+        token = event.get("context", {}).get("Alexa.Presentation.APL", {}).get("token")
+        if not (
+            record
+            and not record.get("closed")
+            and record.get("device") == self.identity(event)
+            and record.get("token") == token
+            and record.get("character") == character
+            and record.get("ready")
+            and record.get("painted") == "entered"
+            and 0 <= now - record.get("updated_at", 0) < 3
+            and now < record.get("expires_at", 0)
+        ):
+            return None
+        return {
+            "type": "Alexa.Presentation.APL.ExecuteCommands",
+            "token": token,
+            "commands": [
+                {
+                    "type": "SetValue",
+                    "componentId": "destination",
+                    "property": "replyUntil",
+                    "value": min(
+                        60000,
+                        int(record["clock"] + (now - record["updated_at"]) * 1000)
+                        + duration_ms
+                        + 750,
+                    ),
+                }
+            ],
+        }
+
+    def closed(self, event, *, explicit=False):
         for _ in range(6):
             record, version = self.store.read("session")
             if not (
                 record
                 and record["device"] == self.identity(event)
-                and record.get("session")
-                and record["session"] == self.session(event)
+                and (
+                    (record.get("session") and record["session"] == self.session(event))
+                    or (
+                        explicit
+                        and event.get("context", {}).get("Alexa.Presentation.APL", {}).get("token")
+                        == record.get("token")
+                    )
+                )
             ):
                 return
             if record["closed"]:

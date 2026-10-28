@@ -3,8 +3,10 @@
 Status: the private Mac adapter is installed for silent timing tests. The
 separate queue, ledger and private audio bucket are deployed, and a manually run
 scoped consumer passed silent cloud/local tests.
-The live Alexa skill is not connected to it yet, so spoken conversational turns
-are not available. The accepted destination/demo continues separately.
+The Lambda conversation handler is connected and passed an IAM-only silent smoke
+test. The Alexa interaction model still needs its TalkIntent build, so spoken
+conversational turns are not available yet. The accepted destination/demo
+continues separately.
 
 ## Target experience
 
@@ -62,7 +64,7 @@ conflicting replay bodies, fixed audio keys, timeout fallback, explicit audio
 eligibility, cross-session isolation, sensitive-input fallback, malformed model
 output and late-reply consumption. No audio was uploaded or played by these tests.
 
-Remaining gates: connect the live skill and build its TalkIntent model; Show speech
+Remaining gates: build the TalkIntent model in the Developer Console; Show speech
 animation and follow-up listening; measured cloud/local loop; user acceptance of
 two spoken questions, audibility and exit recovery. Record model, first PCM,
 encoding/upload and total cloud response separately. Physical audible onset still
@@ -92,7 +94,8 @@ request terminal after one claim. Retried sends use a FIFO deduplication ID.
 Replies stay in the private ledger; only eligible audio enters the media store.
 Expiry and permission errors are distinct, with no fallback that replays inference.
 The dedicated cloud resources and scoped Mac consumer credentials are deployed.
-The consumer is manually started; the live skill is not connected yet.
+The consumer is manually started. The Lambda handler is connected, but its Alexa
+interaction model build and physical conversational acceptance are pending.
 
 ## Silent installed benchmark (2026-10-27)
 
@@ -143,3 +146,52 @@ outstanding calls, and uses a factory with 300 ms connect/read timeouts and one
 SDK attempt. A blocked-call regression proves timeout fallback returns without
 waiting for a late SDK completion. Late enqueues retain the expired deadline and
 cannot become a fresh inference request.
+
+
+## Lambda integration checkpoint (2026-10-27)
+
+The skill-scoped Lambda now has only the dedicated conversation queue send,
+ledger put/get and generated-audio-prefix get permissions it needs. Its existing
+visual destination and fixed generic demo remain separate. The identity pairing
+parameter is hidden in CloudFormation output. The installed Mac adapter/worker
+and manually refreshed consumer now return selected character and measured PCM
+duration with each encoded reply. Speaker volume remains at the observed 26%;
+no benchmark played audio or changed voice references.
+
+An ephemeral IAM-only Lambda used the production handler and scoped role with
+fixed public questions and a test-only identity adapter. It had no ASK permission,
+Function URL or arbitrary-prompt input, and was deleted after each trial. It
+proves handler/queue/local/audio wiring, **not** real Echo identity acceptance,
+Alexa recognition, animation, microphone behavior or audible playback.
+
+After fixes, its cold test returned generated audio in 6.918 seconds. Two warm
+same-session questions returned audio in 4.285 and 4.707 seconds; downloading
+those MP3s added 0.254 and 0.327 seconds. Their local stages were model
+1.508 / 0.823 seconds, synthesis 1.292 / 2.406, and encoding 0.025 / 0.051.
+The first-PCM times (included in synthesis) were 0.606 / 0.279 seconds.
+These are observations, not latency guarantees.
+
+Earlier Lambda trials timed out or returned native fallback. The handler now
+reserves cleanup/response time from Lambda's actual remaining execution budget,
+which can shorten the usual six-second generation deadline on a cold invocation.
+The Alexa-only model prompt requests one sentence of at most ten words, with a
+48-token generation limit; normal conversation and welcome limits are unchanged.
+Malformed or late output returns a truthful fallback rather than extending the
+Alexa deadline. Cold startup remains a risk to measure on the physical Show.
+
+On a screen-backed reply, custom audio uses an APLA response track instead of
+simultaneous SSML audio. The visual room is not replaced. A bounded mouth-animation
+cue is applied only to the current fresh, ready, already-visible screen token
+with matching character artwork. Stale/unowned/mismatched rooms receive no actor
+cue; this path never summons the character or grants ownership. The cue accounts
+for time since the last screen poll. It is duration-based decoration, not phoneme
+lip sync, and its coexistence with live polling still needs physical acceptance.
+Use the existing visit/handoff flow before testing a visible Show conversation.
+
+Explicit Stop/Cancel can close the current document even when the voice request
+has a newer Alexa session, but only with the matching current APL token and Echo
+identity. A stale SessionEnded callback cannot use that shortcut. Local review
+found the animation-clock issue; a regression covers it. The supported Python
+3.10 future-timeout exception is normalized as well. The project virtualenv's
+full regressions pass; the separate review runner lacked dependencies and used
+an unsupported system Python, so its attempted test run is not acceptance evidence.

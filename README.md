@@ -77,7 +77,7 @@ flowchart TB
     Lambda --> SQS["Private SQS queue and DLQ"]
     SQS -->|"Outbound consumer on Mac"| App
     Calendar["Google Calendar private iCal feed"] -->|"Read-only periodic fetch"| App
-    AlexaSkill["Alexa development skill: generic voice and APL scene"] --> SkillLambda["Skill-scoped AWS Lambda: us-east-1"]
+    AlexaSkill["Alexa development skill: voice/scene; conversation model build pending"] --> SkillLambda["Skill-scoped AWS Lambda: us-east-1"]
     SkillLambda -->|"Five-minute signed HTTPS asset URLs"| SkillAudio["Private S3: generic voice and pixel frames"]
     SkillLambda <-->|"Bounded session state and commands"| AlexaRelay["Private S3: two destination relay objects"]
     AlexaRelay <-->|"Scoped Identity Center profile"| AlexaWorker["Optional Mac test worker; not autostarted"]
@@ -86,6 +86,9 @@ flowchart TB
     ConversationConsumer --> AlexaLocal
     ConversationConsumer <-->|"Conditional reply state"| ConversationLedger["Private DynamoDB ledger"]
     ConversationConsumer --> ConversationMedia["Private generated-audio bucket; expiring GETs"]
+    SkillLambda -->|"Paired conversation requests; intent build pending"| ConversationQueue
+    ConversationLedger -->|"Bounded reply wait"| SkillLambda
+    SkillLambda -->|"Two-minute signed reply audio URLs"| ConversationMedia
 ```
 
 The first door opening after 3 p.m. currently provides a once-daily welcome
@@ -524,8 +527,9 @@ bypass is claimed. See [Alexa skill](docs/alexa-skill.md).
 
 A [conversational Alexa mini-cycle](docs/alexa-conversation.md) is now in progress:
 paired spoken questions, isolated local-model follow-ups and generated character
-replies. The private Mac adapter is installed for silent timing tests; the live skill still provides
-the accepted visual destination and generic voice demo, not conversational turns.
+replies. The private Mac adapter is installed for silent timing tests; the Lambda
+conversation handler is connected, while the Alexa intent model build
+and physical conversational tests remain pending.
 
 The Alexa conversation source includes an opt-in private Unix-socket adapter and
 a dedicated conditional queue/ledger exchange. The private adapter is installed;
@@ -533,5 +537,6 @@ the separate cloud transport and scoped manual consumer passed silent tests.
 No household tool access is added.
 
 The cloud/local loop produced two warm audio replies in 5.03 and 2.79 seconds.
-The live skill wiring, TalkIntent build and physical conversational acceptance
-remain pending; no test audio was played.
+An IAM-only test of the Lambda handler returned two warm generated replies in
+4.29 and 4.71 seconds, excluding recognition/playback. The TalkIntent model build
+and physical conversational acceptance remain pending; no test audio was played.

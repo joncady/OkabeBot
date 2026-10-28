@@ -67,6 +67,47 @@ class RelayTests(unittest.TestCase):
         )
         return event
 
+    def test_explicit_exit_from_a_new_voice_session_requires_current_screen_token(self):
+        event = copy.deepcopy(self.event)
+        event["session"]["sessionId"] = "new-voice-session"
+        event["context"]["Alexa.Presentation.APL"] = {"token": "2" * 64}
+        self.relay.closed(event, explicit=True)
+        self.assertFalse(self.store.get("session")["closed"])
+        event["context"]["Alexa.Presentation.APL"]["token"] = TOKEN
+        self.relay.closed(event)  # A stale SessionEnded cannot use the screen token.
+        self.assertFalse(self.store.get("session")["closed"])
+        self.relay.closed(event, explicit=True)
+        self.assertTrue(self.store.get("session")["closed"])
+
+    def test_speech_decorates_only_the_current_visible_matching_actor(self):
+        record = self.store.get("session")
+        record.update(ready=True, painted="entered", clock=1000)
+        self.store.put("session", record)
+        self.event["context"]["Alexa.Presentation.APL"] = {"token": TOKEN}
+        directive = self.relay.speech(self.event, "okabe", 2300)
+        self.assertEqual(directive["token"], TOKEN)
+        self.assertEqual(directive["commands"][0]["value"], 4050)
+        self.now += 2.5
+        self.assertEqual(self.relay.speech(self.event, "okabe", 2300)["commands"][0]["value"], 6550)
+        self.now -= 2.5
+        for changes in (
+            {"ready": False},
+            {"painted": "hidden"},
+            {"closed": True},
+            {"character": "kurisu"},
+            {"updated_at": self.now - 4},
+            {"expires_at": self.now},
+        ):
+            with self.subTest(changes=changes):
+                self.store.put("session", dict(record, **changes))
+                self.assertIsNone(self.relay.speech(self.event, "okabe", 2300))
+        self.store.put("session", record)
+        self.event["context"]["Alexa.Presentation.APL"]["token"] = "2" * 64
+        self.assertIsNone(self.relay.speech(self.event, "okabe", 2300))
+        self.event["context"]["Alexa.Presentation.APL"]["token"] = TOKEN
+        self.assertIsNone(self.relay.speech(self.event, "okabe", 20001))
+        self.assertEqual(self.store.get("session"), record)
+
     def test_asset_diagnostic_is_bounded_and_does_not_imply_readiness(self):
         event = self.poll()
         event["request"]["arguments"][4] = False

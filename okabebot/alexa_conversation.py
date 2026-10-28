@@ -49,7 +49,7 @@ def question(event, skill_id, paired_identity, *, now=time.time):
     }
 
 
-def reply(result, request, sign_audio):
+def reply(result, request, sign_audio, *, visual=None, event=None):
     """Only worker-approved generic audio, with a fixed application-owned key."""
     if result.get("id") != request["id"] or result.get("body_hash") != request["body_hash"]:
         raise ValueError("Reply does not match its request")
@@ -61,6 +61,29 @@ def reply(result, request, sign_audio):
         # Neither the model nor incoming slots supply object keys or URLs.
         audio_url = sign_audio("conversation/audio/" + request["id"] + ".mp3")
     value = response(text, audio_url=audio_url, end=False)
+    if audio_url and visual is not None:
+        # Keep generated audio in APLA's response track, separate from APL's
+        # independently named visibility/heartbeat sequencer. Never emit both
+        # SSML audio and APLA audio for the same reply.
+        value["response"].pop("outputSpeech")
+        value["response"]["directives"] = [
+            {
+                "type": "Alexa.Presentation.APLA.RenderDocument",
+                "token": "conversation-" + request["id"],
+                "document": {
+                    "type": "APLA",
+                    "version": "0.91",
+                    "mainTemplate": {
+                        "parameters": ["payload"],
+                        "item": {"type": "Audio", "source": "${payload.reply.url}"},
+                    },
+                },
+                "datasources": {"reply": {"url": audio_url}},
+            }
+        ]
+        directive = visual(event, result.get("character", ""), result.get("audio_duration_ms", 0))
+        if directive is not None:
+            value["response"]["directives"].append(directive)
     value["response"]["reprompt"] = {
         "outputSpeech": {"type": "PlainText", "text": "Say tell me, followed by your question."}
     }
@@ -75,9 +98,21 @@ class ConversationSkill:
     atomically claim it before generation; an uncertain turn is never replayed.
     """
 
-    def __init__(self, skill_id, paired_identity, exchange, sign_audio, *, clock=time.monotonic):
+    def __init__(
+        self,
+        skill_id,
+        paired_identity,
+        exchange,
+        sign_audio,
+        *,
+        clock=time.monotonic,
+        visual=None,
+        budget=6.0,
+    ):
         self.skill_id, self.paired_identity = skill_id, paired_identity
         self.exchange, self.sign_audio, self.clock = exchange, sign_audio, clock
+        self.visual = visual
+        self.budget = max(0.0, min(6.0, float(budget)))
 
     def cancel(self, event):
         validate_envelope(event, self.skill_id)
@@ -98,8 +133,11 @@ class ConversationSkill:
         return True
 
     def handle(self, event):
-        end = self.clock() + 6.2
+        end = self.clock() + self.budget + 0.2
         request = question(event, self.skill_id, self.paired_identity)
+        request["deadline"] = min(request["deadline"], time.time() + self.budget)
+        if self.budget < 0.1:
+            return response(FALLBACK, end=False)
         try:
             record = self.exchange.open(request)
             if record["body_hash"] != request["body_hash"]:
@@ -111,7 +149,7 @@ class ConversationSkill:
             result = self.exchange.wait(request, end)
             if result is None or self.clock() >= end or request["deadline"] <= time.time():
                 return response(FALLBACK, end=False)
-            return reply(result, request, self.sign_audio)
+            return reply(result, request, self.sign_audio, visual=self.visual, event=event)
         except TimeoutError:
             return response(FALLBACK, end=False)
         except InterruptedError:

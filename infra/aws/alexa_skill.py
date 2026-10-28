@@ -7,6 +7,7 @@ is no Function URL. Never log request envelopes or signed audio URLs.
 
 import os
 import logging
+import time
 
 from okabebot.alexa_skill import response, validate_envelope
 from okabebot.alexa_visuals import attach_character, FRAME_NAMES
@@ -99,7 +100,7 @@ def handle(event, skill_id, audio_url, frames=None, destination=None, conversati
             except Exception:
                 logging.getLogger(__name__).warning("little_lab_conversation cleanup_failed")
         if destination is not None:
-            destination.closed(event)
+            destination.closed(event, explicit=True)
         return response("See you in the lab.")
     if intent in ("LabStatusIntent", "LabLocationsIntent"):
         return response(
@@ -109,10 +110,19 @@ def handle(event, skill_id, audio_url, frames=None, destination=None, conversati
 
 
 def handler(event, context):
+    started = time.monotonic()
     import boto3
     from botocore.config import Config
 
-    client = boto3.client("s3", config=Config(signature_version="s3v4"))
+    client = boto3.client(
+        "s3",
+        config=Config(
+            signature_version="s3v4",
+            connect_timeout=0.3,
+            read_timeout=0.3,
+            retries={"total_max_attempts": 1},
+        ),
+    )
 
     def audio_url():
         # Only this fixed, generic asset can be fetched. Never accept an object
@@ -158,7 +168,7 @@ def handler(event, context):
     conversation = None
     if os.environ.get("CONVERSATION_ENABLED") == "true":
         from okabebot.alexa_conversation import ConversationSkill
-        from okabebot.alexa_conversation_relay import aws_exchange
+        from okabebot.alexa_conversation_relay import aws_exchange, bounded_call
 
         def sign_reply(key):
             return client.generate_presigned_url(
@@ -167,6 +177,28 @@ def handler(event, context):
                 ExpiresIn=120,
             )
 
+        def visual_reply(event, character, duration):
+            if destination is None:
+                return None
+            try:
+                return bounded_call(
+                    destination.speech, time.time() + 0.2, time.time, event, character, duration
+                )
+            except Exception:
+                logging.getLogger(__name__).warning("little_lab_conversation visual_unavailable")
+                return None
+
+        remaining = (
+            context.get_remaining_time_in_millis() / 1000
+            if context is not None
+            else 7 - (time.monotonic() - started)
+        )
+        budget = max(0, min(6, remaining - 0.65))
+        logging.getLogger(__name__).warning(
+            "little_lab_conversation setup_s=%.3f budget_s=%.3f",
+            time.monotonic() - started,
+            budget,
+        )
         conversation = ConversationSkill(
             os.environ["SKILL_ID"],
             os.environ["CONVERSATION_IDENTITY"],
@@ -174,6 +206,8 @@ def handler(event, context):
                 boto3.Session(), os.environ["CONVERSATION_TABLE"], os.environ["CONVERSATION_QUEUE"]
             ),
             sign_reply,
+            visual=visual_reply if destination is not None else None,
+            budget=budget,
         )
     return handle(
         event,

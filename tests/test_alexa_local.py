@@ -39,6 +39,7 @@ class LocalAdapterTests(unittest.TestCase):
                 self.assertEqual(path.stat().st_mode & 0o777, 0o600)
                 result = local_request(path, self.request)
                 self.assertTrue(result["audio_ready"])
+                self.assertEqual(result["audio_duration_ms"], 100)
                 self.assertEqual(base64.b64decode(result["mp3"]), b"M" * 200)
                 pcm.assert_called_once_with(
                     self.answer["text"],

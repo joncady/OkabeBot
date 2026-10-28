@@ -24,6 +24,8 @@ class ConsumerTests(unittest.TestCase):
             "audio_ready": True,
             "mp3": base64.b64encode(b"ID3" + b"x" * 200).decode(),
             "timings": {"model_s": 0.5},
+            "character": "okabe",
+            "audio_duration_ms": 2100,
         }
         self.consumer = ConversationConsumer(
             self.exchange,
@@ -44,6 +46,8 @@ class ConsumerTests(unittest.TestCase):
         self.assertEqual(kwargs["Key"], "conversation/audio/" + self.request["id"] + ".mp3")
         self.assertEqual(kwargs["ServerSideEncryption"], "AES256")
         self.assertEqual(self.fixture.table.items[self.request["id"]]["status"], "ready")
+        reply = self.exchange.wait(self.request, self.fixture.now + 1)
+        self.assertEqual((reply["character"], reply["audio_duration_ms"]), ("okabe", 2100))
         self.assertEqual(self.consumer.step()["state"], "ignored")
         self.infer.assert_called_once()
         self.fixture.queue.delete_message.assert_called()

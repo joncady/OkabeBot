@@ -60,7 +60,7 @@ def main():
             if alexa:
                 system = (
                     data["persona"]
-                    + " Answer a general-knowledge question briefly in English, at most 160 characters. "
+                    + " Answer a general-knowledge question in one English sentence: at most 10 words and 70 characters. No introduction or filler. "
                     "You have no tools, household information, personal records or access to other chats. "
                     "Return only JSON with exactly text (string) and audio_safe (boolean). "
                     "audio_safe may be true only for non-personal, non-sensitive public information. "
@@ -143,7 +143,7 @@ def main():
                 tokenizer,
                 prompt=tokens[len(prefix) :],
                 prompt_cache=copy.deepcopy(cache),
-                max_tokens=80 if welcome or alexa else 130,
+                max_tokens=48 if alexa else 80 if welcome else 130,
                 sampler=make_sampler(temp=0.4 if welcome else 0),
             ):
                 count += 1

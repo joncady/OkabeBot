@@ -40,7 +40,10 @@ def source():
         .replace("from okabebot.alexa_skill import response, validate_envelope", "")
         .replace("from okabebot.alexa_visuals import attach_character, FRAME_NAMES", "")
         .replace("from okabebot.alexa_conversation import ConversationSkill", "# Included above")
-        .replace("from okabebot.alexa_conversation_relay import aws_exchange", "# Included above")
+        .replace(
+            "from okabebot.alexa_conversation_relay import aws_exchange, bounded_call",
+            "# Included above",
+        )
         .replace(
             "from okabebot.alexa_destination_relay import DestinationRelay, PrivateDestinationStore",
             "# Included above",

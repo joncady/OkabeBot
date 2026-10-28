@@ -64,6 +64,54 @@ class ConversationProtocolTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             skill.handle(self.event)
 
+    def test_show_audio_track_does_not_replay_ssml_or_replace_the_room(self):
+        visual = Mock(
+            return_value={"type": "Alexa.Presentation.APL.ExecuteCommands", "token": "active"}
+        )
+        result = dict(
+            id=self.request["id"],
+            body_hash=self.request["body_hash"],
+            text="Air scatters blue light.",
+            audio_safe=True,
+            audio_ready=True,
+            character="okabe",
+            audio_duration_ms=2100,
+        )
+        signer = Mock(return_value="https://example.com/reply.mp3")
+        value = reply(result, self.request, signer, visual=visual, event=self.event)["response"]
+        self.assertNotIn("outputSpeech", value)
+        self.assertFalse(value["shouldEndSession"])
+        directives = value["directives"]
+        self.assertEqual(
+            [d["type"] for d in directives],
+            ["Alexa.Presentation.APLA.RenderDocument", "Alexa.Presentation.APL.ExecuteCommands"],
+        )
+        self.assertEqual(directives[0]["datasources"]["reply"]["url"], signer.return_value)
+        visual.assert_called_once_with(self.event, "okabe", 2100)
+        visual.return_value = None
+        self.assertEqual(
+            len(
+                reply(result, self.request, signer, visual=visual, event=self.event)["response"][
+                    "directives"
+                ]
+            ),
+            1,
+        )
+        result["audio_safe"] = False
+        visual.reset_mock()
+        value = reply(result, self.request, signer, visual=visual, event=self.event)["response"]
+        self.assertEqual(value["outputSpeech"]["type"], "PlainText")
+        self.assertNotIn("directives", value)
+        visual.assert_not_called()
+
+    def test_exhausted_lambda_budget_returns_before_any_queue_or_audio_work(self):
+        exchange, signer = Mock(), Mock()
+        skill = ConversationSkill("local-prototype", self.identity, exchange, signer, budget=0.05)
+        value = skill.handle(self.event)
+        self.assertEqual(value["response"]["outputSpeech"]["text"], FALLBACK)
+        exchange.open.assert_not_called()
+        signer.assert_not_called()
+
     def test_real_exchange_decimal_deadline_survives_the_full_handler_wait(self):
         import time
         from okabebot.alexa_conversation_relay import ConversationExchange
