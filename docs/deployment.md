@@ -824,3 +824,12 @@ Alexa screen) and returned to Pi ownership after an explicit return, with no
 controller errors. Private arrival/return receipts were saved locally; speaker
 level remained 26%. The user confirmed Okabe visible in the Show café with the Pi away.
 Closure/expiry recovery remains required before accepting the checkpoint.
+
+A second direct launch also loaded both image layers and reached Show ownership.
+The session subsequently reported closed and the controller recovered Pi
+ownership without error. The original Vizio café reservation was restored after
+the test; Show remains approved but unassigned, preserving unique scene rules.
+The Pi speaker remains at its prior 26% measured level. Physical confirmation of
+the closing/return behavior is still pending. The test worker is a manual process,
+not an automatically installed service, and the Show session is limited to one
+minute with one fixed character/set artwork profile.

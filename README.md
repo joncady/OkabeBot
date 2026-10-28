@@ -536,3 +536,7 @@ and ownership checks remain mandatory before revealing the actor.
 Covered preloading now passes real Show image readiness and an acknowledged
 Show arrival/Pi return. The user confirmed Show presence with Pi absence;
 close/expiry recovery remains pending; this remains a bounded development-session destination.
+
+A second Show arrival and automatic Pi recovery after session closure also
+passed backend checks. The TV’s café reservation is restored; Show remains
+approved but needs a free matching set before another visit.
