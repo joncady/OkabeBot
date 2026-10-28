@@ -8,10 +8,11 @@ const amadeusUI = (() => {
     accessEpoch++;
     current=null;
     editing=false;$('amadeus-review').hidden=true;
-    for(const id of ['amadeus-setup','amadeus-controls','amadeus-memory','amadeus-morning']) $(id).hidden=true;
+    for(const id of ['amadeus-setup','amadeus-controls','amadeus-memory','amadeus-morning','amadeus-habits']) $(id).hidden=true;
     $('amadeus-form').reset();$('memory-form').reset();
     $('sources').replaceChildren();$('topics').replaceChildren();$('memory-list').replaceChildren();
     $('morning-voice-form').reset();$('morning-person').textContent='';$('morning-show-status').textContent='';$('morning-test-status').textContent='';$('morning-test-tv').disabled=true;$('morning-preview').textContent='';$('morning-status').textContent='';$('morning-form').reset();$('morning-destination').replaceChildren();
+    $('habits-preview').textContent='';$('habits-routines').replaceChildren();$('habits-state').textContent='';$('habits-enabled').checked=false;
     $('event-list').textContent='';$('household-list').textContent='';$('coaching-state').textContent='';
   }
   async function api(path, data) {
@@ -75,6 +76,18 @@ const amadeusUI = (() => {
     $('morning-preview').textContent=value.summary?value.summary.cards.map(c=>c.title+' · '+c.body).join('\n\n'):'';
     $('morning-status').textContent=c.enabled?(c.present_on_wake&&!value.destination_ready?'TV needs a unique scene assignment in Locations before automatic presentation can work.':'Morning preparation configured; phone/weather permissions and active collection are also required.'):'Morning preparation off.';
   }
+  async function habits() {
+    const value=await api('habits');if(!value.config)return;
+    $('amadeus-habits').hidden=false;$('habits-enabled').checked=value.config.enabled;
+    $('habits-routines').replaceChildren();
+    for(const routine of value.preview.routines){
+      const li=document.createElement('li');const hour=String(Math.floor(routine.minute/60)).padStart(2,'0'),minute=String(routine.minute%60).padStart(2,'0');
+      li.textContent=`${routine.kind} · ${hour}:${minute} · ${routine.matching_days}/${routine.observed_days} observed ${routine.day_type} days · ${routine.scope}`;
+      $('habits-routines').append(li);
+    }
+    $('habits-state').textContent=value.preview.state==='disabled'?'Preview off or collection paused.':value.preview.routines.length?'Shadow only · no notifications or actions.':'Not enough consistent observed days yet.';
+    $('habits-preview').textContent=JSON.stringify(value.preview.proposals,null,2);
+  }
   async function load() {
     const value = await api('settings'); current = value.settings;
     $('amadeus-setup').hidden = Boolean(current) && !editing;
@@ -99,11 +112,14 @@ const amadeusUI = (() => {
       $('amadeus-pause').textContent=current.paused?'Shadow collection paused':'Pause shadow collection';
       $('amadeus-pause').setAttribute('aria-pressed',String(current.paused));
       $('amadeus-guest').textContent=current.guest?'Guest mode on':'Guest mode off';
-      $('amadeus-guest').setAttribute('aria-pressed',String(current.guest)); await memory(); await morning();
+      $('amadeus-guest').setAttribute('aria-pressed',String(current.guest)); await memory(); await morning(); await habits();
     }
-    message(value.collection_active ? 'Shadow metadata collection enabled · general predictions and nudges off; morning options are separate.' : 'Shadow metadata collection paused · general predictions and nudges off; morning options are separate.');
+    if(!current){$('amadeus-habits').hidden=true;$('habits-preview').textContent='';$('habits-routines').replaceChildren();}
+    message(value.collection_active ? 'Shadow metadata collection enabled · general delivery off; routine previews and morning options are separate.' : 'Shadow metadata collection paused · general delivery off; routine previews and morning options are separate.');
   }
   async function run(action) { try { await action(); } catch(error) { message(error.message); } }
+  $('habits-refresh').onclick=()=>run(habits);
+  $('habits-enabled').onchange=()=>run(async()=>{await api('habits',{enabled:$('habits-enabled').checked});await habits();});
   $('morning-test-tv').onclick=()=>run(async()=>{
     $('morning-test-status').textContent='Preparing TV… this may turn it on and change input.';
     const result=await api('tv-prepare',{});

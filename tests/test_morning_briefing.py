@@ -15,6 +15,12 @@ from tests.test_amadeus_http import SETUP
 
 
 class BriefingTests(unittest.TestCase):
+    def test_rest_invitation_does_not_assume_a_free_schedule(self):
+        from okabebot.morning_briefing import MORNING_COACHING
+
+        self.assertIn("Would you like", MORNING_COACHING["rest"])
+        self.assertNotIn("No need to rush", MORNING_COACHING["rest"])
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

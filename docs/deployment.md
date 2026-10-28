@@ -1119,3 +1119,13 @@ rejects token-limit termination. One bounded higher-temperature retry is allowed
 failure aborts the utterance. Existing ICL streaming is unchanged. This changes
 worker decoding/buffering, not model ownership, ports or reference storage. Morning
 private diagnostics now distinguish failed delivery from in-progress synthesis.
+
+## Source-only shadow routine experiment
+
+The checkout now contains a local prior-day routine planner, owner-only preview
+and explicit-feedback routes on the existing web listener, plus a socket-denied
+accelerated replay/evaluator. It reuses private SQLite and existing source consent;
+there is no new model, cloud service, port, source collector or hardware route.
+Defaults are off and general proactive delivery cannot be enabled by these routes.
+This change has not been installed into the active controller. The current README
+topology therefore remains unchanged. See [experiment protocol](amadeus-simulation.md).

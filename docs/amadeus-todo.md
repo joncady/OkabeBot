@@ -138,3 +138,20 @@ See [morning.md](morning.md); personal trial observations remain private.
 - [x] Independently consented HA TV power/availability changes and snapshots.
 - [ ] Broader standby/wrong-input device coverage and recovery acceptance.
 - [ ] Define evidence rules for TV activity intervals; never equate power with personal viewing.
+
+## Initial shadow learner and replay checkpoint
+
+- [x] Add prior-day cue-window learner, observed-day support and evidence references.
+- [x] Add default-off owner previews and explicit routine feedback; no general delivery.
+- [x] Add network-denied temporal replay and separate hidden-truth scoring tools.
+- [x] Preserve title-clearing stop state without interpreting it as completion.
+- [ ] Learn or explicitly configure receptive times separately from activity times.
+- [ ] Unify morning, coaching and learned proposals under one attention ledger.
+- [ ] Add explicit defer/dismiss scope for morning speech versus silent cards.
+- [ ] Add source coverage/health evidence and shift-aware, alarm-relative wake cues.
+- [ ] Evaluate calendar end/busy state, DND/focus and room/surface availability before live delivery.
+- [ ] Expand realistic household/ad/autoplay, DST, travel and sparse-data holdouts.
+- [ ] Confirm privacy/surface and recipient identity gates before any general notifications.
+
+Synthetic replay cannot replace the human acceptance checkpoints or prove an
+available streaming catalogue, a preferred title, a health need or observed sleep.

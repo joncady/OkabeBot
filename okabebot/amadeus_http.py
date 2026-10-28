@@ -88,7 +88,7 @@ def handle(handler, bridge, *, post=False):
     if origin and urlsplit(origin).netloc != handler.headers.get("Host"):
         handler.respond(403, {"error": "Same-origin access required"})
         return True
-    from .amadeus_onboarding import Onboarding
+    from .amadeus_onboarding import Onboarding, SYSTEM
     from .config import state_dir
 
     service = None
@@ -100,7 +100,37 @@ def handle(handler, bridge, *, post=False):
             handler.connection.settimeout(5)
             data = json.loads(handler.rfile.read(size))
         service = Onboarding(state_dir() / "amadeus")
-        if path == "/amadeus/api/morning-voice" and post:
+        if path == "/amadeus/api/habits":
+            from .amadeus_habits import HabitPlanner, configure, preference, CONFIG_KEY, DEFAULTS
+
+            if not service.settings():
+                raise ValueError("Save private setup first")
+            if post:
+                if not isinstance(data, dict):
+                    raise ValueError("Provide habit settings")
+                configure(service.store, **data)
+            result = {
+                "config": preference(service.store, SYSTEM, CONFIG_KEY, DEFAULTS),
+                "preview": HabitPlanner(service.store).snapshot(),
+                "delivery_enabled": False,
+            }
+        elif path == "/amadeus/api/habit-feedback" and post:
+            from .amadeus_habits import feedback
+
+            if not isinstance(data, dict) or set(data) not in (
+                {"kind", "outcome"},
+                {"kind", "outcome", "delay_minutes"},
+            ):
+                raise ValueError("Provide explicit routine feedback")
+            feedback(
+                service.store,
+                service.subject(),
+                data["kind"],
+                data["outcome"],
+                delay_minutes=data.get("delay_minutes", 1440),
+            )
+            result = {"state": "recorded"}
+        elif path == "/amadeus/api/morning-voice" and post:
             from .morning_briefing import Briefing
 
             result = Briefing(state_dir() / "amadeus").configure(data)

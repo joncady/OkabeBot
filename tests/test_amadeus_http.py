@@ -61,6 +61,27 @@ class AmadeusHttpTests(unittest.TestCase):
         ) as r:
             return json.load(r)
 
+    def test_habit_preview_is_owner_only_shadow_and_feedback_is_explicit(self):
+        self.request("/amadeus/api/settings", SETUP)
+        preview = self.request("/amadeus/api/habits")
+        self.assertFalse(preview["config"]["enabled"])
+        self.assertFalse(preview["delivery_enabled"])
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/habits", token="publish-only")
+        self.assertEqual(caught.exception.code, 403)
+        preview = self.request("/amadeus/api/habits", {"enabled": True})
+        self.assertFalse(preview["delivery_enabled"])
+        self.assertEqual(
+            self.request("/amadeus/api/habit-feedback", {"kind": "media", "outcome": "stop"})[
+                "state"
+            ],
+            "recorded",
+        )
+        with self.assertRaises(HTTPError):
+            self.request(
+                "/amadeus/api/habit-feedback", {"kind": "media", "outcome": "guessed_sentiment"}
+            )
+
     def test_morning_owner_configuration_and_write_only_phone_ingestion(self):
         from okabebot.morning import DEFAULTS
 

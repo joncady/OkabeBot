@@ -74,7 +74,7 @@ class Collector:
                     )
             else:
                 value = video
-            if not isinstance(value, dict) or not value.get("title") or not value.get("app"):
+            if not isinstance(value, dict) or not value.get("app"):
                 return []
             updated = value.get("updated_at")
             if type(updated) not in (int, float) or not 0 <= self.clock() - updated <= 120:
@@ -82,7 +82,13 @@ class Collector:
             state = value.get("state")
             if state not in ("PLAYING", "PAUSED", "IDLE", "BUFFERING", "UNKNOWN"):
                 return []
-            payload = {"app": text(value["app"]), "title": text(value["title"]), "state": state}
+            # Receivers commonly clear the title on STOP. Dropping that observation
+            # leaves a false PLAYING tail and hides the next actual session start.
+            if not value.get("title") and state not in ("IDLE", "UNKNOWN"):
+                return []
+            payload = {"app": text(value["app"]), "state": state}
+            if value.get("title"):
+                payload["title"] = text(value["title"])
             if value.get("content_id"):
                 payload["content_id"] = digest(str(value["content_id"]))
             if (

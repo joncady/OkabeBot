@@ -58,6 +58,18 @@ class SourceTests(unittest.TestCase):
         self.now += 130
         self.assertEqual(self.collector.media(self.video)["state"], "no_metadata")
 
+    def test_stop_with_cleared_title_is_preserved_without_claiming_completion(self):
+        self.owner.control({"paused": False})
+        self.assertEqual(
+            self.collector.media(
+                {"app": "Invented player", "title": "", "state": "IDLE", "updated_at": self.now}
+            )["state"],
+            "stored",
+        )
+        event = self.owner.memory()["household_events"][0]
+        self.assertEqual(event["payload"], {"app": "Invented player", "state": "IDLE"})
+        self.assertNotIn("completed", event["payload"])
+
     def test_calendar_snapshot_marks_completeness_and_stale_cache_is_not_ingested(self):
         self.owner.control({"paused": False})
         data = {

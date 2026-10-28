@@ -12,7 +12,7 @@ from .morning import Morning
 
 MORNING_COACHING = {
     "movement": "Would a short stretch feel good before the day gets busy?",
-    "rest": "There is room for a gentle start. No need to rush.",
+    "rest": "Would you like a quiet moment before getting started?",
     "hydration": "If you would like, grab a glass of water to start the day.",
     "meals": "Would planning an easy breakfast make the morning simpler?",
 }

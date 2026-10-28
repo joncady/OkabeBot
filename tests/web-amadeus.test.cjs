@@ -18,7 +18,7 @@ async function fixture(){
  const context={document,Intl,Date,JSON,URL,Blob,setTimeout,
   dashboardAccess:{token:()=>token,remember(){},required(){get('dashboard-auth').hidden=false;}},
   fetch:async(url,options)=>{requests.push({url,options});if(hold)await new Promise(resolve=>release=resolve);return{status:denied?403:200,ok:!denied,
-   json:async()=>url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
+   json:async()=>url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
    {events:[],preferences:[{key:'user.test',value:'<img src=x onerror=alert(1)>'}]}};}};
  vm.createContext(context);
  vm.runInContext(fs.readFileSync('okabebot/web/amadeus.js','utf8')+'\nglobalThis.ui=amadeusUI;',context);
@@ -37,6 +37,7 @@ test('forget browser access removes rendered private records and hides controls'
  const f=await fixture();f.nodes['dashboard-forget'].onclick();
  assert.equal(f.nodes['amadeus-memory'].hidden,true);assert.equal(f.nodes['amadeus-controls'].hidden,true);
  assert.equal(f.nodes['memory-list'].children.length,0);assert.equal(f.nodes['event-list'].textContent,'');
+ assert.equal(f.nodes['amadeus-habits'].hidden,true);assert.equal(f.nodes['habits-preview'].textContent,'');
 });
 test('revoked owner access clears previously visible records',async()=>{
  const f=await fixture();f.deny();await assert.rejects(f.context.ui.load());
@@ -47,4 +48,13 @@ test('an in-flight response cannot repaint private records after local logout',a
  const f=await fixture();f.hold();const loading=f.context.ui.load();
  f.nodes['dashboard-forget'].onclick();f.release();await assert.rejects(loading);
  assert.equal(f.nodes['amadeus-memory'].hidden,true);assert.equal(f.nodes['memory-list'].children.length,0);
+});
+
+test('routine preview stays owner scoped and enabling it cannot enable delivery',async()=>{
+ const f=await fixture();assert.equal(f.nodes['amadeus-habits'].hidden,false);
+ f.nodes['habits-enabled'].checked=true;await f.nodes['habits-enabled'].onchange();
+ const request=f.requests.find(r=>r.url.endsWith('habits')&&r.options.method==='POST');
+ assert.deepEqual(JSON.parse(request.options.body),{enabled:true});
+ assert.equal(request.options.headers['X-Hardware-Token'],'synthetic-owner');
+ assert.match(f.nodes['habits-state'].textContent,/off|paused/);
 });

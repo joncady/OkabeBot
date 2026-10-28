@@ -17,6 +17,11 @@ onboarding controls; live delivery remains pending. Personal trial results remai
 private. The [public progress log](docs/amadeus-progress.md) describes only general
 capability improvements, limitations and regressions.
 
+An initial [local shadow routine learner and accelerated replay](docs/amadeus-simulation.md)
+can preview explainable cue windows from prior observed days. Its owner-only
+previews default off, and general notification/action delivery is not enabled.
+This repository capability is separate from the installed deployment map below.
+
 An opt-in [morning summary](docs/morning.md) can prepare weather/calendar cards
 on the first screen-on near an alarm and optionally present them on a configured
 TV. Two stacked cards rotate in its pixel rail. Optional named, persona-generated

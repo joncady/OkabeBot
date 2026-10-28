@@ -150,3 +150,20 @@ explicit policy change; aggregation alone does not authorize it.
 - Regression risk: clause buffering and retries can increase speech startup time;
   source completion, delivery acknowledgement and perceived quality remain
   separate checks.
+
+## Isolated routine-learning and feedback foundation
+
+- Added: prior-day shadow cue-window learning with versioned evidence, distinct-day
+  support and explicit abstention; source permissions and forgetting remain authoritative.
+- Added: private owner previews, repeat/attention gates and explicit routine feedback,
+  including bounded postponement without granting new collection or delivery rights.
+- Added: accelerated telemetry replay and a separate hidden-truth evaluator;
+  physical effects and network connections are excluded from the local harness.
+- Improved: title-clearing media stop observations can retire a playing session
+  without asserting that any particular person completed or liked the content.
+- Remaining: receptive-time learning, richer context, shared attention with existing
+  morning output, shift-aware cues and physical delivery acceptance. Activity-window
+  accuracy must not be treated as usefulness or certainty about a person's state.
+
+- Improved: rest coaching is phrased as an optional invitation rather than an
+  assertion that the user's schedule allows a slow start.
