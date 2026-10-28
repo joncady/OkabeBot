@@ -870,8 +870,8 @@ Real silent queue/local/media trials completed two warm turns in 5.030 and 2.793
 seconds, with MP3 fetches adding about 0.27 seconds. A cold turn timed out safely.
 No physical playback occurred; these are not Alexa round-trip measurements.
 The live Lambda handler is now connected to this transport with scoped
-queue/ledger/audio permissions. Its Alexa TalkIntent model build and Show
-two-question physical acceptance remain pending. An IAM-only fixed-question
+queue/ledger/audio permissions. Its English (US) Alexa TalkIntent model is now built; Show
+two-question physical acceptance remains pending. An IAM-only fixed-question
 Lambda harness returned generated audio for two warm turns in 4.285 and 4.707
 seconds, plus roughly 0.25–0.33 seconds to fetch each MP3. The ephemeral harness
 was deleted and does not prove real Alexa recognition or playback. The handler
@@ -880,3 +880,33 @@ requires an already-visible, current, matching actor and never summons it.
 The installed Alexa model prompt requests a shorter sentence to fit the deadline.
 Voice references, volume and Pi ownership were preserved. See [conversation cycle](alexa-conversation.md) for boundaries,
 retention and detailed evidence.
+
+
+The Developer Console confirms successful English (US) build 4 at 8:27 PM local
+on 2026-10-27, with the new TalkIntent/SearchQuery carriers. The deployed handler
+also handles the automatically added NavigateHomeIntent as exit/cancellation.
+For the physical test, Okabe's café reservation was temporarily moved to
+Show instead of the living-room TV. After the failed retry, original assignments
+were restored from the private backup. Other character reservations and
+Pi speaker volume are unchanged. No new physical acceptance is claimed yet.
+
+
+The first conversational physical attempt reached Show, but the user reported
+flicker and the question routed to FallbackIntent; no generated answer was
+accepted. The Mac visual relay worker was refreshed to coalesce newer valid
+receiver polls instead of starving renewals during controller reads. The Lambda
+renderer now preloads four actor poses behind the cover and animates opacity,
+while retaining the same four-second visibility lease and session limits.
+Display polls skip conversation transport initialization. Fallback/Help keeps
+listening without inference. Both changes are deployed and 432 isolated tests
+pass; physical stability, custom-voice playback and follow-up listening remain
+pending. The temporary Show café reservation was later restored to the TV after the failed retry.
+
+The next physical retry reached TalkIntent twice but missed both audio deadlines;
+custom conversational playback is still unaccepted. A receiver trace confirmed a
+temporary visibility-lease lapse. Installed private RPC diagnostics now identify
+model/synthesis/encoding failures without exposing utterances or exception messages.
+Silent timing reproduced a synthesis timeout even with shorter replies, so that
+experiment was discarded. The isolated-tested remaining-grant lease correction deployed after AWS
+reauthorization; its physical stability is not yet accepted. No ownership topology, voice
+reference, or volume setting changed. Further physical retries are paused.

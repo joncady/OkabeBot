@@ -62,6 +62,11 @@ def document(token, background, frames):
                 "replyUntil": 0,
                 "backgroundReady": False,
                 "actorReady": False,
+                "actor0Ready": False,
+                "actor1Ready": False,
+                "actor2Ready": False,
+                "actor3Ready": False,
+                "actorFrame": 0,
                 "coverReady": False,
                 "backgroundFailed": False,
                 "actorFailed": False,
@@ -77,20 +82,32 @@ def document(token, background, frames):
                 "onLoad": [set_value("backgroundReady", True)],
                 "onFail": [set_value("backgroundFailed", True)],
             },
-            {
-                "type": "Image",
-                "id": "actor",
-                "position": "absolute",
-                "top": 0,
-                "left": 0,
-                "width": "100%",
-                "height": "100%",
-                "scale": "best-fit",
-                "source": urls[1],
-                "display": "${coverReady ? 'normal' : 'invisible'}",
-                "onLoad": [set_value("actorReady", True)],
-                "onFail": [set_value("actorFailed", True)],
-            },
+            *[
+                {
+                    "type": "Image",
+                    "id": "actor" if index == 0 else "actor" + str(index),
+                    "position": "absolute",
+                    "top": 0,
+                    "left": 0,
+                    "width": "100%",
+                    "height": "100%",
+                    "scale": "best-fit",
+                    "source": url,
+                    "display": "${coverReady ? 'normal' : 'invisible'}",
+                    # Every pose first loads at opacity one behind the cover.
+                    # Once all are ready, animation changes only local opacity.
+                    "opacity": "${actorReady ? (actorFrame == " + str(index) + " ? 1 : 0) : 1}",
+                    "onLoad": [
+                        set_value("actor" + str(index) + "Ready", True),
+                        set_value(
+                            "actorReady",
+                            "${actor0Ready && actor1Ready && actor2Ready && actor3Ready}",
+                        ),
+                    ],
+                    "onFail": [set_value("actorFailed", True)],
+                }
+                for index, url in enumerate(urls[1:])
+            ],
             {
                 "type": "Image",
                 "id": "cover",
@@ -146,17 +163,19 @@ def document(token, background, frames):
                     },
                     {**set_value("closed", True), "when": "${elapsedTime >= 60000}"},
                     {
-                        "type": "SetValue",
-                        "componentId": "actor",
-                        "property": "source",
-                        "value": "${elapsedTime < replyUntil ? payload.scene.frames[1 + (Math.floor(elapsedTime / 160) % 2)] : payload.scene.frames[3]}",
-                        "when": "${elapsedTime < replyUntil || elapsedTime % 4000 >= 3860}",
+                        **set_value("actorFrame", 1),
+                        "when": "${elapsedTime < replyUntil && elapsedTime % 320 < 160}",
                     },
                     {
-                        "type": "SetValue",
-                        "componentId": "actor",
-                        "property": "source",
-                        "value": urls[1],
+                        **set_value("actorFrame", 2),
+                        "when": "${elapsedTime < replyUntil && elapsedTime % 320 >= 160}",
+                    },
+                    {
+                        **set_value("actorFrame", 3),
+                        "when": "${elapsedTime >= replyUntil && elapsedTime % 4000 >= 3860}",
+                    },
+                    {
+                        **set_value("actorFrame", 0),
                         "when": "${elapsedTime >= replyUntil && elapsedTime % 4000 < 3860}",
                     },
                 ],

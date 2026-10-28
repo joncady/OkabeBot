@@ -13,7 +13,15 @@ from okabebot.alexa_skill import response, validate_envelope
 from okabebot.alexa_visuals import attach_character, FRAME_NAMES
 
 
-def handle(event, skill_id, audio_url, frames=None, destination=None, conversation=None):
+def handle(
+    event,
+    skill_id,
+    audio_url,
+    frames=None,
+    destination=None,
+    conversation=None,
+    conversation_enabled=False,
+):
     request = validate_envelope(event, skill_id)
     kind = request["type"]
     if kind == "Alexa.Presentation.APL.UserEvent":
@@ -60,12 +68,16 @@ def handle(event, skill_id, audio_url, frames=None, destination=None, conversati
         "LabLocationsIntent",
         "AMAZON.StopIntent",
         "AMAZON.CancelIntent",
+        "AMAZON.NavigateHomeIntent",
         "AMAZON.HelpIntent",
         "AMAZON.FallbackIntent",
     }
     logging.getLogger(__name__).warning(
         "little_lab_request intent=%s", intent if intent in known else "Other"
     )
+    if conversation_enabled and intent in ("AMAZON.FallbackIntent", "AMAZON.HelpIntent"):
+        # Misrecognition does not replay inference or end a live Show visit.
+        return response("Say tell me, followed by a short question.", end=False)
     if intent == "TalkIntent":
         if conversation is None:
             return response("Conversation is not connected yet. You can ask for a voice demo.")
@@ -93,7 +105,7 @@ def handle(event, skill_id, audio_url, frames=None, destination=None, conversati
     if intent == "VoiceDemoIntent":
         result = response("", audio_url=audio_url())
         return attach_character(result, event, frames) if frames else result
-    if intent in ("AMAZON.StopIntent", "AMAZON.CancelIntent"):
+    if intent in ("AMAZON.StopIntent", "AMAZON.CancelIntent", "AMAZON.NavigateHomeIntent"):
         if conversation is not None:
             try:
                 conversation.cancel(event)
@@ -166,7 +178,13 @@ def handler(event, context):
             PrivateDestinationStore(client, os.environ["AUDIO_BUCKET"]), destination_assets
         )
     conversation = None
-    if os.environ.get("CONVERSATION_ENABLED") == "true":
+    request = event.get("request", {})
+    needs_conversation = request.get("type") == "SessionEndedRequest" or (
+        request.get("type") == "IntentRequest"
+        and request.get("intent", {}).get("name")
+        in {"TalkIntent", "AMAZON.StopIntent", "AMAZON.CancelIntent", "AMAZON.NavigateHomeIntent"}
+    )
+    if os.environ.get("CONVERSATION_ENABLED") == "true" and needs_conversation:
         from okabebot.alexa_conversation import ConversationSkill
         from okabebot.alexa_conversation_relay import aws_exchange, bounded_call
 
@@ -216,4 +234,5 @@ def handler(event, context):
         frames if os.environ.get("VISUALS_ENABLED") == "true" else None,
         destination,
         conversation,
+        conversation_enabled=os.environ.get("CONVERSATION_ENABLED") == "true",
     )

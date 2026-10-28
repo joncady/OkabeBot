@@ -9,6 +9,22 @@ import math
 import time
 
 
+def validate_receiver(record):
+    for key in ("token", "device"):
+        if not isinstance(record.get(key), str) or not re.fullmatch(r"[a-f0-9]{64}", record[key]):
+            raise ValueError("Invalid destination session")
+    if (
+        type(record.get("ready")) is not bool
+        or record.get("painted") not in ("hidden", "pending", "entered", "departed")
+        or type(record.get("clock")) not in (int, float)
+        or not math.isfinite(record["clock"])
+        or not 0 <= record["clock"] < 60000
+        or not isinstance(record.get("transition"), str)
+        or (record["transition"] and not re.fullmatch(r"[a-f0-9]{32}", record["transition"]))
+    ):
+        raise ValueError("Invalid destination presentation state")
+
+
 class ControllerDestination:
     def __init__(self, store, api, name, *, clock=time.time):
         self.store, self.api, self.name, self.clock = store, api, name, clock
@@ -26,21 +42,7 @@ class ControllerDestination:
             # Do not manufacture a departure ACK. The existing controller waits
             # beyond the receiver's visibility lease before recovering at home.
             return "inactive"
-        for key in ("token", "device"):
-            if not isinstance(record.get(key), str) or not re.fullmatch(
-                r"[a-f0-9]{64}", record[key]
-            ):
-                raise ValueError("Invalid destination session")
-        if (
-            type(record.get("ready")) is not bool
-            or record.get("painted") not in ("hidden", "pending", "entered", "departed")
-            or type(record.get("clock")) not in (int, float)
-            or not math.isfinite(record["clock"])
-            or not 0 <= record["clock"] < 60000
-            or not isinstance(record.get("transition"), str)
-            or (record["transition"] and not re.fullmatch(r"[a-f0-9]{32}", record["transition"]))
-        ):
-            raise ValueError("Invalid destination presentation state")
+        validate_receiver(record)
         from .scene_sets import validate_selection
 
         style, selected = record["character"], record["set"]
@@ -74,10 +76,21 @@ class ControllerDestination:
             latest.get("token") != record["token"]
             or latest.get("device") != record["device"]
             or latest.get("closed")
-            or latest.get("clock") != record["clock"]
+            or any(
+                latest.get(k) != record.get(k)
+                for k in ("character", "set", "expires_at", "started_at")
+            )
             or not 0 <= self.clock() - latest.get("updated_at", 0) < 3
+            or self.clock() >= latest.get("expires_at", 0)
         ):
             return "waiting_for_poll"
+        validate_receiver(latest)
+        if latest["clock"] < record["clock"]:
+            return "waiting_for_poll"
+        # A fresh poll arriving during controller I/O is progress, not a reason
+        # to skip this lease renewal. Coalesce it without crossing sessions.
+        record, now = latest, self.clock()
+        cursor = (record["token"], record["clock"])
         previous = self.store.get("command") or {}
         if (
             matches

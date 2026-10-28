@@ -120,7 +120,7 @@ class ConversationSkill:
             return False
         if event["request"]["type"] == "IntentRequest" and event["request"].get("intent", {}).get(
             "name"
-        ) not in ("AMAZON.StopIntent", "AMAZON.CancelIntent"):
+        ) not in ("AMAZON.StopIntent", "AMAZON.CancelIntent", "AMAZON.NavigateHomeIntent"):
             return False
         session = event.get("session", {}).get("sessionId")
         try:

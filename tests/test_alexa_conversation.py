@@ -151,6 +151,10 @@ class ConversationProtocolTests(unittest.TestCase):
         self.assertTrue(skill.cancel(self.event))
         exchange.close_session.assert_called_once_with(digest(self.identity + "\0private-session"))
         exchange.reset_mock()
+        self.event["request"]["intent"]["name"] = "AMAZON.NavigateHomeIntent"
+        self.assertTrue(skill.cancel(self.event))
+        exchange.close_session.assert_called_once_with(digest(self.identity + "\0private-session"))
+        exchange.reset_mock()
         self.event["context"]["System"]["device"]["deviceId"] = "other-device"
         self.assertFalse(skill.cancel(self.event))
         exchange.close_session.assert_not_called()

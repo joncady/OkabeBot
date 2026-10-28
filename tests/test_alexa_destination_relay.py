@@ -143,15 +143,29 @@ class RelayTests(unittest.TestCase):
         self.assertNotIn("session-one", str(state))
         self.assertIsNone(self.store.get("command"))
 
-    def test_command_is_scoped_and_lease_uses_originating_poll_clock(self):
+    def test_command_is_scoped_and_only_unspent_grant_is_translated_to_poll_clock(self):
         self.command()
         self.now += 1
         result = self.relay.poll(self.poll(elapsed=2200))
         mailbox = result["response"]["directives"][0]["commands"][0]["value"]
-        self.assertEqual(mailbox["expiresAt"], 5000)
+        self.assertEqual(mailbox["expiresAt"], 5200)
         self.assertNotIn("outputSpeech", result["response"])
         self.now += 4
         self.assertEqual(self.relay.poll(self.poll(elapsed=6000))["response"], {})
+
+    def test_repeated_command_does_not_refresh_its_wall_clock_grant(self):
+        self.command()
+        self.now += 2
+        first = self.relay.poll(self.poll(elapsed=3500))
+        expiry = first["response"]["directives"][0]["commands"][0]["value"]["expiresAt"]
+        self.assertEqual(expiry, 5500)
+        self.now += 0.5
+        second = self.relay.poll(self.poll(elapsed=4000))
+        self.assertEqual(
+            second["response"]["directives"][0]["commands"][0]["value"]["expiresAt"], expiry
+        )
+        self.now += 0.6
+        self.assertEqual(self.relay.poll(self.poll(elapsed=4600))["response"], {})
 
     def test_reordered_polls_and_previous_sessions_cannot_replay_arrival(self):
         self.relay.poll(self.poll(3000, "entered", GEN))

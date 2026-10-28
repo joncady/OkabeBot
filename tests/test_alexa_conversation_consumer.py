@@ -60,6 +60,19 @@ class ConsumerTests(unittest.TestCase):
         self.assertFalse(record["audio_ready"])
         self.assertFalse(record["audio_safe"])
 
+    def test_local_failure_carries_only_allowlisted_stage_and_never_uploads(self):
+        self.infer.return_value = {
+            "error": "ValueError",
+            "stage": "synthesis",
+            "message": "private content",
+        }
+        with self.assertRaises(RuntimeError) as caught:
+            self.consumer.step()
+        self.assertEqual(caught.exception.alexa_stage, "synthesis")
+        self.assertNotIn("private content", str(caught.exception))
+        self.media.put_object.assert_not_called()
+        self.assertEqual(self.fixture.table.items[self.request["id"]]["status"], "failed")
+
     def test_unpaired_identity_never_reaches_local_adapter(self):
         self.consumer.identity = "0" * 64
         with self.assertRaises(PermissionError):

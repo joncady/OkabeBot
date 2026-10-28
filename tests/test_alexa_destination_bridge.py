@@ -230,6 +230,32 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(attempted, ["/surfaces/summon"])
         self.assertEqual(self.surface.phase, "pi")
 
+    def test_new_poll_during_controller_read_renews_instead_of_starving(self):
+        self.approve()
+        self.worker.step()
+        original = self.worker.api
+
+        def advance_during_read(path, data, token):
+            result = original(path, data, token)
+            if path == "/surfaces/state":
+                latest = self.store.get("session")
+                latest["clock"] += 500
+                self.store.put("session", latest)
+            return result
+
+        self.worker.api = advance_during_read
+        previous = self.store.get("command")["sequence"]
+        for _ in range(4):
+            self.record["clock"] = self.store.get("session")["clock"] + 500
+            self.store.put("session", self.record)
+            self.assertEqual(self.worker.step(), "connected")
+            command = self.store.get("command")
+            self.assertGreater(command["sequence"], previous)
+            self.assertEqual(command["receiver_elapsed_ms"], self.store.get("session")["clock"])
+            previous = command["sequence"]
+        self.assertEqual(self.surface.phase, "pi")
+        self.assertEqual(self.drawn, "home")
+
     def test_close_during_controller_read_cannot_trigger_a_summon_or_ack(self):
         self.approve()
         self.record["summon"] = True

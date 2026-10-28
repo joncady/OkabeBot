@@ -72,6 +72,21 @@ class LocalAdapterTests(unittest.TestCase):
         pcm.assert_not_called()
         encode.assert_not_called()
 
+    def test_failed_stage_is_reported_without_exception_message_or_content(self):
+        self.model.compose_alexa.side_effect = ValueError("private utterance")
+        with tempfile.TemporaryDirectory() as folder:
+            service = LocalConversationServer(
+                Path(folder) / "rpc.sock", self.model, lambda: self.character
+            )
+            try:
+                result = local_request(service.path, self.request)
+                self.assertEqual(result["error"], "ValueError")
+                self.assertEqual(result["stage"], "model")
+                self.assertGreaterEqual(result["elapsed_s"], 0)
+                self.assertNotIn("private utterance", json.dumps(result))
+            finally:
+                service.close()
+
     def test_late_encoder_cannot_return_audio(self):
         now = time.time()
         current = [now]

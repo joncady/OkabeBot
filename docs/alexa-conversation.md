@@ -4,9 +4,9 @@ Status: the private Mac adapter is installed for silent timing tests. The
 separate queue, ledger and private audio bucket are deployed, and a manually run
 scoped consumer passed silent cloud/local tests.
 The Lambda conversation handler is connected and passed an IAM-only silent smoke
-test. The Alexa interaction model still needs its TalkIntent build, so spoken
-conversational turns are not available yet. The accepted destination/demo
-continues separately.
+test. The English (US) Alexa interaction model built successfully on 2026-10-27
+with TalkIntent. Real Show conversation, follow-up listening and recovery are now
+awaiting physical acceptance. The accepted destination/demo continues separately.
 
 ## Target experience
 
@@ -64,7 +64,7 @@ conflicting replay bodies, fixed audio keys, timeout fallback, explicit audio
 eligibility, cross-session isolation, sensitive-input fallback, malformed model
 output and late-reply consumption. No audio was uploaded or played by these tests.
 
-Remaining gates: build the TalkIntent model in the Developer Console; Show speech
+Remaining gates: physical Show speech
 animation and follow-up listening; measured cloud/local loop; user acceptance of
 two spoken questions, audibility and exit recovery. Record model, first PCM,
 encoding/upload and total cloud response separately. Physical audible onset still
@@ -95,7 +95,7 @@ Replies stay in the private ledger; only eligible audio enters the media store.
 Expiry and permission errors are distinct, with no fallback that replays inference.
 The dedicated cloud resources and scoped Mac consumer credentials are deployed.
 The consumer is manually started. The Lambda handler is connected, but its Alexa
-interaction model build and physical conversational acceptance are pending.
+interaction model is built; physical conversational acceptance is pending.
 
 ## Silent installed benchmark (2026-10-27)
 
@@ -195,3 +195,69 @@ found the animation-clock issue; a regression covers it. The supported Python
 3.10 future-timeout exception is normalized as well. The project virtualenv's
 full regressions pass; the separate review runner lacked dependencies and used
 an unsupported system Python, so its attempted test run is not acceptance evidence.
+
+
+## Interaction model build (2026-10-27)
+
+The signed-in Developer Console saved the model and Build History confirms
+successful English (US) build 4 at 8:27 PM local time. It adds TalkIntent with
+an AMAZON.SearchQuery slot and the `tell me`, `explain` and `answer` carriers.
+Amazon's only warning was automatic addition of AMAZON.NavigateHomeIntent;
+the tracked model now declares it, and the deployed handler treats it like
+Stop/Cancel for both request cancellation and destination cleanup.
+
+The console utterance profiler still reported “no model built” despite the
+successful build/history, so no profiler success is claimed. The next gate is
+actual spoken routing on the paired Show. For that test, Okabe's café reservation
+was temporarily moved from the living-room TV to Show; the original assignments
+are backed up privately for restoration. Other characters, Pi ownership and the
+observed 26% speaker setting were preserved during preparation. The first physical attempt below is not accepted.
+
+
+## First physical attempt and flicker corrections (2026-10-27)
+
+Show accepted VisitIntent and the controller acknowledged arrival with the Pi
+away. The user reported that the actor flickered. The attempted question reached
+AMAZON.FallbackIntent, not TalkIntent, and no local conversation inference ran.
+The controller subsequently returned to the Pi. This is a failed conversation
+acceptance attempt, not evidence of custom reply playback or follow-up listening.
+
+The receiver's recorded event gaps were approximately one second (maximum 2.03
+seconds in the bounded visit window), so there is no evidence of a four-second
+cloud polling gap in that sample. Source review instead found that the Mac worker
+could skip a renewal whenever a newer Show poll arrived during controller I/O.
+An isolated regression reproduces that starvation. The refreshed worker now
+coalesces the newer validated poll, while still refusing closed, expired, changed
+or older sessions. The four-second visibility lease and timeout recovery remain
+unchanged; this is not a longer lease hiding lost connectivity.
+
+The deployed renderer now preloads all four fixed actor poses at opacity one
+behind the room cover. Readiness requires all poses to load. Blink/speaking ticks
+switch a local frame index and opacity, never remote image sources. This removes
+pose-fetch latency from animation, but physical stability still needs the user.
+The Lambda no longer initializes the conversation SDK/ledger on display polls.
+Fallback/Help retains listening without queuing or replaying a model request.
+The refreshed cloud renderer and Mac worker are deployed; 432 isolated tests
+passed and local review found no actionable regression.
+
+The subsequent physical retry reached TalkIntent twice with the full six-second
+generation budget, but neither attempt produced audible generated speech. Both
+missed the response deadline. A bounded receiver trace also recorded an
+entered → departed → entered sequence during the visit, so flicker remains open.
+Silent tests with the recognized short queries took 5.34 and 3.60 seconds locally,
+before cloud queue, upload and response overhead. A shorter-reply experiment still
+timed out during synthesis; it is not a sufficient fix and was discarded.
+
+The installed private adapter now reports only a fixed failure stage and elapsed
+time, without exception messages or utterance content. Source includes a lease
+headroom correction: translate the remaining wall-clock ownership grant into the
+current receiver clock rather than subtracting two mailbox trips from its lifetime.
+Repeated stale commands cannot renew that grant. After AWS reauthorization, the lease correction deployed successfully with previous
+stack parameters preserved. Physical retries are paused until the audio deadline
+path is reliable; the lease correction still requires a physical stability check. No voice
+reference or volume setting was changed.
+
+The temporary Okabe café reservation was restored to the living-room TV after
+the failed retry. The next implementation step is a bounded, cancelable Show
+response path that does not require complete speech synthesis inside the initial
+intent deadline. This is planned work, not deployed behavior.

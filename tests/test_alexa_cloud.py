@@ -14,6 +14,50 @@ spec.loader.exec_module(cloud)
 
 
 class CloudSkillTests(unittest.TestCase):
+    def test_screen_poll_does_not_initialize_the_conversation_transport(self):
+        from unittest.mock import patch
+
+        spec = importlib.util.spec_from_file_location(
+            "poll_deploy", ROOT / "scripts/deploy-alexa-skill.py"
+        )
+        deploy = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(deploy)
+        namespace = {}
+        exec(
+            compile(
+                deploy.template()["Resources"]["Skill"]["Properties"]["Code"]["ZipFile"],
+                "index.py",
+                "exec",
+            ),
+            namespace,
+        )
+        exchange = Mock()
+        namespace["aws_exchange"] = exchange
+        event = fixture()
+        event["request"].update(
+            type="Alexa.Presentation.APL.UserEvent",
+            token="little-lab-character",
+            arguments=["little-lab-mounted"],
+            source={"handler": "Mount"},
+        )
+        with (
+            patch.dict(
+                "sys.modules", {"boto3": Mock(), "botocore": Mock(), "botocore.config": Mock()}
+            ),
+            patch.dict(
+                "os.environ",
+                {
+                    "SKILL_ID": "local-prototype",
+                    "CONVERSATION_ENABLED": "true",
+                    "DESTINATION_ENABLED": "false",
+                    "VISUALS_ENABLED": "false",
+                },
+            ),
+        ):
+            result = namespace["handler"](event, None)
+        self.assertEqual(result, {"version": "1.0", "response": {}})
+        exchange.assert_not_called()
+
     def test_demo_and_launch_only_use_fixed_audio(self):
         audio = Mock(return_value="https://example.com/generic/demo.mp3?x=1&y=2")
         event = fixture("VoiceDemoIntent")
@@ -25,6 +69,21 @@ class CloudSkillTests(unittest.TestCase):
         self.assertFalse(
             cloud.handle(event, "local-prototype", audio)["response"]["shouldEndSession"]
         )
+
+    def test_conversation_fallback_keeps_listening_without_replaying_a_turn(self):
+        audio, conversation = Mock(), Mock()
+        for intent in ("AMAZON.FallbackIntent", "AMAZON.HelpIntent"):
+            result = cloud.handle(
+                fixture(intent),
+                "local-prototype",
+                audio,
+                conversation=conversation,
+                conversation_enabled=True,
+            )
+            self.assertFalse(result["response"]["shouldEndSession"])
+            self.assertIn("tell me", result["response"]["outputSpeech"]["text"])
+        audio.assert_not_called()
+        conversation.handle.assert_not_called()
 
     def test_local_tools_are_not_claimed_or_called(self):
         audio = Mock()
@@ -127,7 +186,7 @@ class CloudSkillTests(unittest.TestCase):
     def test_stop_and_cancel_close_destination_without_session_ended_callback(self):
         from tests.test_alexa_destination_relay import RelayTests
 
-        for intent in ("AMAZON.StopIntent", "AMAZON.CancelIntent"):
+        for intent in ("AMAZON.StopIntent", "AMAZON.CancelIntent", "AMAZON.NavigateHomeIntent"):
             fixture_state = RelayTests()
             fixture_state.setUp()
             event = copy.deepcopy(fixture_state.event)

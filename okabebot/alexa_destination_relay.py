@@ -114,12 +114,19 @@ class DestinationRelay:
         else:
             return {"version": "1.0", "response": {}}
         command = self.store.get("command")
+        # The worker grants ownership after its controller heartbeat. Translate
+        # only the unspent part of that grant to this receiver's clock; using
+        # the worker's older poll clock loses two mailbox trips of headroom.
+        # Re-reading an old command must never mint a new four-second grant.
+        now = self.clock()
+        remaining_ms = int((4 - (now - command.get("updated_at", 0))) * 1000) if command else 0
         if (
             not command
             or command.get("token") != token
             or not 0 <= now - command.get("updated_at", 0) < 4
             or type(command.get("receiver_elapsed_ms")) is not int
             or not 0 <= elapsed - command["receiver_elapsed_ms"] < 4000
+            or not 1000 <= remaining_ms <= 4000
         ):
             return {"version": "1.0", "response": {}}
         return update(
@@ -127,7 +134,8 @@ class DestinationRelay:
             command["phase"],
             command["generation"],
             sequence=command["sequence"],
-            receiver_elapsed_ms=command["receiver_elapsed_ms"],
+            receiver_elapsed_ms=int(elapsed),
+            lease_ms=remaining_ms,
         )
 
     def speech(self, event, character, duration_ms):

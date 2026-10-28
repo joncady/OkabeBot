@@ -62,6 +62,21 @@ def encode_mp3(pcm, deadline):
 
 
 def render(model, text, session, character, deadline, *, pcm=None, encode=encode_mp3):
+    progress = {"stage": "model"}
+    started = time.monotonic()
+    try:
+        return _render(
+            model, text, session, character, deadline, pcm=pcm, encode=encode, progress=progress
+        )
+    except Exception as exc:
+        # Carry only a fixed stage and elapsed time across the private RPC. Never
+        # expose exception messages, recognized speech or generated text in logs.
+        exc.alexa_stage = progress["stage"]
+        exc.alexa_elapsed_s = round(time.monotonic() - started, 3)
+        raise
+
+
+def _render(model, text, session, character, deadline, *, pcm, encode, progress):
     from . import speech
 
     started = time.monotonic()
@@ -70,6 +85,7 @@ def render(model, text, session, character, deadline, *, pcm=None, encode=encode
     answer["timings"] = {"model_s": round(time.monotonic() - started, 3)}
     if not answer["audio_safe"]:
         return answer
+    progress["stage"] = "synthesis"
     generate = pcm or speech.local_pcm_chunks
     first, chunks, count = None, [], 0
     voice_started = time.monotonic()
@@ -96,6 +112,7 @@ def render(model, text, session, character, deadline, *, pcm=None, encode=encode
         first_pcm_s=round(first, 3), synthesis_s=round(time.monotonic() - voice_started, 3)
     )
     encoding_started = time.monotonic()
+    progress["stage"] = "encoding"
     clip = encode(b"".join(chunks), deadline)
     if time.time() >= deadline:
         raise TimeoutError("Audio missed its deadline")
@@ -150,7 +167,11 @@ class LocalConversationServer:
                     if len(data) > LIMIT:
                         raise ValueError("Reply too large")
                 except Exception as exc:
-                    data = json.dumps({"error": type(exc).__name__}).encode()
+                    error = {"error": type(exc).__name__}
+                    stage = getattr(exc, "alexa_stage", None)
+                    if stage in ("model", "synthesis", "encoding"):
+                        error.update(stage=stage, elapsed_s=exc.alexa_elapsed_s)
+                    data = json.dumps(error).encode()
                 try:
                     self.wfile.write(data + b"\n")
                 except (BrokenPipeError, ConnectionResetError, TimeoutError):

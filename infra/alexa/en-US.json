@@ -64,6 +64,10 @@
             "explain {Query}",
             "answer {Query}"
           ]
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
         }
       ],
       "types": []

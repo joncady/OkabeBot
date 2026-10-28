@@ -57,7 +57,10 @@ def main():
                     if report["state"] != "idle":
                         print(json.dumps(report), flush=True)
                 except Exception as exc:
-                    print(json.dumps({"state": "error", "type": type(exc).__name__}), flush=True)
+                    report = {"state": "error", "type": type(exc).__name__}
+                    if getattr(exc, "alexa_stage", None) in ("model", "synthesis", "encoding"):
+                        report["stage"] = exc.alexa_stage
+                    print(json.dumps(report), flush=True)
                     time.sleep(1)
         except KeyboardInterrupt:
             print("Conversation consumer stopped. Uncertain turns will not be replayed.")

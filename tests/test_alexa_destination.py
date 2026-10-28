@@ -20,7 +20,7 @@ class DestinationTests(unittest.TestCase):
         self.assertEqual(bindings["leaseUntil"], 0)
         self.assertEqual(bindings["sequence"], 0)
         actor = root["items"][1]
-        guard = root["items"][2]["opacity"]
+        guard = next(item for item in root["items"] if item.get("id") == "cover")["opacity"]
         self.assertEqual(actor["display"], "${coverReady ? 'normal' : 'invisible'}")
         self.assertIn("clock < leaseUntil", guard)
         self.assertIn("clock < 60000", guard)
@@ -28,7 +28,7 @@ class DestinationTests(unittest.TestCase):
         self.assertEqual(actor["source"], FRAMES[0])
         self.assertEqual((actor["top"], actor["left"]), (0, 0))
         self.assertIn("invisible", actor["display"])
-        self.assertNotIn("opacity", actor)
+        self.assertIn(": 1}", actor["opacity"])
         ticks = root["handleTick"][0]["commands"]
         self.assertEqual(ticks[0]["value"], "${elapsedTime}")
         self.assertTrue(
@@ -42,7 +42,7 @@ class DestinationTests(unittest.TestCase):
     def test_asset_readiness_and_bounded_normal_polling(self):
         root = self.root()
         self.assertEqual(root["items"][0]["onLoad"][0]["property"], "backgroundReady")
-        self.assertEqual(root["items"][1]["onLoad"][0]["property"], "actorReady")
+        self.assertEqual(root["items"][1]["onLoad"][0]["property"], "actor0Ready")
         polling = root["onMount"][0]
         self.assertEqual(polling["repeatCount"], 59)
         args = polling["commands"][0]["arguments"]
@@ -53,6 +53,21 @@ class DestinationTests(unittest.TestCase):
         self.assertNotIn("outputSpeech", response)
         self.assertNotIn("reprompt", response)
         self.assertNotIn("shouldEndSession", response)
+
+    def test_all_poses_load_before_arrival_and_animation_never_fetches_new_sources(self):
+        root = self.root()
+        actors = [item for item in root["items"] if item.get("id", "").startswith("actor")]
+        self.assertEqual([item["source"] for item in actors], FRAMES)
+        self.assertEqual(len(actors), 4)
+        for index, item in enumerate(actors):
+            self.assertEqual(item["onLoad"][0]["property"], "actor" + str(index) + "Ready")
+            self.assertIn("actor3Ready", item["onLoad"][1]["value"])
+            self.assertTrue(item["opacity"].endswith(": 1}"))
+        ticks = root["handleTick"][0]["commands"]
+        self.assertFalse(any(command.get("property") == "source" for command in ticks))
+        self.assertEqual(
+            {c["value"] for c in ticks if c.get("property") == "actorFrame"}, {0, 1, 2, 3}
+        )
 
     def test_commands_use_receiver_poll_deadline_not_arrival_time(self):
         response = update(TOKEN, "entering", GENERATION, sequence=7, receiver_elapsed_ms=1200)

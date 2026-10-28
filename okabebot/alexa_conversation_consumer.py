@@ -49,7 +49,10 @@ class ConversationConsumer:
             started = time.monotonic()
             result = self.infer(self.socket, request)
             if result.get("error"):
-                raise RuntimeError("Local conversation unavailable")
+                error = RuntimeError("Local conversation unavailable")
+                if result.get("stage") in ("model", "synthesis", "encoding"):
+                    error.alexa_stage = result["stage"]
+                raise error
             if (
                 not isinstance(result.get("text"), str)
                 or not 1 <= len(result["text"].strip()) <= 600
