@@ -711,6 +711,10 @@ def handler(bridge):
             )
 
         def do_GET(self):
+            from .amadeus_http import handle as handle_amadeus
+
+            if handle_amadeus(self, bridge):
+                return
             from .surface_http import handle
 
             if handle(self, bridge):
@@ -775,6 +779,10 @@ def handler(bridge):
                 self.respond(403, {"error": "Open the control URL printed by the bridge"})
 
         def do_POST(self):
+            from .amadeus_http import handle as handle_amadeus
+
+            if handle_amadeus(self, bridge, post=True):
+                return
             from .alexa_voice import handle as handle_alexa
 
             if handle_alexa(self, bridge):

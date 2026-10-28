@@ -23,6 +23,7 @@ amadeus-private/
 amadeus-trials/
 trial-results/
 participant-data/
+amadeus-private-export*.json
 
 pi/assets/crests/
 pi/assets/app-logos/

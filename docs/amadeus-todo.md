@@ -1,9 +1,9 @@
 # Amadeus trial checklist
 
 Specification: [amadeus.md](amadeus.md). Owner: OkabeBot controller. Status as of
-2026-10-27: offline foundation in source; no live collector or proactive output.
-The [GitHub roadmap](https://github.com/users/joncady/projects/4) contains seven
-Amadeus A0–A6 work packages; this checklist owns detailed
+2026-10-27: private setup and explicit memory controls installed; no live collector or proactive output.
+The [GitHub roadmap](https://github.com/users/joncady/projects/4) contains
+Amadeus A0–A8 work packages; this checklist owns detailed
 acceptance and makes partial completion explicit.
 
 ## Priority order for the next cycle
@@ -23,7 +23,8 @@ acceptance and makes partial completion explicit.
 - [x] Add offline supportive coaching policy and synthetic regressions.
 - [x] Guard known private artifact paths at commit/CI/release boundaries.
 - [x] Add declarative public capability/regression log; personal results remain local.
-- [ ] Wire invitation, establish/reaffirm goal choices and topic controls into onboarding.
+- [x] Wire invitation, establish/reaffirm choices and topic controls into owner-only onboarding.
+- [ ] Add detailed user-defined habit goals/cues after topic onboarding review.
 - [ ] Integrate proposal/ACK delivery with shared attention budget and authenticated scopes.
 - [ ] Test character wording, private surfaces, accessibility, and snooze/stop physically.
 - [ ] Evaluate optional response sentiment separately; do not treat it as consent.
@@ -39,15 +40,20 @@ acceptance and makes partial completion explicit.
 
 ## A1 — live observations and privacy controls
 
-- [ ] Add controller configuration schema: disabled by default, source capabilities,
-  subject bindings, retention, local-only mode and private storage location.
+- [x] Add private setup schema for one profile, future source permissions,
+  retention, quiet hours, timezone and coaching choices; collection remains unavailable.
+- [ ] Connect permissions to authenticated source bindings and network-denied local-only mode.
 - [ ] Bind HA/calendar/media/interaction adapters to authenticated source scopes.
 - [ ] Enforce payload schemas, field redaction, clock skew and backfill rules.
-- [ ] Expose timeline, explicit memory CRUD, pause/guest mode, export and forget UI.
+- [x] Expose recent structured observations, explicit memory CRUD, pause/guest settings,
+  full-profile export and whole-store forgetting through owner-only routes.
+- [ ] Add timeline filters and source/evidence explanations once adapters exist.
 - [ ] Add voice/MCP recall and explicit preference tools through shared actions.
 - [ ] Schedule retention; integrate all future caches/derived artifacts with deletion.
 - [ ] Test restart, source dropout, DST, duplicate and reordered callback behavior.
 - [ ] Verify no raw audio, transcript, account tokens or forbidden fields enter store.
+- [x] Test owner/surface/publish scope separation, cross-origin rejection, retention
+  shortening, protected consent, logout/revoked-access clearing and in-flight UI responses.
 
 ## A2 — context and shadow routines
 

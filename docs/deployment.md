@@ -6,20 +6,31 @@ shows the connections. Keep both documents in sync when roles or hosting change.
 Private IPs, credentials, account IDs and token-bearing URLs belong in local
 configuration, not this inventory.
 
-## Amadeus trial boundary (source checkpoint 2026-10-27)
+## Amadeus setup boundary (2026-10-27)
 
-[Amadeus](amadeus.md) is a proposed Mac-local learning/memory subsystem. Its first
-source checkpoint supplies an offline CLI and private SQLite ledger for synthetic
-events and explicit preferences. No Amadeus collector, scheduled task, model
-memory injection, HA automation, dashboard endpoint or MCP tool has been installed
-or enabled. Existing hardware, voices, volume and personal data are untouched.
-The README diagram labels this unconnected source-only component explicitly.
+[Amadeus](amadeus.md) now provides an owner-only setup page at `/amadeus/` on the
+existing controller origin. The private routes share dashboard host/token checks
+and reject paired-screen, publish-only and cross-origin access. Public static
+markup contains no private settings. The native Mac installation was updated and
+its authenticated settings API verified; observation and nudge availability remain
+false. A controller-only supervised restart preserved the separate inference worker
+and device settings. No physical audio or hardware acceptance is claimed here.
 
-The subsequent coaching/privacy source slice adds an offline, opt-in health-habit
-policy and known-private-path publication checks. It has no live invitation,
-sentiment processing, health sensor input, speaker action or new hosted service.
-These source improvements do not change the installed topology. Private trial
-outcomes remain outside the repository; the public progress log is declarative.
+Settings, explicit preferences and coaching consent live in private SQLite under
+`state_dir()/amadeus/`. The UI saves one private profile, future source permissions,
+retention, IANA timezone, quiet hours and optional coaching choices. It provides
+pause/guest settings, explicit memory correction/deletion, private record download,
+and whole-store forgetting. Shorter retention prunes eligible observations;
+increasing retention does not resurrect deleted records. Background retention
+scheduling, source adapters, inferred memory, habit learning and MCP/voice memory
+tools remain unimplemented. No Amadeus collector or nudge worker is installed.
+
+The README diagram now shows this owner-only controller/storage route, without
+connecting it to observation sources or model memory. No new port, cloud service,
+sentiment processing or microphone capture is introduced. Private trial outcomes
+and personal setup selections remain outside the repository; the public progress
+log records general engineering capabilities only. Live/private selections are
+not reproduced here.
 
 Privacy/source checkpoint A must precede live collection. Subsequent trial gates
 cover shadow prediction, quiet cards, media/pantry trials and final acceptance.

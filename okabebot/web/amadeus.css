@@ -1,0 +1,10 @@
+.panel{border-radius:4px;box-shadow:4px 4px 0 #0a1419}h1,h2,legend{font-family:ui-monospace,monospace}
+.amadeus-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+#amadeus-form label,#memory-form label{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+fieldset{margin:24px 0;padding:16px;border:2px solid #50666b}legend{padding:0 8px}
+.amadeus-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px}
+#amadeus-form .amadeus-option,.amadeus-option{display:flex;flex-direction:row;align-items:center;gap:12px;min-height:48px;padding:8px}
+.amadeus-option input{width:22px;height:22px;flex-shrink:0}input,select{max-width:100%;min-height:44px;font:inherit}
+pre{white-space:pre-wrap;overflow-wrap:anywhere}#memory-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;overflow-wrap:anywhere}
+details{margin:20px 0}summary{min-height:44px}button,a,input,select,summary{touch-action:manipulation}
+@media(max-width:500px){body{padding:16px}.panel{padding:16px}.amadeus-options{grid-template-columns:1fr}}

@@ -1,6 +1,6 @@
 # Amadeus: local proactive companion trial
 
-Status: **proposed trial; offline foundation implemented, live collection disabled**.
+Status: **private onboarding and explicit memory controls available; live collection disabled**.
 Decision date: 2026-10-27. Amadeus is the learning and memory subsystem of
 OkabeBot, named in reference to Steins;Gate 0. It is not another character or a
 replacement for the existing local conversation and shared action interfaces.
@@ -42,8 +42,8 @@ Initial topics are optional movement breaks, winding down/rest, drink breaks and
 meal planning. The user chooses their goal, cues and comfortable schedule; no
 numeric health target, diet, weight goal or medical plan is inferred. Suggestions
 must accommodate the user's stated limitations and preferences. A missed routine
-is not a failure or evidence of poor character. Establish/reaffirm is a future UI
-goal-setting step, not an implemented inference of what a user should change.
+is not a failure or evidence of poor character. Establish/reaffirm and topics are
+explicit setup choices; detailed user-defined goals/cues remain a later layer.
 
 Tone is invitational and easy to decline: “Would a short movement break feel good?”
 Avoid “you should,” missed-streak warnings, comparisons, food morality, guilt,
@@ -138,8 +138,9 @@ Planned high-level operations:
 | `propose(context)` | Reviewable candidate with reason, expiry and permission requirement |
 | `feedback(proposal, outcome)` | Distinguish acceptance, timing rejection and preference rejection |
 
-Only the offline store/CLI subset is implemented initially. Do not advertise
-these planned contracts as available dashboard, voice or MCP tools yet.
+The store/CLI and owner-only setup/memory dashboard subset are implemented.
+Semantic recall, explanations, observation adapters, planning and voice/MCP memory
+tools remain planned. Saving permissions does not activate a source.
 
 ## Memory model
 
@@ -302,6 +303,43 @@ are measured separately from voice synthesis. No outcome is assumed in advance.
 
 No new provider account, paid resource, store cart, sensor capture or live
 learning was enabled to prepare this specification.
+
+## Private setup checkpoint
+
+Open `/amadeus/` on the same origin as the existing dashboard. It reuses remembered
+owner access; a new browser needs the existing dashboard setup key/link. Use HTTPS
+on an untrusted network. Companion/surface and publish-only tokens are rejected.
+Do not share owner access with visitors to let them view the character.
+
+Choose a private profile ID (not a full name), future source permissions, IANA
+timezone, quiet hours, observation retention, and optional coaching topics/mode.
+Confirmed source choices may be prepared as a private draft; no personal draft is
+shipped with the repository. Nothing begins collecting after a save. The page
+always reports that collection and live nudges are unavailable in this checkpoint.
+Setup collapses after saving and can be reopened with Review private choices.
+
+Explicit preferences use `user.*` keys; saving an existing key corrects it. They
+are not inferred facts. Coaching consent uses dedicated controls, not arbitrary
+memory keys. Pause/guest choices persist but have no collector to control yet.
+Stop/snooze survives unrelated setup edits; only explicit resume or a deliberate
+new topic opt-in changes coaching authorization. No voice/sentiment is analyzed.
+
+The recent observations view is capped at 20 records; private export includes all
+unexpired events and preferences for the configured profile plus its setup.
+Downloaded exports are personal records: keep them local/private and outside Git.
+Known export filenames are ignored and blocked by publication/release guards.
+Whole-store forgetting removes setup, draft, consent, explicit preferences and
+observations, but cannot erase downloaded copies or external backups.
+
+Shorter retention immediately deletes affected observations; longer retention does
+not extend existing event deadlines or restore deleted data. Requests prune expiry;
+a scheduled retention job remains a prerequisite before continuous collection.
+The API adds no public ingestion route. One private profile is supported; changing
+its ID requires forgetting existing Amadeus state to avoid silent reassignment.
+Equal quiet-hour start/end should mean all-day quiet when future policy is wired.
+
+Engineering verification uses synthetic HTTP/browser fixtures only. Do not write
+personal setup choices, screenshots, exports or trial outcomes into public docs.
 
 ## Running the offline foundation
 

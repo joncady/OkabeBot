@@ -141,13 +141,17 @@ class Coaching:
         )
 
     def feedback(self, subject, outcome, *, topic=None):
-        if outcome not in ("helpful", "later", "not_helpful", "stop", "topic_off"):
+        if outcome not in ("helpful", "later", "not_helpful", "stop", "topic_off", "resume"):
             raise ValueError("Use explicit feedback; inferred sentiment is not accepted")
         value = self._get(subject, SETTINGS)
         if not valid_settings(value):
             raise ValueError("Configure coaching before feedback")
         if outcome == "stop":
             value["enabled"] = False
+        elif outcome == "resume":
+            if value["choice"] != "choose_topics" or not value["topics"]:
+                raise ValueError("Choose coaching topics before resuming")
+            value.update(enabled=True, paused_until=0)
         elif outcome in ("later", "not_helpful"):
             value["paused_until"] = self.store.clock() + 86400
         elif outcome == "topic_off":

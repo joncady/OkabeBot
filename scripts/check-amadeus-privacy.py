@@ -11,7 +11,12 @@ PRIVATE_PARTS = {".local", "amadeus-private", "amadeus-trials", "trial-results",
 
 
 def private_paths(paths):
-    return [p for p in paths if set(PurePosixPath(p).parts) & PRIVATE_PARTS]
+    return [
+        p
+        for p in paths
+        if set(PurePosixPath(p).parts) & PRIVATE_PARTS
+        or (PurePosixPath(p).name.startswith("amadeus-private-export") and p.endswith(".json"))
+    ]
 
 
 def main():
