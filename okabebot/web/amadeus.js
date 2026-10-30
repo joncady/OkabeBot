@@ -92,13 +92,18 @@ const amadeusUI = (() => {
       return {element:box,read:()=>checks.filter(i=>i.checked).map(i=>i.value)};
     }
     const rows=document.createElement('div');rows.className='feed-entities';let entries=values.length?[...values]:[''];
+    let showAll=false;
+    const tailored=new Set(['health','device_activity','appliances','meals']);
+    const semantic=tailored.has(feedId)||(feedId==='home_devices'&&field.key==='sensors');
+    const matches=e=>e.id.startsWith((field.domain||'entity')+'.')&&(!semantic||showAll||(e.feed_fields||[]).includes(feedId+'.'+field.key));
+
     const hint=document.createElement('p');hint.className='feed-help';hint.textContent=haInventory.length?'Search discovered entities by name or room. Saving a feed is a separate observation choice.':'Use Refresh rooms and entities to discover choices, or enter an entity ID.';
     let inputs=[];
     const list=document.createElement('datalist');list.id='ha-choice-'+feedId+'-'+field.key;
     const draw=()=>{
       rows.replaceChildren();inputs=[];list.replaceChildren();
-      for(const entity of haInventory.filter(e=>e.id.startsWith((field.domain||'entity')+'.'))){
-        const option=document.createElement('option');option.value=entity.id;option.label=[entity.name,entity.floor,entity.room,entity.provider,entity.available?'':'unavailable'].filter(Boolean).join(' · ');list.append(option);
+      for(const entity of haInventory.filter(matches)){
+        const option=document.createElement('option');option.value=entity.id;option.label=[entity.name,entity.floor,entity.room,entity.health_source,entity.unit,entity.provider,entity.available?'':'unavailable'].filter(Boolean).join(' · ');list.append(option);
       }
       entries.forEach((value,index)=>{
         const row=document.createElement('div');row.className='feed-entity-row';
@@ -109,9 +114,12 @@ const amadeusUI = (() => {
         remove.onclick=()=>{entries=inputs.map(i=>i.value);entries.splice(index,1);draw();};row.append(input,remove);rows.append(row);
       });
     };
+    const advanced=document.createElement('label'),broad=document.createElement('input');broad.type='checkbox';advanced.className='amadeus-option';
+    advanced.append(broad,document.createTextNode('Show all entities in this domain (advanced)'));advanced.hidden=!semantic||feedId==='health';
+    broad.onchange=()=>{showAll=broad.checked;entries=inputs.map(i=>i.value);draw();};
     draw();const add=document.createElement('button');add.type='button';add.textContent='＋ Add entity';
     add.onclick=()=>{entries=inputs.map(i=>i.value);if(entries.length<1000){entries.push('');draw();}};
-    const choices=()=>[...new Set(haInventory.filter(e=>e.id.startsWith((field.domain||'entity')+'.')).map(e=>e.id))];
+    const choices=()=>[...new Set(haInventory.filter(matches).map(e=>e.id))];
     const eligible=choices();
     const all=document.createElement('button');all.type='button';all.textContent='Select all';
     all.onclick=()=>run(async()=>{
@@ -126,9 +134,9 @@ const amadeusUI = (() => {
     });
     if(feedId==='health'&&field.key!=='others'){add.hidden=true;all.hidden=true;hint.textContent='Choose one daily-total source for this metric to avoid double counting. Clear removes it.';}
     const clear=document.createElement('button');clear.type='button';clear.textContent='Clear';clear.onclick=()=>{entries=[''];draw();};
-    const note=document.createElement('p');note.className='feed-help';note.textContent=eligible.length?'Select all fills this field only. Save feed applies your choices.':'Refresh rooms and entities to enable Select all.';
+    const note=document.createElement('p');note.className='feed-help';note.textContent=eligible.length?'Suggestions and Select all are tailored to this field. Save feed applies your choices.':'No matching sources loaded. Refresh rooms and entities; saved selections are preserved. Health choices require a compatible metric and unit.';
     const actions=document.createElement('div');actions.className='feed-actions';actions.append(all,clear);
-    box.append(hint,rows,add,actions,note,list);
+    box.append(hint,rows,add,actions,note,list,advanced);
     return {element:box,read:()=>[...new Set(inputs.map(i=>i.value.trim()).filter(Boolean))]};
   }
   function feedOption(option, value, onSelection) {
@@ -174,6 +182,7 @@ const amadeusUI = (() => {
   }
   async function feeds() {
     const value=await api('feeds');$('amadeus-feeds').hidden=false;$('feed-list').replaceChildren();
+    if(!homePreview&&(value.connections||[]).some(c=>c.transport==='ha'&&c.has_token)){const epoch=accessEpoch,token=dashboardAccess.token();try{homePreview=await api('ha-inventory');haInventory=homePreview.entities||[];}catch(error){if(epoch!==accessEpoch||token!==dashboardAccess.token())throw error;/* Preserve saved choices on temporary discovery failure. */}}
     const connections=Object.fromEntries((value.connections||[]).map(c=>[c.transport,c]));
     if(connections.ha) {
       const shared=document.createElement('section');shared.className='feed-card';

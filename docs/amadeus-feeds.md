@@ -250,3 +250,14 @@ fusion remain future work; configure those signals before relying on automatic
 shared-room privacy. Raw personal readings, goals and outcomes stay in private
 local state, with existing retention/forget/revocation controls. No participant
 records belong in the repository or issue tracker.
+
+Entity suggestions are tailored to each field using HA registry semantics and
+units, rather than listing every sensor in the domain. Health fields show only
+compatible metrics; phone steps-since-reboot and sleep-confidence percentages are
+not daily steps or sleep-duration candidates. Source labels distinguish Health
+Connect from direct wearable/hardware sensors. Health Connect provenance does not
+prove which upstream app wrote a record; verify Samsung Health sharing on the
+phone separately. Existing selected custom IDs are preserved. Other semantic
+pickers offer an explicit advanced domain-wide view for custom integrations;
+Select all uses the currently filtered candidate set. Discovery reads metadata
+only and does not enable collection or overwrite selections.

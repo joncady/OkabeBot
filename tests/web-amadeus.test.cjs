@@ -18,10 +18,10 @@ async function fixture(withInventory=false,withTrakt=false,conversationConfig={}
  const context={document,Intl,Date,JSON,URL,Blob,setTimeout,
   dashboardAccess:{token:()=>token,remember(){},required(){get('dashboard-auth').hidden=false;}},
   fetch:async(url,options)=>{requests.push({url,options});if(url.endsWith('conversation')&&options.method==='POST')conversationConfig=JSON.parse(options.body);if(url.endsWith('health')&&options.method==='POST')healthConfig=JSON.parse(options.body);if(url.endsWith('household-nudges')&&options.method==='POST')householdConfig=JSON.parse(options.body);if(hold)await new Promise(resolve=>release=resolve);return{status:denied?403:200,ok:!denied,
-   json:async()=>url.endsWith('health')?{settings:{enabled:false,daily_steps:0,nudge_after:17,others_detected:false,...healthConfig},privacy:'Private <health>',readings:[{metric:'daily_steps',value:'42',unit:'steps',sample_at:2000000000}]}:url.endsWith('household-nudges')?{config:{enabled:false,...householdConfig},preview:[{text:'<img src=x onerror=alert(1)>'}],state:'source_check_needed'}:url.endsWith('conversation')?{config:{enabled:false,destination:'screen-a',...conversationConfig},destinations:[{id:'screen-a',name:'Synthetic desk'}]}:url.endsWith('trakt-lists')?{state:'connected',items:[{id:'7',title:'Invented watched list'},{id:'8',title:'Another invented list'}],page:1,next_page:null}:url.endsWith('feeds')?{feeds:[withTrakt?{id:'watch_history',label:'Watch history',instructions:'Read only',status:'disabled',fields:[],options:[{key:'history_days',label:'History window (days)',type:'number',min:1,max:365,default:30},{key:'page_budget',label:'Maximum requests per polling cycle',type:'number',min:1,max:20,default:1},{key:'watched_lists',label:'Watched lists',type:'trakt_lists',default:[]}],config:{enabled:false,history_days:30,page_budget:2,watched_lists:['7']}}:{id:'tasks',label:'<img src=x>',instructions:'Read only',status:'disabled',fields:[{key:'entities',label:'To-do lists',domain:'todo'}],config:{enabled:false,entities:[]}}],context:[],connections:withInventory?[{transport:'ha',url:'http://ha.invalid',has_token:true}]:[]}:url.endsWith('ha-inventory')?{rooms:[{id:'study',name:'Study'}],entities:[{id:'todo.invented',name:'Invented list',room:'Study',available:true}],locations:[{id:'screen-a',name:'Desk',area_id:null}]}:url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
+   json:async()=>url.endsWith('health')?{settings:{enabled:false,daily_steps:0,nudge_after:17,others_detected:false,...healthConfig},privacy:'Private <health>',readings:[{metric:'daily_steps',value:'42',unit:'steps',sample_at:2000000000}]}:url.endsWith('household-nudges')?{config:{enabled:false,...householdConfig},preview:[{text:'<img src=x onerror=alert(1)>'}],state:'source_check_needed'}:url.endsWith('conversation')?{config:{enabled:false,destination:'screen-a',...conversationConfig},destinations:[{id:'screen-a',name:'Synthetic desk'}]}:url.endsWith('trakt-lists')?{state:'connected',items:[{id:'7',title:'Invented watched list'},{id:'8',title:'Another invented list'}],page:1,next_page:null}:url.endsWith('feeds')?{feeds:[withTrakt?{id:'watch_history',label:'Watch history',instructions:'Read only',status:'disabled',fields:[],options:[{key:'history_days',label:'History window (days)',type:'number',min:1,max:365,default:30},{key:'page_budget',label:'Maximum requests per polling cycle',type:'number',min:1,max:20,default:1},{key:'watched_lists',label:'Watched lists',type:'trakt_lists',default:[]}],config:{enabled:false,history_days:30,page_budget:2,watched_lists:['7']}}:{id:'tasks',label:'<img src=x>',instructions:'Read only',status:'disabled',fields:[{key:'entities',label:'To-do lists',domain:'todo'}],config:{enabled:false,entities:[]}}],context:[],connections:withInventory?[{transport:'ha',url:'http://ha.invalid',has_token:true}]:[]}:url.endsWith('ha-inventory')?{rooms:[{id:'study',name:'Study'}],entities:[{id:'todo.invented',name:'Invented list',room:'Study',available:true},{id:'sensor.daily_steps',name:'Invented daily steps',feed_fields:['health.daily_steps'],unit:'steps',health_source:'Health Connect · upstream app not verified'},{id:'sensor.sleep',feed_fields:['health.sleep_minutes'],unit:'min'},{id:'sensor.temperature',feed_fields:['home_devices.sensors'],unit:'°F'},{id:'binary_sensor.charging',feed_fields:['device_activity.charging']},{id:'binary_sensor.motion',feed_fields:['health.others']}],locations:[{id:'screen-a',name:'Desk',area_id:null}]}:url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
    {events:[],preferences:[{key:'user.test',value:'<img src=x onerror=alert(1)>'}]}};}};
  vm.createContext(context);
- vm.runInContext(fs.readFileSync('okabebot/web/amadeus.js','utf8')+'\nglobalThis.ui=amadeusUI;',context);
+ vm.runInContext(fs.readFileSync('okabebot/web/amadeus.js','utf8').replace('return {load};','return {load,feedSelection};')+'\nglobalThis.ui=amadeusUI;',context);
  await new Promise(resolve=>setImmediate(resolve));
  return{nodes,requests,context,deny(){denied=true;},hold(){hold=true;},release(){hold=false;release();}};
 }
@@ -78,9 +78,9 @@ test('entity rows save arrays and allow individual additions and removals',async
  assert.deepEqual(JSON.parse(post.options.body),{id:'tasks',config:{enabled:false,entities:['todo.second']}});
 });
 
-test('HA inventory is owner-requested and discovery never enables a feed',async()=>{
+test('HA inventory loads for tailored choices without enabling a feed',async()=>{
  const f=await fixture(true);
- assert.ok(!f.requests.some(r=>r.url.endsWith('ha-inventory')));
+ assert.ok(f.requests.some(r=>r.url.endsWith('ha-inventory')));
  const shared=f.nodes['feed-list'].children[0];
  const refresh=shared.children.find(c=>c.textContent==='Refresh rooms and entities');
  await refresh.onclick();
@@ -210,4 +210,17 @@ test('private health controls save explicit goals and shared-room suppression wi
  assert.deepEqual(JSON.parse(saved.options.body),{enabled:true,daily_steps:4321,nudge_after:18,others_detected:true});
  assert.ok(!f.requests.some(r=>r.url.endsWith('/feeds')&&r.options.method==='POST'));
  f.deny();await assert.rejects(()=>f.context.ui.load());assert.equal(f.nodes['health-readings'].children.length,0);
+});
+
+test('suggestions and Select all share semantic filtering; saved custom choices survive',async()=>{
+ const f=await fixture(true),health=f.context.ui.feedSelection({key:'daily_steps',label:'Daily steps',domain:'sensor'},['sensor.saved_custom'],'health');
+ const datalist=health.element.children.find(n=>n.id==='ha-choice-health-daily_steps');
+ assert.deepEqual(datalist.children.map(n=>n.value),['sensor.daily_steps']);
+ assert.match(datalist.children[0].label,/Health Connect/);
+ assert.deepEqual([...health.read()],['sensor.saved_custom']);
+ const field=f.context.ui.feedSelection({key:'charging',label:'Charging',domain:'binary_sensor'},[],'device_activity');
+ const all=descendants(field.element).find(n=>n.textContent==='Select all');await all.onclick();
+ assert.deepEqual([...field.read()],['binary_sensor.charging']);
+ const advanced=field.element.children.at(-1).children[0];advanced.checked=true;advanced.onchange();await all.onclick();
+ assert.deepEqual([...field.read()],['binary_sensor.charging','binary_sensor.motion']);
 });

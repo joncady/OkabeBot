@@ -510,3 +510,9 @@ suppression covers context retrieval, morning coaching and pending proactive
 output. Numeric signal updates use existing private aggregation; metrics are not
 summed across devices. Multi-person identification and broader goal types remain
 open capability gaps. No participant outcomes or measurements are reported here.
+
+Context-feed discovery now curates suggestions per field using registry semantics
+and units, with explicit health-source provenance labels. Saved custom bindings
+are preserved and broad discovery remains an advanced choice outside health.
+This reduces misleading metric choices without treating labels as upstream-app
+verification or person identity evidence.

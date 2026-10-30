@@ -1,6 +1,7 @@
 """Explicit, read-only HA registry preview. No device actions or observation consent."""
 
 import asyncio
+from .feed_choices import hints
 from urllib.parse import urlsplit, urlunsplit
 
 
@@ -49,6 +50,7 @@ def normalize(values):
                 "device_id": entity.get("device_id"),
                 "provider": str(entity.get("platform", ""))[:80],
                 "available": bool(state) and state.get("state") not in ("unknown", "unavailable"),
+                **hints(identity, entity, state, device),
             }
         )
     for entity in result:

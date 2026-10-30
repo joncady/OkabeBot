@@ -1920,3 +1920,8 @@ Installed capability checks confirmed controller startup, existing source feeds,
 speech and Pi connectivity after the health UI/adapter update. Health collection
 and goal-backed support remain disabled by default pending private source/goal
 selection. No health speech or physical device change was used for acceptance.
+
+Owner HA registry previews now include bounded classification/unit hints for
+field-specific feed selectors; no raw sensor values or registry unique IDs are
+added to discovery output. Hosting, ports, routes and source ownership are
+unchanged. Source provenance labels do not attest upstream Health Connect writers.

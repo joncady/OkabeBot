@@ -835,3 +835,7 @@ owner dashboard. User-chosen movement goals can contribute gentle check-ins or
 positive acknowledgments, subject to existing coaching consent and attention
 limits. Shared-room suppression has a manual override and optional sensor inputs;
 it does not identify people. See [health feed setup](docs/amadeus-feeds.md#health-private-wellbeing-totals).
+
+Context-feed pickers use field-specific semantic suggestions and unit checks;
+health-source labels distinguish Health Connect from direct wearable readings.
+Discovery and collection consent remain separate.
