@@ -27,7 +27,7 @@ class CommunicationsTests(unittest.IsolatedAsyncioTestCase):
         code = patch.patch_source(SOURCE)
         self.assertEqual(patch.patch_source(code), code)
         scope = {}
-        exec(code.replace("asyncio.timeout(10)", "asyncio.timeout(0.01)"), scope)
+        exec(code.replace("timeout=10", "timeout=0.01"), scope)
         api = scope["API"]()
         api._device_handler = SimpleNamespace(devices={})
 

@@ -18,13 +18,12 @@ def patch_source(source):
         )"""
     replacement = """        # OkabeBot compatibility: ancillary settings must not prevent sensor startup.
         try:
-            async with asyncio.timeout(10):
-                communications = (
-                    await self._communication_handler.get_communication_preferences(
-                        list(self._device_handler.devices.values())
-                    )
-                )
-        except TimeoutError:
+            communications = await asyncio.wait_for(
+                self._communication_handler.get_communication_preferences(
+                    list(self._device_handler.devices.values())
+                ), timeout=10,
+            )
+        except asyncio.TimeoutError:
             communications = self._communication_handler._communication_preferences"""
     if replacement in source:
         return source
