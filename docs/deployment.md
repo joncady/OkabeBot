@@ -1738,7 +1738,12 @@ The Pi code is source-validated; the installed satellite is intentionally unchan
 in this unattended checkpoint, so its focus badge requires the normal later update.
 No speaker test, volume adjustment, display restart or physical handoff is claimed.
 
-Checkpoint deployment decisions and final verification are recorded in the PR.
-Do not infer installation merely from this source inventory note. Protected-state
+The reviewed Mac controller/dashboard package is installed under the existing
+supervisor, with private module rollback material preserved. Authenticated startup,
+readiness, new dashboard assets, disabled cleanup policy and read-only HA floor/device
+schema checks passed; configured source feeds reconnected. The speech worker stayed
+running. These are service/contract checks, not physical speaker/surface acceptance.
+No account writes, source selections, capture permissions or volume were changed.
+The Pi satellite remains at its previous installed service as described above. Protected-state
 backup/restore drills remain planned in issue #81; broader collection/storage
 consolidation and lifetime-history imports remain issue #18.
