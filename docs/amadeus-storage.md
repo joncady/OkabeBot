@@ -45,7 +45,10 @@ real repeated door/ring occurrences must not be mistaken for duplicate heartbeat
 
 The private Amadeus SQLite database holds current records, meaningful changes and
 signal buckets. All use the owner's existing retention horizon. Reducing retention
-shortens expiry; revocation/rebinding/disconnection clears the relevant projection.
+shortens expiry; revocation/disconnection clears the relevant projection. Repeated
+saves and added bindings preserve history; removing bindings conservatively clears
+the source projection. Widening a selection invalidates its completeness marker
+until the next successful fetch.
 Pause prevents new collection and tool access. Whole-store and subject forgetting,
 private exports and scheduled pruning include the new tables. External exports,
 backups and HA's own recorder remain separate ownership/retention boundaries.

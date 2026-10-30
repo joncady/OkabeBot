@@ -299,6 +299,24 @@ class FeedTests(unittest.TestCase):
             next(f for f in result["feeds"] if f["id"] == "tasks")["config"]["entities"], entities
         )
 
+    def test_repeat_save_and_added_binding_do_not_erase_retained_history(self):
+        self.enable(entities=["todo.one"])
+        self.feeds.tick()
+        with self.feeds.store() as store:
+            count = store.db.execute("SELECT count(*) FROM context_changes").fetchone()[0]
+        self.enable(entities=["todo.one"])
+        self.assertEqual(len(self.feeds.retrieve("tasks")["items"]), 1)
+        self.enable(entities=["todo.one", "todo.two"])
+        result = self.feeds.retrieve("tasks")
+        self.assertEqual(len(result["items"]), 1)
+        self.assertFalse(result["source_snapshot_complete"])
+        with self.feeds.store() as store:
+            self.assertEqual(
+                store.db.execute("SELECT count(*) FROM context_changes").fetchone()[0], count
+            )
+        self.enable(entities=["todo.two"])
+        self.assertEqual(self.feeds.retrieve("tasks")["items"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

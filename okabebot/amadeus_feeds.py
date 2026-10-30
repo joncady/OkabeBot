@@ -250,6 +250,8 @@ class Feeds:
             setup = preference(store, SYSTEM, KEY, {})
             if not setup.get("profile"):
                 raise ValueError("Save private setup first")
+            previous_cfg = {**default(feed), **preference(store, SYSTEM, PREFIX + feed.id, {})}
+            removed = any(set(previous_cfg[key]) - set(cfg[key]) for key, _, _ in feed.fields)
             # UI explicitly labels enabling as consent for this feed. Do not resume
             # global pause/guest mode, change health permissions or other sources.
             if cfg["enabled"] and feed.id not in setup["sources"]:
@@ -269,7 +271,18 @@ class Feeds:
             )
             from .context_records import clear
 
-            clear(store.db, source=feed.id)
+            if removed:
+                clear(store.db, source=feed.id)
+            elif (
+                cfg != previous_cfg
+                and store.db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE name='context_feed_status'"
+                ).fetchone()
+            ):
+                # A wider scope needs a new completeness check, not destruction of retained observations.
+                store.db.execute(
+                    "UPDATE context_feed_status SET complete=0 WHERE source=?", (feed.id,)
+                )
             # Bindings changed: invalidate old snapshots and derived evaluations.
             store.db.execute(
                 "DELETE FROM events WHERE source=? AND kind='feed_snapshot'", (feed.id,)
