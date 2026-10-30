@@ -1955,7 +1955,7 @@ TV launch hardening in source waits for the warmup-page send acknowledgment
 before proceeding to dashboard handoff. An already-live matching morning
 receiver can bypass redundant wake/reload preparation. Request counters now
 include explicitly configured secondary Cast hosts rather than only the primary
-media receiver. The diagnostic counter update is installed; the launch/replay
-hardening remains source-only pending deployment so a working receiver is not
-interrupted during review. No new ports, devices or ownership routes are added.
+media receiver. The diagnostic counter and launch/replay hardening are installed on the Mac
+controller. Owner API checks confirmed service recovery and a fresh destination
+connection; physical output acceptance is separate. No new ports, devices or ownership routes are added.
 Controller-restart reconciliation remains tracked separately.
