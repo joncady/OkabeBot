@@ -119,7 +119,9 @@ reservations, movement and speaker routing. Renamed areas retain bindings; remov
 areas are flagged for review. This is a setup overlay, not a room-presence estimate
 or a full floor-plan editor.
 
-For Trakt, create an API app, enter its client ID and private application secret,
+For Trakt, create an API app and enter its client ID. New apps have no client
+secret; leave that optional legacy field blank. For a legacy app, use its existing
+private secret if required,
 and choose **Sign in with Trakt**. Visit the displayed activation link, enter the
 code, approve access, then choose **Check approval**. The controller enforces the
 provider polling interval and expiry. Access/rotating refresh credentials stay in

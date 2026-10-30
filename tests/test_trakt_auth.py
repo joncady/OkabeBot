@@ -74,3 +74,34 @@ class AuthTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 auth.refresh(blocked)
             self.assertEqual(len(calls), 1)
+
+    def test_new_app_device_flow_omits_unissued_secret(self):
+        with tempfile.TemporaryDirectory() as folder:
+            owner = Onboarding(folder)
+            owner.save(SETUP)
+            now = [2000000000]
+            feeds = Feeds(folder, clock=lambda: now[0])
+            calls = []
+
+            def read(url, headers, data):
+                self.assertEqual(headers["trakt-api-key"], "invented")
+                self.assertEqual(headers["trakt-api-version"], "2")
+                self.assertTrue(headers["User-Agent"].startswith("OkabeBot/"))
+                calls.append(data)
+                if url.endswith("device/code"):
+                    return dict(
+                        device_code="private-code", user_code="ABCD", expires_in=600, interval=5
+                    )
+                self.assertNotIn("client_secret", data)
+                return dict(access_token="access", refresh_token="refresh", expires_in=600)
+
+            auth = TraktAuth(feeds, read)
+            auth.action(dict(action="start", client_id="invented", client_secret=""))
+            now[0] += 6
+            auth.action({"action": "check"})
+            with feeds.store() as store:
+                connection = preference(store, SYSTEM, "feed_connection.trakt")
+            now[0] += 500
+            auth.refresh(connection)
+            self.assertEqual(len(calls), 3)
+            owner.close()

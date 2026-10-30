@@ -1554,3 +1554,11 @@ feed acceptance remain separate manual checkpoints. Source regression
 success is not account-onboarding or physical acceptance. See
 [feed onboarding](amadeus-feeds.md). Private room bindings and provider credentials
 belong to local Amadeus SQLite; they are not repository configuration.
+
+
+Trakt onboarding compatibility: the installed controller accepts new public-client
+apps without an issued secret, supplies Trakt application/version headers, and
+keeps legacy-secret connections supported. Device authorization and a bounded
+history API read were verified independently of observation enablement. No account
+identities, credentials or private history results are included in this inventory.
+The existing controller listener and private credential ownership are unchanged.

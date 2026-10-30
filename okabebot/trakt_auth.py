@@ -16,7 +16,14 @@ class TraktAuth:
 
     def call(self, path, data):
         return self.read(
-            "https://api.trakt.tv/oauth/" + path, {"Content-Type": "application/json"}, data
+            "https://api.trakt.tv/oauth/" + path,
+            {
+                "Content-Type": "application/json",
+                "User-Agent": "OkabeBot/0.1.0",
+                "trakt-api-key": data["client_id"],
+                "trakt-api-version": "2",
+            },
+            data,
         )
 
     def save(self, old, new):
@@ -53,7 +60,7 @@ class TraktAuth:
             }:
                 if any(
                     not isinstance(data[k], str)
-                    or not 1 <= len(data[k]) <= 4000
+                    or not (1 if k == "client_id" else 0) <= len(data[k]) <= 4000
                     or "\n" in data[k]
                     or "\r" in data[k]
                     for k in ("client_id", "client_secret")
@@ -76,7 +83,7 @@ class TraktAuth:
                 self.pending = {
                     "old": old,
                     "setup": setup,
-                    "credentials": {k: data[k] for k in ("client_id", "client_secret")},
+                    "credentials": {k: data[k] for k in ("client_id", "client_secret") if data[k]},
                     "device_code": value["device_code"],
                     "next": now + interval,
                     "interval": interval,
@@ -143,12 +150,19 @@ class TraktAuth:
                     {
                         "refresh_token": connection["refresh_token"],
                         "client_id": connection["client_id"],
-                        "client_secret": connection["client_secret"],
+                        **(
+                            {"client_secret": connection["client_secret"]}
+                            if connection.get("client_secret")
+                            else {}
+                        ),
                         "redirect_uri": "urn:ietf:wg:oauth:2.0:oob",
                         "grant_type": "refresh_token",
                     },
                 )
-                new = self.tokens(value, {k: connection[k] for k in ("client_id", "client_secret")})
+                new = self.tokens(
+                    value,
+                    {k: connection[k] for k in ("client_id", "client_secret") if connection.get(k)},
+                )
             except Exception:
                 # Single-use refresh may have succeeded remotely before transport loss.
                 # Never replay that token automatically after an uncertain outcome.

@@ -56,6 +56,7 @@ const amadeusUI = (() => {
     secret.placeholder=connection.has_token?'Saved · leave blank to keep':'Paste access token';secret.required=!connection.has_token;
     const tokenLabel=document.createElement('label');tokenLabel.append(document.createTextNode('Access token'),secret);
     grid.append(label,tokenLabel);form.append(grid);
+    if(connection.transport==='trakt'&&connection.has_token){const saved=document.createElement('p');saved.className='feed-help';saved.textContent='Authorization saved. Collection is controlled separately by Allow this feed’s metadata below.';form.append(saved);}
     const actions=document.createElement('div');actions.className='feed-actions';
     const save=document.createElement('button');save.textContent='Save connection';actions.append(save);
     const disconnect=document.createElement('button');disconnect.type='button';disconnect.textContent='Disconnect';
@@ -65,7 +66,7 @@ const amadeusUI = (() => {
       await api('feed-connection',data);secret.value='';if(connection.transport==='ha'){haInventory=[];homePreview=null;}await feeds();message('Connection saved. Enable the feeds you want to use.');
     });};
     if(connection.transport==='trakt'){
-      const clientSecret=document.createElement('input');clientSecret.type='password';clientSecret.autocomplete='off';clientSecret.placeholder='Trakt application client secret';
+      const clientSecret=document.createElement('input');clientSecret.type='password';clientSecret.autocomplete='off';clientSecret.placeholder='Legacy client secret · leave blank for new apps';
       const start=document.createElement('button');start.type='button';start.textContent='Sign in with Trakt';
       const status=document.createElement('p');
       const check=document.createElement('button');check.type='button';check.textContent='Check approval';check.hidden=true;

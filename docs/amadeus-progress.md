@@ -377,3 +377,12 @@ observation or device authority. Trakt device authorization keeps credentials
 write-only and rotates refresh tokens; provider account acceptance remains a
 separate manual checkpoint. Full spatial fusion and continuous registry event
 subscriptions remain future work.
+
+
+## Trakt onboarding compatibility
+
+New Trakt apps no longer issue a client secret. Device authorization now permits
+that public-client configuration while retaining legacy-secret support, and sends
+the required application/version headers for OAuth requests. Synthetic coverage
+checks both authorization and refresh without a secret. Provider approval remains
+separate from enabling watch-history observation.

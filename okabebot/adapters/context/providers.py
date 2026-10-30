@@ -227,6 +227,7 @@ def fetch(feed, cfg, now, connection=None):
                     "Authorization": "Bearer " + token,
                     "trakt-api-key": client,
                     "trakt-api-version": "2",
+                    "User-Agent": "OkabeBot/0.1.0",
                 },
             ),
             now,
