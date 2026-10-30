@@ -141,7 +141,15 @@ class RegistryTransportTests(unittest.IsolatedAsyncioTestCase):
             def ws_connect(self, *args, **kwargs):
                 return socket
 
-        with patch("aiohttp.ClientSession", return_value=Session()):
+        # The HA transport is an optional extra. Test its protocol boundary with a
+        # complete fake module so minimal installs never require a real client.
+        from types import SimpleNamespace
+
+        transport = SimpleNamespace(
+            ClientSession=lambda **kwargs: Session(),
+            ClientTimeout=lambda **kwargs: object(),
+        )
+        with patch.dict("sys.modules", {"aiohttp": transport}):
             result = await collect({"url": "http://ha.example", "token": "invented-test-token"})
         return result, socket.sent
 
