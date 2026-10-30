@@ -47,7 +47,13 @@ class Tags:
                 "mappings": mappings,
                 "tag_areas": areas.get("tags", {}),
                 "locations": [
-                    {"id": p["id"], "name": p["name"], "area_id": p.get("area_id")}
+                    {
+                        "id": p["id"],
+                        "name": p["name"],
+                        "area_id": p.get("area_id"),
+                        "area_name": p.get("area_name"),
+                        "floor_name": p.get("floor_name"),
+                    }
                     for p in self.locations()
                     if p.get("approved")
                 ],
@@ -102,7 +108,9 @@ class Tags:
             and self.room_follow.plan(key, data)["status"]
             not in ("ready", "room_screen_unavailable")
         ):
-            raise ValueError("Choose a screen assigned to this tag's HA room")
+            raise ValueError(
+                "Choose a same-room screen, or an approved fallback when that room has no screen"
+            )
         if not isinstance(data["name"], str) or not 1 <= len(data["name"].strip()) <= 80:
             raise ValueError("Use a name of 1–80 characters")
         if type(data["enabled"]) is not bool:

@@ -4,10 +4,10 @@ const tagsUI=(()=>{
  function action(){return $('tag-action').value||'call_companion';}
  function setSaving(value){saving=value;for(const id of ['tag-register','tag-map-last','tag-name','tag-action','tag-room-follow','tag-room-minutes','tag-room-location','tag-location','tag-chore-select','tag-chore-title','tag-chore-delay','tag-chore-unit','tag-chore-repeat','tag-chore-reminders','tag-enabled'])$(id).disabled=value;$('tag-save').disabled=value||!$('tag-id').value;}
  function roomScreens(selected=$('tag-room-location').value){
-  const area=knownAreas[$('tag-id').value]?.area_id;const eligible=destinations.filter(p=>area&&p.area_id===area);const next=JSON.stringify([area,eligible,selected]);if(next===roomSignature)return;roomSignature=next;$('tag-room-location').replaceChildren();
+  const area=knownAreas[$('tag-id').value]?.area_id;const eligible=[...destinations].sort((a,b)=>Number(b.area_id===area)-Number(a.area_id===area));const next=JSON.stringify([area,eligible,selected]);if(next===roomSignature)return;roomSignature=next;$('tag-room-location').replaceChildren();
   const automatic=document.createElement('option');automatic.value='';automatic.textContent='Automatic · only one screen in the room';$('tag-room-location').append(automatic);
-  for(const place of eligible){const option=document.createElement('option');option.value=place.id;option.textContent=place.name;$('tag-room-location').append(option);}
-  if(selected&&!eligible.some(p=>p.id===selected)){const missing=document.createElement('option');missing.value=selected;missing.textContent='Saved screen is not in this room · choose again';$('tag-room-location').append(missing);}
+  for(const place of eligible){const option=document.createElement('option');option.value=place.id;option.textContent=place.name+' · '+[place.floor_name,place.area_name||'Unassigned'].filter(Boolean).join(' / ')+(area&&place.area_id!==area?' · fallback only':'');$('tag-room-location').append(option);}
+  if(selected&&!eligible.some(p=>p.id===selected)){const missing=document.createElement('option');missing.value=selected;missing.textContent='Saved screen unavailable · choose again';$('tag-room-location').append(missing);}
   $('tag-room-location').value=selected;
  }
  function actionFields(){const chore=action()==='chore_reminder',room=action()==='room_checkin';$('tag-destination').hidden=chore||room;$('tag-location').required=!chore&&!room;$('tag-chore-settings').hidden=!chore;$('tag-chore-delay').max=$('tag-chore-unit').value==='weeks'?'52':'365';for(const id of ['tag-chore-delay','tag-chore-repeat'])$(id).required=chore;$('tag-room-settings').hidden=!chore&&!room;$('tag-room-follow-label').hidden=!chore;$('tag-room-minutes').required=room||(chore&&$('tag-room-follow').checked);}
@@ -40,7 +40,7 @@ const tagsUI=(()=>{
   try{const url=new URL(value.home_assistant_url);if(['http:','https:'].includes(url.protocol)&&!url.username&&!url.password){portal.href=new URL('/config/tags',url).href;portal.hidden=false;}}catch{}
   if(JSON.stringify(value.locations)!==JSON.stringify(destinations)){
    const previous=$('tag-location').value;destinations=value.locations;$('tag-location').replaceChildren();
-   for(const place of destinations){const option=document.createElement('option');option.value=place.id;option.textContent=place.name;$('tag-location').append(option);}
+   for(const place of destinations){const option=document.createElement('option');option.value=place.id;option.textContent=place.name+' · '+[place.floor_name,place.area_name||'Unassigned'].filter(Boolean).join(' / ');$('tag-location').append(option);}
    if(destinations.some(p=>p.id===previous))$('tag-location').value=previous;
   }
   knownAreas=value.tag_areas||{};roomScreens();

@@ -111,10 +111,9 @@ class RoomFollowTests(unittest.TestCase):
         self.assertEqual(["tv"], self.calls)
         self.owner.store.remember(SYSTEM, "home_map.bindings", {"screen": "bath", "tv": "hall"})
         self.now += 4
-        self.assertEqual("room_screen_unassigned", self.scan("moved")["status"])
-        self.assertEqual(["tv"], self.calls)
-        with self.assertRaises(ValueError):
-            self.enable(room_location_id="tv")
+        self.assertEqual("room_move_requested", self.scan("moved")["status"])
+        self.assertEqual(["tv", "screen"], self.calls)
+        self.enable(room_location_id="tv")
 
     def test_stale_metadata_pause_rebind_disable_and_uncertain_failure(self):
         self.enable()
@@ -173,3 +172,15 @@ class RoomFollowTests(unittest.TestCase):
         )
         projected = facts("get_companion_locations", result, "")
         self.assertEqual("unknown", projected["room_cue"]["identity"])
+
+    def test_explicit_cross_area_fallback_only_without_local_screen_and_cue_stays_local(self):
+        self.owner.store.remember(SYSTEM, "home_map.bindings", {"screen": "hall"})
+        self.enable()
+        self.assertEqual("room_screen_unassigned", self.scan()["status"])
+        self.assertEqual([], self.calls)
+        self.enable(room_location_id="screen")
+        self.now += 4
+        self.assertEqual("room_move_requested", self.scan("fallback")["status"])
+        self.assertEqual(["screen"], self.calls)
+        self.assertEqual("bath", self.follow.cue()["area_id"])
+        self.assertEqual("Imaginary hall", self.follow.locations()[0]["area_name"])

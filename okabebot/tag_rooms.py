@@ -77,7 +77,17 @@ class TagRoomFollow:
     def locations(self):
         with closing(Store(self.folder, clock=self.clock)) as store:
             bindings = preference(store, SYSTEM, "home_map.bindings", {})
-        return [{**p, "area_id": bindings.get(p["id"])} for p in self.raw_locations()]
+            rooms = cached_areas(store, self.folder.parent / "tags").get("rooms", {})
+        return [
+            {
+                **p,
+                "area_id": bindings.get(p["id"]),
+                "area_name": rooms.get(bindings.get(p["id"]), {}).get("name")
+                or ("Area unavailable" if bindings.get(p["id"]) else "Unassigned"),
+                "floor_name": rooms.get(bindings.get(p["id"]), {}).get("floor_name") or "",
+            }
+            for p in self.raw_locations()
+        ]
 
     def plan(self, key, mapping):
         with closing(Store(self.folder, clock=self.clock)) as store:
@@ -85,12 +95,15 @@ class TagRoomFollow:
         area = metadata["tags"].get(key, {})
         if not area.get("area_id"):
             return {"status": "tag_room_unavailable"}
-        targets = [
-            p for p in self.locations() if p.get("approved") and p.get("area_id") == area["area_id"]
-        ]
+        approved = [p for p in self.locations() if p.get("approved")]
+        targets = [p for p in approved if p.get("area_id") == area["area_id"]]
         preferred = mapping.get("room_location_id")
-        if preferred:
-            targets = [p for p in targets if p["id"] == preferred]
+        if len(targets) > 1 and preferred:
+            chosen = [p for p in targets if p["id"] == preferred]
+            if chosen:
+                targets = chosen
+        elif not targets and preferred:
+            targets = [p for p in approved if p["id"] == preferred]
         if len(targets) != 1:
             return {
                 "status": "room_screen_ambiguous" if len(targets) > 1 else "room_screen_unassigned",

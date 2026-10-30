@@ -501,3 +501,5 @@ collectors/recording budgets and full provider pagination remain separate work.
 - NFC action/chore room context now derives from HA tag registry IDs, with bounded refresh, account-generation invalidation, multiple-room associations and grounded reminder/tool presentation. Metadata refresh does not imply presence or completion.
 
 - Added explicitly selected NFC room cues and same-room companion following, with unique/owner-selected screen resolution, short-lived unknown-identity context, existing handoff/deduplication and unchanged home/away semantics.
+
+- NFC routing now distinguishes automatic same-area screen selection from an explicit cross-area fallback, preserving the scan’s room cue and showing area labels beside destination choices.

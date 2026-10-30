@@ -122,8 +122,8 @@
 <div id="tag-room-settings" hidden>
 <label id="tag-room-follow-label"><input id="tag-room-follow" type="checkbox"> Also use this chore scan as a room cue and call the companion here</label>
 <label>Room cue lifetime (minutes)<input id="tag-room-minutes" type="number" min="1" max="30" value="10"></label>
-<label>Screen in this room<select id="tag-room-location"><option value="">Automatic · only when one screen is assigned</option></select></label>
-<p>Uses the tag’s HA area and the screen room bindings in Amadeus setup. A scan may wake/cast to a TV and replace its current app. No home/away inference or continuous tracking; the scanner’s identity is unknown. If multiple screens share a room, choose one here.</p>
+<label>Room screen / fallback override<select id="tag-room-location"><option value="">Automatic · only when one screen is assigned</option></select></label>
+<p>Uses the tag’s HA area and the screen room bindings in Amadeus setup. A scan may wake/cast to a TV and replace its current app. No home/away inference or continuous tracking; the scanner’s identity is unknown. Automatic routing prefers a screen in the tag’s area. If that area has no screen, you may explicitly choose a fallback in another area. If multiple screens share the area, choose one of them.</p>
 </div><p id="tag-room-cue" role="status"></p>
 <label id="tag-destination">Destination<select id="tag-location" required></select></label>
 <div id="tag-chore-settings" hidden>

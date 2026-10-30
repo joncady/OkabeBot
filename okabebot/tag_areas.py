@@ -36,6 +36,7 @@ def cached_areas(store, folder):
         return {"state": "stale", "tags": {}}
     return {
         "state": "ready",
+        "rooms": value.get("rooms", {}),
         "tags": {
             k: v
             for k, v in value["tags"].items()
@@ -94,7 +95,15 @@ class TagAreas:
                         return {"state": "context_changed", "tags": {}}
                     write(
                         self.folder.parent / "tags/ha-areas.json",
-                        {"scope": scope, "checked_at": self.clock(), "tags": tags},
+                        {
+                            "scope": scope,
+                            "checked_at": self.clock(),
+                            "tags": tags,
+                            "rooms": {
+                                r["id"]: {k: r.get(k) for k in ("name", "floor_name")}
+                                for r in inventory.get("rooms", [])
+                            },
+                        },
                     )
             except Exception:
                 return {"state": "refresh_failed", "tags": {}}

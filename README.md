@@ -827,3 +827,5 @@ Household comfort controls and spoken notes display Fahrenheit while normalizing
 NFC actions and linked chores inherit room/floor metadata from HA tag entities by stable tag ID. Refresh tag rooms in the dashboard; existing action destinations and recurrence remain separate.
 
 Selected NFC tags can also provide an expiring room cue and call the companion to a screen bound to that HA room. This is per-tag opt-in, never home/away or identity evidence; see [NFC chores and room cues](docs/chores.md).
+
+NFC routing prefers screens in the tag’s HA area. When that area has no screen, an owner-selected fallback may be in another area; destination choices show their assigned area. The scan’s room cue stays unchanged.

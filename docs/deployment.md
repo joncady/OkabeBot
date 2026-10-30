@@ -1895,3 +1895,11 @@ Controller, speech, Pi and existing source readiness recovered. No selected tag
 was scanned, no cue was fabricated and no physical move or audio test was sent.
 Room bindings/explicit target selection remain owner setup; isolated tests do not
 establish physical acceptance.
+
+NFC screen resolution now prefers a unique same-area screen, or an explicit
+same-area choice when several exist. With no same-area screen, only an explicitly
+saved approved fallback may be used across areas. Destination labels show HA area
+names from the metadata cache. Room cues still refer to the scanned tag’s area;
+this adds no implicit adjacency, area merge or automatic cross-room fallback.
+
+The installed owner API was checked for destination-area labels and explicit fallback resolution without replaying a scan or requesting a handoff. Physical acceptance of the fallback remains an owner check.

@@ -3,7 +3,7 @@ async function fixture(options={}){
  const nodes={},calls=[];let token='synthetic-owner';
  const node=()=>({hidden:false,value:'',checked:true,children:[],textContent:'',append(...v){this.children.push(...v);},replaceChildren(...v){this.children=v;},set innerHTML(v){throw Error('No HTML parsing');}});
  const get=id=>nodes[id]||=(node());get('dashboard-forget').onclick=()=>{token='';};
- let chores=options.chores||[],state={mappings:options.mappings||[],locations:[{id:'desk',name:'Example desk'}],learning:false,learned:null};
+ let chores=options.chores||[],state={mappings:options.mappings||[],locations:options.locations||[{id:'desk',name:'Example desk'}],learning:false,learned:null};
  const context={crypto:require("node:crypto").webcrypto,document:{getElementById:get,createElement:node},dashboardAccess:{token:()=>token},JSON,Date,URL,setInterval(){},
  fetch:async(path,opts)=>{calls.push({path,opts});const data=opts.body?JSON.parse(opts.body):{};
  if(path==='/tags/learn')state={...state,learning:true,learned:'synthetic-tag'};
@@ -99,4 +99,10 @@ test('existing fixed-destination mappings do not opt into room following',async(
  const f=await fixture();await f.nodes['tag-register'].onclick();f.nodes['tag-id'].value='old-tag';f.nodes['tag-name'].value='Old action';f.nodes['tag-action'].value='call_companion';f.nodes['tag-location'].value='desk';
  await f.nodes['tag-form'].onsubmit({preventDefault(){}});
  assert.equal('room_follow' in JSON.parse(f.calls.find(c=>c.path==='/tags/save').opts.body),false);
+});
+
+test('NFC destination choices include their HA floor and area as literal text',async()=>{
+ const f=await fixture({locations:[{id:'screen',name:'Bedroom TV',area_id:'bed',area_name:'<Bedroom>',floor_name:'Upper'}]});
+ assert.equal(f.nodes['tag-location'].children[0].textContent,'Bedroom TV · Upper / <Bedroom>');
+ assert.equal(f.nodes['tag-room-location'].children[1].textContent,'Bedroom TV · Upper / <Bedroom>');
 });

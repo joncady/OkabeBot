@@ -117,7 +117,10 @@ claim room presence. Only an accepted real HA scan runs this combined behavior.
 Assign the tag entity to an HA Area, then bind approved screens to that area in
 **Amadeus setup → Context feeds → screen room bindings**. Automatic routing works
 only with one approved screen in the room. If several screens share the area,
-choose one on the tag; a moved/unapproved/mismatched screen is not used as fallback.
+choose one on the tag. If the area has no screen, you may explicitly select an
+approved screen in another area as a fallback. A newly available unique same-area
+screen takes priority over that fallback. Unapproved/unavailable destinations are
+never guessed, and the room cue always remains the tag’s actual area.
 Missing/unassigned/stale tag metadata or unavailable browser surfaces never cause
 a guessed cross-room move. TVs may wake and replace their current app; the UI
 explains this before enabling the action. Ordinary fixed-destination tag actions
