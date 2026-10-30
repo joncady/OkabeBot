@@ -59,10 +59,10 @@ const amadeusUI = (() => {
     const actions=document.createElement('div');actions.className='feed-actions';
     const save=document.createElement('button');save.textContent='Save connection';actions.append(save);
     const disconnect=document.createElement('button');disconnect.type='button';disconnect.textContent='Disconnect';
-    disconnect.onclick=()=>run(async()=>{await api('feed-connection',{transport:connection.transport,disconnect:true});await load();});actions.append(disconnect);form.append(actions);
+    disconnect.onclick=()=>run(async()=>{await api('feed-connection',{transport:connection.transport,disconnect:true});if(connection.transport==='ha'){haInventory=[];homePreview=null;}await load();});actions.append(disconnect);form.append(actions);
     form.onsubmit=event=>{event.preventDefault();run(async()=>{
       const data={transport:connection.transport,token:secret.value};data[connection.transport==='ha'?'url':'client_id']=field.value.trim();
-      await api('feed-connection',data);secret.value='';await feeds();message('Connection saved. Enable the feeds you want to use.');
+      await api('feed-connection',data);secret.value='';if(connection.transport==='ha'){haInventory=[];homePreview=null;}await feeds();message('Connection saved. Enable the feeds you want to use.');
     });};
     if(connection.transport==='trakt'){
       const clientSecret=document.createElement('input');clientSecret.type='password';clientSecret.autocomplete='off';clientSecret.placeholder='Trakt application client secret';
@@ -75,7 +75,7 @@ const amadeusUI = (() => {
     }
     return form;
   }
-  function feedSelection(field, values) {
+  function feedSelection(field, values, feedId) {
     const box=document.createElement('fieldset'),legend=document.createElement('legend');legend.textContent=field.label;box.append(legend);
     if(field.domain==='line'||field.key==='routes') {
       const choices={'1':'1 Line','2':'2 Line','T':'T Line','N':'N Line · Sounder','S':'S Line · Sounder'};
@@ -95,7 +95,7 @@ const amadeusUI = (() => {
       entries.forEach((value,index)=>{
         const row=document.createElement('div');row.className='feed-entity-row';
         const input=document.createElement('input');input.value=value;input.maxLength=100;input.autocomplete='off';input.spellcheck=false;
-        const list=document.createElement('datalist');list.id='ha-choice-'+field.key+'-'+index;
+        const list=document.createElement('datalist');list.id='ha-choice-'+feedId+'-'+field.key+'-'+index;
         for(const entity of haInventory.filter(e=>e.id.startsWith((field.domain||'entity')+'.'))){
           const option=document.createElement('option');option.value=entity.id;option.label=[entity.name,entity.room,entity.provider,entity.available?'':'unavailable'].filter(Boolean).join(' · ');list.append(option);
         }
@@ -140,7 +140,7 @@ const amadeusUI = (() => {
       if(connections[feed.transport]&&feed.transport!=='ha')card.append(feedConnection(connections[feed.transport]));
       const form=document.createElement('form'),label=document.createElement('label'),enabled=document.createElement('input');enabled.type='checkbox';enabled.checked=feed.config.enabled;
       label.className='amadeus-option';label.append(enabled,document.createTextNode('Allow this feed’s metadata'));form.append(label);
-      const inputs={};for(const field of feed.fields){inputs[field.key]=feedSelection(field,feed.config[field.key]);form.append(inputs[field.key].element);}
+      const inputs={};for(const field of feed.fields){inputs[field.key]=feedSelection(field,feed.config[field.key],feed.id);form.append(inputs[field.key].element);}
       const save=document.createElement('button');save.textContent='Save feed';form.append(save);
       const check=document.createElement('button');check.type='button';check.textContent='Check selected feed';check.disabled=!feed.config.enabled;
       check.onclick=()=>run(async()=>{await api('feed-check',{id:feed.id});await feeds();message('Selected feed checked. See its status and retained context below.');});form.append(check);
