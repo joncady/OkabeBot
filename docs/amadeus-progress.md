@@ -516,3 +516,9 @@ and units, with explicit health-source provenance labels. Saved custom bindings
 are preserved and broad discovery remains an advanced choice outside health.
 This reduces misleading metric choices without treating labels as upstream-app
 verification or person identity evidence.
+
+Review identified and corrected health-session consent gaps, a disabled-source
+privacy fallback and tool-schema/projection drift. Ongoing session gates now
+respect revocation without treating normal daily delivery cooldowns as revoked
+consent. Invented regressions exercise before/during-generation withdrawal and
+configured privacy-source loss; no participant records or outcomes are reported.

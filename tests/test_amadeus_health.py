@@ -5,13 +5,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from okabebot.amadeus import Store
 from okabebot.amadeus_coaching import Coaching
 from okabebot.amadeus_feeds import Feeds, context, default
 from okabebot.amadeus_health import Health, DEFAULTS, others_detected
-from okabebot.amadeus_onboarding import Onboarding
+from okabebot.amadeus_onboarding import Onboarding, SYSTEM, KEY
 from okabebot.amadeus_live import ProactiveConversation, CONFIG
 from okabebot.amadeus_habits import preference
 from okabebot.adapters.context import FEEDS, validate_config
@@ -178,6 +178,136 @@ class HealthTests(unittest.TestCase):
                 ).fetchone()[0],
                 0,
             )
+
+    def test_active_health_session_revocation_before_and_during_generation(self):
+        for stage in ("before", "during"):
+            for change in (
+                "stop",
+                "snooze",
+                "topic_off",
+                "support_off",
+                "feed_off",
+                "source_revoke",
+                "disconnect",
+            ):
+                with self.subTest(stage=stage, change=change):
+                    folder = self.path / (stage + "-" + change)
+                    with closing(Onboarding(folder)) as owner:
+                        owner.store.clock = lambda: self.now
+                        owner.save(dict(SETUP, timezone="UTC", sources=["door_presence"]))
+                        owner.control({"paused": False})
+                        feeds = Feeds(
+                            folder, clock=lambda: self.now, reader=lambda *a: (self.items, True)
+                        )
+                        feeds.configure({"id": "health", "config": self.cfg})
+                        feeds.tick()
+                        live = ProactiveConversation(folder, clock=lambda: self.now)
+                        live.configure(enabled=True, destination="imaginary")
+                        with live.store() as s:
+                            Health(s).configure(dict(DEFAULTS, enabled=True, daily_steps=3000))
+                            cfg = preference(s, SETUP["profile"], CONFIG, {})
+                            offer = live._health_offer(
+                                s, SETUP["profile"], cfg, {}, live._day(owner.settings())
+                            )
+                        self.assertTrue(live.claim(offer))
+                        live.delivered(offer, success=True)
+                        # Delivery's daily limit must not cancel a still-consented reply.
+                        self.assertIsNotNone(live.context())
+
+                        def revoke():
+                            with live.store() as s:
+                                if change in ("stop", "snooze", "topic_off"):
+                                    Coaching(s).feedback(
+                                        SETUP["profile"],
+                                        "later" if change == "snooze" else change,
+                                        **({"topic": "movement"} if change == "topic_off" else {}),
+                                    )
+                                elif change == "support_off":
+                                    Health(s).configure(dict(DEFAULTS))
+                                elif change == "source_revoke":
+                                    setup = preference(s, SYSTEM, KEY, {})
+                                    s.remember(SYSTEM, KEY, dict(setup, sources=["door_presence"]))
+                            if change == "feed_off":
+                                feeds.configure(
+                                    {"id": "health", "config": dict(self.cfg, enabled=False)}
+                                )
+                            elif change == "disconnect":
+                                feeds.connect({"transport": "ha", "disconnect": True})
+
+                        generate = Mock(
+                            return_value={"reply": "An invented private reply", "memory": None}
+                        )
+                        if stage == "before":
+                            revoke()
+                            self.assertIsNone(live.answer("Thanks", generate))
+                            generate.assert_not_called()
+                        else:
+
+                            def during(text, ctx):
+                                revoke()
+                                return generate(text, ctx)
+
+                            self.assertIsNone(live.answer("Thanks", during))
+                            generate.assert_called_once()
+                        with live.store() as s:
+                            state = preference(s, SETUP["profile"], live.state_key, {})
+                            self.assertEqual(state["history"], [])
+                            self.assertEqual(state["last_reply"], "")
+                            self.assertEqual(state["session_until"], 0)
+
+    def test_bound_privacy_sensor_stays_suppressed_when_feed_disabled_or_disconnected(self):
+        self.cfg["others"] = ["binary_sensor.imaginary_guest"]
+        self.items.append(
+            {
+                "id": "other",
+                "metric": "others",
+                "value": "off",
+                "unit": "presence",
+                "sample_at": self.now,
+            }
+        )
+        self.feeds.configure({"id": "health", "config": self.cfg})
+        self.feeds.tick()
+        with self.store() as s:
+            self.assertFalse(others_detected(s))
+        self.feeds.configure({"id": "health", "config": dict(self.cfg, enabled=False)})
+        with self.store() as s:
+            self.assertTrue(others_detected(s))
+            self.assertEqual(
+                Coaching(s).plan(SETUP["profile"], "movement")["reason"], "others_detected"
+            )
+        self.feeds.configure({"id": "health", "config": self.cfg})
+        self.feeds.tick()
+        self.feeds.connect({"transport": "ha", "disconnect": True})
+        with self.store() as s:
+            self.assertTrue(others_detected(s))
+
+    def test_mcp_source_schema_covers_registered_feeds_and_accepts_health(self):
+        import asyncio
+        from okabebot import server
+        from okabebot.local_conversation import validate_call
+
+        tool = next(t for t in asyncio.run(server.mcp.list_tools()) if t.name == "get_context_feed")
+        schema = tool.inputSchema
+        self.assertEqual(set(schema["properties"]["source"]["enum"]), {*FEEDS, "calendar"})
+        name, args = validate_call(
+            "Read my selected health context",
+            {"name": tool.name, "arguments": {"source": "health"}},
+            {tool.name: {"parameters": schema}},
+            {"auto_approve_hardware": False, "allowed_tools": []},
+            "synthetic-request",
+        )
+        self.assertEqual((name, args), (tool.name, {"source": "health"}))
+        from okabebot.tool_reply import facts
+
+        with patch("okabebot.amadeus_feeds.Feeds", return_value=self.feeds):
+            result = server.get_context_feed(**args)
+        # LocalConversation tags the validated retrieval result with its source.
+        result = {**result, "queried_source": args["source"]}
+        projected = facts("get_context_feed", result, "Read my steps")
+        self.assertEqual(projected["records"][0]["metric"], "daily_steps")
+        self.assertEqual(projected["records"][0]["value"], "4000")
+        self.assertEqual(projected["records"][0]["sample_at"], self.now)
 
     def test_provider_units_finiteness_and_no_attribute_export(self):
         provider = HomeAssistant(connection={})

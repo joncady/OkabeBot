@@ -261,3 +261,10 @@ phone separately. Existing selected custom IDs are preserved. Other semantic
 pickers offer an explicit advanced domain-wide view for custom integrations;
 Select all uses the currently filtered candidate set. Discovery reads metadata
 only and does not enable collection or overwrite selections.
+
+With a configured others-present binding, disabling the health feed or
+disconnecting HA keeps health discussion suppressed until that binding is
+explicitly removed or valid clear readings return. Health sessions also end on
+coaching stop/snooze/topic removal, goal support disablement or source revocation,
+including changes during reply generation. Normal delivery cooldowns do not end
+an already-consented conversation.

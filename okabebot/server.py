@@ -189,6 +189,7 @@ def get_context_feed(
         "device_activity",
         "home_devices",
         "room_activity",
+        "health",
         "appliances",
         "meals",
         "transit",
@@ -200,7 +201,7 @@ def get_context_feed(
     limit: int = 20,
     view: Literal["current", "changes", "aggregates"] = "current",
 ) -> dict:
-    """Read connected to-do/shopping lists (source=tasks), transit rail notices, home devices (source=home_devices), room light/speaker states (source=room_activity), appliances or watch history. Current feeds are not a full history of today. Use blank query for all selected items; page through next_offset."""
+    """Read connected to-do/shopping lists (source=tasks), transit rail notices, home devices (source=home_devices), room light/speaker states (source=room_activity), appliances, consented private wellbeing readings (source=health) or watch history. Current feeds are not a full history of today. Use blank query for all selected items; page through next_offset."""
     from .amadeus_feeds import Feeds
 
     return Feeds(state_dir() / "amadeus").retrieve(

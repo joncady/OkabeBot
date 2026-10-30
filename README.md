@@ -839,3 +839,7 @@ it does not identify people. See [health feed setup](docs/amadeus-feeds.md#healt
 Context-feed pickers use field-specific semantic suggestions and unit checks;
 health-source labels distinguish Health Connect from direct wearable readings.
 Discovery and collection consent remain separate.
+
+Health conversations recheck collection, goal and coaching consent throughout a
+session, including after reply generation. Configured shared-room privacy inputs
+stay suppressed when their feed is disabled or disconnected.

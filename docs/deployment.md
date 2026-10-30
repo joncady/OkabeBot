@@ -1925,3 +1925,11 @@ Owner HA registry previews now include bounded classification/unit hints for
 field-specific feed selectors; no raw sensor values or registry unique IDs are
 added to discovery output. Hosting, ports, routes and source ownership are
 unchanged. Source provenance labels do not attest upstream Health Connect writers.
+
+Health review hardening keeps ongoing conversation consent separate from offer
+cooldowns: stopping/snoozing coaching, disabling goal/source support or revoking
+the source discards pending health context/replies. A configured privacy-sensor
+binding remains fail-closed when its feed is disabled or HA is disconnected. The
+MCP health retrieval schema and reply projection now match the registered feed.
+Hosting, ports, device state and installed configuration are unchanged by this
+source review fix; no live deployment or physical acceptance is claimed here.

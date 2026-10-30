@@ -78,6 +78,10 @@ def facts(name, result, reference):
                         "start",
                         "end",
                     )
+                    or (
+                        result.get("queried_source") == "health"
+                        and k in ("metric", "value", "sample_at")
+                    )
                 },
             }
             for row in result.get("items", [])[:12]

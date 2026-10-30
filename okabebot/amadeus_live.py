@@ -805,9 +805,9 @@ class ProactiveConversation:
                     )
                     s.remember(p, self.state_key, state)
                 return None
-            from .amadeus_health import others_detected
+            from .amadeus_health import Health
 
-            if state.get("invitation_kind") == "health" and others_detected(s):
+            if state.get("invitation_kind") == "health" and not Health(s).session_allowed(p):
                 state.update(
                     session_until=0, pending=None, last_reply="", history=[], last_tools=[]
                 )

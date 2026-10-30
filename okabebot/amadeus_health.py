@@ -19,10 +19,15 @@ def others_detected(store):
     if settings(store)["others_detected"]:
         return True
     cfg = preference(store, SYSTEM, "feed.health", {})
-    if not cfg.get("enabled") or not cfg.get("others"):
+    if not cfg.get("others"):
         return False  # Explicit prototype default; not a claim of verified solitude.
     setup = preference(store, SYSTEM, KEY, {})
-    if setup.get("paused") or setup.get("guest") or "health" not in setup.get("sources", []):
+    if (
+        not cfg.get("enabled")
+        or setup.get("paused")
+        or setup.get("guest")
+        or "health" not in setup.get("sources", [])
+    ):
         return True
     row = store.db.execute(
         "SELECT payload FROM events WHERE source='health' AND kind='feed_snapshot' AND subject=? AND expires_at>? AND observed_at<=? ORDER BY observed_at DESC,rowid DESC LIMIT 1",
@@ -60,32 +65,42 @@ class Health:
         self.store.remember(SYSTEM, CONFIG, value)
         return self.snapshot()
 
+    def session_allowed(self, profile):
+        """Ongoing consent, separate from offer timing and already-delivered cooldowns."""
+        from .amadeus_coaching import SETTINGS, valid_settings
+
+        s = self.store
+        setup = preference(s, SYSTEM, KEY, {})
+        cfg = settings(s)
+        feed = preference(s, SYSTEM, "feed.health", {})
+        permission = preference(s, profile, SETTINGS)
+        return bool(
+            setup.get("profile") == profile
+            and not setup.get("paused")
+            and not setup.get("guest")
+            and "health" in setup.get("sources", [])
+            and cfg["enabled"]
+            and cfg["daily_steps"]
+            and feed.get("enabled")
+            and feed.get("daily_steps")
+            and valid_settings(permission)
+            and permission["enabled"]
+            and "movement" in permission["topics"]
+            and permission["paused_until"] <= s.clock()
+            and not others_detected(s)
+        )
+
     def offer(self, *, morning=False):
-        from .amadeus_coaching import Coaching, SETTINGS, DELIVERY, valid_settings
+        from .amadeus_coaching import Coaching, DELIVERY
         from .amadeus_feeds import context
 
         s = self.store
         setup = preference(s, SYSTEM, KEY, {})
         cfg = settings(s)
         profile = setup.get("profile")
-        if (
-            not profile
-            or setup.get("paused")
-            or setup.get("guest")
-            or not cfg["enabled"]
-            or not cfg["daily_steps"]
-            or others_detected(s)
-        ):
+        if not profile or not self.session_allowed(profile):
             return None
         policy = Coaching(s, timezone=setup["timezone"])
-        permission = policy._get(profile, SETTINGS)
-        if (
-            not valid_settings(permission)
-            or not permission["enabled"]
-            or "movement" not in permission["topics"]
-            or permission["paused_until"] > s.clock()
-        ):
-            return None
         local = datetime.fromtimestamp(s.clock(), ZoneInfo(setup["timezone"]))
         last = policy._get(profile, DELIVERY)
         if last and (
