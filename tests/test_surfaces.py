@@ -157,6 +157,7 @@ class SurfaceTests(unittest.TestCase):
         with patch("pychromecast.controllers.BaseController.launch") as launch:
             surface.token = "scoped"
             surface._launch("http://example.invalid/tv/#scoped")
+        cast.quit_app.assert_called_once_with(timeout=5)
         self.assertTrue(launch.call_args.kwargs["force_launch"])
         self.assertEqual(surface.receiver_session, "owned")
 
@@ -237,3 +238,17 @@ class SurfaceTests(unittest.TestCase):
         self.assertLess(motion.sample(600.5)[1], 0)
         motion.command(dict(command, phase="arriving"), now=600.7)
         self.assertEqual(motion.sample(601.1)[0], "home")
+
+    def test_refresh_keeps_actor_ownership_but_releases_old_receiver_session(self):
+        s = Surfaces(Mock(), start=False)
+        s.active_id = next(p["id"] for p in s.settings["locations"] if p["adapter"] == "cast")
+        s.phase, s.token, s.receiver_session = "tv", "scoped", "old-session"
+        with patch.object(s, "_launch") as launch:
+            self.assertTrue(s.refresh_receiver(s.active_id, "http://test"))
+            launch.assert_called_once_with("http://test/tv/#" + s.token, location_id=s.active_id)
+            self.assertEqual(s.phase, "tv")
+            self.assertNotEqual(s.token, "scoped")
+            self.assertFalse(s.authorized("scoped", preview=False))
+            self.assertIsNone(s.receiver_session)
+            s.rpc.assert_not_called()
+            self.assertFalse(s.refresh_receiver("wrong-location", "http://test"))

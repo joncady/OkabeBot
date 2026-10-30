@@ -197,3 +197,16 @@ Authenticated cloud-to-local tool transport and physical Echo acceptance are
 not complete.
 A Show renderer remains a separate session-limited APL adapter, not an always-on
 browser surface.
+
+### Optional communications-request deadline
+
+`scripts/patch-alexa-communications-timeout.py` is an opt-in, source-guarded local
+compatibility patch for the installed `aioamazondevices` API. Ancillary communication
+preferences are requested sequentially and can delay sensor initialization when
+Amazon is failing those requests. The patch bounds that optional block to ten
+seconds and preserves already retrieved/cached preferences; it does not fabricate
+occupancy, suppress authentication failures or accelerate the five-minute sensor
+poll. Communication controls may remain unavailable until the provider recovers.
+It makes a private backup before applying, requires a HA process restart, and is
+replaced by container updates. Inspect compatibility again before reapplying after
+an upgrade. It is not an upstream Home Assistant fix.

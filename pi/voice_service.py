@@ -18,6 +18,7 @@ from ptt_recorder import PushToTalk
 from stream_audio import StreamAudio
 from music_meter import MusicMeter
 from volume import Volume
+from prepared_audio import PreparedAudio
 
 
 def validate_wav(raw):
@@ -35,6 +36,7 @@ def validate_wav(raw):
 class Voice:
     def __init__(self):
         self.audio_lock = threading.Lock()
+        self.prepared = PreparedAudio(validate_wav)
         self.events_lock = threading.Lock()
         self.events = collections.deque(maxlen=100)
         self.sequence = 0
@@ -66,6 +68,19 @@ class Voice:
 
     def request(self, data):
         op = data.get("op")
+        if op == "audio_prepare":
+            prepared = self.prepared.prepare(base64.b64decode(data["wav_base64"], validate=True))
+            prepared["server_time"] = time.time()
+            return prepared
+        if op == "play_prepared":
+            raw = self.prepared.take(data.get("prepared_id"))
+            data = {
+                "op": "play",
+                "wav_base64": base64.b64encode(raw).decode(),
+                "start_at": data.get("start_at", time.time()),
+            }
+            op = "play"
+
         if op == "volume":
             return self.volume.set(data["percent"]) if "percent" in data else self.volume.get()
         if op == "music_meter":

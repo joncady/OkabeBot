@@ -149,3 +149,18 @@ class EchoTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "outcome unknown"):
             speak("Show", "Hello")
         self.assertEqual(opened.call_count, 1)
+
+    def test_tv_default_audio_resolves_locally_without_pi_fallback(self):
+        from types import SimpleNamespace
+
+        controller = SimpleNamespace(surfaces=Mock(), surface_audio=Mock())
+        app = Application(controller)
+        controller.surfaces.snapshot.return_value = {
+            "current_location": "test-tv",
+            "locations": [{"id": "test-tv", "adapter": "cast", "audio_target": "default"}],
+        }
+        controller.surface_audio = Mock()
+        controller.surface_audio.ready.return_value = False
+        with patch("okabebot.audio_output.target", return_value="pi"):
+            result = app.execute("/audio/resolve", {"purpose": "reply"})
+        self.assertEqual(result, {"target": "browser", "device_id": "test-tv", "ready": False})

@@ -158,3 +158,33 @@ def query_calendar(settings, start_date, end_date):
             events=[],
             error="Calendar query failed; check private feed configuration and access",
         )
+
+
+def conversation_range(text, now=None, timezone="local"):
+    """Ground common spoken date windows; an empty result leaves ISO parsing to tools."""
+    import re
+
+    now = time.time() if now is None else now
+    local = dt.datetime.fromtimestamp(now, dt.timezone.utc).astimezone(
+        None if timezone == "local" else ZoneInfo(timezone)
+    )
+    today = local.date()
+    value = text.casefold()
+    start = end = None
+    if re.search(r"\bnext week\b", value):
+        start = today + dt.timedelta(days=7 - today.weekday())
+        end = start + dt.timedelta(days=7)
+    elif re.search(r"\bthis week\b", value):
+        start = today - dt.timedelta(days=today.weekday())
+        end = start + dt.timedelta(days=7)
+    elif re.search(r"\bnext (?:7|seven) days\b", value):
+        start, end = today, today + dt.timedelta(days=7)
+    elif re.search(r"\bthis month\b", value):
+        start = today.replace(day=1)
+        end = (start.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
+    elif re.search(r"\btomorrow\b", value):
+        start = today + dt.timedelta(days=1)
+        end = start + dt.timedelta(days=1)
+    elif re.search(r"\btoday\b", value):
+        start, end = today, today + dt.timedelta(days=1)
+    return {"start_date": start.isoformat(), "end_date": end.isoformat()} if start else {}

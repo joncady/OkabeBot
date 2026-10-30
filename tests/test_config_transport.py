@@ -17,6 +17,22 @@ class ConfigTests(unittest.TestCase):
         path.write_text(json.dumps(data))
         return load(path)
 
+    def test_home_assistant_portal_is_optional_and_cannot_embed_credentials(self):
+        self.assertEqual(self.config({})["web"]["home_assistant_url"], "")
+        url = "http://controller.local:8123/home/overview"
+        self.assertEqual(
+            self.config({"web": {"home_assistant_url": url}})["web"]["home_assistant_url"], url
+        )
+        for value in (
+            "javascript:alert(1)",
+            "http://user:password@home.local/",
+            "http://home.local/?token=secret",
+            "http://home.local/#secret",
+            3,
+        ):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                self.config({"web": {"home_assistant_url": value}})
+
     def test_spotify_auto_approval_is_supported_but_explicitly_opt_in(self):
         self.assertNotIn("control_spotify", self.config({})["approvals"]["allowed_tools"])
         settings = self.config({"approvals": {"allowed_tools": ["control_spotify"]}})

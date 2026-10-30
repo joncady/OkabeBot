@@ -1,4 +1,5 @@
 'use strict';
+window.addEventListener('error',event=>{document.getElementById('connection').textContent='Receiver startup error: '+String(event.message||'Unable to initialize').slice(0,160);});
 const token=location.hash.slice(1),canvas=document.querySelector('#room'),ctx=canvas.getContext('2d'),room=new LabRoom.Room();
 let state=null,assetStyle='',received=0,motion=null,visible=false,active=true,ready=false,focus='door',hintUntil=0,lastFrame=0,lastIdle=0;
 const text=(id,value)=>{const e=document.getElementById(id);if(e.textContent!==value)e.textContent=value;};
@@ -7,6 +8,16 @@ async function request(path,data){
   if(!r.ok)throw Error(r.status===403?'This screen session has ended. Open a new preview or move here again.':'Reconnecting…');
   return r.json();
 }
+const speaker=typeof BrowserAudio==='function'?new BrowserAudio(request,()=>{},{prebuffer:true}):null;
+let soundAttempted=false;
+speaker?.setVolume(20);speaker?.poll();
+async function enableSound(){
+  if(!speaker)return;
+  document.getElementById('enable-sound').hidden=false;
+  try{await speaker.enable();document.getElementById('enable-sound').hidden=true;}
+  catch{document.getElementById('enable-sound').hidden=false;}
+}
+const soundButton=document.getElementById('enable-sound');if(soundButton)soundButton.onclick=enableSound;
 function animatePhase(s){
   if(s.phase==='preview'){visible=true;motion=null;return;}
   if(s.phase==='entering_tv'||s.phase==='leaving_tv'){
@@ -20,7 +31,7 @@ function update(s){
   const set=s.environment?.name||s.lab.title;
   document.title=set;canvas.setAttribute('aria-label',`${s.character.name} in ${set}`);
   text('name',s.lab.title);text('mode',s.phase==='preview'?'PREVIEW':'');
-  text('summary',s.notification?`${s.notification.title}. ${s.notification.body||''}`:`${s.character.name} at ${s.destination_name}.`);
+  text('summary',s.morning?`${s.morning.title}. ${s.morning.cards.map(c=>c.title+': '+c.body).join('. ')}`:s.notification?`${s.notification.title}. ${s.notification.body||''}`:`${s.character.name} at ${s.destination_name}.`);
   document.querySelector('#remote-controls').hidden=!s.remote_controls;
   const button=document.querySelector('#return');button.hidden=s.phase==='preview';button.textContent=`→ ${s.return_location.name}`;
   text('connection','');
@@ -33,6 +44,8 @@ async function poll(){
     if(assetStyle!==s.character.style){ready=false;room.setAssets(await request('/surfaces/assets'),s.character.style);assetStyle=s.character.style;}
     s.receivedAt=performance.now();s.serverOffset=s.server_time*1000-Date.now();state=s;
     room.setDirection?.(s.tv_side);update(s);animatePhase(s);
+    speaker?.setVolume(s.audio_volume??20);
+    if(s.phase!=='preview'&&!soundAttempted){soundAttempted=true;enableSound();}
     // Render a real room frame before readiness can hide the other surface.
     room.render(ctx,{state:s,now:performance.now(),visible:false,position:room.actor.position,walking:false,focus});
     received=performance.now();ready=true;
@@ -59,7 +72,9 @@ function frame(now){
     else if(now-lastIdle>18000){lastIdle=now;const stops=['center','window','rest'];room.actor.go(stops[Math.floor(now/18000)%stops.length]);}
     position=room.actor.update(now);walking=room.actor.walking;
   }
-  try{room.render(ctx,{state,now,visible:visible&&ready,position,walking,focus:now<hintUntil?focus:null,opacity});}
+  const localPresenter=speaker?.presenter()||(speaker?.prebuffer&&speaker?.stream&&!speaker.stream.start_at?{activity:'thinking'}:null);
+  const rendered=localPresenter?{...state,presenter:localPresenter}:state;
+  try{room.render(ctx,{state:rendered,now,visible:visible&&ready,position,walking,focus:now<hintUntil?focus:null,opacity});}
   catch(e){visible=false;ready=false;text('connection','Room renderer unavailable. Returning to the other display.');}
   document.querySelector('#remote-controls').classList.toggle('active',now<hintUntil);
 }
@@ -84,7 +99,7 @@ document.addEventListener('keydown',remoteKey);
 document.querySelector('#return').onclick=returnHome;
 canvas.addEventListener('click',()=>{if(!state?.remote_controls)return;focus='door';hintUntil=performance.now()+8000;document.querySelector('#return').focus();});
 window.addEventListener('pagehide',()=>{
-  active=false;visible=false;ready=false;ctx.clearRect(0,0,canvas.width,canvas.height);
+  active=false;speaker?.close();visible=false;ready=false;ctx.clearRect(0,0,canvas.width,canvas.height);
   if(state&&state.phase!=='preview')fetch('/surfaces/closed',{method:'POST',keepalive:true,headers:{'X-Surface-Token':token,'Content-Type':'application/json'},body:JSON.stringify({transition_id:state.transition_id})}).catch(()=>{});
 });
 window.addEventListener('hashchange',()=>location.reload());

@@ -1,0 +1,16 @@
+# Optional positive door cue for the local Watch presence bridge.
+automation:
+  - id: companion_watch_presence_door
+    alias: Companion Watch presence door cue
+    triggers:
+      - trigger: state
+        entity_id: !secret companion_presence_door
+        from: 'off'
+        to: 'on'
+    actions:
+      - action: mqtt.publish
+        data:
+          topic: !secret companion_presence_door_topic
+          retain: false
+          payload: "{{ {'at': as_timestamp(now()), 'open': true} | to_json }}"
+    mode: single

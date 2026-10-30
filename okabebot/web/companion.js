@@ -4,6 +4,7 @@ const native=location.search.includes('native=1');document.body.classList.toggle
 let secret=localStorage.getItem('companion-device');
 if(!secret){secret=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');localStorage.setItem('companion-device',secret);}
 let name=localStorage.getItem('companion-name')||(native?'Mac companion':'Phone companion'),state=null,registered=false,style='',lastSeen=0,motion=null,visible=false,stopped=false,pollTimer=null,pollGeneration=0;
+let displayApproved=false;
 const summon=document.querySelector('#summon');
 const status=document.querySelector('#status'),notice=document.querySelector('#notice'),mic=document.querySelector('#mic');
 document.querySelector('#screen-name').value=name;
@@ -24,7 +25,7 @@ summon.onclick=async()=>{
  catch(e){ui.notice(e.message);summon.disabled=!registered;}
 };
 async function poll(generation=pollGeneration){if(stopped||generation!==pollGeneration)return;try{
- if(!registered){const p=await request('/surfaces/register',{name,kind:native?'mac':'browser'});if(stopped||generation!==pollGeneration)return;document.querySelector('#device-name').textContent=p.name;ui.connected(p.approved);if(!p.approved){summon.disabled=true;setStatus('Approve this screen in the dashboard → Locations.');return;}registered=true;ui.restore();}
+ if(!registered){const p=await request('/surfaces/register',{name,kind:native?'mac':'browser'});if(stopped||generation!==pollGeneration)return;document.querySelector('#device-name').textContent=p.name;displayApproved=Boolean(p.approved);ui.connected(p.approved);if(!p.approved){summon.disabled=true;setStatus('Approve this screen in the dashboard → Locations.');return;}registered=true;ui.restore();}
  const s=await request('/surfaces/state');if(stopped||generation!==pollGeneration)return;if(s.environment?.assigned===false)throw Error('Assign a unique scene set to this screen in Locations.');if(style!==s.character.style){room.setAssets(await request('/surfaces/assets'),s.character.style);style=s.character.style;}
  if(stopped||generation!==pollGeneration)return;
  if(ui.error==='Screen unavailable. Check pairing and the current turn.')ui.error='';state=s;lastSeen=performance.now();const owned=['preparing','leaving_pi','entering_tv','tv','leaving_tv'].includes(s.phase);
@@ -89,6 +90,7 @@ async function recoverAudio(){
  try{await speaker.restart();ui.sound=true;ui.error='';ui.render();}catch(e){ui.sound=false;ui.render();ui.notice('Tap Enable sound to restore the speaker.');}
 }
 window.addEventListener('companion-wake',()=>recoverAudio());
+window.addEventListener('companion-display',event=>{if(!native||!displayApproved)return;request('/surfaces/display-signal',event.detail).catch(()=>{});});
 window.addEventListener('pageshow',event=>{if(event.persisted){stopped=false;registered=false;lastSeen=0;state=null;poll();recoverAudio();}});
 window.addEventListener('online',()=>{ui.error='';});
 poll();

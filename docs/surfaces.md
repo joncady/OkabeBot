@@ -218,8 +218,8 @@ than resetting preferences. Assign the second sets to other screens afterward.
 Strict rules reject movement or character changes if either the destination or
 that character's home has no assignment. Home selections cannot be cleared in
 the dashboard API. An occupied character's set cannot change until it moves
-elsewhere; assignment edits are blocked during movement. There are only two sets
-per character, so additional screens remain unassigned until more sets are added.
+elsewhere; assignment edits are blocked during movement. Each character has its original two sets plus a Desktop Nook. Additional screens
+remain unassigned when all unique sets are reserved.
 
 These guards prevent routine edits from stranding automatic returns. Hand-edited
 or corrupted private state can still create an unassigned home; repair its
@@ -236,3 +236,57 @@ no duplicate actor visible. The user also confirmed the phone character,
 microphone and routed audio during a real conversation turn.
 Alexa's APL artwork exporter accepts `--set`, but the Show prototype is not yet a
 registered spatial destination and does not participate in these reservations.
+
+## Cast destination audio
+
+Cast locations default to `audio_target: device`. Their existing scoped receiver
+page receives PCM through Web Audio and prebuffers the bounded utterance before
+joining it into one contiguous audio buffer, with local mouth animation. Other browser and Mac
+receivers keep low-latency chunked playback. The
+receiver capability identifies only the current Cast location; stale tokens and
+preview pages cannot receive speech. Audio must report ready before a reply can
+start; unavailable receivers fail without redirecting speech to the Pi.
+
+Locations exposes a separate per-screen voice gain (`audio_volume`, 0–100;
+Cast default 20). This is software gain, not the TV’s hardware volume. HDMI audio
+follows the TV’s configured speakers or linked sound system. Explicit Pi/Beam
+routing remains selectable. Announcement routing remains independent. Receivers
+attempt sound initialization on load; browsers that block autoplay show a small
+sound-enable button before speech is available.
+
+## Mac display wake following
+
+Little Lab observes native `NSWorkspace.screensDidWakeNotification` and
+`screensDidSleepNotification` independently of whole-system wake. A thirty-second
+coarse display-state heartbeat keeps HA availability current. There are no active
+application names, keystrokes, camera captures or identity claims. Starting the app
+or reloading its page reports a snapshot and never summons the character.
+
+The owner dashboard's **Mac screen following** controls enabled state, approved
+Mac destination, media protection, manual-location hold and cooldown. Defaults are
+off, media/manual holds respected and a sixty-second cooldown. An authenticated,
+approved Mac can submit `/surfaces/display-signal` for itself only; browser/phone,
+unapproved and dashboard credentials cannot impersonate that surface. A native
+flag in a URL alone grants no authority: the paired registry's adapter is checked.
+Fresh display-wake events use the existing shared handoff after checking current
+turn/recording/focus, media and transition state. Blocked or uncertain actions are
+consumed, not queued for surprise movement later. A successful attempt establishes
+the existing temporary BLE manual hold. Display sleep does not automatically
+send the character elsewhere; existing availability/recovery rules still apply.
+
+Current display state is process-local and expires after 75 seconds without a
+signal. The existing MQTT facade exposes it as a separate **Little Lab Mac → Mac
+display awake** binary sensor, unavailable when fresh state is unknown. It does not
+require the official HA Mac app. This operational sensor is not automatically
+added to Amadeus observation permissions; choose it explicitly in context feeds if
+wanted. Native app rebuilds currently use the existing signing method; stable
+signing/permission behavior remains a separate packaging concern.
+
+### Desktop Nook
+
+The `mac-desk` set is available to every built-in character as a third unique
+location. Its compact view is a transparent pixel desk with a monitor and mug;
+the room view uses a matching workstation and muted blue walls. It is an ordinary
+catalogue set, so the dashboard can reassign it or change its presentation using
+the same uniqueness and movement rules. It is not a hardcoded Mac destination ID.
+Adding a set never assigns it to existing installations automatically.

@@ -1,6 +1,7 @@
 import AppKit
 import WebKit
 import AVFoundation
+import CoreGraphics
 
 // Borderless panels still need keyboard focus for setup and accessibility.
 final class CompanionPanel: NSPanel {
@@ -49,6 +50,8 @@ final class CompanionApp: NSObject, NSApplicationDelegate, WKNavigationDelegate,
     var grip: PixelGrip!
     var activity: NSObjectProtocol?
     var wakeObserver: NSObjectProtocol?
+    var displayObservers: [NSObjectProtocol] = []
+    var displayTimer: Timer?
     var retry: DispatchWorkItem?
     let address = URL(string: ProcessInfo.processInfo.environment["OKABEBOT_SURFACE_URL"] ?? "http://localhost:8768/companion/?native=1")!
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -91,6 +94,12 @@ final class CompanionApp: NSObject, NSApplicationDelegate, WKNavigationDelegate,
             guard let self = self else { return }
             self.web.evaluateJavaScript("window.dispatchEvent(new Event('companion-wake'))", completionHandler: nil)
         }
+        for (notification, cause) in [(NSWorkspace.screensDidWakeNotification, "wake"), (NSWorkspace.screensDidSleepNotification, "sleep")] {
+            displayObservers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: notification, object: nil, queue: .main) { [weak self] _ in
+                self?.publishDisplay(cause)
+            })
+        }
+        displayTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in self?.publishDisplay("snapshot") }
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -126,6 +135,13 @@ final class CompanionApp: NSObject, NSApplicationDelegate, WKNavigationDelegate,
         // Enum-only projection to our trusted page; no capture or permission request.
         web.evaluateJavaScript("window.dispatchEvent(new CustomEvent('companion-permissions', {detail: {microphone: '\(state)'}}))", completionHandler: nil)
     }
+    func publishDisplay(_ cause: String) {
+        guard let url = web.url, url.scheme == address.scheme, url.host == address.host, url.port == address.port else { return }
+        let state = cause == "sleep" ? "off" : cause == "wake" ? "on" : (CGDisplayIsAsleep(CGMainDisplayID()) != 0 ? "off" : "on")
+        let value: [String: Any] = ["state": state, "cause": cause, "observed_at": Date().timeIntervalSince1970, "event_id": UUID().uuidString]
+        guard let data = try? JSONSerialization.data(withJSONObject: value), let json = String(data: data, encoding: .utf8) else { return }
+        web.evaluateJavaScript("window.dispatchEvent(new CustomEvent('companion-display', {detail: \(json)}))", completionHandler: nil)
+    }
     func loadPage() {
         web.load(URLRequest(url: address, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 8))
     }
@@ -141,7 +157,7 @@ final class CompanionApp: NSObject, NSApplicationDelegate, WKNavigationDelegate,
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { reconnect() }
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { reconnect() }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { retry?.cancel(); panel.title = "Little Lab"; NSLog("Companion page ready") }
-    func applicationWillTerminate(_ notification: Notification) { if let wakeObserver = wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }; if let activity = activity { ProcessInfo.processInfo.endActivity(activity) } }
+    func applicationWillTerminate(_ notification: Notification) { if let wakeObserver = wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }; displayTimer?.invalidate(); for observer in displayObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }; if let activity = activity { ProcessInfo.processInfo.endActivity(activity) } }
     // Permission dialogs are ordinary windows; the floating NSPanel is not.
     // AppKit's last-window rule would quit when a mic consent dialog closes.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

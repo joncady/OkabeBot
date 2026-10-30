@@ -1,4 +1,4 @@
-# Home integrations: Tuya, Ring, and Alexa
+# Home integrations: Tuya, Ring, Alexa, and context sources
 
 Spotify runs directly in OkabeBot. Home Assistant is a separate optional service for Tuya, Ring, and Alexa. The local start script below installs the container; account linking and automations still require setup. For the existing installation's enabled integrations and deployment locations, see the [current inventory](deployment.md); the steps here also cover new installations.
 
@@ -169,3 +169,54 @@ prevents a presence greeting and door greeting within three minutes from produci
 two cards. This shortcut can welcome someone leaving or a visitor opening the
 door; it is not identity or direction detection. It does not require remote phone
 connectivity. Install it only when that behavior is desired.
+
+## Expanding household context
+
+See [home context sources and guided discovery](home-context-sources.md) for the
+weather, temperature, device-health, LG ThinQ, media-player, printer and NFC/QR
+survey. Direct LG ThinQ integration uses the vendor cloud; linking its Alexa skill
+alone does not guarantee appliance entities in HA. Discovery does not authorize
+Amadeus history collection. New categories need separate private consent and schemas.
+
+## Optional morning phone cue
+
+[Morning summary setup](morning.md) describes the metadata-only package, exact
+private bindings, alarm/weather snapshots and separate owner collection/presentation
+controls. The interactive sensor must report a real off-to-on transition; periodic
+snapshots never trigger a screen wake. Room/destination IDs come from the registry.
+
+The optional Samsung preparation package and TV-state publisher are documented in
+[morning setup](morning.md#optional-tv-power-and-input-preparation). They use private
+per-TV bindings, local wake/input controls and a separate TV-state consent category;
+existing media playback metadata remains independent.
+
+## Companion device
+
+The optional [MQTT companion facade](ha-companion.md) registers the existing Pi
+as a grouped HA device with bounded controls and service-state entities. It keeps
+speech and animation under the existing controller and documents the remaining
+manual integrations and proposed HA ownership boundaries.
+
+For Ring history, add selected timestamp entities to `amadeus_entities` and map them in private `ha-bindings.json` as `"ring": {"sensor.example_last_activity": "activity", "event.example_motion": "motion", "event.example_ding": "doorbell"}`. Reload automations after editing the entity allowlist. This uses existing door/presence consent and retention; it does not capture video or identify deliveries.
+
+NFC scan-to-destination mapping uses a scoped HA publisher and the existing
+companion movement interface. See [NFC tag setup](nfc-tags.md); tag-writing occurs
+in the mobile HA app, while action configuration stays in the owner dashboard.
+
+
+### Readiness versus historical errors
+
+Expand the dashboard **Lab ready / Starting / Lab needs attention** badge for live
+component checks and startup completion time. The controller logs `Startup complete`
+once per controller process when its core dependencies answer successfully. HA core
+`RUNNING` and an integration entry marked loaded do not prove its push listener is
+healthy. Known listener failures, limited model/profile coverage and current-run
+callback history are reported separately; raw HA logs remain in Home Assistant.
+
+For the optional pinned Ring push workaround, run `python3 scripts/patch-ha-ring-push.py`
+first (dry run), then `--apply` only for its supported versions. Restart HA to load
+the file. Validate offline with `docker exec -i okabebot-home-assistant python - < scripts/check-ha-ring-push.py`.
+Backups live privately under `/config/.local-compat-backups`. Image replacement
+removes the workaround; see [deployment inventory](deployment.md#readiness-and-ha-push-diagnostics).
+An unknown Ring model needs verified upstream support, and a ThinQ unsupported
+profile needs cloud/provider support; suppressing those logs does not restore capability.

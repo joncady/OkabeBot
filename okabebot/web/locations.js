@@ -69,9 +69,13 @@ function locationsUI(surface){
    }character.onchange=setOptions;setOptions();sets.onchange=()=>save(place.id,{scene_selections:{[character.value]:sets.value||null}});row.append(sets);
   }
   const audio=document.createElement('select');audio.setAttribute('aria-label',`Audio destination for ${place.name}`);
-  const choices=[['default','Default speaker'],...(['browser','mac'].includes(place.adapter)?[['device','This device / linked speaker']]:[]),['pi','Pi speaker'],['beam','Beam']];
+  const choices=[['default','Default speaker'],...(['browser','mac','cast'].includes(place.adapter)?[['device','This device / linked speaker']]:[]),['pi','Pi speaker'],['beam','Beam']];
   for(const [id,label] of choices){const option=document.createElement('option');option.value=id;option.textContent=label;option.disabled=id==='beam'&&!surface.beam_audio_available;option.selected=(place.audio_target||'default')===id;audio.append(option);}
   audio.onchange=()=>save(place.id,{audio_target:audio.value});row.append(audio);
+  if(place.adapter==='cast'){
+    const gain=document.createElement('input');gain.type='range';gain.min=0;gain.max=100;gain.value=place.audio_volume??20;gain.setAttribute('aria-label',`Voice volume for ${place.name}`);
+    gain.onchange=()=>save(place.id,{audio_volume:Number(gain.value)});row.append(gain);
+  }
 
   if(["browser","mac","alexa"].includes(place.adapter))button("Forget",()=>save(place.id,{remove:true}));
   list.append(row);

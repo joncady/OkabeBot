@@ -24,14 +24,15 @@ def queue_greeting(
 
 def _queue_greeting(inbox, policy, away_since, arrived_at, trigger, recap_since):
     now = time.time()
-    if trigger not in ("presence", "door_after_time", "voice"):
+    if trigger not in ("presence", "ble_presence", "door_after_time", "voice"):
         raise ValueError("Invalid arrival trigger")
-    since = away_since if trigger == "presence" else recap_since
+    presence_trigger = trigger in ("presence", "ble_presence")
+    since = away_since if presence_trigger else recap_since
     if any(type(v) not in (int, float) or not math.isfinite(v) for v in (since, arrived_at)):
         raise ValueError("Invalid arrival timestamps")
     if not 0 <= now - arrived_at <= 180:
         raise ValueError("Arrival must be fresh")
-    if trigger == "presence" and (
+    if presence_trigger and (
         recap_since is not None or not 120 <= arrived_at - since <= 90 * 86400
     ):
         raise ValueError("Arrival must be fresh after at least two minutes away")
@@ -68,7 +69,7 @@ def _queue_greeting(inbox, policy, away_since, arrived_at, trigger, recap_since)
             titles.append(title)
     if titles:
         summary = (
-            (" While you were away: " if trigger == "presence" else " Today's important updates: ")
+            (" While you were away: " if presence_trigger else " Today's important updates: ")
             + "; ".join(titles[:3])
             + "."
         )
@@ -77,7 +78,7 @@ def _queue_greeting(inbox, policy, away_since, arrived_at, trigger, recap_since)
     else:
         summary = (
             " No important updates were recorded while you were away."
-            if trigger == "presence"
+            if presence_trigger
             else " No important updates were recorded today."
         )
     return inbox.publish(
@@ -87,6 +88,6 @@ def _queue_greeting(inbox, policy, away_since, arrived_at, trigger, recap_since)
         "important",
         ("voice-" + str(int(arrived_at // 180)))
         if trigger == "voice"
-        else ("return-" if trigger == "presence" else "door-day-") + str(int(since)),
+        else ("return-" if presence_trigger else "door-day-") + str(int(since)),
         expires_at=now + 180,
     )

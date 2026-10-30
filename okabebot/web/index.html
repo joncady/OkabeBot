@@ -12,9 +12,15 @@
         <div class="eyebrow">AI HARDWARE LAB</div>
         <h1>Your little lab.</h1>
       </div>
-      <button id="dev-toggle" class="small" aria-pressed="false">Dev</button>
+      <a id="home-assistant-portal" target="_blank" rel="noopener noreferrer" hidden>Home Assistant ↗</a><a href="/amadeus/">Amadeus setup</a><button id="dev-toggle" class="small" aria-pressed="false">Dev</button>
     </header>
     <main>
+      <details class="panel readiness" id="readiness-panel">
+        <summary><span id="readiness-icon" aria-hidden="true">◌</span> <span id="readiness-summary" role="status">Checking services…</span></summary>
+        <p id="readiness-startup" class="hint"></p>
+        <ul id="readiness-components"></ul>
+        <p class="hint">Live probes, not a cleared error log. HA core readiness does not guarantee every integration works. Database checks run at startup and hourly.</p>
+      </details>
       <section id="dashboard-auth" class="panel" hidden>
         <h2>Connect this browser</h2><p>Paste the authorized setup link once. This browser remembers access so you can bookmark this address.</p>
         <form id="dashboard-auth-form"><input id="dashboard-access" type="password" autocomplete="off" aria-label="Authorized setup link or access key" required><button>Connect</button></form>
@@ -40,6 +46,17 @@
           ><button id="stop">Stop response</button>
         </div>
         <p class="hint">Hold the Pi button, speak, then release.</p>
+        <button id="presence-follow" type="button" hidden>Enable Watch following</button>
+        <details><summary>Mac screen following</summary>
+        <form id="mac-screen-form"><label><input id="mac-screen-enabled" type="checkbox"> Move to Mac when its screen wakes</label>
+        <label>Mac destination<select id="mac-screen-destination"></select></label>
+        <label><input id="mac-screen-media" type="checkbox" checked> Respect media playback</label>
+        <label><input id="mac-screen-hold" type="checkbox" checked> Respect manual location hold</label>
+        <label>Cooldown (seconds)<input id="mac-screen-cooldown" type="number" min="10" max="3600" value="60"></label>
+        <button>Save Mac wake rule</button></form><p id="mac-screen-state" class="hint" role="status"></p></details>
+        <p id="presence-health" class="hint" role="status"></p>
+        <label><input id="amadeus-respect-dnd" type="checkbox" checked> Respect phone Do Not Disturb</label>
+        <p class="hint">Controls Amadeus proactive conversations only. Quiet hours, focus and media protections always apply. Does not change your phone settings.</p>
         <p id="system-health" class="hint" role="status"></p>
       </section>
       <section class="characters">
@@ -47,6 +64,8 @@
           <h2>Choose your companion</h2>
           <span class="muted">Same lab. New personality.</span>
         </div>
+        <label>Character flavor<select id="character-tone"><option value="plain">Plain</option><option value="subtle" selected>Subtle</option><option value="playful">Playful</option></select></label>
+        <label><input id="natural-tool-replies" type="checkbox" checked> Natural tool replies</label><p class="hint">Adds a short local model pass to summarize tool results. Turn off for faster, fixed acknowledgements.</p>
         <div class="character-grid">
           <button
             class="character-card"
@@ -84,6 +103,18 @@
         <p class="muted">Choose a Room or Companion view and one set for the selected character. A set belongs to only one location; unassign it before assigning it elsewhere. Set up scene world reserves a home set for every character in one step. Keep home assigned so the character can always return.</p>
         <div id="location-list"></div><p id="location-error" role="status"></p>
       </section>
+      <section id="nfc-tags" class="panel" hidden>
+<h2>NFC tags</h2><p>Tap a tag to call the companion to its mapped screen. First write the tag using Home Assistant’s Android app → Settings → Tags. No credentials are written to the sticker.</p>
+<button id="tag-register" type="button">＋ Scan to register</button><button id="tag-map-last" type="button" hidden>Map last scanned tag</button><p id="tag-learn-status" role="status"></p>
+<form id="tag-form" class="tag-form">
+<label>Scanned tag<input id="tag-id" readonly required placeholder="Scan a tag to fill this automatically"></label>
+<label>Name<input id="tag-name" required maxlength="80" placeholder="Living room companion"></label>
+<label>Action<select disabled><option>Call companion</option></select></label>
+<label>Destination<select id="tag-location" required></select></label>
+<label><input id="tag-enabled" type="checkbox" checked> Enabled</label><button id="tag-save" disabled>Save mapping</button>
+</form><p id="tag-status" role="status"></p><p id="tag-last-scan" class="muted"></p><div id="tag-mappings"></div>
+<a id="tag-ha-link" hidden target="_blank" rel="noopener noreferrer">Register/write tags in Home Assistant</a>
+</section>
       <section class="panel"><h2>Time to focus</h2><p id="focus-status" role="status">Choose a session. I’ll remind you to take a break.</p><div class="focus-actions"><button data-focus="5">5 min</button><button data-focus="25">25 min</button><button data-focus="50">50 min</button><button id="focus-cancel" hidden>Cancel timer</button></div></section>
       <section class="panel"><h2>Reminders</h2>
         <form id="reminder-form" class="preference-form">
@@ -145,7 +176,43 @@
       <div id="approvals"></div>
       <section id="developer" hidden>
         <div class="panel">
+          <h2>Amadeus text lab</h2>
+          <p class="muted">Text chat with the selected character and the existing approved tools. Replies stay silent; requested tool actions may affect devices. Clear preferences can be saved automatically; uncertain ones ask first. This owner-only session is separate from voice. Recent turns are held in private session context; the private session expires after ten minutes.</p>
+          <label><input id="amadeus-auto-accept" type="checkbox" checked> Auto-save clear preferences (text and voice)</label>
+          <label>Minimum confidence <input id="amadeus-confidence" type="number" min="0.9" max="1" step="0.01" value="0.9"></label>
+          <p class="muted">Evidence score, not a probability. Temporary, uncertain or sensitive statements still require confirmation.</p>
+          <label>This dashboard is at <select id="amadeus-chat-location"><option value="">This browser (automatic)</option></select></label>
+          <p id="amadeus-chat-location-status" class="muted"></p>
+          <div id="amadeus-text-messages" role="log" aria-live="polite"></div>
+          <form id="amadeus-text-form">
+            <label>Message <textarea id="amadeus-text-input" maxlength="1000" rows="3" required placeholder="Tell me about yourself, or share something you enjoy…"></textarea></label>
+            <button id="amadeus-text-send" type="submit">Send</button>
+            <button id="amadeus-text-reset" type="button">New conversation</button>
+          </form>
+          <p id="amadeus-text-status" role="status"></p>
+          <form id="amadeus-text-feedback">
+            <label>Private feedback <input id="amadeus-text-note" maxlength="1000" placeholder="What should improve? (optional)"></label>
+            <button name="rating" value="useful">Useful</button>
+            <button name="rating" value="unhelpful">Needs work</button>
+          </form>
+          <a href="/amadeus/">Review or forget saved preferences ↗</a>
+        </div>
+        <div class="panel">
           <h2>Developer controls</h2>
+          <label><input id="amadeus-shadow-enabled" type="checkbox"> Amadeus shadow trial (private log only)</label>
+          <p id="amadeus-shadow-status" class="muted" role="status"></p>
+          <label><input id="camera-greeting-enabled" type="checkbox"> Wave on approach</label>
+          <div class="settings-row">
+<label>Wave sensor<select id="greeting-source"><option value="camera">Camera + nearby BLE</option><option value="ultrasonic">Ultrasonic · no camera</option></select></label>
+<label>Near distance (mm)<input id="greeting-near" type="number" min="100" max="3000" value="800"></label>
+<label>Leave distance (mm)<input id="greeting-far" type="number" min="100" max="4000" value="1100"></label>
+<label>Dwell (seconds)<input id="greeting-dwell" type="number" min="1" max="30" value="2"></label>
+<label>Wave cooldown (seconds)<input id="greeting-cooldown" type="number" min="10" max="3600" value="120"></label>
+<label><input id="greeting-home" type="checkbox" checked> Require home presence for ultrasonic waves</label>
+<label><input id="greeting-media" type="checkbox"> Allow silent waves during media playback</label>
+<button id="greeting-save" type="button">Save wave settings</button></div>
+<p id="camera-greeting-status" class="muted" role="status"></p>
+          <p class="muted">Ultrasonic mode detects nearby objects without camera capture. Home presence is optional for silent ultrasonic greetings. Camera mode always requires home + nearby Watch evidence. Focus, busy state and the current Pi location still apply.</p>
           <label for="character">Character configuration</label
           ><select id="character">
             <option value="configured">Configuration default</option>
@@ -162,6 +229,20 @@
             Cloud speech sends reply text to OpenAI and requires separate API
             credits.
           </p>
+          <details><summary>Screen night mode and Mac startup</summary>
+<label><input id="night-enabled" type="checkbox"> Sleep Pi display on schedule</label>
+<label>Sleep <input id="night-start" type="time"></label>
+<label>Wake <input id="night-end" type="time"></label>
+<label>Timezone <input id="night-zone" placeholder="America/Los_Angeles"></label>
+<label>Temporary wake (minutes) <input id="night-minutes" type="number" min="1" max="60"></label>
+<button id="night-save">Save screen settings</button><button id="night-wake">Wake screen</button>
+<p>Touch or push-to-talk wakes the screen temporarily. Audio and sensors stay on.</p>
+<label><input id="startup-ac" type="checkbox"> Keep Mac awake on AC power</label>
+<label><input id="startup-docker" type="checkbox"> Open Docker after Mac login</label>
+<button id="startup-save">Save startup settings</button>
+<p>Services resume after login. Closing the lid or explicitly sleeping the Mac can still suspend them.</p>
+<p id="night-status" role="status"></p>
+</details>
           <div class="speaker-volume">
             <label for="speaker-volume">Speaker volume <output id="speaker-volume-value" for="speaker-volume">Unavailable</output></label>
             <div class="volume-controls"><input id="speaker-volume" type="range" min="0" max="100" step="5" value="20" disabled /><button id="speaker-mute" disabled>Mute</button></div>
@@ -200,6 +281,6 @@
       </section>
     <button id="dashboard-forget" class="small">Forget browser access</button></main>
     <footer>OKABEBOT <span>Make room for a little curiosity.</span></footer>
-    <script src="/dashboard-auth.js"></script><script src="/locations.js"></script><script src="/app.js"></script>
+    <script src="/dashboard-auth.js"></script><script src="/locations.js"></script><script src="/app.js"></script><script src="/amadeus-text.js"></script><script src="/tags.js"></script>
   </body>
 </html>

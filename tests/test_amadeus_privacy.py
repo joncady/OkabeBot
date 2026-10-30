@@ -29,6 +29,7 @@ class PrivacyGuardTests(unittest.TestCase):
             "amadeus-trials/session.json",
             "nested/participant-data/preferences.json",
             "trial-results/summary.md",
+            "downloads/amadeus-private-export.json",
         ):
             self.assertEqual(guard.private_paths([path]), [path])
 

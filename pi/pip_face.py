@@ -7,7 +7,9 @@ EMOTIONS = ("neutral", "happy", "curious", "concerned", "excited")
 ACTIVITIES = ("idle", "listening", "thinking", "speaking")
 
 
-def pip_shapes(emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idle", palette=None):
+def pip_shapes(
+    emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idle", palette=None, pose="rest"
+):
     out = []
 
     def add(kind, coords, fill, width=1):
@@ -77,6 +79,12 @@ def pip_shapes(emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idl
     if emotion in ("happy", "excited"):
         draw("ellipse", (145, 187, 170, 194), "#d79588")
         draw("ellipse", (310, 187, 335, 194), "#d79588")
+    if pose == "wave":
+        wag = round(math.sin(phase * 8) * 8)
+        draw("line", (380, 192, 410, 220, 424 + wag, 145), shell, 12)
+        draw("rectangle", (412 + wag, 119, 438 + wag, 149), shell)
+        for finger in range(3):
+            draw("rectangle", (412 + wag + finger * 9, 108, 418 + wag + finger * 9, 125), light)
     return [out[0]] + [
         (
             kind,

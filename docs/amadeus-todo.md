@@ -1,10 +1,13 @@
 # Amadeus trial checklist
 
-Specification: [amadeus.md](amadeus.md). Owner: OkabeBot controller. Status as of
-2026-10-27: offline foundation in source; no live collector or proactive output.
-The [GitHub roadmap](https://github.com/users/joncady/projects/4) contains seven
-Amadeus A0–A6 work packages; this checklist owns detailed
-acceptance and makes partial completion explicit.
+Specification: [amadeus.md](amadeus.md). Owner: OkabeBot controller.
+[Repository issues](https://github.com/joncady/OkabeBot/issues) own backlog status;
+the [roadmap board](https://github.com/users/joncady/projects/4) organizes those
+issues, including Amadeus A0–A8 work packages. This document contains detailed
+acceptance criteria, including historical unchecked items that require
+reconciliation with implemented code. It is not an installed-status report;
+use [deployment inventory](deployment.md) and the
+[capability log](amadeus-progress.md). See [roadmap maintenance](roadmap.md).
 
 ## Priority order for the next cycle
 
@@ -23,7 +26,8 @@ acceptance and makes partial completion explicit.
 - [x] Add offline supportive coaching policy and synthetic regressions.
 - [x] Guard known private artifact paths at commit/CI/release boundaries.
 - [x] Add declarative public capability/regression log; personal results remain local.
-- [ ] Wire invitation, establish/reaffirm goal choices and topic controls into onboarding.
+- [x] Wire invitation, establish/reaffirm choices and topic controls into owner-only onboarding.
+- [ ] Add detailed user-defined habit goals/cues after topic onboarding review.
 - [ ] Integrate proposal/ACK delivery with shared attention budget and authenticated scopes.
 - [ ] Test character wording, private surfaces, accessibility, and snooze/stop physically.
 - [ ] Evaluate optional response sentiment separately; do not treat it as consent.
@@ -39,15 +43,22 @@ acceptance and makes partial completion explicit.
 
 ## A1 — live observations and privacy controls
 
-- [ ] Add controller configuration schema: disabled by default, source capabilities,
-  subject bindings, retention, local-only mode and private storage location.
-- [ ] Bind HA/calendar/media/interaction adapters to authenticated source scopes.
-- [ ] Enforce payload schemas, field redaction, clock skew and backfill rules.
-- [ ] Expose timeline, explicit memory CRUD, pause/guest mode, export and forget UI.
+- [x] Add private setup schema for one profile, source permissions,
+  retention, quiet hours, timezone and coaching choices; capture starts paused.
+- [ ] Connect permissions to authenticated source bindings and network-denied local-only mode.
+- [x] Bind HA/calendar/media/interaction adapters to authenticated source scopes.
+- [x] Enforce payload schemas, field redaction, clock skew and backfill rules.
+- [x] Expose recent structured observations, explicit memory CRUD, pause/guest settings,
+  full-profile export and whole-store forgetting through owner-only routes.
+- [ ] Add timeline filters and source/evidence explanations once adapters exist.
 - [ ] Add voice/MCP recall and explicit preference tools through shared actions.
-- [ ] Schedule retention; integrate all future caches/derived artifacts with deletion.
+- [x] Schedule structured-event retention on the existing source-poll loop.
+- [ ] Integrate future caches/derived artifacts with deletion.
 - [ ] Test restart, source dropout, DST, duplicate and reordered callback behavior.
-- [ ] Verify no raw audio, transcript, account tokens or forbidden fields enter store.
+- [x] Verify synthetic source contracts exclude raw audio, transcripts, account tokens
+  and forbidden fields. Physical source acceptance remains a separate checkpoint.
+- [x] Test owner/surface/publish scope separation, cross-origin rejection, retention
+  shortening, protected consent, logout/revoked-access clearing and in-flight UI responses.
 
 ## A2 — context and shadow routines
 
@@ -105,3 +116,189 @@ acceptance and makes partial completion explicit.
   Keep the accepted destination/demo separate from unaccepted conversation.
 - Live consumer order history, automatic YouTube search collection, broad inbox
   ingestion, camera identity and any autonomous checkout remain out of this trial.
+
+## Deterministic morning checkpoint
+
+- [x] Typed, consent-gated phone-interactive/alarm and outdoor weather inputs.
+- [x] Configurable local hours/window, durable once/day rule and alarm rollover guards.
+- [x] Owner controls for units, card rotation/expiry and optional configured-TV movement.
+- [x] Selected-TV pixel card rail; pause/guest/revocation and stale-source fallbacks.
+- [ ] Private eligible-morning acceptance and user-directed configuration refinements.
+- [x] Two vertically stacked briefing cards with rotation, less unused padding and distance-readable typography.
+- [x] Grounded event countdowns, pending-important-notification counts and device-connection cards.
+- [x] Private opt-in named persona greeting and bounded spoken rundown, quiet-hours respecting and once per day.
+- [x] Optional supportive morning invitation with existing coaching consent and delivery limits.
+- [x] Manual re-show of an existing daily briefing, without a fabricated wake cue.
+- [ ] Forecasts and richer source-backed briefing prioritization.
+- [ ] Additional card sources and travel suppression.
+
+This rule does not complete routine learning or general proactive delivery work.
+See [morning.md](morning.md); personal trial observations remain private.
+
+### TV preparation and household state
+
+- [x] Optional destination-bound wake/input preparation with acknowledged input readiness.
+- [x] Independently consented HA TV power/availability changes and snapshots.
+- [ ] Broader standby/wrong-input device coverage and recovery acceptance.
+- [ ] Define evidence rules for TV activity intervals; never equate power with personal viewing.
+
+## Initial shadow learner and replay checkpoint
+
+- [x] Add prior-day cue-window learner, observed-day support and evidence references.
+- [x] Add default-off owner previews and explicit routine feedback; no general delivery.
+- [x] Add network-denied temporal replay and separate hidden-truth scoring tools.
+- [x] Preserve title-clearing stop state without interpreting it as completion.
+- [ ] Learn or explicitly configure receptive times separately from activity times.
+- [ ] Unify morning, coaching and learned proposals under one attention ledger.
+- [ ] Add explicit defer/dismiss scope for morning speech versus silent cards.
+- [ ] Add source coverage/health evidence and shift-aware, alarm-relative wake cues.
+- [x] Add shadow gates for explicit calendar end/busy coverage, DND/focus and shared-room context.
+- [ ] Validate those gates against actual selected HA entities before live delivery.
+- [ ] Add a fresh streaming-availability catalogue adapter with explicit provider entitlements.
+- [ ] Distinguish recipient identity from shared room/TV activity before personalized proactive delivery.
+- [ ] Evaluate stale sensors, multi-player disagreement and household ambiguity without fabricating availability.
+- [ ] Expand realistic household/ad/autoplay, DST, travel and sparse-data holdouts.
+- [ ] Confirm privacy/surface and recipient identity gates before any general notifications.
+
+Synthetic replay cannot replace the human acceptance checkpoints or prove an
+available streaming catalogue, a preferred title, a health need or observed sleep.
+- [ ] Distinguish publisher heartbeat from underlying phone/sensor last-seen time;
+  a refreshed HA cached value must not silently prove a device is still reporting.
+- [ ] Add explicit helpful/later/not-me card feedback without inferring sentiment
+  or health consent from silence, phone activity or shared media.
+- [ ] Validate wake intent with an alarm-dismissal or explicit sleep-mode cue;
+  sustained DND can also be work focus and does not prove sleep or waking.
+- [ ] Add retained/requestable entertainment shortlists and a browsing-intent
+  signal before broadening autonomous media suggestions.
+- [ ] Evaluate an operational-day agenda for overnight shifts, explicitly dating
+  commitments beyond midnight instead of silently assuming a midnight boundary.
+- [ ] Distinguish verified companion-owned rendering sessions from entertainment
+  playback before sharing attention gates with the live Cast morning workflow;
+  do not use a broad TV-power or app-name bypass.
+- [ ] Make legacy same-time event ordering deterministic and retain frozen replay
+  output hashes; input hashes alone do not cover randomly generated event IDs.
+- [ ] Add a separately consented explicit-intent adapter for preparation and media
+  choice requests (for example HA buttons or NFC), instead of treating occupancy
+  or focus-off as a request. Keep user-initiated help distinct from proactive delivery.
+- [ ] Separate preparation, retained passive cards, presentation leases and alerts;
+  expose why no candidate was created, not only why a candidate was suppressed.
+- [ ] Add explicit per-channel quiet rules for passive screen information versus
+  spoken/attention-seeking delivery; never infer an exception from a desired goal.
+- [ ] Display observation age and busy/optional calendar status; calibrate freshness
+  against provider reporting cadence rather than calling a refreshed cache current.
+- [ ] Scope attention to verified recipient/destination areas before household-wide
+  playback gates are relaxed; unknown room or viewer identity remains explicit.
+- [x] Wire the bounded first-door preference trial into the local conversation harness with explicit
+  opt-in, skip/stop and confirmation before remembering. Keep temporary
+  mood/time constraints in the conversation, not durable preference fields; use
+  hobbies/goals only through supported recommendation capabilities. Revalidate
+  attention/quiet/media state before the invitation, with a bounded daily trial budget.
+
+- [ ] Extend proactive conversations with verified room/recipient localization, correction of individual confirmed preferences, shared prompt budgets and private real-use feedback.
+
+## Home map and room-aware delivery (proposed)
+
+- [ ] Read-only HA floor/area/device/entity registry sync with event-driven refresh,
+  stable identity reconciliation and a self-service unassigned-device review tray.
+- [ ] Home-map dashboard with acknowledged character position, explicit/inferred/
+  unknown person-device states, evidence age, floor tabs and room detail panels.
+- [ ] Separate physical room adjacency from per-room screen orientation; portable
+  displays inherit device room estimates without silently changing the house plan.
+- [ ] Calibrated HA room presence in shadow; evaluate fixed BLE proxies/Bermuda,
+  distinguishing device proximity, household occupancy and actual person identity.
+- [ ] Optional native Mac BLE room estimate from known fixed anchors; front-loaded
+  permissions, mobile-versus-fixed scanner roles, sleep expiry and calibration.
+- [ ] Opt-in room-aware audio routing after wrong-room, ambiguity and stale-signal
+  acceptance, preserving media/focus/quiet/permission and character handoff rules.
+
+See [home-map design](home-map.md). Portal navigation is implemented separately;
+registry sync, map tracking and Mac BLE scanning remain planned.
+
+## HA companion follow-up
+
+- Import approved HA area/device bindings into the private home map; keep stable destination IDs.
+- Export calibrated BLE proximity and explicit Pi power/temperature telemetry through the bounded facade.
+- Consolidate selected HA event publishers after parity tests; retain one owner for speech and screen handoffs.
+
+## Next reliability and destination checkpoints
+
+1. [Presence health and lifecycle controls (#15)](https://github.com/joncady/OkabeBot/issues/15):
+   expose scanner heartbeat, stale/ambiguous evidence, pause reasons and explicit
+   enable/pause state before unattended following. Reconnect handling is not proof
+   that an unresponsive remote scanner is healthy. Add manual-move precedence.
+2. [Approved HA room/device sync (#14)](https://github.com/joncady/OkabeBot/issues/14):
+   supported read-only API, stable area identity and a self-service mapping review.
+3. [Multiple Pi display destinations (#13)](https://github.com/joncady/OkabeBot/issues/13):
+   per-screen transport and ready acknowledgment, scene reservation, single actor
+   ownership, optional local audio, and destination-loss recovery. The current
+   registry intentionally supports one Pi display; an extra scanner is not another
+   configured screen. Existing display transport can be replaced independently,
+   but keeping both Pi screens requires this work.
+4. Room-aware Amadeus delivery after the above physical acceptance: use qualified
+   location evidence and explicit fallback policy; preserve focus/media/quiet rules.
+
+Completed source reliability work: bounded MQTT queues, asynchronous initial broker
+connection and reconnect backoff, interruptible adapter shutdown, bounded scanner
+cleanup, and controller-outage pause with fresh-dwell recovery. Only the read-only
+HA bridge updates are installed; updated BLE trial lifecycle awaits physical
+acceptance. Device-follow trial mode remains distinct from person localization.
+
+
+Presence-control checkpoint: owner follow controls, current health/pause status,
+manual holds and persisted request cooldowns are implemented in the home bridge.
+Amadeus live delivery uses the qualified Watch estimate; read-only HA room-map
+sync and multiple Pi screens remain next milestones. Complete multi-direction,
+manual-override, disconnect/reconnect and interrupted-playback physical acceptance
+before treating following as dependable unattended person localization.
+
+## Next private shadow checkpoint
+
+- Review several ordinary days of private candidate and no-candidate decisions.
+- Choose additional context integrations with the owner before adding consented
+  sources: task/to-do lists, selected charging/focus signals, appliance events,
+  recipe/shopping context, optional travel time and verified media catalogue.
+- Keep candidate evaluation distinct from any future live delivery rollout; do not
+  infer success or helpfulness from silence or copy participant reports here.
+
+## Context-feed onboarding follow-up
+
+- [x] Declarative read-only adapters for HA tasks/device activity/ThinQ/Mealie,
+  Sound Transit rail alerts and Trakt recent watch history; owner-editable setup.
+- [x] Synthetic consent, failure, freshness, normalized-wire and conversation checks.
+- [ ] [#16](https://github.com/joncady/OkabeBot/issues/16): Guided HA entity picker with room/provider labels and connection checks.
+- [ ] [#17](https://github.com/joncady/OkabeBot/issues/17): Trakt interactive authorization, safe refresh and configurable/paginated
+  history import; preserve explicit partial coverage and household attribution.
+- [ ] Help owners connect Google Tasks OAuth, optional Mealie and Trakt accounts;
+  verify real entities without copying participant results into public artifacts.
+- [ ] Design user-controlled relevance/delivery for transit/task/meal suggestions;
+  existing feed-derived opportunities stay in silent shadow evaluation.
+
+
+## Current release checkpoint
+
+- Implemented: owner-requested HA room/entity preview, domain-filtered entity
+  suggestions and private destination-to-area bindings. Room renames preserve IDs;
+  removed assignments require review. Explicit refresh is supported; continuous
+  registry subscriptions and the complete spatial map remain open (#14).
+- Implemented: bounded selected-feed connection checks, Trakt device authorization
+  and persisted rotating refresh credentials. Provider account consent, selected
+  entities and real-account acceptance remain owner setup checkpoints (#16, #17).
+- Physical checks outstanding: automatic ultrasonic approach wave and new-screen
+  touch accuracy. Existing sensor API health does not establish those behaviors.
+- Source setup outstanding: Google Tasks OAuth,
+  selected ThinQ entities and optional Trakt/Mealie account configuration. Do not
+  enable unrelated feeds or infer completion from available adapter code.
+
+
+## Collection/recording consolidation checkpoint
+
+Implemented stable-ID current items and observed revisions, configurable numeric
+signal aggregates, calendar occurrence identity and checkpoint compaction, paged
+source retrieval tools, metadata-only prompt/shadow feed context, and lifecycle
+coverage for retention, revoke, export and forgetting. Small entity-selection
+limits no longer serve as prompt budgets. Existing source choices remain explicit.
+
+Remaining consolidation and raw recording/log budgets: GitHub #18. Provider-specific
+pagination/custom Trakt list coverage also remains part of #17. These are not
+claims of complete cross-provider history, automatic identity fusion or new capture
+permissions. Validation uses invented fixtures; private outputs are not public evidence.

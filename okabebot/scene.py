@@ -75,3 +75,8 @@ def set_deploying(active):
 
 def set_music(music):
     return rpc({"op": "music", "music": music})
+
+
+def wave(*, allow_during_media=False):
+    """A bounded silent visual greeting; never presses the physical SwitchBot."""
+    return rpc({"op": "gesture", "gesture": "wave", "allow_during_media": allow_during_media})

@@ -1,6 +1,6 @@
 # Amadeus: local proactive companion trial
 
-Status: **proposed trial; offline foundation implemented, live collection disabled**.
+Status: **private onboarding and explicit memory controls available; live collection disabled**.
 Decision date: 2026-10-27. Amadeus is the learning and memory subsystem of
 OkabeBot, named in reference to Steins;Gate 0. It is not another character or a
 replacement for the existing local conversation and shared action interfaces.
@@ -42,8 +42,8 @@ Initial topics are optional movement breaks, winding down/rest, drink breaks and
 meal planning. The user chooses their goal, cues and comfortable schedule; no
 numeric health target, diet, weight goal or medical plan is inferred. Suggestions
 must accommodate the user's stated limitations and preferences. A missed routine
-is not a failure or evidence of poor character. Establish/reaffirm is a future UI
-goal-setting step, not an implemented inference of what a user should change.
+is not a failure or evidence of poor character. Establish/reaffirm and topics are
+explicit setup choices; detailed user-defined goals/cues remain a later layer.
 
 Tone is invitational and easy to decline: “Would a short movement break feel good?”
 Avoid “you should,” missed-streak warnings, comparisons, food morality, guilt,
@@ -121,10 +121,9 @@ bounded structured payload, provenance and expiry. Late events are stored as
 history, not replayed as current triggers. Source disappearance means unknown,
 not away/asleep. Reconnect/backfill must not replay greetings or actions.
 
-The first offline store accepts only explicitly allowlisted source names. It is
-not an authenticated ingestion server. Future live adapters must bind source
-identity and subject permissions at the controller boundary; a caller-supplied
-source string or subject is not authorization.
+The store accepts only explicitly allowlisted source names. Internal source hooks
+apply saved consent; Home Assistant uses a separate write-only credential and exact
+private entity bindings. Caller-supplied source or subject is not authorization.
 
 Planned high-level operations:
 
@@ -138,8 +137,10 @@ Planned high-level operations:
 | `propose(context)` | Reviewable candidate with reason, expiry and permission requirement |
 | `feedback(proposal, outcome)` | Distinguish acceptance, timing rejection and preference rejection |
 
-Only the offline store/CLI subset is implemented initially. Do not advertise
-these planned contracts as available dashboard, voice or MCP tools yet.
+The store/CLI and owner-only setup/memory dashboard subset are implemented.
+Shadow metadata adapters are implemented; semantic recall, explanations, planning
+and voice/MCP memory tools remain planned. Saving permissions alone leaves capture
+paused.
 
 ## Memory model
 
@@ -303,6 +304,47 @@ are measured separately from voice synthesis. No outcome is assumed in advance.
 No new provider account, paid resource, store cart, sensor capture or live
 learning was enabled to prepare this specification.
 
+## Private setup checkpoint
+
+Open `/amadeus/` on the same origin as the existing dashboard. It reuses remembered
+owner access; a new browser needs the existing dashboard setup key/link. Use HTTPS
+on an untrusted network. Companion/surface and publish-only tokens are rejected.
+Do not share owner access with visitors to let them view the character.
+
+Choose a private profile ID (not a full name), source permissions, IANA
+timezone, quiet hours, observation retention, and optional coaching topics/mode.
+Confirmed source choices may be prepared as a private draft; no personal draft is
+shipped with the repository. Nothing begins collecting after a save. The page
+reports shadow availability separately from active capture; live nudges remain off.
+Setup collapses after saving and can be reopened with Review private choices.
+
+Explicit preferences use `user.*` keys; saving an existing key corrects it. They
+are not inferred facts. Coaching consent uses dedicated controls, not arbitrary
+memory keys. Pause/guest choices persist and gate every observation write.
+Stop/snooze survives unrelated setup edits; only explicit resume or a deliberate
+new topic opt-in changes coaching authorization. No voice/sentiment is analyzed.
+
+The recent observations view is capped at 20 records; private export includes all
+unexpired events and preferences for the configured profile plus its setup and
+unattributed household observations, shown separately from personal memory.
+Downloaded exports are personal records: keep them local/private and outside Git.
+Known export filenames are ignored and blocked by publication/release guards.
+Whole-store forgetting removes setup, draft, consent, explicit preferences,
+observations, compact context projections, saved feed credentials and the private
+text-feedback sidecar. It cannot erase downloaded copies or external backups.
+External environment credentials and file-based integration/entity bindings remain;
+capture is blocked until new setup consent.
+
+Shorter retention immediately deletes affected observations; longer retention does
+not extend existing event deadlines or restore deleted data. Requests prune expiry;
+the existing source-poll loop also prunes expiry, including while paused.
+The dedicated HA receiver is write-only and rejects unbound entities. One private profile is supported; changing
+its ID requires forgetting existing Amadeus state to avoid silent reassignment.
+Equal quiet-hour start/end should mean all-day quiet when future policy is wired.
+
+Engineering verification uses synthetic HTTP/browser fixtures only. Do not write
+personal setup choices, screenshots, exports or trial outcomes into public docs.
+
 ## Running the offline foundation
 
 From an installed development environment, use a disposable private directory:
@@ -327,3 +369,34 @@ If no source timestamp is supplied, retries retain the first local observation t
 Use fixtures rather than personal imports before checkpoint A. No background task
 is installed by these commands. Run `python -m unittest tests.test_amadeus -v` for
 isolated persistence, privacy-boundary, retention and CLI checks.
+
+## Shadow source contracts
+
+- Calendar reuses the existing timed-event feed and its two-day horizon; all-day
+  events are not supplied by that feed. Only complete snapshots define current
+  plans. Historical/partial snapshot rows do not prove attendance or cancellation.
+- Media stores bounded app/title/state and hashed content references. Freshness
+  checks reject stale snapshots; no completion, liking or personal viewing is inferred.
+- Interaction hooks store submission/turn-finished metadata without text, audio,
+  transcripts or success claims. Household identity stays unknown.
+- HA state changes are restricted to privately bound door/presence entities.
+  Unavailable states become unknown; no GPS, attributes or zone names are stored.
+- Setup is paused by default. Resume explicitly in the private UI to collect.
+  Source transport availability is distinct from live event acceptance.
+
+For HA setup, copy `examples/home-assistant/amadeus.yaml` into the private package
+folder. Set `amadeus_observation_url`, `amadeus_source_token` and `amadeus_entities`
+in private HA secrets; match entities in private `ha-bindings.json` (`door` and
+`presence` arrays). Use a random credential of at least 32 characters in the private
+`ha-source-token` file (0600). Reload RESTful Command and Automations after checking
+configuration. Keep owner dashboard credentials out of this publisher.
+
+## Deterministic morning rule
+
+An independently opt-in [first-screen/alarm morning rule](morning.md) now connects
+bounded phone and outdoor weather metadata to selected-TV weather/calendar cards.
+It is a configured automation, not evidence of learned habits or sleep. Core
+source and presentation defaults remain off; private owner configuration can
+activate them. Routine inference, coaching and general proactive delivery gates
+remain separate. The rule's private human checkpoint is a real eligible morning;
+configuration refinements must not publish personal observations or outcomes.

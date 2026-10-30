@@ -5,6 +5,8 @@ from .profiles import current_character
 import array
 import base64
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
+from .transport import device
 import fcntl
 import json
 import math
@@ -164,43 +166,75 @@ def speak(text, emotion="neutral", intensity=None, voice="default", purpose="rep
                 duration_seconds=seconds,
                 audio_target="beam",
             )
-        if speech.engine() in ("openai", "local"):
+        if speech.engine() in ("openai", "local") and purpose != "announcement":
             return stream_speak(text, emotion, intensity, voice, metrics)
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "speech.wav"
             selected = synthesize(text, emotion, voice, path)
             metrics["synthesis_s"] = round(time.time() - speech_started, 3)
+            metrics["playback_mode"] = "buffered_file"
             timing.write("speech", metrics)
             levels, seconds = envelope(path)
-            start = time.time() + get_config()["speech"]["sync_lead_seconds"]
-            with ThreadPoolExecutor(max_workers=2) as pool:
-                face = pool.submit(
-                    display_rpc,
-                    {
-                        "op": "character",
-                        "emotion": emotion,
-                        "intensity": intensity,
-                        "palette": current_character()["palette"],
-                        "style": current_character()["style"],
-                        "activity": "speaking",
-                        "envelope": levels,
-                        "start_at": start,
-                    },
-                )
-                audio = pool.submit(
-                    voice_rpc,
-                    {
-                        "op": "play",
-                        "start_at": start,
-                        "wav_base64": base64.b64encode(path.read_bytes()).decode(),
-                    },
-                )
-                try:
-                    played = audio.result()
-                except Exception:
-                    display_rpc({"op": "character", "emotion": emotion, "activity": "idle"})
-                    raise
-                face_result = face.result()
+            connection = (
+                device("voice").connect(timeout=45)
+                if purpose == "announcement"
+                else nullcontext(voice_rpc)
+            )
+            with connection as audio_call:
+                prepared = None
+                server_time = None
+
+                def checked_audio(payload):
+                    response = audio_call(payload)
+                    if response.get("error"):
+                        raise RuntimeError(response["error"])
+                    return response
+
+                if purpose == "announcement":
+                    upload_started = time.monotonic()
+                    prepared_result = checked_audio(
+                        {
+                            "op": "audio_prepare",
+                            "wav_base64": base64.b64encode(path.read_bytes()).decode(),
+                        }
+                    )
+                    prepared = prepared_result["prepared_id"]
+                    server_time = prepared_result.get("server_time")
+                    metrics["upload_s"] = round(time.monotonic() - upload_started, 3)
+                lead = get_config()["speech"]["sync_lead_seconds"]
+                if prepared:
+                    lead = max(3, lead)
+                start = (server_time if server_time is not None else time.time()) + lead
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    face = pool.submit(
+                        display_rpc,
+                        {
+                            "op": "character",
+                            "emotion": emotion,
+                            "intensity": intensity,
+                            "palette": current_character()["palette"],
+                            "style": current_character()["style"],
+                            "activity": "speaking",
+                            "envelope": levels,
+                            "start_at": start,
+                        },
+                    )
+                    audio = pool.submit(
+                        checked_audio,
+                        {"op": "play_prepared", "start_at": start, "prepared_id": prepared}
+                        if prepared
+                        else {
+                            "op": "play",
+                            "start_at": start,
+                            "wav_base64": base64.b64encode(path.read_bytes()).decode(),
+                        },
+                    )
+                    try:
+                        played = audio.result()
+                    except Exception:
+                        display_rpc({"op": "character", "emotion": emotion, "activity": "idle"})
+                        raise
+                    face_result = face.result()
             metrics["total_s"] = round(time.time() - speech_started, 3)
             metrics["audio_s"] = seconds
             metrics["playback_started_at"] = played.get("playback_started_at")

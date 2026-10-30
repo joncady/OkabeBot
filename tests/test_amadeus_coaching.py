@@ -108,3 +108,14 @@ class CoachingTests(unittest.TestCase):
         self.assertEqual(self.coaching.plan("person-a", "rest", **self.context)["reason"], "paused")
         with self.assertRaises(ValueError):
             self.coaching.configure("person-a", choice="choose_topics", topics=[])
+
+    def test_only_explicit_resume_can_reenable_existing_chosen_topics(self):
+        self.coaching.configure("person-a", choice="no")
+        with self.assertRaises(ValueError):
+            self.coaching.feedback("person-a", "resume")
+        self.enable()
+        self.coaching.feedback("person-a", "stop")
+        self.coaching.feedback("person-a", "helpful")
+        self.assertFalse(self.coaching.plan("person-a", "movement", **self.context)["allowed"])
+        self.coaching.feedback("person-a", "resume")
+        self.assertTrue(self.coaching.plan("person-a", "movement", **self.context)["allowed"])

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Amadeus · Private setup</title>
+<link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/surface-theme.css"><link rel="stylesheet" href="/amadeus.css"></head>
+<body><header><div><div class="eyebrow">AMADEUS</div><h1>A little understanding.</h1></div><a href="/">← Lab</a></header>
+<main>
+<section id="dashboard-auth" class="panel" hidden>
+<h2>Private owner access</h2><p>Use your existing dashboard setup link or access key. Paired companion screens cannot open personal memory.</p>
+<form id="dashboard-auth-form"><input id="dashboard-access" type="password" autocomplete="off" aria-label="Dashboard setup link or access key" required><button>Connect</button></form>
+<p id="dashboard-auth-error" role="status"></p></section>
+<p id="amadeus-status" role="status">Connecting privately…</p>
+<button id="amadeus-review" hidden>Review private choices</button>
+<section id="amadeus-setup" class="panel" hidden>
+<h2>Choose what belongs in your lab</h2><p>Choose observation permissions, then explicitly resume shadow collection below when ready. Saving alone does not resume collection. Predictions and nudges stay off.</p>
+<form id="amadeus-form">
+<div class="amadeus-grid"><label>Private profile ID<input id="profile" value="primary" pattern="[a-z][a-z0-9_.-]{0,79}" maxlength="80" required></label>
+<label>Timezone<input id="timezone" placeholder="Area/City" required></label>
+<label>Observation retention (days)<input id="retention" type="number" min="1" max="365" value="30" required></label>
+<label>Quiet hours begin<input id="quiet-start" type="time" value="22:00" required></label>
+<label>Quiet hours end<input id="quiet-end" type="time" value="08:00" required></label></div>
+<fieldset><legend>Observation permissions</legend><p>Nothing is selected initially. Shared door/media signals describe household context; they do not prove who is present.</p><div id="sources" class="amadeus-options"></div></fieldset>
+<fieldset><legend>Optional, gentle habit support</legend>
+<p>Would you like help establishing or reaffirming habits you choose? No guilt or streak pressure. You can change your mind.</p>
+<label class="amadeus-option"><input type="radio" name="coaching" value="choose_topics"> Choose topics</label>
+<label class="amadeus-option"><input type="radio" name="coaching" value="not_now" checked> Not now</label>
+<label class="amadeus-option"><input type="radio" name="coaching" value="no"> No</label>
+<div id="coaching-options" hidden><label>Support style<select id="coaching-mode"><option value="establish">Establish a habit</option><option value="reaffirm">Reaffirm a habit</option></select></label>
+<div id="topics" class="amadeus-options"></div><p>Topics only—no health history needed. Speech and audio sentiment are off.</p></div></fieldset>
+<button class="primary" type="submit">Save private choices</button>
+</form></section>
+<section id="amadeus-controls" class="panel" hidden><h2>Your boundaries</h2>
+<form id="conversation-form"><label class="amadeus-option"><input id="conversation-enabled" type="checkbox"> Optional door-armed conversations</label>
+<p>One invitation after the first door opening, only in a quiet available window. Answer with push-to-talk; there is no continuous recording. Phone DND, focus, media, quiet hours, pause and guest mode protect your time. Door opening is a home assumption, not identity detection.</p>
+<label>Starting location<select id="conversation-destination"></select></label><button>Save conversation choice</button><button type="button" id="conversation-resume">Resume reply</button></form>
+<div class="controls"><button id="amadeus-pause" aria-pressed="true">Learning paused</button><button id="amadeus-guest" aria-pressed="false">Guest mode off</button></div>
+<p>Only permitted metadata is observed. Pause and guest mode stop new observations and proactive conversations. Routine predictions stay in shadow. Optional conversations and morning speech have separate controls.</p>
+<div class="controls"><button id="coaching-later">Snooze coaching</button><button id="coaching-stop">Stop coaching</button><button id="coaching-resume">Resume chosen topics</button></div>
+<p id="coaching-state"></p></section>
+<section id="amadeus-morning" class="panel" hidden><h2>Morning window</h2>
+<p>First screen-on near an alarm prepares one private summary per day. This is a deterministic cue, not sleep detection. TV presentation is separately opt-in; it can interrupt whatever is playing.</p>
+<form id="morning-form"><label class="amadeus-option"><input id="morning-enabled" type="checkbox"> Prepare morning summaries</label>
+<div class="amadeus-grid"><label>Start hour (local)<input id="morning-start" type="number" min="0" max="23" value="4" required></label><label>End hour (local)<input id="morning-end" type="number" min="1" max="24" value="12" required></label><label>Temperature unit<select id="morning-unit"><option>°C</option><option>°F</option></select></label><label>TV destination<select id="morning-destination"></select></label>
+<label>Minutes before alarm<input id="morning-before" type="number" min="0" max="180" value="30" required></label>
+<label>Minutes after alarm<input id="morning-after" type="number" min="1" max="240" value="90" required></label>
+<label>Rotate cards every (seconds)<input id="morning-rotation" type="number" min="5" max="60" value="12" required></label>
+<label>Summary available (minutes)<input id="morning-duration" type="number" min="5" max="240" value="120" required></label></div>
+<label class="amadeus-option"><input id="morning-present" type="checkbox"> Automatically move to the selected TV on the morning cue</label>
+<button>Save morning configuration</button></form><p id="morning-status"></p>
+<button id="morning-test-tv" type="button" disabled>Test TV power and input</button><p id="morning-test-status" role="status"></p>
+<form id="morning-voice-form"><h3>Spoken briefing</h3><p id="morning-person"></p>
+<label class="amadeus-option"><input id="morning-spoken" type="checkbox"> Short character greeting and grounded rundown once per day</label>
+<label>Spoken name override (optional with Home Assistant person)<input id="morning-name" maxlength="60" autocomplete="given-name"></label>
+<label class="amadeus-option"><input id="morning-coaching" type="checkbox"> Include one invitation from my opted-in coaching topics on this screen and in speech</label>
+<label class="amadeus-option"><input id="morning-quiet-override" type="checkbox"> Allow morning speech during quiet hours</label>
+<p>Speaks from the destination TV or its linked audio output. Adjust its voice gain in Locations. Coaching stop/snooze and source consent still apply. No health or mood inference.</p>
+<button>Save spoken briefing</button></form>
+<button id="morning-show" type="button">Show today’s briefing · speak once if enabled</button><p id="morning-show-status" role="status"></p>
+<details><summary>Private card preview</summary><pre id="morning-preview"></pre></details></section>
+<section id="amadeus-feeds" class="panel" hidden><h2>Context feeds</h2><p>Each feed is read-only. Enabling explicitly permits its metadata; global pause, guest mode and retention still apply. Credentials stay in the controller’s private storage. No feed speaks or controls devices.</p><button id="feeds-refresh" type="button">Refresh connection status</button><div id="feed-list"></div><details><summary>Current private source context</summary><pre id="feed-context"></pre></details></section>
+<section id="amadeus-habits" class="panel" hidden><h2>Routine previews</h2>
+<p>Learn approximate cue windows from prior days of permitted observations. These are household patterns, not proof of sleep, identity or preference. Suggestions stay here; no screen movement, speech or device actions.</p>
+<label class="amadeus-option"><input id="habits-enabled" type="checkbox"> Enable private shadow previews</label>
+<button id="habits-refresh" type="button">Refresh preview</button><p id="habits-state" role="status"></p><ul id="habits-routines"></ul>
+<details><summary>Current proposals and evidence</summary><pre id="habits-preview"></pre></details></section>
+<section id="amadeus-memory" class="panel" hidden><h2>Explicit memory</h2>
+<p>Only what you choose to save. Personal calendar observations and unattributed household context appear separately.</p>
+<form id="memory-form"><label>Preference key<input id="memory-key" value="user." pattern="user\.[a-z0-9_.-]+" required></label>
+<label>Preference<input id="memory-value" maxlength="1000" placeholder="A preference you want remembered" required></label><button>Remember</button></form>
+<ul id="memory-list"></ul><details><summary>Recent structured observations</summary><pre id="event-list"></pre><h3>Household context · identity unknown</h3><pre id="household-list"></pre></details>
+<button id="amadeus-export">Download private records</button><p>Exports include personal settings and records. Keep downloaded files private; do not commit or share them.</p>
+<details><summary>Forget all Amadeus data</summary><p>Removes this store’s preferences, setup, coaching consent and observations. This does not erase downloaded exports, external backups or unrelated app data.</p>
+<label class="amadeus-option"><input id="forget-confirm" type="checkbox"> I want to forget all Amadeus data</label><button id="amadeus-forget">Forget Amadeus data</button></details></section>
+<button id="dashboard-forget" class="small">Forget browser access</button></main>
+<script src="/dashboard-auth.js"></script><script src="/amadeus.js"></script></body></html>

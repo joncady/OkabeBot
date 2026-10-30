@@ -1,6 +1,14 @@
 """Small-screen set dressing; geometry only, no I/O or world ownership logic."""
 
-SETS = ("pixel-lab", "maid-cafe", "pip-workshop", "rooftop-garden", "green-hill", "star-light")
+SETS = (
+    "pixel-lab",
+    "maid-cafe",
+    "pip-workshop",
+    "rooftop-garden",
+    "green-hill",
+    "star-light",
+    "mac-desk",
+)
 
 
 def dressing(selected):
@@ -17,7 +25,13 @@ def dressing(selected):
     base = "#805440" if cafe else "#587568" if roof else "#38365b" if night else "#466570"
     rect(85, 294, 310, 20, base)
     rect(85, 290, 310, 5, "#cfaa88" if cafe else "#84b494")
-    if cafe:
+    if selected == "mac-desk":
+        rect(96, 253, 49, 31, "#293846")
+        rect(100, 257, 41, 23, "#79c6c6")
+        rect(115, 284, 10, 6, "#a9b1a3")
+        rect(350, 264, 16, 25, "#e5d2a5")
+        rect(366, 269, 6, 10, "#e5d2a5")
+    elif cafe:
         rect(96, 269, 20, 20, "#ece0be")
         rect(116, 273, 6, 10, "#ece0be")
         rect(358, 261, 28, 29, "#354f48")

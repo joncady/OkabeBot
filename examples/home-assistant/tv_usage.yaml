@@ -1,0 +1,50 @@
+# Power/availability only. Never forwards titles, addresses, volume or attributes.
+rest_command:
+  okabebot_tv_state:
+    url: !secret amadeus_observation_url
+    method: POST
+    content_type: application/json
+    headers:
+      X-Amadeus-Source-Token: !secret amadeus_source_token
+    payload: '{{ {"entity_id": entity_id, "state": state, "event_id": event_id, "observed_at": observed_at | float} | to_json }}'
+    timeout: 5
+
+automation:
+  - id: okabebot_tv_state_changes
+    alias: Amadeus - selected TV state changes
+    triggers:
+      - trigger: state
+        entity_id: !secret amadeus_tv_entities
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.to_state is not none and (trigger.from_state is none or trigger.from_state.state != trigger.to_state.state) }}"
+    actions:
+      - action: rest_command.okabebot_tv_state
+        response_variable: source_result
+        data:
+          entity_id: "{{ trigger.entity_id }}"
+          state: "{{ trigger.to_state.state }}"
+          event_id: "{{ trigger.to_state.context.id }}"
+          observed_at: "{{ as_timestamp(trigger.to_state.last_updated) }}"
+    mode: queued
+    max: 10
+
+  - id: okabebot_tv_state_snapshots
+    alias: Amadeus - selected TV state snapshots
+    triggers:
+      - trigger: time_pattern
+        minutes: "/5"
+      - trigger: homeassistant
+        event: start
+    actions:
+      - repeat:
+          for_each: !secret amadeus_tv_entities
+          sequence:
+            - action: rest_command.okabebot_tv_state
+              response_variable: source_result
+              data:
+                entity_id: "{{ repeat.item }}"
+                state: "{{ states(repeat.item) }}"
+                event_id: "{{ 'snapshot:' ~ as_timestamp(now()) }}"
+                observed_at: "{{ as_timestamp(now()) }}"
+    mode: single

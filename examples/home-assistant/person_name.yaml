@@ -1,0 +1,38 @@
+# Selected display name only. Never forward the person's complete attributes.
+# Configure greeting_person in private Amadeus ha-bindings.json to this exact entity.
+rest_command:
+  okabebot_person_name:
+    url: !secret amadeus_person_name_url
+    method: POST
+    content_type: application/json
+    headers:
+      X-Amadeus-Source-Token: !secret amadeus_source_token
+    payload: >-
+      {{ {"entity_id": entity_id, "name": name,
+          "observed_at": observed_at | float} | to_json }}
+    timeout: 5
+
+automation:
+  - id: okabebot_person_name
+    alias: Amadeus - selected person display name
+    triggers:
+      - trigger: state
+        entity_id: !secret amadeus_person_entity
+      - trigger: time_pattern
+        minutes: "/5"
+      - trigger: homeassistant
+        event: start
+    variables:
+      person_entity: !secret amadeus_person_entity
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ states(person_entity) not in ['unknown', 'unavailable']
+             and state_attr(person_entity, 'friendly_name') is string }}
+    actions:
+      - action: rest_command.okabebot_person_name
+        data:
+          entity_id: "{{ person_entity }}"
+          name: "{{ state_attr(person_entity, 'friendly_name') }}"
+          observed_at: "{{ as_timestamp(now()) }}"
+    mode: single

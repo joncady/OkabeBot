@@ -16,6 +16,7 @@ DEFAULTS = {
     "button_pin": 23,
     "led_pin": 25,
     "camera_backend": "auto",
+    "room_sensor_port": "",
 }
 
 

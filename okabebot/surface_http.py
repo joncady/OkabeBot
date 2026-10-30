@@ -35,6 +35,8 @@ def handle(handler, bridge, post=False):
             handler.respond(404, {"error": "No local CA configured"})
         return True
     public_files = {
+        "/tv/wake/": "tv-wake.html",
+        "/tv-wake.css": "tv-wake.css",
         "/companion/": "companion.html",
         "/companion.js": "companion.js",
         "/companion.css": "companion.css",
@@ -61,6 +63,7 @@ def handle(handler, bridge, post=False):
         "/surfaces/voice",
         "/surfaces/audio",
         "/surfaces/summon",
+        "/surfaces/display-signal",
     ):
         return False
     try:
@@ -75,7 +78,16 @@ def handle(handler, bridge, post=False):
         handler.connection.settimeout(10)
         data = json.loads(handler.rfile.read(size))
         token = handler.headers.get("X-Surface-Token", "")
-        if path.endswith("summon"):
+        if path.endswith("display-signal"):
+            item = bridge.surfaces.registry.heartbeat(token)
+            from .config import get_config
+
+            base = "http://%s:%s" % (get_config()["web"]["host"], bridge.port)
+            result = bridge.mac_screen.signal(
+                item, data, bridge.snapshot, lambda identity: bridge.surfaces.move(identity, base)
+            )
+            handler.respond(200, result)
+        elif path.endswith("summon"):
             item = bridge.surfaces.registry.heartbeat(token)
             if data != {}:
                 raise ValueError("Summon only targets this screen")
@@ -84,8 +96,11 @@ def handle(handler, bridge, post=False):
             base = "http://%s:%s" % (get_config()["web"]["host"], bridge.port)
             handler.respond(200, bridge.surfaces.move(item["id"], base))
         elif path.endswith("audio"):
-            item = bridge.surfaces.registry.device(token)
-            handler.respond(200, bridge.surface_audio.poll(item["id"], data))
+            try:
+                identity = bridge.surfaces.registry.device(token)["id"]
+            except PermissionError:
+                identity = bridge.surfaces.audio_receiver(token)
+            handler.respond(200, bridge.surface_audio.poll(identity, data))
         elif path.endswith("register"):
             if data.get("kind") == "alexa":
                 item = bridge.surfaces.registry.register(

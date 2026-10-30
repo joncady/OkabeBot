@@ -42,10 +42,6 @@ class LocalSpeechTests(unittest.TestCase):
                 self.consume(wire)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class CharacterBackendTests(unittest.TestCase):
     def test_switching_characters_falls_back_locally_and_switches_back(self):
         profile = {"style": "kurisu"}
@@ -146,3 +142,96 @@ class CharacterBackendTests(unittest.TestCase):
                 os.utime(endpoint, ns=(timestamp, timestamp))
                 self.assertEqual(speech.local_characters(), ("kurisu", "sonic"))
                 self.assertEqual(status.call_count, 2)
+
+
+class ReferenceManifestTests(unittest.TestCase):
+    def test_speaker_only_text_uses_short_sentence_segments(self):
+        import runpy
+        from pathlib import Path
+
+        split = runpy.run_path(str(Path(__file__).parents[1] / "scripts/qwen-voice-worker.py"))[
+            "speaker_text"
+        ]
+        self.assertEqual(
+            split("Rainy and cool outside. Bring a jacket if you head out."),
+            "Rainy and cool outside.\nBring a jacket if you head out.",
+        )
+        self.assertIn("47.5", split("It is 47.5 degrees. Bring a jacket."))
+        self.assertEqual(
+            split("Cool outside, take a jacket—keep it handy"),
+            "Cool outside.\nTake a jacket.\nkeep it handy.".replace("Take", "take"),
+        )
+        self.assertTrue(
+            all(part[-1] in ".!?;" for part in split("An invented long phrase " * 30).splitlines())
+        )
+        self.assertTrue(
+            all(len(part) <= 101 for part in split("A long invented sentence " * 30).splitlines())
+        )
+
+    def test_speaker_only_retries_truncation_without_publishing_bad_audio(self):
+        import runpy
+        from pathlib import Path
+        from types import SimpleNamespace
+
+        generate = runpy.run_path(str(Path(__file__).parents[1] / "scripts/qwen-voice-worker.py"))[
+            "speaker_generate"
+        ]
+        model = MagicMock()
+        good = SimpleNamespace(token_count=25)
+        model.generate.side_effect = [[SimpleNamespace(token_count=75)], [good]]
+        self.assertEqual(list(generate(model, "Stay curious.", {"temperature": 0.3})), [good])
+        self.assertFalse(model.generate.call_args.kwargs["stream"])
+        self.assertEqual(model.generate.call_args.kwargs["temperature"], 0.7)
+        model.generate.side_effect = [
+            [SimpleNamespace(token_count=75)],
+            [SimpleNamespace(token_count=75)],
+        ]
+        with self.assertRaises(ValueError):
+            list(generate(model, "Stay curious.", {}))
+
+    def test_modes_are_explicit_legacy_compatible_and_model_ready(self):
+        import runpy
+        import tempfile
+        from pathlib import Path
+
+        loader = runpy.run_path(str(Path(__file__).parents[1] / "scripts/qwen-voice-worker.py"))[
+            "load_references"
+        ]
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "references.json"
+            (path.parent / "reference.wav").touch()
+            path.write_text(
+                json.dumps(
+                    {
+                        "first": {
+                            "audio": "reference.wav",
+                            "mode": "speaker_only",
+                            "temperature": 0.3,
+                        },
+                        "second": {"audio": "reference.wav", "text": "Invented reference."},
+                    }
+                )
+            )
+            references = loader(path)
+            self.assertIsNone(references["first"]["ref_text"])
+            self.assertEqual(references["first"]["temperature"], 0.3)
+            self.assertEqual(references["second"]["ref_text"], "Invented reference.")
+            self.assertNotIn("temperature", references["second"])
+            self.assertEqual(
+                references["first"]["ref_audio"], str((path.parent / "reference.wav").resolve())
+            )
+            for invalid in (
+                {},
+                {"audio": "missing.wav", "mode": "speaker_only"},
+                {"audio": "reference.wav"},
+                {"audio": "reference.wav", "mode": "other"},
+                {"audio": "reference.wav", "mode": "speaker_only", "text": "Unexpected ICL."},
+                {"audio": "reference.wav", "mode": "speaker_only", "temperature": True},
+            ):
+                path.write_text(json.dumps({"first": invalid}))
+                with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                    loader(path)
+
+
+if __name__ == "__main__":
+    unittest.main()

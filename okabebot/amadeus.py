@@ -13,11 +13,20 @@ import uuid
 
 
 FIELDS = {
+    "feed_snapshot": {"provider", "items", "complete", "valid_until_at"},
     "presence": {"state", "room"},
     "door": {"state"},
+    "household_event": {"provider", "event", "detail", "provenance"},
     "interaction": {"action", "surface"},
-    "media": {"app", "title", "content_id", "state", "duration_s", "position_s"},
-    "calendar": {"event_id", "summary", "start_at", "end_at"},
+    "media": {"app", "title", "content_id", "state", "duration_s", "position_s", "device_id"},
+    "calendar": {"event_id", "summary", "start_at", "end_at", "snapshot_id", "busy", "all_day"},
+    "calendar_snapshot": {"snapshot_id", "event_count", "start_at", "end_at", "busy_coverage"},
+    "availability": {"signal", "state", "device_id", "observation"},
+    "tv_state": {"state", "device_id", "observation"},
+    "phone_wake": {"state"},
+    "phone_alarm": {"alarm_at"},
+    "weather": {"condition", "temperature_c", "reported_at"},
+    "morning_summary": {"day", "target", "until_at"},
     "feedback": {"proposal_id", "outcome"},
 }
 
@@ -79,6 +88,7 @@ class Store:
                     expires_at REAL NOT NULL, payload TEXT NOT NULL,
                     UNIQUE(source, external_id));
                 CREATE INDEX IF NOT EXISTS event_subject_time ON events(subject, observed_at);
+                CREATE INDEX IF NOT EXISTS event_kind_time ON events(kind, subject, observed_at);
                 CREATE TABLE IF NOT EXISTS preferences (
                     subject TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL,
                     updated_at REAL NOT NULL, PRIMARY KEY(subject, key));
@@ -99,16 +109,30 @@ class Store:
             raise ValueError("Provide a supported event kind and structured payload")
         if set(payload) - FIELDS[kind]:
             raise ValueError("Unsupported event fields; raw bodies/audio are not accepted")
+        if kind == "feed_snapshot":
+            from .adapters.context import validate_snapshot
+
+            validate_snapshot(payload)
         for key, value in payload.items():
-            if key.endswith("_s") or key.endswith("_at"):
+            if kind == "feed_snapshot" and key == "items":
+                continue
+            if key.endswith("_s") or key.endswith("_at") or key in ("event_count", "temperature_c"):
+                if key == "temperature_c":
+                    if (
+                        type(value) not in (int, float)
+                        or not math.isfinite(value)
+                        or not -100 <= value <= 100
+                    ):
+                        raise ValueError("Use a supported weather temperature")
+                    continue
                 if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
                     raise ValueError("Event measurements must be finite nonnegative numbers")
             elif not isinstance(value, str) or not 1 <= len(value) <= 512:
                 raise ValueError("Event text fields must contain 1–512 characters")
         if kind == "presence" and payload.get("state") not in ("home", "away", "unknown"):
             raise ValueError("Presence requires home, away or unknown")
-        if kind == "door" and payload.get("state") not in ("open", "closed"):
-            raise ValueError("Door requires open or closed")
+        if kind == "door" and payload.get("state") not in ("open", "closed", "unknown"):
+            raise ValueError("Door requires open, closed or unknown")
         raw, now = encode(payload), self.clock()
         supplied_time = observed_at is not None
         observed_at = now if observed_at is None else observed_at
@@ -169,16 +193,53 @@ class Store:
                 return self.db.execute(
                     "DELETE FROM preferences WHERE subject=? AND key=?", (subject, key)
                 ).rowcount
+            from .context_records import clear
+
+            clear(self.db, subject=subject)
             count = self.db.execute("DELETE FROM preferences WHERE subject=?", (subject,)).rowcount
+            if self.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='context_exposures'"
+            ).fetchone():
+                count += self.db.execute(
+                    "DELETE FROM context_exposures WHERE subject=?", (subject,)
+                ).rowcount
+            if self.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_decisions'"
+            ).fetchone():
+                self.db.execute(
+                    "DELETE FROM shadow_decisions WHERE evaluated_at<=?",
+                    (self.clock() - min(self.retention, 7 * 86400),),
+                )
             return (
                 count + self.db.execute("DELETE FROM events WHERE subject=?", (subject,)).rowcount
             )
 
     def prune(self):
+        from .context_records import prune
+
+        prune(self.db, self.clock())
         with self.db:
-            return self.db.execute(
-                "DELETE FROM events WHERE expires_at<=?", (self.clock(),)
-            ).rowcount
+            count = 0
+            if self.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='context_exposures'"
+            ).fetchone():
+                count = self.db.execute(
+                    "DELETE FROM context_exposures WHERE shown_at<=?",
+                    (self.clock() - min(self.retention, 7 * 86400),),
+                ).rowcount
+            if self.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_decisions'"
+            ).fetchone():
+                self.db.execute(
+                    "DELETE FROM shadow_decisions WHERE evaluated_at<=?",
+                    (self.clock() - min(self.retention, 7 * 86400),),
+                )
+            return (
+                count
+                + self.db.execute(
+                    "DELETE FROM events WHERE expires_at<=?", (self.clock(),)
+                ).rowcount
+            )
 
 
 def main():

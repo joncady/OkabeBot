@@ -155,6 +155,41 @@ def get_recent_notifications(source: str = "", status: str = "", limit: int = 10
     }
 
 
+@mcp.tool(annotations=READ)
+def get_home_activity(period: Literal["today", "yesterday", "last_24_hours"] = "today") -> dict:
+    """Read partial consented household history: door/presence, TV/media and appliance readings.
+    Missing observations are not evidence nothing happened; no safety/all-clear claim."""
+    from .home_activity import recap
+
+    return recap(state_dir() / "amadeus", period)
+
+
+@mcp.tool(annotations=READ)
+def get_trakt_watchlist(kind: Literal["movies", "shows", "all"] = "movies", page: int = 1) -> dict:
+    """Read saved want-to-watch titles from connected Trakt for grounded movie/show recommendations. This is an on-demand read, not watched-history collection or streaming availability."""
+    from .trakt_library import watchlist
+
+    return watchlist(state_dir() / "amadeus", page=page, kind=kind)
+
+
+@mcp.tool(annotations=READ)
+def get_context_feed(
+    source: Literal[
+        "tasks", "device_activity", "appliances", "meals", "transit", "watch_history", "calendar"
+    ],
+    query: str = "",
+    offset: int = 0,
+    limit: int = 20,
+    view: Literal["current", "changes", "aggregates"] = "current",
+) -> dict:
+    """Read connected to-do/shopping lists (source=tasks), transit rail notices, appliances or watch history. Current feeds are not a full history of today. Use blank query for all selected items; page through next_offset."""
+    from .amadeus_feeds import Feeds
+
+    return Feeds(state_dir() / "amadeus").retrieve(
+        source, query=query, offset=offset, limit=limit, view=view
+    )
+
+
 @mcp.tool(annotations=WRITE)
 def set_speaker_volume(percent: Annotated[int, Field(ge=0, le=100)]) -> dict:
     """Set the Pi speaker's actual volume, 0–100; shared with the dashboard slider."""
@@ -237,7 +272,7 @@ def create_reminder(
 
 @mcp.tool(annotations=READ)
 def list_reminders() -> dict:
-    """List up to 100 pending personal reminders in due order."""
+    """Read this companion app's scheduled reminders only. External to-do/shopping lists use get_context_feed(source=tasks)."""
     from .controller_tools import request
 
     return request("/reminders/list", {})

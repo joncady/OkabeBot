@@ -1,78 +1,75 @@
-# Japanese-reference English voice experiment
+# Local character voice conditioning
 
-This is an isolated comparison, not a deployed voice change or a trained model.
-The installed four-character worker continues using its existing private English
-and synthetic references. Private reference clips and generated comparison WAVs
-are not committed or uploaded by this experiment.
+The Mac speech worker uses the existing Qwen3-TTS Base model through MLX-Audio.
+References and manifests stay in private local state; no reference audio or
+participant listening results belong in Git or public reports. This is reference
+conditioning, not a newly trained model or supervised fine-tune.
 
-## Approach
+## One manifest, two modes
 
-Qwen3-TTS Base can condition on a speaker embedding without including reference
-speech tokens. In the tested MLX-Audio 0.6.1 implementation, passing `ref_audio`
-with `ref_text=None` bypasses `_generate_icl` and extracts the speaker embedding.
-Passing audio **and** its transcript selects ICL. This was checked in the installed
-implementation, rather than assuming the upstream `x_vector_only_mode` keyword
-works in the MLX API.
+Each character selects a private audio file and a conditioning mode:
 
-```python
-model.generate(
-    text=english_text,
-    ref_audio=private_japanese_reference,
-    ref_text=None,
-    lang_code="English",
-    stream=True,
-    streaming_interval=0.32,
-    temperature=0.3,
-)
+- `speaker_only`: omit `text`. The worker passes `ref_text=None`, extracting speaker
+  identity without supplying reference speech tokens. English output is explicit.
+- `icl` (the backward-compatible default): provide `audio` and its exact `text`.
+  This includes reference speech and transcript in conditioning.
+
+```json
+{
+  "example_character": {
+    "audio": "private-reference.wav",
+    "mode": "speaker_only",
+    "temperature": 0.3
+  },
+  "another_character": {
+    "audio": "another-reference.wav",
+    "text": "The exact reference transcript."
+  }
+}
 ```
 
-The comparison uses the existing 0.6B Base 4-bit model on the Mac, a fixed seed,
-English output language, and three modes for each character: existing English
-reference plus transcript; a short Japanese reference with speaker-only
-conditioning; and three Japanese clips concatenated with speaker-only
-conditioning. This requires no training or new cloud hardware.
+Audio paths resolve against the manifest directory. Optional `temperature` is
+bounded to 0–1; absent values preserve the model's default. A speaker-only entry
+with a transcript is rejected rather than silently selecting ICL. Reference files
+must exist before the worker loads. Generation uses the same streaming PCM path
+for every character; no actor-specific branches or separate experimental worker
+are required. The local status response identifies each character's loaded mode
+without exposing audio paths or transcripts.
 
-Removing reference speech tokens does **not** guarantee accent removal, phoneme
-independence or matching pitch/tone. A speaker embedding can still carry accent
-and delivery characteristics. Longer references can change the result rather
-than monotonically improve it. Fine-tuning is not justified by this small trial.
+The installed deployment selects speaker-only Japanese references for Okabe and
+Kurisu; Pip and Sonic retain their existing ICL references. Startup warms every
+configured character. Changing the manifest requires restarting the supervised
+voice worker, then checking readiness and loaded modes. It does not require
+restarting the controller or changing any speaker volume. The supervisor also
+respects the existing speech lock for direct tool callers, so a single-threaded
+worker is not mistaken for unhealthy while it is producing audio.
 
-## Warm comparison observed 2026-10-27
+## Quality and maintenance
 
-All rows synthesize the same sentence, “Please bring the blue light closer, then
-turn the volume down.” The model received a warm-up before measured generation.
-Reference-specific conditioning cost remains included. First PCM is measured at
-the generator, excluding button capture, transcription, conversation, transport
-and speaker buffering. Total synthesis is not end-to-end response latency.
+Speaker-only conditioning does not guarantee accent removal or independent
+control of pitch, phonemes or tone. Keep a private rollback manifest and evaluate
+short and longer English speech before expanding a rollout. Audio received and
+played by a browser is not proof of audible quality at its physical speaker.
 
-| Character | Reference mode | First PCM | Total synthesis | Audio length | ASR word error rate |
-| --- | --- | ---: | ---: | ---: | ---: |
-| Okabe | English ICL control | 0.753 s | 2.506 s | 3.44 s | 0% |
-| Okabe | Japanese short, speaker only | 0.395 s | 3.247 s | 5.44 s | 0% |
-| Okabe | Japanese expanded, speaker only | 0.858 s | 2.975 s | 4.64 s | 0% |
-| Kurisu | English ICL control | 0.511 s | 2.313 s | 3.44 s | 0% |
-| Kurisu | Japanese short, speaker only | 0.387 s | 2.426 s | 4.64 s | 9.1% |
-| Kurisu | Japanese expanded, speaker only | 0.217 s | 2.529 s | 4.40 s | 0% |
+Use `scripts/local-regression.py` and the isolated streaming/character-switching
+regressions for maintenance. Superseded A/B helpers and generated comparison audio
+are not part of the runtime. Keep reusable reference inputs separate from test
+outputs, and remove private experiments when no longer needed. Do not promote a
+reference merely because an experiment generated successfully.
 
-Local base.en ASR added an extra trailing “you” on the short Kurisu sample. ASR
-scores assess this one sentence's intelligibility, not accent or character
-resemblance. These are single observations, not latency distributions. A separate
-first comparison included a 6.487-second cold start on the first Okabe English
-control; it must not be compared with subsequent warm rows as a mode advantage.
+References: [Qwen3-TTS cloning modes](https://github.com/QwenLM/Qwen3-TTS) and
+[MLX-Audio Qwen implementation](https://github.com/Blaizzy/mlx-audio/tree/main/mlx_audio/tts/models/qwen3_tts).
 
-The private listening page includes both sentences and all three modes. Human
-review must assess English accent, resemblance, tone, clarity and unwanted words
-before choosing a mode. Keep the existing voices until that review. A broader
-phonetic set and repeated warm runs are needed before claiming a stable quality
-or latency improvement.
+Speaker-only input is split into short sentence segments before decoding, using
+the model's existing newline segmentation. This limits multi-sentence generation
+degeneration without trimming silence from waveforms or removing spoken words.
+Clauses are split at commas/dashes and wrapped at short word boundaries with
+terminal punctuation; decimals remain intact. ICL input remains unchanged. The
+shared PCM duration limit still applies to the complete utterance.
 
-References: [official Qwen3-TTS cloning modes](https://github.com/QwenLM/Qwen3-TTS)
-and [MLX-Audio Qwen implementation](https://github.com/Blaizzy/mlx-audio/tree/main/mlx_audio/tts/models/qwen3_tts).
-
-
-Listening checkpoint: the user preferred the new speaker-only Japanese-reference
-English samples and accepted the current latency tradeoff. The comparison page
-also includes the original short, combined and individual Japanese clips for
-reference. Voice-synthesis optimization is tracked in the GitHub project, including
-repeatable cold/warm metrics, pronunciation coverage, caching and switching.
-This evaluates candidates; it does not replace the installed reference manifest.
+Speaker-only clauses use complete codec decoding, then travel over the same PCM
+socket/relay. A word-scaled token budget must finish before its limit; a capped
+clause is discarded and retried once with higher-temperature sampling. A second cap fails
+cleanly rather than publishing truncated speech. This adds clause buffering and
+can add retry latency; it does not prove perceptual voice quality. ICL streaming
+and the complete-utterance duration cap remain unchanged.

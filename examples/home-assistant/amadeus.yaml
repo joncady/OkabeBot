@@ -1,0 +1,36 @@
+# Independent metadata-only observer. It does not speak or trigger home actions.
+# Set the URL, publish-only token and exact entity allowlist in private HA secrets.
+rest_command:
+  okabebot_amadeus_observation:
+    url: !secret amadeus_observation_url
+    method: POST
+    content_type: application/json
+    headers:
+      X-Amadeus-Source-Token: !secret amadeus_source_token
+    payload: >-
+      {{ {"entity_id": entity_id, "state": state,
+          "event_id": event_id, "observed_at": observed_at | float} | to_json }}
+    timeout: 5
+
+automation:
+  - id: okabebot_amadeus_metadata
+    alias: Amadeus - allowlisted state observations
+    triggers:
+      - trigger: state
+        entity_id: !secret amadeus_entities
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state is not none and trigger.to_state is not none
+             and trigger.from_state.state != trigger.to_state.state }}
+    actions:
+      - action: rest_command.okabebot_amadeus_observation
+        data:
+          entity_id: "{{ trigger.entity_id }}"
+          state: "{{ trigger.to_state.state }}"
+          # Recovery observations are not proof of a new physical door opening.
+          event_id: "{{ ('snapshot:' if trigger.from_state.state in ['unknown', 'unavailable'] else '') ~ trigger.to_state.context.id }}"
+          observed_at: "{{ as_timestamp(trigger.to_state.last_updated) }}"
+    mode: queued
+    max: 10
+    max_exceeded: silent

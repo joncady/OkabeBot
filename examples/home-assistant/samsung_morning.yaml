@@ -1,0 +1,53 @@
+# Private scoped webhook: this automation controls one explicitly chosen TV only.
+# The controller sends optional Wake-on-LAN before this power/readiness wait.
+rest_command:
+  okabebot_tv_preparation_complete:
+    url: !secret amadeus_tv_ready_url
+    method: POST
+    content_type: application/json
+    headers:
+      X-Amadeus-Source-Token: !secret amadeus_source_token
+    payload: '{{ {"request_id": request_id, "status": status} | to_json }}'
+    timeout: 5
+
+automation:
+  - id: okabebot_prepare_morning_tv
+    alias: OkabeBot - prepare configured morning TV
+    triggers:
+      - trigger: webhook
+        webhook_id: !secret morning_tv_webhook_id
+        allowed_methods: [POST]
+        local_only: true
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.json is mapping and trigger.json.keys() | list == ['request_id']
+             and trigger.json.request_id is string and trigger.json.request_id | length <= 64 }}
+    actions:
+      - wait_template: >-
+          {{ states(tv_entity) in ['on', 'idle', 'playing', 'paused'] }}
+        timeout: "00:00:35"
+        continue_on_timeout: true
+      - choose:
+          - conditions: "{{ wait.completed }}"
+            sequence:
+              - action: remote.send_command
+                target:
+                  entity_id: !secret morning_tv_remote
+                data:
+                  command: !secret morning_tv_hdmi_command
+              - action: rest_command.okabebot_tv_preparation_complete
+                response_variable: completion_result
+                data:
+                  request_id: "{{ trigger.json.request_id }}"
+                  status: input_command_sent
+        default:
+          - action: rest_command.okabebot_tv_preparation_complete
+            response_variable: completion_result
+            data:
+              request_id: "{{ trigger.json.request_id }}"
+              status: failed
+    variables:
+      tv_entity: !secret morning_tv_entity
+    mode: single
+    max_exceeded: silent

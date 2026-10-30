@@ -16,6 +16,16 @@ function sunflower(c,x,y,t){
  rect(c,x-1+sway,y-31,7,7,'#b96b30');
 }
 function compact(c,now,opacity=1,set='green-hill'){
+ if(set==='mac-desk'){
+  c.save();c.globalAlpha=opacity;
+  rect(c,60,275,200,7,'#b59473');rect(c,64,282,192,12,'#5c5160');
+  rect(c,72,294,10,12,'#5c5160');rect(c,238,294,10,12,'#5c5160');
+  rect(c,68,238,46,30,'#283b4b');rect(c,72,242,38,22,'#78babb');
+  rect(c,88,268,7,7,'#9ba9a4');rect(c,79,273,26,3,'#9ba9a4');
+  rect(c,76,247,18,2,'#d2eee2');rect(c,76,253,28,2,'#498e9b');
+  rect(c,222,256,16,19,'#e5d2a5');rect(c,238,260,5,9,'#e5d2a5');
+  rect(c,225,254,10,4,'#655045');c.restore();return;
+ }
  if(set!=='green-hill'){
   c.save();c.globalAlpha=opacity;
   const cafe=set==='maid-cafe',roof=set==='rooftop-garden',night=set==='star-light';

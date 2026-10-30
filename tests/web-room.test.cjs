@@ -9,12 +9,13 @@ test('interrupted idle walk exits continuously without teleporting',()=>{
  const actor=new Actor();actor.go('window');actor.update(100);actor.update(150);const position=actor.position.slice(),exit=actor.transfer(false);
  assert.deepEqual(exit[0],position);assert.deepEqual(exit.at(-1),anchors.door);assert.ok(actor.walking);
 });
-async function browser(phase='tv',broken=false){
+async function browser(phase='tv',broken=false,audio=false){
  const calls=[],events={},nodes={};
  function node(id){return nodes[id]||=( {textContent:'',classList:{toggle(){}},setAttribute(){},addEventListener(){},focus(){},getContext(){return {clearRect(){}};}} );}
  const state={phase,remote_controls:true,transition_id:'transfer',duration_seconds:2,visibility_lease_seconds:6,character:{style:'okabe',name:'Companion'},lab:{title:'Custom room'},return_location:{name:'Desk nook'},destination_name:'Den screen',server_time:1000};
- const context={console,LabRoom:{Room:class{constructor(){this.actor={position:[8,4],transfer(){return [[1,1],[2,2]];}};}setAssets(){}render(){if(broken)throw Error("Broken renderer");}}},location:{hash:'#scoped',reload(){}},performance:{now:()=>100},Date,requestAnimationFrame(){},setTimeout(){},document:{getElementById:id=>node("#"+id),querySelector:selector=>node(selector),addEventListener:(event,fn)=>events[event]=fn},window:{addEventListener:(event,fn)=>events[event]=fn},fetch:async(path,options)=>{calls.push({path,data:options.body&&JSON.parse(options.body)});return{ok:true,json:async()=>path==='/surfaces/state'?state:{frames:[[]]}};}};
- vm.runInNewContext(fs.readFileSync('okabebot/web/tv.js','utf8'),context);await new Promise(setImmediate);return{calls,events,nodes};
+ const audioCalls=[];
+ const context={...(audio?{BrowserAudio:class{setVolume(v){audioCalls.push(['volume',v]);}poll(){}async enable(){audioCalls.push(['enable']);if(audio==='blocked')await new Promise(()=>{});}close(){audioCalls.push(['close']);}presenter(){return null;}}}:{}),console,LabRoom:{Room:class{constructor(){this.actor={position:[8,4],transfer(){return [[1,1],[2,2]];}};}setAssets(){}render(){if(broken)throw Error("Broken renderer");}}},location:{hash:'#scoped',reload(){}},performance:{now:()=>100},Date,requestAnimationFrame(){},setTimeout(){},document:{getElementById:id=>node("#"+id),querySelector:selector=>node(selector),addEventListener:(event,fn)=>events[event]=fn},window:{addEventListener:(event,fn)=>events[event]=fn},fetch:async(path,options)=>{calls.push({path,data:options.body&&JSON.parse(options.body)});return{ok:true,json:async()=>path==='/surfaces/state'?state:{frames:[[]]}};}};
+ vm.runInNewContext(fs.readFileSync('okabebot/web/tv.js','utf8'),context);await new Promise(setImmediate);return{calls,events,nodes,audioCalls};
 }
 test('remote Enter keyCode and Back each request exactly one return',async()=>{
  const b=await browser();b.events.keydown({key:'Unidentified',keyCode:13,preventDefault(){},repeat:false});await new Promise(setImmediate);
@@ -79,4 +80,32 @@ test('Sonic avatar keeps sprite colors and a full quill/ear crop instead of huma
  for(const color of ['#1765d1','#edc59c','#f5f4ed','#d93836'])assert.ok(colors.has(color));
  assert.ok(!colors.has('#283a48'));assert.ok(!colors.has('#2a3e4a'));
  const [,x,y,w,h]=images[0];assert.ok(x<=100&&y<=28&&x+w>=352&&y+h>=204);
+});
+
+test('morning layout clips and shifts room, draws a quarter-width rail, rotates without poll reset',()=>{
+ const {Room}=require('../okabebot/web/lab-room.js');const r=new Room(),calls=[];
+ const c=new Proxy({measureText:s=>({width:s.length*8})},{get:(o,k)=>k in o?o[k]:(...a)=>calls.push([k,...a]),set:(o,k,v)=>(o[k]=v,true)});
+ r.renderScene=()=>calls.push(['scene']);
+ const model={now:1000,state:{receivedAt:1000,server_time:1012,environment:{presentation:'room'},morning:{rotation_seconds:12,prepared_at:1000,cards:[{kind:'weather',title:'OUTSIDE',body:'Invented weather'},{kind:'calendar',title:'08:00',body:'Invented appointment'}]}}};
+ r.render(c,model);assert.ok(calls.some(a=>a[0]==='translate'&&a[1]===-72));
+ assert.ok(calls.some(a=>a[0]==='rect'&&a[3]===716));assert.ok(calls.some(a=>a[0]==='fillText'&&a[1]==='08:00'));
+ assert.ok(calls.some(a=>a[0]==='fillRect'&&a[1]===728));
+ assert.ok(calls.some(a=>a[0]==='fillText'&&a[1]==='OUTSIDE'));
+ assert.equal(calls.filter(a=>a[0]==='fillRect'&&a[1]===728).length,2);
+ calls.length=0;model.state.morning=null;r.render(c,model);assert.deepEqual(calls,[['scene']]);
+});
+
+test('live Cast page initializes its own audio but preview stays silent',async()=>{
+ const live=await browser('tv',false,true);
+ assert.equal(live.audioCalls.filter(c=>c[0]==='enable').length,1);
+ assert.ok(live.audioCalls.some(c=>c[0]==='volume'&&c[1]===20));
+ live.events.pagehide();assert.ok(live.audioCalls.some(c=>c[0]==='close'));
+ const preview=await browser('preview',false,true);
+ assert.equal(preview.audioCalls.filter(c=>c[0]==='enable').length,0);
+});
+
+test('blocked sound permission never blocks visual readiness or receiver heartbeat',async()=>{
+ const b=await browser('tv',false,'blocked');
+ assert.ok(b.calls.some(c=>c.path==='/surfaces/heartbeat'));
+ assert.equal(b.nodes['#enable-sound'].hidden,false);
 });

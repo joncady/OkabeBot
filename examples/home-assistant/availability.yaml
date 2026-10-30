@@ -1,0 +1,54 @@
+# Separate availability consent and private ha-bindings.json allowlists required.
+# Select ONLY normalized coarse entities: dnd, focus, charging, shared room.
+# Android DND is a multi-state sensor. Normalize it in an HA template binary
+# sensor: off -> off; priority_only/total_silence/alarms_only -> on;
+# unknown/unavailable -> unavailable. Never coerce unknown to off.
+# Room occupied is a household signal, not proof of the resident's identity.
+rest_command:
+  okabebot_availability:
+    url: !secret amadeus_availability_url
+    method: POST
+    content_type: application/json
+    headers:
+      X-Amadeus-Source-Token: !secret amadeus_source_token
+    payload: '{{ {"entity_id": entity_id, "state": state, "event_id": event_id, "observed_at": observed_at | float} | to_json }}'
+    timeout: 5
+
+automation:
+  - id: okabebot_availability_changes
+    alias: Amadeus - selected coarse availability changes
+    triggers:
+      - trigger: state
+        entity_id: !secret amadeus_availability_entities
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.to_state is not none and (trigger.from_state is none or trigger.from_state.state != trigger.to_state.state) }}"
+    actions:
+      - action: rest_command.okabebot_availability
+        data:
+          entity_id: "{{ trigger.entity_id }}"
+          state: "{{ trigger.to_state.state }}"
+          # Startup/recovery is an observation, not proof of a physical change.
+          event_id: "{{ ('snapshot:' if trigger.from_state is none or trigger.from_state.state in ['unknown', 'unavailable'] else '') ~ trigger.to_state.context.id }}"
+          observed_at: "{{ as_timestamp(trigger.to_state.last_updated) }}"
+    mode: queued
+    max: 10
+
+  - id: okabebot_availability_snapshots
+    alias: Amadeus - selected coarse availability snapshots
+    triggers:
+      - trigger: time_pattern
+        minutes: "/5"
+      - trigger: homeassistant
+        event: start
+    actions:
+      - repeat:
+          for_each: !secret amadeus_availability_entities
+          sequence:
+            - action: rest_command.okabebot_availability
+              data:
+                entity_id: "{{ repeat.item }}"
+                state: "{{ states(repeat.item) }}"
+                event_id: "{{ 'snapshot:' ~ as_timestamp(now()) }}"
+                observed_at: "{{ as_timestamp(now()) }}"
+    mode: single

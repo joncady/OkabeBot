@@ -3,7 +3,7 @@ const BrowserAudio=require('../okabebot/web/browser-audio.js');
 class FakeContext{
  constructor(){this.currentTime=0;this.state='running';this.destination={};this.nodes=[];}
  createGain(){return{gain:{value:1},connect(){}};}
- createBuffer(channels,count,rate){return{duration:count/rate,getChannelData:()=>new Float32Array(count)};}
+ createBuffer(channels,count,rate){const data=new Float32Array(count);return{length:count,duration:count/rate,getChannelData:()=>data};}
  createBufferSource(){const source={connect(){},start(at){this.at=at;},stop(){this.stopped=true;}};this.nodes.push(source);return source;}
  async resume(){} async close(){}
 }
@@ -41,4 +41,15 @@ test('LAN HTTP session generation and suspend do not require randomUUID',()=>{
  const player=new context.window.BrowserAudio(async()=>({events:[]}),()=>{}),first=player.session;
  assert.match(first,/^[a-f0-9]{32}$/);player.cursor=12;player.suspend();
  assert.match(player.session,/^[a-f0-9]{32}$/);assert.notEqual(player.session,first);assert.equal(player.cursor,0);
+});
+
+test('TV prebuffer waits for complete PCM then schedules contiguous audio despite arrival stalls',async()=>{
+ global.AudioContext=FakeContext;const player=new BrowserAudio(async()=>({epoch:'one',events:[]}),()=>{},{prebuffer:true});await player.enable();
+ player.receive({kind:'start',stream_id:'tv'});const bytes=Buffer.alloc(4800);bytes.writeInt16LE(12000,0);const pcm=bytes.toString('base64');
+ player.receive({kind:'chunk',stream_id:'tv',pcm_base64:pcm});player.context.currentTime=3;
+ player.receive({kind:'chunk',stream_id:'tv',pcm_base64:pcm});
+ assert.equal(player.presenter(),null);assert.equal(player.context.nodes.length,1); // enable sound's silent buffer only
+ player.receive({kind:'end',stream_id:'tv'});
+ const nodes=player.context.nodes.slice(-1);assert.equal(nodes[0].buffer.duration,.2);assert.ok(nodes[0].at>3);assert.equal(player.context.nodes.length,2);assert.equal(nodes[0].buffer.getChannelData(0)[0],12000/32768);assert.equal(nodes[0].buffer.getChannelData(0)[2400],12000/32768);
+ assert.equal(player.finished,null);for(const n of nodes)n.onended();assert.equal(player.finished,'tv');player.close();
 });

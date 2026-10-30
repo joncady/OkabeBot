@@ -139,3 +139,20 @@ END:VCALENDAR""")
             result = query_calendar({"agenda_timezone": "UTC"}, "2027-01-01", "2027-01-03")
         self.assertFalse(result["available"])
         self.assertNotIn("SECRET", str(result))
+
+    def test_conversation_week_is_calendar_week_and_today_is_full_day(self):
+        from okabebot.agenda import conversation_range
+
+        now = dt.datetime(2030, 5, 15, 15, tzinfo=dt.timezone.utc).timestamp()
+        self.assertEqual(
+            conversation_range("this week", now, "UTC"),
+            {"start_date": "2030-05-13", "end_date": "2030-05-20"},
+        )
+        self.assertEqual(
+            conversation_range("today", now, "UTC"),
+            {"start_date": "2030-05-15", "end_date": "2030-05-16"},
+        )
+        self.assertEqual(
+            conversation_range("next week", now, "UTC"),
+            {"start_date": "2030-05-20", "end_date": "2030-05-27"},
+        )

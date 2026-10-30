@@ -2,6 +2,9 @@
 
 import argparse
 import json
+import math
+import re
+import textwrap
 import os
 from pathlib import Path
 import socket
@@ -9,6 +12,81 @@ import struct
 import time
 import signal
 import threading
+
+
+def load_references(path):
+    """Normalize private references once; generation has no character-specific branches."""
+    path = Path(path)
+    raw = json.loads(path.read_text())
+    if not isinstance(raw, dict) or not raw:
+        raise ValueError("Provide character references")
+    references = {}
+    for character, value in raw.items():
+        if not isinstance(value, dict) or set(value) - {"audio", "text", "mode", "temperature"}:
+            raise ValueError("Unknown reference options")
+        mode = value.get("mode", "icl")
+        if mode not in ("icl", "speaker_only") or not isinstance(value.get("audio"), str):
+            raise ValueError("Choose ICL or speaker-only conditioning and an audio path")
+        audio = (path.parent / value["audio"]).resolve()
+        text = value.get("text")
+        if not audio.is_file() or (
+            mode == "icl" and (not isinstance(text, str) or not text.strip())
+        ):
+            raise ValueError("ICL needs audio and its transcript; speaker-only needs audio")
+        if mode == "speaker_only" and text is not None:
+            raise ValueError("Speaker-only references must omit the transcript")
+        options = {"ref_audio": str(audio), "ref_text": text if mode == "icl" else None}
+        if "temperature" in value:
+            temperature = value["temperature"]
+            if (
+                type(temperature) not in (int, float)
+                or not math.isfinite(temperature)
+                or not 0 <= temperature <= 1
+            ):
+                raise ValueError("Reference temperature must be between zero and one")
+            options["temperature"] = temperature
+        references[character] = options
+    return references
+
+
+def speaker_text(text):
+    """Keep speaker-only decoding on short sentences instead of one long prefill."""
+    # Treat clause punctuation as boundaries; do not split decimals or thousands.
+    sentences = re.split(r"(?<=[.!?;])\s+|[—–]|,(?!\d)\s+", text.strip())
+    parts = (
+        part
+        for sentence in sentences
+        for part in textwrap.wrap(
+            sentence.strip(), width=100, break_long_words=False, break_on_hyphens=False
+        )
+    )
+    return "\n".join(part if part[-1] in ".!?;" else part + "." for part in parts)
+
+
+def speaker_generate(model, text, options):
+    """Never publish a clause that stopped at the generation limit instead of EOS."""
+    for clause in speaker_text(text).splitlines():
+        limit = max(75, min(250, len(clause.split()) * 15))
+        for attempt in range(2):
+            settings = dict(options)
+            if attempt:
+                settings["temperature"] = max(0.7, settings.get("temperature", 0.7))
+            # A complete codec decode avoids incremental decoder seam artifacts.
+            results = list(
+                model.generate(
+                    text=clause,
+                    **settings,
+                    lang_code="English",
+                    max_tokens=limit,
+                    stream=False,
+                    verbose=False,
+                )
+            )
+            if results and all(0 < result.token_count < limit for result in results):
+                yield from results
+                break
+        else:
+            raise ValueError("Speech clause did not finish within its generation budget")
 
 
 def main():
@@ -34,13 +112,7 @@ def main():
     import numpy as np
     from mlx_audio.tts.utils import load_model
 
-    manifest = json.loads(args.manifest.read_text())
-    if not manifest:
-        raise ValueError("Provide at least one character reference")
-    for reference in manifest.values():
-        reference["audio"] = str((args.manifest.parent / reference["audio"]).resolve())
-        if not Path(reference["audio"]).is_file() or not reference.get("text"):
-            raise ValueError("Each character needs an audio path and exact reference transcript")
+    manifest = load_references(args.manifest)
     model_path = args.model
     if args.revision:
         from huggingface_hub import snapshot_download
@@ -54,22 +126,27 @@ def main():
     mx.eval(model.parameters())
 
     def generate(text, character):
-        reference = manifest[character]
-        yield from model.generate(
-            text=text,
-            ref_audio=reference["audio"],
-            ref_text=reference["text"],
-            lang_code="English",
-            max_tokens=375,
-            stream=True,
-            streaming_interval=0.32,
-            verbose=False,
-        )
+        if manifest[character]["ref_text"] is None:
+            yield from speaker_generate(model, text, manifest[character])
+        else:
+            yield from model.generate(
+                text=text,
+                **manifest[character],
+                lang_code="English",
+                max_tokens=375,
+                stream=True,
+                streaming_interval=0.32,
+                verbose=False,
+            )
 
     for character in manifest:
-        for result in generate("Hello. I am ready.", character):
-            mx.eval(result.audio)
-        print("WARM", character, flush=True)
+        try:
+            for result in generate("Hello. I am ready.", character):
+                mx.eval(result.audio)
+            print("WARM", character, flush=True)
+        except ValueError:
+            # Text-specific decoding failure must not create a supervisor restart loop.
+            print("WARM_SAMPLE_FAILED", character, flush=True)
 
     args.socket.parent.mkdir(parents=True, exist_ok=True)
     # Never unlink a live worker's endpoint.
@@ -101,7 +178,15 @@ def main():
                         request = json.loads(raw)
                         if request.get("op") == "status":
                             payload = json.dumps(
-                                {"ready": True, "characters": list(manifest), "sample_rate": 24000}
+                                {
+                                    "ready": True,
+                                    "characters": list(manifest),
+                                    "sample_rate": 24000,
+                                    "conditioning": {
+                                        key: "speaker_only" if value["ref_text"] is None else "icl"
+                                        for key, value in manifest.items()
+                                    },
+                                }
                             ).encode()
                             connection.sendall(
                                 struct.pack("!I", len(payload)) + payload + struct.pack("!I", 0)

@@ -44,6 +44,19 @@ def controller_state(folder, expected_pid=None):
         return None
 
 
+def speech_active(folder):
+    """The existing speech lock also covers callers outside a controller turn."""
+    try:
+        with (Path(folder) / "character-speech.lock").open("r") as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return True
+    except FileNotFoundError:
+        pass
+    return False
+
+
 class Child:
     def __init__(self, name, argv, cwd, folder):
         self.name, self.argv, self.cwd, self.folder = name, argv, cwd, folder
@@ -131,18 +144,36 @@ def supervise(config_path):
         config_path.parent,
         folder,
     )
+    sleep_guard = (
+        Child(
+            "sleep-guard",
+            ["/usr/bin/caffeinate", "-s", "-w", str(os.getpid())],
+            config_path.parent,
+            folder,
+        )
+        if sys.platform == "darwin"
+        else None
+    )
     managed = bool(worker.argv)
     warming_since = time.monotonic()
     failed_health = 0
     previous = None
     try:
         while not stopping.is_set():
+            if sleep_guard is not None:
+                from .runtime_policy import settings as runtime_settings
+
+                sleep_guard.check()
+                if runtime_settings(state_dir())["prevent_sleep_on_ac"]:
+                    sleep_guard.start()
+                else:
+                    sleep_guard.stop()
             worker.check()
             bridge.check()
             if managed:
                 worker.start()
             state = controller_state(state_dir(), bridge.process.pid) if bridge.running() else None
-            busy = bool(
+            busy = speech_active(state_dir()) or bool(
                 state and (state.get("busy") or state.get("recording") or state.get("announcing"))
             )
             worker_ready = not managed
@@ -205,6 +236,8 @@ def supervise(config_path):
                 previous = message
             stopping.wait(3)
     finally:
+        if sleep_guard is not None:
+            sleep_guard.stop()
         bridge.stop()
         if managed:
             worker.stop()

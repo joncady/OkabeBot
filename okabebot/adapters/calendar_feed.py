@@ -42,18 +42,65 @@ def load_calendar(settings):
 def poll(context):
     import recurring_ical_events
 
-    now = dt.datetime.now(dt.timezone.utc)
+    now = dt.datetime.fromtimestamp(time.time(), dt.timezone.utc)
     lead = context.settings["calendar_lead_minutes"]
-    events = recurring_ical_events.of(load_calendar(context.settings)).between(
-        now, now + dt.timedelta(days=2)
-    )
+    calendar = load_calendar(context.settings)
+    recurring_uids = {
+        str(e.get("UID", ""))
+        for e in calendar.walk("VEVENT")
+        if e.get("RRULE") or e.get("RDATE") or e.get("RECURRENCE-ID")
+    }
+    events = recurring_ical_events.of(calendar).between(now, now + dt.timedelta(days=2))
     scheduled = []
     upcoming = []
+    intervals = []
+    busy_complete = True
     for event in events:
         if str(event.get("STATUS", "")).upper() == "CANCELLED":
             continue
         start = event.decoded("DTSTART")
-        if not isinstance(start, dt.datetime):
+        all_day = isinstance(start, dt.date) and not isinstance(start, dt.datetime)
+        if not isinstance(start, dt.date):
+            busy_complete = False
+            continue
+        interval_start = dt.datetime.combine(start, dt.time()).astimezone() if all_day else start
+        if interval_start.tzinfo is None:
+            interval_start = interval_start.astimezone()
+        end = event.decoded("DTEND", None)
+        duration = event.decoded("DURATION", None)
+        if end is None and isinstance(duration, dt.timedelta):
+            end = start + duration
+        if end is None and all_day:
+            end = start + dt.timedelta(days=1)  # RFC5545 one-day default.
+        if isinstance(end, dt.date) and not isinstance(end, dt.datetime):
+            end = dt.datetime.combine(end, dt.time()).astimezone()
+        if isinstance(end, dt.datetime) and end.tzinfo is None:
+            end = end.astimezone()
+        transparency = str(event.get("TRANSP", "OPAQUE")).upper()
+        valid_interval = (
+            isinstance(end, dt.datetime)
+            and end > interval_start
+            and transparency in ("OPAQUE", "TRANSPARENT")
+        )
+        uid = str(event.get("UID", ""))
+        occurrence = str(event.get("RECURRENCE-ID", "")) if uid in recurring_uids else ""
+        if not occurrence and event.get("RRULE"):
+            occurrence = str(interval_start.timestamp())
+        source_id = hashlib.sha256((uid + "|" + occurrence).encode()).hexdigest() if uid else ""
+        if not valid_interval:
+            busy_complete = False
+        elif end > now and interval_start < now + dt.timedelta(days=2):
+            intervals.append(
+                dict(
+                    source_id=source_id,
+                    title=str(event.get("SUMMARY", "Calendar event"))[:100],
+                    start=interval_start.timestamp(),
+                    end=end.timestamp(),
+                    busy=transparency != "TRANSPARENT",
+                    all_day=all_day,
+                )
+            )
+        if all_day:
             continue  # All-day events are not spoken appointments.
         if start.tzinfo is None:
             start = start.astimezone()
@@ -61,7 +108,7 @@ def poll(context):
         if start.timestamp() <= time.time():
             continue
         title = str(event.get("SUMMARY", "Calendar event"))[:100]
-        upcoming.append(dict(title=title, start=start.timestamp()))
+        upcoming.append(dict(title=title, start=start.timestamp(), source_id=source_id))
         identifier = (
             "feed-"
             + hashlib.sha256(
@@ -98,6 +145,8 @@ def poll(context):
             if identifier not in scheduled:
                 db.execute("UPDATE notifications SET status='cancelled' WHERE id=?", (identifier,))
 
+    context.state["calendar_context"] = sorted(intervals, key=lambda e: e["start"])
+    context.state["calendar_busy_complete"] = busy_complete and len(intervals) <= 200
     context.state["calendar_upcoming"] = sorted(upcoming, key=lambda e: e["start"])
     context.state["calendar_checked_at"] = time.time()
     from ..agenda import schedule

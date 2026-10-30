@@ -194,6 +194,41 @@ class Surfaces:
                 result = self.begin(base, launch=False)
             return {k: v for k, v in dict(result, accepted=True).items() if k != "url"}
 
+    def refresh_receiver(self, location_id, base):
+        """Refresh an existing Cast visit without moving or duplicating its actor."""
+        with self.lock:
+            if self.phase != "tv" or self.active_id != location_id or self.direct:
+                return False
+            if not any(
+                p["id"] == location_id and p["adapter"] == "cast"
+                for p in self.settings["locations"]
+            ):
+                return False
+            self.receiver_session, self.receiver_active = None, False
+            self.last_seen = time.monotonic()
+            # The replaced page may send an unload/closed callback. Revoke its
+            # capability before launch so it cannot cancel the refreshed visit.
+            self.token = secrets.token_urlsafe(32)
+            url = base + "/tv/#" + self.token
+        self._launch(url, location_id=location_id)
+        return True
+
+    def audio_receiver(self, token):
+        """A transient Cast capability can receive only its active destination audio."""
+        with self.lock:
+            if (
+                not token
+                or not self.token
+                or not secrets.compare_digest(token, self.token)
+                or self.phase not in ("preparing", "leaving_pi", "entering_tv", "tv", "leaving_tv")
+                or not any(
+                    p["id"] == self.active_id and p["adapter"] == "cast"
+                    for p in self.settings["locations"]
+                )
+            ):
+                raise PermissionError("No active Cast audio receiver")
+            return self.active_id
+
     def registered(self, token):
         try:
             return self.registry.device(token)
@@ -338,6 +373,12 @@ class Surfaces:
         from urllib.parse import urlsplit
 
         generation = urlsplit(url).fragment
+        with self.lock:
+            if direct is not None:
+                if self.direct is not direct or generation != direct.target_token:
+                    return
+            elif self.token != generation:
+                return
         try:
             from pychromecast.controllers.dashcast import DashCastController
 
@@ -346,6 +387,13 @@ class Surfaces:
                 raise ValueError(
                     "TV Cast connection unavailable; open the TV receiver URL to test the handoff in a browser"
                 )
+
+            from pychromecast.config import APP_DASHCAST
+
+            if cast.status.app_id == APP_DASHCAST:
+                # A forced LAUNCH can reuse a navigated-away receiver session.
+                # Stop that app once so its JS can accept the new dashboard URL.
+                cast.quit_app(timeout=5)
 
             class FreshDashCast(DashCastController):
                 def launch(self, *, callback_function=None, force_launch=False):
@@ -654,8 +702,18 @@ class Surfaces:
         )
         place = next(p for p in status["locations"] if p["id"] == place_id)
 
+        from .morning import Morning
+        from .config import state_dir
+
+        from .morning_briefing import Briefing
+
+        morning = Briefing(state_dir() / "amadeus").enrich(
+            Morning(state_dir() / "amadeus").view(place_id), state
+        )
         return dict(
             status,
+            morning=morning,
+            audio_volume=place.get("audio_volume", 20),
             environment=environment(
                 place, current_character()["style"], self.registry.scene_world_enabled()
             ),

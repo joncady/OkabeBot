@@ -60,6 +60,10 @@ def audit(path):
             or name.endswith(PRIVATE_SUFFIXES)
             or ".." in parts
             or name.startswith("/")
+            or (
+                PurePosixPath(name).name.startswith("amadeus-private-export")
+                and name.endswith(".json")
+            )
         ):
             errors.append("Private/unsafe path detected (artifact name redacted)")
         if KEY_BLOCK.search(raw) or TOKEN.search(raw):
