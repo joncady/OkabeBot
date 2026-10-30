@@ -274,6 +274,8 @@ const amadeusUI = (() => {
     }
     if(config.destination)$('conversation-destination').value=config.destination;
     $('conversation-enabled').checked=config.enabled===true;
+    $('conversation-max-per-day').value=config.max_per_day??1;
+    $('conversation-min-gap').value=config.min_gap_minutes??120;
     $('conversation-resume').disabled=config.enabled!==true;
   }
   async function habits() {
@@ -320,7 +322,7 @@ const amadeusUI = (() => {
   async function run(action) { try { await action(); } catch(error) { message(error.message); } }
   $('feeds-refresh').onclick=()=>run(feeds);
   $('conversation-resume').onclick=()=>run(async()=>{await api('conversation-resume',{});message('Reply resumed. Use the usual push-to-talk button; the invitation was not replayed.');});
-  $('conversation-form').onsubmit=event=>{event.preventDefault();run(async()=>{await api('conversation',{enabled:$('conversation-enabled').checked,destination:$('conversation-destination').value});await conversation();message('Conversation choice saved.');});};
+  $('conversation-form').onsubmit=event=>{event.preventDefault();run(async()=>{await api('conversation',{enabled:$('conversation-enabled').checked,destination:$('conversation-destination').value,max_per_day:Number($('conversation-max-per-day').value),min_gap_minutes:Number($('conversation-min-gap').value)});await conversation();message('Conversation choice saved.');});};
   $('habits-refresh').onclick=()=>run(habits);
   $('habits-enabled').onchange=()=>run(async()=>{await api('habits',{enabled:$('habits-enabled').checked});await habits();});
   $('morning-test-tv').onclick=()=>run(async()=>{

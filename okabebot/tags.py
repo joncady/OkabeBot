@@ -14,8 +14,9 @@ def tag_id(value):
 
 
 class Tags:
-    def __init__(self, folder, locations, call, clock=time.time):
+    def __init__(self, folder, locations, call, clock=time.time, chores=None):
         self.folder, self.locations, self.call, self.clock = Path(folder), locations, call, clock
+        self.chores = chores
         self.lock = threading.RLock()
         self.learn_until = 0
         self.learned = None
@@ -41,20 +42,31 @@ class Tags:
             return self.snapshot()
 
     def save(self, data):
-        if not isinstance(data, dict) or set(data) != {"tag_id", "name", "location_id", "enabled"}:
-            raise ValueError("Choose tag, name, destination and enabled state")
+        if not isinstance(data, dict):
+            raise ValueError("Choose a tag action")
+        action = data.get("action", "call_companion")
+        expected = {"tag_id", "name", "enabled"} | (
+            {"chore_id"} if action == "chore_reminder" else {"location_id"}
+        )
+        if action not in ("call_companion", "chore_reminder") or set(data) - {"action"} != expected:
+            raise ValueError("Choose the fields for this tag action")
         key = tag_id(data["tag_id"])
         if not isinstance(data["name"], str) or not 1 <= len(data["name"].strip()) <= 80:
             raise ValueError("Use a name of 1–80 characters")
         if type(data["enabled"]) is not bool:
             raise ValueError("Choose enabled or disabled")
-        if data["location_id"] not in {p["id"] for p in self.locations() if p.get("approved")}:
-            raise ValueError("Choose an approved destination")
+        if action == "call_companion":
+            if data["location_id"] not in {p["id"] for p in self.locations() if p.get("approved")}:
+                raise ValueError("Choose an approved destination")
+        elif self.chores is None or data["chore_id"] not in {
+            v["id"] for v in self.chores.snapshot()["items"]
+        }:
+            raise ValueError("Choose a configured chore")
         with self.lock:
             mappings = read(self.folder / "mappings.json", {})
             if len(mappings) >= 100 and key not in mappings:
                 raise ValueError("At most 100 mapped tags")
-            mappings[key] = {**data, "name": data["name"].strip(), "action": "call_companion"}
+            mappings[key] = {**data, "name": data["name"].strip(), "action": action}
             write(self.folder / "mappings.json", mappings)
             self.learn_until = 0
             return self.snapshot()
@@ -67,10 +79,22 @@ class Tags:
             write(self.folder / "mappings.json", mappings)
             return self.snapshot()
 
-    def dispatch(self, key):
+    def dispatch(self, key, request_id=None):
         mapping = read(self.folder / "mappings.json", {}).get(tag_id(key))
         if not mapping or not mapping["enabled"]:
             return {"status": "unmapped_or_disabled"}
+        if mapping.get("action") == "chore_reminder":
+            if self.chores is None:
+                return {"status": "chore_unavailable"}
+            try:
+                value = self.chores.complete(mapping["chore_id"], request_id=request_id)["item"]
+                return {
+                    "status": "chore_completed",
+                    "chore_id": value["id"],
+                    "due_at": value["due_at"],
+                }
+            except (ValueError, KeyError, TypeError):
+                return {"status": "chore_unavailable"}
         if mapping["location_id"] not in {p["id"] for p in self.locations() if p.get("approved")}:
             return {"status": "destination_unavailable"}
         try:
@@ -115,7 +139,7 @@ class Tags:
             }
             write(self.folder / "state.json", state)
             if result is None:
-                result = self.dispatch(key)
+                result = self.dispatch(key, request_id=event)
             state["last_scan"]["status"] = result["status"]
             write(self.folder / "state.json", state)
             return result

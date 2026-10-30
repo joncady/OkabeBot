@@ -7,6 +7,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from .amadeus_coaching import Coaching, SETTINGS, DELIVERY, valid_settings
+from .amadeus import encode
 from .amadeus_onboarding import KEY, SYSTEM
 from .morning import Morning
 
@@ -31,6 +32,11 @@ def quiet(settings, now):
 class Briefing:
     def __init__(self, folder, *, clock=None):
         self.morning = Morning(folder, clock=clock)
+        self._spoken_chore_refs = []
+        self._spoken_chore_scope = []
+        self._spoken_chore_slot = None
+        self._spoken_chore_profile = None
+        self._spoken_chore_delivery = None
 
     def person(self, store):
         try:
@@ -176,6 +182,40 @@ class Briefing:
         finally:
             store.close()
 
+    def _chores(self):
+        from .chores import Chores
+
+        return Chores(
+            self.morning.folder, **({"clock": self.morning.clock} if self.morning.clock else {})
+        )
+
+    def revalidate_chores(self, spoken):
+        """Remove changed/completed private facts immediately before actual speech."""
+        if not self._spoken_chore_slot:
+            return spoken
+        store = self.morning.store()
+        try:
+            setup = self.morning.preference(store, KEY, {})
+            permitted = (
+                setup.get("profile") == self._spoken_chore_profile
+                and not setup.get("paused")
+                and not setup.get("guest")
+            )
+        finally:
+            store.close()
+        chores = self._chores()
+        current = permitted and all(
+            chores.still_due(item["id"], item["due_at"], item["revision"])
+            for item in self._spoken_chore_scope
+        )
+        if current:
+            return spoken
+        spoken = spoken.replace(self._spoken_chore_slot, "", 1)
+        self._spoken_chore_refs = []
+        self._spoken_chore_scope = []
+        self._spoken_chore_slot = None
+        return re.sub(r"([.!?])(?:\s*[.!?])+", r"\1", spoken).strip()
+
     def enrich(self, summary, state=None):
         if summary is None:
             return None
@@ -213,6 +253,17 @@ class Briefing:
             )
         if card := self.coaching():
             cards.append({k: v for k, v in card.items() if k != "topic"})
+        due = self._chores().due(limit=3)
+        if due:
+            cards.append(
+                {
+                    "kind": "chores",
+                    "title": "Around the house",
+                    "body": "Ready when you have a moment: "
+                    + ", ".join(item["title"] for item in due),
+                    "important": False,
+                }
+            )
         return dict(summary, cards=cards)
 
     def allowed(self, destination):
@@ -278,6 +329,34 @@ class Briefing:
             raise ValueError("No current person name or spoken override")
         cards = summary["cards"]
         slots = {"name": name}
+        self._spoken_chore_refs = []
+        self._spoken_chore_scope = []
+        self._spoken_chore_slot = None
+        due = self._chores().due(remind_only=True, limit=3)
+        if due:
+            self._spoken_chore_refs = [{k: due[0][k] for k in ("id", "due_at", "revision")}]
+            self._spoken_chore_scope = [
+                {k: item[k] for k in ("id", "due_at", "revision")} for item in due
+            ]
+            title = (
+                " ".join(re.sub(r"[<>{}]", " ", due[0]["title"]).split())[:45]
+                or "a household chore"
+            )
+            self._spoken_chore_slot = "one household reminder is " + title
+            if len(due) > 1:
+                self._spoken_chore_slot += ", with more chores listed on the dashboard"
+            slots["chores"] = self._spoken_chore_slot
+            store = self.morning.store()
+            try:
+                setup = self.morning.preference(store, KEY, {})
+                self._spoken_chore_profile = setup.get("profile")
+                self._spoken_chore_delivery = (
+                    datetime.fromtimestamp(store.clock(), ZoneInfo(setup.get("timezone", "UTC")))
+                    .date()
+                    .isoformat()
+                )
+            finally:
+                store.close()
         weather_hint = "unavailable"
         weather = next((c for c in cards if c["kind"] == "weather"), None)
         if weather:
@@ -336,6 +415,13 @@ class Briefing:
             coach = None
         if len(fallback().format_map(slots)) > 340 and "status" in slots:
             slots["status"] = "there are status updates to check"
+        if len(fallback().format_map(slots)) > 360 and "chores" in slots:
+            # Keep the important briefing intact rather than failing all speech for
+            # an oversized optional chore slot. The persistent card remains due.
+            del slots["chores"]
+            self._spoken_chore_refs = []
+            self._spoken_chore_scope = []
+            self._spoken_chore_slot = None
         if len(fallback().format_map(slots)) > 360:
             raise ValueError("Briefing exceeds the short speech budget")
         template, generated = fallback(), False
@@ -370,10 +456,18 @@ class Briefing:
         store = self.morning.store()
         try:
             with store.db:
+                store.db.execute("BEGIN IMMEDIATE")
                 value = self.morning.preference(store, SPOKEN_KEY, {})
                 if value:
-                    store.remember(
-                        SYSTEM, SPOKEN_KEY, dict(value, state="delivered" if success else "failed")
+                    store.db.execute(
+                        "INSERT INTO preferences VALUES (?,?,?,?) ON CONFLICT(subject,key) "
+                        "DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+                        (
+                            SYSTEM,
+                            SPOKEN_KEY,
+                            encode(dict(value, state="delivered" if success else "failed")),
+                            store.clock(),
+                        ),
                     )
                 setup = self.morning.preference(store, KEY)
                 if success and coach and setup:
@@ -382,3 +476,23 @@ class Briefing:
                     )
         finally:
             store.close()
+        if (
+            success
+            and self._spoken_chore_refs
+            and setup
+            and setup.get("profile") == self._spoken_chore_profile
+            and not setup.get("paused")
+            and not setup.get("guest")
+        ):
+            chores = self._chores()
+            for item in self._spoken_chore_refs:
+                chores.claim_reminder(
+                    item["id"],
+                    "morning:" + self._spoken_chore_delivery + ":" + item["id"],
+                    "morning",
+                    expected_due_at=item["due_at"],
+                    expected_revision=item["revision"],
+                )
+        self._spoken_chore_refs = []
+        self._spoken_chore_scope = []
+        self._spoken_chore_slot = None

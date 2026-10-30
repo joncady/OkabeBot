@@ -475,3 +475,17 @@ collectors/recording budgets and full provider pagination remain separate work.
 - Limited: very large historical imports, remote recording budgets and isolated
   backup/restore are separate planned work. Broader coaching and sentiment remain
   open; finishing administrative controls does not imply autonomous health advice.
+
+
+## Explicit recurring task support
+
+- Improved: NFC and dashboard completion share stable chore identities and durable
+  recurrence. Reminders do not masquerade as completion, and stale plans cannot
+  be resurrected by a late scan or delivery acknowledgment after forgetting.
+- Improved: due tasks can be woven into morning/proactive framing with local fact
+  slots, repeated gently under task cadence and shared invitation budgets.
+- Improved: check-in frequency is editable without resetting privacy choices,
+  session state or durable rate limits. Pending/uncertain delivery is distinct from
+  successful reminder delivery.
+- Limited: latest task state is not a lifetime activity history or identity proof;
+  conversational agreement does not complete tasks or grant preference consent.

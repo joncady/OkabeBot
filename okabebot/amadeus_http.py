@@ -154,13 +154,17 @@ def handle(handler, bridge, *, post=False):
             result = bridge.proactive.resume_reply()
         elif path == "/amadeus/api/conversation":
             from .amadeus_habits import preference
-            from .amadeus_live import CONFIG
+            from .amadeus_live import CONFIG, FREQUENCY_DEFAULTS
 
             if not service.settings():
                 raise ValueError("Save private setup first")
             if post:
-                if not isinstance(data, dict) or set(data) != {"enabled", "destination"}:
-                    raise ValueError("Choose enabled and destination")
+                if (
+                    not isinstance(data, dict)
+                    or not {"enabled", "destination"} <= set(data)
+                    or set(data) - {"enabled", "destination", "max_per_day", "min_gap_minutes"}
+                ):
+                    raise ValueError("Choose enabled, destination and bounded frequency")
                 places = bridge.surfaces.snapshot()["locations"]
                 if not any(
                     p["id"] == data["destination"] and p["adapter"] == "pi" and p["approved"]
@@ -169,7 +173,10 @@ def handle(handler, bridge, *, post=False):
                     raise ValueError("This trial requires an approved Pi destination")
                 bridge.proactive.configure(**data)
             result = {
-                "config": preference(service.store, service.subject(), CONFIG, {}),
+                "config": {
+                    **FREQUENCY_DEFAULTS,
+                    **preference(service.store, service.subject(), CONFIG, {}),
+                },
                 "destinations": [
                     {"id": p["id"], "name": p["name"]}
                     for p in bridge.surfaces.snapshot()["locations"]

@@ -21,6 +21,11 @@ The screen-arrangement grid centers relative destinations and scrolls unusually
 wide layouts without shrinking touch targets. HA room mapping includes available
 floor metadata and explicit unassigned-device review; discovery never grants consent.
 Optional [private disposable-file budgets](docs/private-storage.md) default off.
+[Recurring chores](docs/chores.md) can be completed by an NFC tag or dashboard
+button, with configurable recurrence and quiet repeat reminders in morning and
+proactive flows. Check-in frequency is owner-editable without weakening attention
+or privacy gates; raw recordings and passive completion inference are not added.
+
 
 
 **Amadeus** is the new local memory and proactive-assistance trial. Its

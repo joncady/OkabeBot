@@ -23,6 +23,7 @@ READ_TOOLS = {
     "get_calendar_agenda",
     "get_focus_session",
     "get_home_activity",
+    "get_chores",
     "get_context_feed",
     "get_trakt_watchlist",
     "get_recent_notifications",
@@ -366,6 +367,15 @@ def acknowledgement(name, result):
             + "."
             + more
             + " This is a selected snapshot, not a complete history."
+        )
+    if name == "get_chores":
+        if result.get("state"):
+            return "Chore context is paused or not configured."
+        titles = [item["title"] for item in result.get("items", [])]
+        return (
+            "Your chore records include " + ", ".join(titles[:5]) + "."
+            if titles
+            else "There are no chores in this selected view."
         )
     if name == "get_home_activity":
         return result["summary"]

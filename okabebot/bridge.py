@@ -162,12 +162,16 @@ class Bridge:
         self.resources.callback(self.cast_surfaces.close)
         self.surfaces = Surfaces(scene.rpc, cast_resolver=self.cast_surfaces.get)
         from .tags import Tags
+        from .chores import Chores
+
+        self.chores = Chores(state_dir() / "amadeus")
 
         self.tag_source_token = persistent_token(state_dir() / "tags", "ha-source-token")
         self.tags = Tags(
             state_dir() / "tags",
             lambda: self.surfaces.snapshot()["locations"],
             lambda location: self.application.execute("/surfaces/move", {"location_id": location}),
+            chores=self.chores,
         )
         self.resources.callback(self.surfaces.close)
         from .surface_audio import AudioHub
@@ -722,6 +726,7 @@ class Bridge:
                 # Private capability diagnostics only; never log the spoken text or facts.
                 timing.write("morning", {"generated_framing": generated, "state": "speaking"})
                 # Resolve the current surface speaker; never use global announcement fallback.
+                spoken = briefing.revalidate_chores(spoken)
                 character_tools.speak(spoken, "happy", purpose="reply")
                 timing.write("morning", {"generated_framing": generated, "state": "delivered"})
                 briefing.complete(success=True, coach=coach)
@@ -800,11 +805,7 @@ class Bridge:
                         from .amadeus_onboarding import KEY, SYSTEM
 
                         setup = preference(store, SYSTEM, KEY)
-                        prefs = preference(store, setup["profile"], "context.preferences", {})
-                    opening = self.codex.compose_preference(
-                        "Start one optional conversation about an interest or hobby. I can answer with the button or skip it.",
-                        {"preferences": prefs},
-                    )
+                    opening = self.proactive.opening(offer, self.codex.compose_preference)
                     text = opening.get("reply")
                     if (
                         not isinstance(text, str)
@@ -819,19 +820,31 @@ class Bridge:
                         continue
                     # Consume before speech: uncertain delivery is never replayed.
                     self.pi({"op": "ptt", "enabled": False})
+                    if not self.proactive.revalidate_chore_offer(offer):
+                        self.proactive.end()
+                        continue
                     self.show_activity("speaking")
                     self.notify("assistant", {"text": text, "phase": "final_answer"})
                     try:
                         character_tools.speak(text, "curious", purpose="proactive")
+                        self.proactive.delivered(offer, success=True)
                     except Exception:
                         self.proactive.end()
                         raise
-                    with self.proactive.store() as store:
+                    with self.proactive.store() as store, store.db:
                         from .amadeus_live import STATE
 
+                        store.db.execute("BEGIN IMMEDIATE")
+                        current = preference(store, SYSTEM, KEY, {})
                         trial = preference(store, setup["profile"], STATE, {})
-                        trial["last_reply"] = text
-                        store.remember(setup["profile"], STATE, trial)
+                        if (
+                            current == setup
+                            and not current.get("paused")
+                            and not current.get("guest")
+                            and trial
+                        ):
+                            trial["last_reply"] = text
+                            store.remember(setup["profile"], STATE, trial)
                     timing.write("amadeus-conversation", {"state": "delivered"})
                 finally:
                     self.announcing = False
@@ -1077,6 +1090,10 @@ def handler(bridge):
             )
 
         def do_GET(self):
+            from .chores_http import handle as handle_chores
+
+            if handle_chores(self, bridge):
+                return
             from .tags_http import handle as handle_tags
 
             if handle_tags(self, bridge):
@@ -1126,6 +1143,7 @@ def handler(bridge):
                 "/style.css",
                 "/app.js",
                 "/tags.js",
+                "/chores.js",
                 "/storage.js",
                 "/dashboard-navigation.js",
                 "/amadeus-text.js",
@@ -1158,6 +1176,10 @@ def handler(bridge):
                 self.respond(403, {"error": "Open the control URL printed by the bridge"})
 
         def do_POST(self):
+            from .chores_http import handle as handle_chores
+
+            if handle_chores(self, bridge, post=True):
+                return
             from .tags_http import handle as handle_tags
 
             if handle_tags(self, bridge, post=True):

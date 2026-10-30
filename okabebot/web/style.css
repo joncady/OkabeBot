@@ -446,3 +446,8 @@ input,textarea,select { max-width:100%; }
  .controls { flex-wrap:wrap; }
  .controls button { flex-basis:45%; }
 }
+
+#tag-chore-settings:not([hidden]) { grid-column:1 / -1; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr)); gap:16px; border:2px solid var(--border,#465166); padding:12px; }
+#tag-chore-settings .hint { grid-column:1 / -1; margin:0; }
+.chore-card label { display:inline-flex; flex-direction:column; gap:6px; margin:8px; }
+.chore-card input[type=number] { width:80px; min-height:44px; box-sizing:border-box; }

@@ -1747,3 +1747,25 @@ No account writes, source selections, capture permissions or volume were changed
 The Pi satellite remains at its previous installed service as described above. Protected-state
 backup/restore drills remain planned in issue #81; broader collection/storage
 consolidation and lifetime-history imports remain issue #18.
+
+
+## Chores and configurable check-in cadence
+
+The chore source changes use the existing Mac controller, private Amadeus SQLite
+preferences and scoped HA tag route. They add owner-only chore management endpoints
+under the existing port, not a new service or capture permission. Plans and latest
+completion/reminder state are private per-profile records; exports/forgetting cover
+them. Existing tag configuration remains separate and missing chore references are
+inert. No provider or hardware state is used to infer completion.
+
+Morning and proactive paths read grounded overdue task state; successful speech
+alone acknowledges a reminder. Source-level privacy/availability gates and the
+shared durable invitation budget apply to general and chore check-ins. Owner
+frequency controls preserve enabled state, destination, session state and budget;
+repository defaults remain conservative. Actual owner cadence choices and chore
+plans are private configuration and must not appear in this inventory.
+
+These additions are source-validated separately from live installation. A later
+verification note/PR records whether the Mac package was updated; no real NFC scan
+or speaker test is implied. Pi/HA tag firmware/automation configuration does not
+need new permissions for the action. See [chore behavior and API](chores.md).

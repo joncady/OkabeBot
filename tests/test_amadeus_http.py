@@ -13,7 +13,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from okabebot.amadeus import Store
-from okabebot.amadeus_onboarding import SYSTEM
+from okabebot.amadeus_onboarding import SYSTEM, KEY
 from okabebot.bridge import handler
 
 
@@ -469,6 +469,69 @@ class AmadeusHttpTests(unittest.TestCase):
 
 
 class LiveConversationHttpTests(AmadeusHttpTests):
+    def test_frequency_is_owner_editable_without_resetting_private_state(self):
+        from okabebot.amadeus_live import ProactiveConversation, BUDGET, STATE, CONFIG
+        from okabebot.amadeus_habits import preference
+
+        self.bridge.proactive = ProactiveConversation(self.folder / "amadeus")
+        self.bridge.surfaces.snapshot.return_value = {
+            "locations": [
+                {"id": "fictional-desk", "name": "Desk", "adapter": "pi", "approved": True}
+            ]
+        }
+        self.request("/amadeus/api/settings", dict(SETUP, sources=["door_presence"]))
+        initial = self.request(
+            "/amadeus/api/conversation", {"enabled": True, "destination": "fictional-desk"}
+        )
+        self.assertEqual(1, initial["config"]["max_per_day"])
+        with self.bridge.proactive.store() as store:
+            profile = preference(store, SYSTEM, KEY)["profile"]
+            store.remember(profile, STATE, {"private": "existing armed state"})
+            store.remember(profile, "conversation.preferences", {"enabled": False, "speech": False})
+            budget = preference(store, profile, BUDGET)
+            activated = preference(store, profile, CONFIG)["activated_at"]
+        result = self.request(
+            "/amadeus/api/conversation",
+            {
+                "enabled": True,
+                "destination": "fictional-desk",
+                "max_per_day": 3,
+                "min_gap_minutes": 120,
+            },
+        )
+        self.assertEqual(3, result["config"]["max_per_day"])
+        with self.bridge.proactive.store() as store:
+            self.assertEqual({"private": "existing armed state"}, preference(store, profile, STATE))
+            self.assertEqual(
+                {"enabled": False, "speech": False},
+                preference(store, profile, "conversation.preferences"),
+            )
+            self.assertEqual(budget, preference(store, profile, BUDGET))
+            self.assertEqual(activated, preference(store, profile, CONFIG)["activated_at"])
+        with self.assertRaises(HTTPError) as error:
+            self.request(
+                "/amadeus/api/conversation",
+                {
+                    "enabled": True,
+                    "destination": "fictional-desk",
+                    "max_per_day": 0,
+                    "min_gap_minutes": 120,
+                },
+            )
+        self.assertEqual(400, error.exception.code)
+        with self.assertRaises(HTTPError) as error:
+            self.request(
+                "/amadeus/api/conversation",
+                {
+                    "enabled": True,
+                    "destination": "fictional-desk",
+                    "max_per_day": 3,
+                    "min_gap_minutes": 120,
+                },
+                token="publisher",
+            )
+        self.assertEqual(403, error.exception.code)
+
     def test_live_setup_is_owner_only_and_attention_cannot_read_or_enable_it(self):
         from okabebot.amadeus_live import ProactiveConversation
 

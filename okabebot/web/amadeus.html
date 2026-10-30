@@ -32,9 +32,12 @@
 </form></section>
 <section id="amadeus-controls" class="panel" hidden><h2>Your boundaries</h2>
 <div class="controls"><button id="amadeus-pause" aria-pressed="true">Learning paused</button><button id="amadeus-guest" aria-pressed="false">Guest mode off</button></div>
-<details class="subpanel"><summary>Proactive conversations</summary><form id="conversation-form"><label class="amadeus-option"><input id="conversation-enabled" type="checkbox"> Optional door-armed conversations</label>
-<p>One invitation after the first door opening, only in a quiet available window. Answer with push-to-talk; there is no continuous recording. Phone DND, focus, media, quiet hours, pause and guest mode protect your time. Door opening is a home assumption, not identity detection.</p>
-<label>Starting location<select id="conversation-destination"></select></label><button>Save conversation choice</button><button type="button" id="conversation-resume">Resume reply</button></form>
+<details class="subpanel"><summary>Proactive conversations</summary><form id="conversation-form"><label class="amadeus-option"><input id="conversation-enabled" type="checkbox"> Optional proactive check-ins</label>
+<p>The first home cue starts the day; later check-ins need fresh at-home evidence and a clear available window. Check-ins and chore reminders share the limit and minimum gap below. Answer with push-to-talk; there is no continuous recording. Phone DND, focus, media, quiet hours, pause, guest mode and uncertain presence protect your time. A door opening is a home assumption, not identity detection.</p>
+<label>Starting location<select id="conversation-destination"></select></label>
+<div class="amadeus-grid"><label>Check-ins per day<input id="conversation-max-per-day" type="number" min="1" max="6" value="1" required></label><label>Minimum gap (minutes)<input id="conversation-min-gap" type="number" min="30" max="720" value="120" required></label></div>
+<p class="hint">These are upper limits, not scheduled interruptions. Quiet or unavailable days may have fewer check-ins.</p>
+<button>Save conversation choice</button><button type="button" id="conversation-resume">Resume reply</button></form>
 </details>
 <details class="subpanel"><summary>Privacy &amp; consent details</summary><p>Only permitted metadata is observed. Pause and guest mode stop new observations and proactive conversations. Routine predictions stay in shadow. Optional conversations and morning speech have separate controls.</p></details>
 <details class="subpanel"><summary>Habit support controls</summary><div class="controls"><button id="coaching-later">Snooze coaching</button><button id="coaching-stop">Stop coaching</button><button id="coaching-resume">Resume chosen topics</button></div>

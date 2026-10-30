@@ -1,5 +1,5 @@
 const test=require('node:test'), assert=require('node:assert/strict'), fs=require('node:fs'), vm=require('node:vm');
-async function fixture(withInventory=false,withTrakt=false){
+async function fixture(withInventory=false,withTrakt=false,conversationConfig={}){
  const nodes={},requests=[];let denied=false,token='synthetic-owner',hold=false,release;
  function node(){return {hidden:false,children:[],value:'',checked:false,textContent:'',
   append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;},
@@ -17,8 +17,8 @@ async function fixture(withInventory=false,withTrakt=false){
   quiet_start:'22:00',quiet_end:'08:00',coaching_choice:'not_now',coaching_mode:'establish',paused:true,guest:false};
  const context={document,Intl,Date,JSON,URL,Blob,setTimeout,
   dashboardAccess:{token:()=>token,remember(){},required(){get('dashboard-auth').hidden=false;}},
-  fetch:async(url,options)=>{requests.push({url,options});if(hold)await new Promise(resolve=>release=resolve);return{status:denied?403:200,ok:!denied,
-   json:async()=>url.endsWith('trakt-lists')?{state:'connected',items:[{id:'7',title:'Invented watched list'},{id:'8',title:'Another invented list'}],page:1,next_page:null}:url.endsWith('feeds')?{feeds:[withTrakt?{id:'watch_history',label:'Watch history',instructions:'Read only',status:'disabled',fields:[],options:[{key:'history_days',label:'History window (days)',type:'number',min:1,max:365,default:30},{key:'page_budget',label:'Maximum requests per polling cycle',type:'number',min:1,max:20,default:1},{key:'watched_lists',label:'Watched lists',type:'trakt_lists',default:[]}],config:{enabled:false,history_days:30,page_budget:2,watched_lists:['7']}}:{id:'tasks',label:'<img src=x>',instructions:'Read only',status:'disabled',fields:[{key:'entities',label:'To-do lists',domain:'todo'}],config:{enabled:false,entities:[]}}],context:[],connections:withInventory?[{transport:'ha',url:'http://ha.invalid',has_token:true}]:[]}:url.endsWith('ha-inventory')?{rooms:[{id:'study',name:'Study'}],entities:[{id:'todo.invented',name:'Invented list',room:'Study',available:true}],locations:[{id:'screen-a',name:'Desk',area_id:null}]}:url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
+  fetch:async(url,options)=>{requests.push({url,options});if(url.endsWith('conversation')&&options.method==='POST')conversationConfig=JSON.parse(options.body);if(hold)await new Promise(resolve=>release=resolve);return{status:denied?403:200,ok:!denied,
+   json:async()=>url.endsWith('conversation')?{config:{enabled:false,destination:'screen-a',...conversationConfig},destinations:[{id:'screen-a',name:'Synthetic desk'}]}:url.endsWith('trakt-lists')?{state:'connected',items:[{id:'7',title:'Invented watched list'},{id:'8',title:'Another invented list'}],page:1,next_page:null}:url.endsWith('feeds')?{feeds:[withTrakt?{id:'watch_history',label:'Watch history',instructions:'Read only',status:'disabled',fields:[],options:[{key:'history_days',label:'History window (days)',type:'number',min:1,max:365,default:30},{key:'page_budget',label:'Maximum requests per polling cycle',type:'number',min:1,max:20,default:1},{key:'watched_lists',label:'Watched lists',type:'trakt_lists',default:[]}],config:{enabled:false,history_days:30,page_budget:2,watched_lists:['7']}}:{id:'tasks',label:'<img src=x>',instructions:'Read only',status:'disabled',fields:[{key:'entities',label:'To-do lists',domain:'todo'}],config:{enabled:false,entities:[]}}],context:[],connections:withInventory?[{transport:'ha',url:'http://ha.invalid',has_token:true}]:[]}:url.endsWith('ha-inventory')?{rooms:[{id:'study',name:'Study'}],entities:[{id:'todo.invented',name:'Invented list',room:'Study',available:true}],locations:[{id:'screen-a',name:'Desk',area_id:null}]}:url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
    {events:[],preferences:[{key:'user.test',value:'<img src=x onerror=alert(1)>'}]}};}};
  vm.createContext(context);
  vm.runInContext(fs.readFileSync('okabebot/web/amadeus.js','utf8')+'\nglobalThis.ui=amadeusUI;',context);
@@ -123,4 +123,21 @@ test('Trakt list discovery is explicit, keeps saved selection, and adjusts the s
  await new Promise(resolve=>setImmediate(resolve));
  const post=f.requests.find(r=>r.url.endsWith('feeds')&&r.options.method==='POST');
  assert.deepEqual(JSON.parse(post.options.body),{id:'watch_history',config:{enabled:false,history_days:30,page_budget:3,watched_lists:['7','8']}});
+});
+
+
+test('proactive cadence defaults preserve legacy limits and owner can edit without changing destination',async()=>{
+ const f=await fixture();assert.equal(f.nodes['conversation-max-per-day'].value,1);assert.equal(f.nodes['conversation-min-gap'].value,120);
+ f.nodes['conversation-enabled'].checked=true;f.nodes['conversation-max-per-day'].value='3';f.nodes['conversation-min-gap'].value='150';
+ f.nodes['conversation-form'].onsubmit({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve));
+ const request=f.requests.find(r=>r.url.endsWith('conversation')&&r.options.method==='POST');
+ assert.deepEqual(JSON.parse(request.options.body),{enabled:true,destination:'screen-a',max_per_day:3,min_gap_minutes:150});
+ assert.equal(f.nodes['conversation-max-per-day'].value,3);assert.equal(f.nodes['conversation-min-gap'].value,150);
+});
+
+test('configured proactive cadence is shown and private form resets on owner logout',async()=>{
+ const f=await fixture(false,false,{enabled:true,destination:'screen-a',max_per_day:5,min_gap_minutes:240});
+ assert.equal(f.nodes['conversation-max-per-day'].value,5);assert.equal(f.nodes['conversation-min-gap'].value,240);
+ f.nodes['dashboard-forget'].onclick();assert.equal(f.nodes['amadeus-controls'].hidden,true);
+ assert.equal(f.nodes['conversation-destination'].children.length,0);
 });

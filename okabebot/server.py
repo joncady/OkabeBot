@@ -156,6 +156,14 @@ def get_recent_notifications(source: str = "", status: str = "", limit: int = 10
 
 
 @mcp.tool(annotations=READ)
+def get_chores(include_upcoming: bool = False) -> dict:
+    """Read explicitly configured chores: due by default, or upcoming too. Does not complete, snooze or change anything; respect private pause/guest state."""
+    from .chores import Chores
+
+    return Chores(state_dir() / "amadeus").context(include_upcoming)
+
+
+@mcp.tool(annotations=READ)
 def get_home_activity(period: Literal["today", "yesterday", "last_24_hours"] = "today") -> dict:
     """Read partial consented household history: door/presence, TV/media and appliance readings.
     Missing observations are not evidence nothing happened; no safety/all-clear claim."""

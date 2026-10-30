@@ -113,13 +113,21 @@
       </details>
 </section>
       <details id="nfc-tags" class="panel" hidden>
-<summary>NFC tags</summary><p>Tap a tag to call the companion to its mapped screen. First write the tag using Home Assistant’s Android app → Settings → Tags. No credentials are written to the sticker.</p>
+<summary>NFC tags</summary><p>Tap a tag to call the companion or mark a recurring chore done. First write the tag using Home Assistant’s Android app → Settings → Tags. No credentials are written to the sticker.</p>
 <button id="tag-register" type="button">＋ Scan to register</button><button id="tag-map-last" type="button" hidden>Map last scanned tag</button><p id="tag-learn-status" role="status"></p>
 <form id="tag-form" class="tag-form">
 <label>Scanned tag<input id="tag-id" readonly required placeholder="Scan a tag to fill this automatically"></label>
-<label>Name<input id="tag-name" required maxlength="80" placeholder="Living room companion"></label>
-<label>Action<select disabled><option>Call companion</option></select></label>
-<label>Destination<select id="tag-location" required></select></label>
+<label>Tag label<input id="tag-name" required maxlength="80" placeholder="Living room companion"></label>
+<label>Action<select id="tag-action"><option value="call_companion">Call companion</option><option value="chore_reminder">Chore reminder</option></select></label>
+<label id="tag-destination">Destination<select id="tag-location" required></select></label>
+<div id="tag-chore-settings" hidden>
+<label>Chore<select id="tag-chore-select"><option value="">Create a chore</option></select></label>
+<label>Chore name<input id="tag-chore-title" maxlength="120" placeholder="Defaults to tag label"></label>
+<label>Remind after<input id="tag-chore-delay" type="number" min="1" max="52" value="2"><select id="tag-chore-unit" aria-label="Chore delay unit"><option value="days">days</option><option value="weeks" selected>weeks</option></select></label>
+<label>Repeat when overdue (days)<input id="tag-chore-repeat" type="number" min="1" max="30" value="1"></label>
+<label><input id="tag-chore-reminders" type="checkbox" checked> Chore reminders enabled</label>
+<p class="hint">Each scan marks this chore done and starts its next delay. Overdue reminders respect your Amadeus boundaries. Turning off the tag does not pause the chore.</p>
+</div>
 <label><input id="tag-enabled" type="checkbox" checked> Enabled</label><button id="tag-save" disabled>Save mapping</button>
 </form><p id="tag-status" role="status"></p><p id="tag-last-scan" class="muted"></p><div id="tag-mappings"></div>
 <a id="tag-ha-link" hidden target="_blank" rel="noopener noreferrer">Register/write tags in Home Assistant</a>
@@ -133,7 +141,20 @@
           <button type="submit">Set reminder</button>
         </form><button id="reminders-refresh">Refresh reminders</button><div id="reminders-list"></div>
       </section>
-      <section class="panel"><h2>Your day</h2><p id="agenda-next" role="status">Waiting for calendar…</p><div id="agenda-events"></div><button id="agenda-show">Show agenda on Pi</button></section>
+      <details class="panel" id="chores-panel"><summary>Chores</summary>
+<p class="hint">A scan or Mark done starts the next interval. Due chores stay available to morning summaries and quiet proactive reminders until completed, paused or snoozed.</p>
+<details class="subpanel"><summary>Add or edit a chore</summary>
+<form id="chore-form" class="preference-form">
+<input id="chore-id" type="hidden">
+<label>Chore<input id="chore-title" maxlength="120" required placeholder="Change towels"></label>
+<label>Remind after<input id="chore-delay" type="number" min="1" max="52" value="2" required><select id="chore-unit" aria-label="Reminder interval unit"><option value="days">days</option><option value="weeks" selected>weeks</option></select></label>
+<label>Repeat when overdue (days)<input id="chore-repeat" type="number" min="1" max="30" value="1" required></label>
+<label><input id="chore-enabled" type="checkbox" checked> Reminders enabled</label>
+<button id="chore-save">Save chore</button><button id="chore-new" type="button">New chore</button>
+</form></details>
+<button id="chores-refresh" type="button">Refresh chores</button><p id="chores-status" role="status"></p><div id="chores-list"></div>
+</details>
+<section class="panel"><h2>Your day</h2><p id="agenda-next" role="status">Waiting for calendar…</p><div id="agenda-events"></div><button id="agenda-show">Show agenda on Pi</button></section>
       <section class="panel music-panel">
         <div class="music-copy"><h2>Music in the lab</h2><p id="spotify-status" class="muted" role="status">Connect from a browser on the controller computer; then use any tablet to view playback.</p></div>
         <span class="muted">Music mic reacts locally; push-to-talk stays separate.</span>
@@ -295,6 +316,6 @@
       </section>
     <button id="dashboard-forget" class="small">Forget browser access</button></main>
     <footer>OKABEBOT <span>Make room for a little curiosity.</span></footer>
-    <script src="/dashboard-auth.js"></script><script src="/dashboard-navigation.js"></script><script src="/locations.js"></script><script src="/app.js"></script><script src="/amadeus-text.js"></script><script src="/tags.js"></script><script src="/storage.js"></script>
+    <script src="/dashboard-auth.js"></script><script src="/dashboard-navigation.js"></script><script src="/locations.js"></script><script src="/app.js"></script><script src="/amadeus-text.js"></script><script src="/chores.js"></script><script src="/tags.js"></script><script src="/storage.js"></script>
   </body>
 </html>
