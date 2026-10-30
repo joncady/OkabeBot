@@ -8,6 +8,8 @@ from .reminders import Reminders
 
 class Application:
     ROUTES = {
+        "/screen/power",
+        "/runtime/policy",
         "/amadeus/text/location",
         "/amadeus/text/policy",
         "/amadeus/text",
@@ -51,6 +53,14 @@ class Application:
 
     def execute(self, path, data):
         b = self.controller
+        if path == "/screen/power":
+            if data == {"action": "wake"}:
+                return b.screen_power.wake()
+            return b.screen_power.configure(data)
+        if path == "/runtime/policy":
+            from .runtime_policy import configure
+
+            return configure(state_dir(), data)
         if path.startswith("/amadeus/text"):
             chat = self.text_conversation
             if path == "/amadeus/text/location":

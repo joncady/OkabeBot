@@ -80,14 +80,18 @@ Last reviewed **2026-10-27**; component-specific verification is recorded in the
 Assistant; the Pi handles physical I/O and renders the character. A tablet is a
 browser controller, not a backend. See the [live configuration inventory](docs/deployment.md)
 for device status, model settings, ports, private configuration and recovery.
-The Mac currently has an AC-only, session-bound system-sleep guard; display sleep
-is allowed. It is not recreated after reboot or supervisor replacement; see the inventory.
+The runtime owns an optional persistent AC-only system-sleep guard; Mac display sleep
+is allowed. A separate Docker login helper starts HA/MQTT after login. Dev includes
+editable Pi screen night hours and temporary touch/button wake; audio and sensors stay on.
+A user login is required after reboot; closed-lid hosting is not guaranteed.
 
 ```mermaid
 flowchart TB
     Tablet["Tablet or laptop browser"] -->|"Remembered-auth dashboard: 8768"| App
     subgraph Mac["Mac - active controller"]
         Supervisor["Login LaunchAgent and runtime supervisor"] --> App["OkabeBot controller and shared actions"]
+        Supervisor --> SleepGuard["Optional AC sleep guard; display may sleep"]
+        DockerLogin["Optional Docker login LaunchAgent"] --> HA
         Supervisor --> Speech["Warm Qwen TTS worker"]
         App --> Vision["Opt-in local anonymous face detection; gated camera wave"]
         App --> ASR["Whisper base.en transcription"]

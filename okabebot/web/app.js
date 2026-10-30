@@ -1,3 +1,4 @@
+let powerInitialized=false;
 let connectionError = "";
 let enabled = true,
   lastRequests = "";
@@ -350,6 +351,21 @@ async function refresh() {
     if (connectionError && document.querySelector("#error").textContent === connectionError) document.querySelector("#error").textContent = "";
     connectionError = "";
     enabled = s.enabled;
+    if(s.screen_power){
+      const c=s.screen_power.config;
+      if(!powerInitialized){
+        document.querySelector('#night-enabled').checked=c.enabled;
+        document.querySelector('#night-start').value=c.sleep_start;
+        document.querySelector('#night-end').value=c.sleep_end;
+        document.querySelector('#night-zone').value=c.timezone;
+        document.querySelector('#night-minutes').value=c.wake_minutes;
+        document.querySelector('#startup-ac').checked=!!s.runtime_policy?.prevent_sleep_on_ac;
+        document.querySelector('#startup-docker').checked=!!s.runtime_policy?.docker_at_login;
+        powerInitialized=true;
+      }
+      document.querySelector('#night-status').textContent=`Display: ${s.screen_power.state}`;
+    }
+
     const history=document.querySelector('#timing-history'); history.replaceChildren();
     for (const t of (s.recent_timings || [])) {
       history.append(el('p',`${new Date(t.clip_received_at*1000).toLocaleTimeString()} · ${t.backend} · STT ${t.transcription_s ?? '?'}s · model ${t.local_generation_s ?? t.first_model_output_s ?? '?'}s · tool ${t.local_tool_s ?? '?'}s · ${t.status}`));
@@ -681,3 +697,7 @@ document.querySelector('#greeting-save').onclick=async()=>{
  dwell_seconds:Number(document.querySelector('#greeting-dwell').value),cooldown_seconds:Number(document.querySelector('#greeting-cooldown').value)});greetingSettingsDirty=false;}
  catch(error){document.querySelector('#error').textContent=error.message;}
 };
+
+document.querySelector('#night-save').onclick=async()=>{try{await api('/screen/power',{enabled:document.querySelector('#night-enabled').checked,sleep_start:document.querySelector('#night-start').value,sleep_end:document.querySelector('#night-end').value,timezone:document.querySelector('#night-zone').value,wake_minutes:Number(document.querySelector('#night-minutes').value)});}catch(e){document.querySelector('#error').textContent=e.message;}};
+document.querySelector('#night-wake').onclick=async()=>{try{await api('/screen/power',{action:'wake'});}catch(e){document.querySelector('#error').textContent=e.message;}};
+document.querySelector('#startup-save').onclick=async()=>{try{await api('/runtime/policy',{prevent_sleep_on_ac:document.querySelector('#startup-ac').checked,docker_at_login:document.querySelector('#startup-docker').checked});}catch(e){document.querySelector('#error').textContent=e.message;}};

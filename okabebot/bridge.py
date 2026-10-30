@@ -17,7 +17,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import timing, scene, agenda
+from . import timing, scene, agenda, runtime_policy
 from .notifications import Inbox
 from .notification_policy import NotificationPolicy
 from .github_webhook import GitHubWebhook
@@ -206,6 +206,10 @@ class Bridge:
             db.execute(
                 "CREATE TABLE IF NOT EXISTS clips (id TEXT PRIMARY KEY, status TEXT, transcript TEXT)"
             )
+        from .screen_power import ScreenPower
+        from .hardware import rpc
+
+        self.screen_power = ScreenPower(state_dir(), rpc)
         self.status = "Ready — hold the button to talk"
         self.show_activity("idle")
         (self.folder / "control.json").write_text(json.dumps({"url": self.url, "pid": os.getpid()}))
@@ -214,6 +218,7 @@ class Bridge:
             self.github_queue.start()
         threading.Thread(target=self.poll, daemon=True).start()
         threading.Thread(target=self.poll_sources, daemon=True).start()
+        threading.Thread(target=self.poll_screen_power, daemon=True).start()
         threading.Thread(target=self.poll_music, daemon=True).start()
         threading.Thread(target=self.poll_music_meter, daemon=True).start()
         threading.Thread(target=self.poll_health, daemon=True).start()
@@ -306,11 +311,18 @@ class Bridge:
                 self.status = str(data.get("message", data))
         print(kind, json.dumps(data)[:500], flush=True)
 
+    def poll_screen_power(self):
+        while not self.closing.is_set():
+            self.screen_power.tick()
+            self.closing.wait(5)
+
     def show_activity(self, activity):
         if self.face_activity == activity:
             return
         self.face_activity = activity
         self.face_worker.submit(scene.set_activity, activity)
+        if activity == "listening" and getattr(self, "screen_power", None):
+            self.face_worker.submit(self.screen_power.wake)
 
     def reply(self, text, status):
         if status != "completed":
@@ -922,6 +934,8 @@ class Bridge:
                     approvals = list(self.codex.approvals.values())
             return {
                 "presence": presence_status(state_dir()),
+                "screen_power": self.screen_power.snapshot(),
+                "runtime_policy": runtime_policy.settings(state_dir()),
                 "mac_screen": self.mac_screen.snapshot(),
                 "personality": personality(),
                 "camera_greeting": dict(self.camera_greeting.state),

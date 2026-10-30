@@ -181,16 +181,33 @@ handoff acceptance are private trial checks, not published outcomes. Continuous
 following and sustained radio/GATT/audio coexistence remain unaccepted. See
 [proximity setup](proximity.md); beacon identifiers and samples stay private.
 
-## Current-session Mac sleep guard
+## Mac startup and Pi display night mode
 
-The active native supervisor has a separate `caffeinate -s -w <supervisor-pid>`
-assertion attached for the current session. It prevents system sleep while AC
-power is connected and permits normal display sleep. It ends when that supervisor
-exits; the LaunchAgent does not currently recreate this manual guard after logout,
-reboot or supervisor replacement. Keep the laptop on AC with its lid open for
-unattended morning presentation. Explicit sleep/lid closure is not a validated
-hosting mode. The guard adds no network route or device action. A permanent,
-configurable runtime-owned sleep policy remains a follow-up.
+The installed runtime owns a configurable `caffeinate -s -w <supervisor-pid>`
+child. With AC sleep prevention enabled it recreates the assertion after runtime
+replacement or login, while permitting normal Mac display sleep. Explicit sleep,
+lid closure and operation without AC remain outside the hosting guarantee.
+A user login is required after reboot; this is not a pre-login server.
+
+The dedicated Docker login LaunchAgent opens Docker without foregrounding its UI.
+Existing HA/MQTT containers retain their `unless-stopped` restart policies. The
+unloaded duplicate controller entry was archived outside LaunchAgents and disabled;
+only the installed controller entry should own the hardware. Runtime policy is
+private `state/runtime/policy.json`, editable in dashboard Dev.
+
+Pi night mode sends timezone-resolved UTC intervals to the display service, which
+persists an eight-day horizon locally and controls HDMI firmware power with X11
+DPMS fallback. Audio, sensor collection and networking remain running. Touch,
+keyboard input or push-to-talk temporarily wake the screen; the wake duration,
+night hours, timezone and enable switch are editable in Dev. Initial installed
+hours were copied from private quiet-hours settings; later edits are independent.
+Defaults keep night mode and Mac startup options off until explicitly enabled.
+An offline controller cannot extend the saved schedule beyond its horizon.
+
+The runtime restart, loaded login helper, policy delivery and display power command
+acknowledgments were checked locally. A full Mac reboot/login and physical display
+backlight behavior remain separate acceptance checks; source/unit checks do not
+prove those behaviors. No volume changes are part of this update.
 
 ## Devices and responsibilities
 
@@ -307,8 +324,9 @@ use the [README supervisor instructions](../README.md#quick-start). It supervise
 the controller and Qwen speech worker. The conversation worker is owned by the
 controller. Home Assistant starts separately after Docker is available, and Pi
 services start under systemd after the required desktop/audio setup is ready.
-A Mac login is required for the per-user LaunchAgent; Docker's restart policy
-does not start Docker itself. This is not an unattended pre-login server.
+A Mac login is required for the per-user LaunchAgent. The optional Docker login
+helper starts Docker; container restart policy alone cannot do so. This is not an
+unattended pre-login server.
 
 After changes verify: selected backend and voice readiness; both device health
 checks; both Pi services; framebuffer size; HA automation enable states; queue/auth

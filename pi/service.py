@@ -25,7 +25,7 @@ import prop_art
 import travel
 from gesture_policy import wave_allowed
 from device_config import load
-from display_power import keep_awake
+from display_power import keep_awake, Power
 import math
 
 ROOT = Path(__file__).resolve().parent
@@ -37,6 +37,10 @@ class Display:
         self.root = tk.Tk()
         if not keep_awake(self.root.winfo_screen(), load()["display_keep_awake"]):
             print("Some X11 power-saving settings could not be applied", flush=True)
+        self.power = Power(self.root.winfo_screen(), ROOT / "screen-power.json")
+        self.power.tick()
+        self.root.bind_all("<ButtonPress>", lambda e: self.power.wake(), add="+")
+        self.root.bind_all("<KeyPress>", lambda e: self.power.wake(), add="+")
         self.root.title("Hardware Lab")
         self.root.attributes("-fullscreen", True)
         self.root.configure(bg="black", cursor="none")
@@ -611,6 +615,7 @@ class Display:
         return dict(
             self.state,
             session_id=self.session_id,
+            screen_power=self.power.tick(),
             render_metrics={
                 "fps": round(1 / self.frame_period, 1) if self.frame_period else 0,
                 "work_ms": round(self.frame_work * 1000, 1),
@@ -625,12 +630,17 @@ class Display:
         )
 
     def drain(self):
+        if not hasattr(self, "power_check") or time.monotonic() >= self.power_check:
+            self.power_check = time.monotonic() + 5
+            self.power.tick()
         try:
             while True:
                 data, reply = self.queue.get_nowait()
                 try:
                     op = data["op"]
-                    if op == "display":
+                    if op == "screen_power":
+                        result = self.power.command(data)
+                    elif op == "display":
                         result = self.apply(data)
                     elif op == "clear":
                         self.clear()
@@ -770,6 +780,7 @@ def main():
                     "display",
                     "clear",
                     "status",
+                    "screen_power",
                     "preview",
                     "character",
                     "gesture",

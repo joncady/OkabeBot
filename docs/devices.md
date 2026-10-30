@@ -130,3 +130,18 @@ MIT-MAGIC-COOKIE before the desktop authentication file is ready. Missing `xset`
 or unsupported extensions do not prevent the character service from starting.
 Set the option false to leave desktop power settings unchanged. This controls
 software blanking; the LCD's physical backlight button remains independent.
+
+### Scheduled night mode
+
+Dashboard **Dev → Screen night mode and Mac startup** controls Pi display sleep
+independently of speaker gain. Set night hours, an IANA timezone and a temporary
+wake duration. Touch/keyboard or push-to-talk wakes it temporarily. Networking,
+audio and sensors continue running. The controller sends an eight-day UTC schedule
+which the Pi persists across restarts. Firmware HDMI power is preferred; X11 DPMS
+is the fallback, and physical backlight behavior depends on the panel.
+Night mode defaults off; the active installation's settings are private.
+
+On Mac, the same section can keep the runtime awake on AC and open Docker after
+login. Install the normal controller login service first as described in README.
+These settings do not enable pre-login service or guarantee operation with a
+closed lid. Container restart policies remain separate from Docker startup.

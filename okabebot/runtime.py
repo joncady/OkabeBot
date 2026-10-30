@@ -144,12 +144,30 @@ def supervise(config_path):
         config_path.parent,
         folder,
     )
+    sleep_guard = (
+        Child(
+            "sleep-guard",
+            ["/usr/bin/caffeinate", "-s", "-w", str(os.getpid())],
+            config_path.parent,
+            folder,
+        )
+        if sys.platform == "darwin"
+        else None
+    )
     managed = bool(worker.argv)
     warming_since = time.monotonic()
     failed_health = 0
     previous = None
     try:
         while not stopping.is_set():
+            if sleep_guard is not None:
+                from .runtime_policy import settings as runtime_settings
+
+                sleep_guard.check()
+                if runtime_settings(state_dir())["prevent_sleep_on_ac"]:
+                    sleep_guard.start()
+                else:
+                    sleep_guard.stop()
             worker.check()
             bridge.check()
             if managed:
@@ -218,6 +236,8 @@ def supervise(config_path):
                 previous = message
             stopping.wait(3)
     finally:
+        if sleep_guard is not None:
+            sleep_guard.stop()
         bridge.stop()
         if managed:
             worker.stop()
