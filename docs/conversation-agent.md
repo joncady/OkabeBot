@@ -50,3 +50,18 @@ Synthetic checks cover tense/indirect requests, read chains, invalid arguments,
 call budgets, duplicate suppression, failed generation/providers, unexecuted
 claims, write injection, preference handoff and the shared voice path. Live
 read-only probes and physical microphone/speaker acceptance are separate checks.
+
+## Trakt recommendations
+
+`get_trakt_watchlist(kind, page)` reads the connected owner's want-to-watch list
+on request. It uses existing Trakt authorization and respects pause/guest/setup
+boundaries, without enabling scheduled watch-history observation or modifying
+Trakt lists. Results have stable provider IDs and page boundaries; they do not
+prove streaming availability, completion or taste. Recommendation composition
+must name a returned title. Private chat history follows the existing chat policy;
+this read does not add the full watchlist to the context event store.
+
+Dated watch history, want-to-watch membership and a custom date-unknown watched
+list are distinct. A list's added timestamp is not a viewing date; placeholder
+Unix-epoch timestamps must not be presented as actual viewing dates. The history
+API does not establish which streaming provider supplied an entry.

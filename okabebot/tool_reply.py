@@ -67,6 +67,16 @@ def facts(name, result, reference):
             }
             for row in result.get("items", [])[:12]
         ]
+    elif name == "get_trakt_watchlist":
+        value.update(
+            state=result.get("state"),
+            scope=result.get("scope"),
+            next_page=result.get("next_page"),
+            records=[
+                {k: i.get(k) for k in ("title", "year", "type")}
+                for i in result.get("items", [])[:20]
+            ],
+        )
     elif name == "get_home_activity":
         value["grounded_reference"] = (
             "Partial household evidence. State readings do not prove actions, people or chronology."
@@ -166,6 +176,14 @@ def facts(name, result, reference):
 def preserve_scope(reply, name, result):
     if not isinstance(reply, str):
         return reply
+    if name == "get_trakt_watchlist":
+        if result.get("state"):
+            return "I couldn't read your Trakt watchlist. Check its connection and private setup."
+        if not result.get("items"):
+            return "No titles were returned on this Trakt watchlist page; I haven't checked streaming availability."
+        if not re.search(r"availab|streaming|where.*watch", reply, re.I):
+            reply = reply.rstrip() + " Streaming availability hasn't been checked."
+        return reply
     if name == "get_context_feed":
         if result.get("state"):
             return "That source is paused or has not been enabled; I haven't checked its records."
@@ -231,6 +249,10 @@ def acceptable(reply, name, result, reference):
         re.I,
     ):
         return False
+    if name == "get_trakt_watchlist" and not result.get("state"):
+        titles = [i.get("title", "") for i in result.get("items", [])]
+        if titles and not any(t and t.casefold() in reply.casefold() for t in titles):
+            return False
     if name == "get_home_activity":
         if re.search(
             r"turned (?:off|on)|someone (?:left|arrived)|stopped watching|closed the door",

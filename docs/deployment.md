@@ -1617,3 +1617,15 @@ and returned a completed reply. Separate read-only local model probes exercised
 transit, household history, connected lists and preference handoff. Physical
 microphone/speaker acceptance was not performed; output volume, device actions and
 source permissions were unchanged. Private traces and source contents remain local.
+
+
+On-demand Trakt watchlist reads reuse the existing private OAuth connection and
+local tool executor. They add no service/port, scheduled collection or provider
+write. Pause/guest checks and in-flight connection revalidation guard results;
+controller wrappers share token-rotation locking. Dated history and date-unknown
+list membership remain distinct. Recommendation routing was checked with the
+local model using a read-only tool; private result titles remain untracked.
+Installed follow-up verification: matching controller/worker modules were loaded
+while idle with private rollback backups, and an authenticated silent dashboard
+recommendation request invoked the Trakt watchlist tool. This does not enable
+scheduled watch-history collection or validate streaming-service availability.

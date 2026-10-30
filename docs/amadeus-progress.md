@@ -425,3 +425,13 @@ collectors/recording budgets and full provider pagination remain separate work.
 - Limited: local model relevance and semantic grounding still need ongoing
   synthetic evaluation. Alexa's isolated conversation is outside this change.
 - Privacy: no new collection source, recording consent or public trial artifacts.
+
+
+## Grounded entertainment recommendations
+
+- Improved: recommendations can retrieve connected Trakt want-to-watch titles
+  through a paged read tool instead of improvising from a small preference profile.
+- Boundaries: existing authorization, pause/guest gates and private state ownership
+  apply; no background history collection or provider write is enabled.
+- Limited: list membership is not viewing history or streaming availability.
+  Unknown viewing dates and provider provenance must remain explicitly unknown.

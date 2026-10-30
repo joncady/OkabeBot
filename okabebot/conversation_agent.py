@@ -9,6 +9,9 @@ MAX_SECONDS = 60
 ROUTING = (
     "Choose the next step for the CURRENT user request. Use a supplied typed tool call for "
     "connected/personal facts, history, transit notices, tasks, calendar, media or device state. "
+    "Movie/show recommendations MUST read get_trakt_watchlist first, even if the user just asks "
+    "'any movie recommendations?'. Recommend real titles from that result, not invented titles or "
+    "titles based only on a small taste profile. Do not claim streaming availability without evidence. "
     "To-do/shopping lists use get_context_feed with source=tasks, not list_reminders, "
     "which reads only companion-created scheduled reminders. Transit uses source=transit. "
     "get_context_feed has no day/date/period arguments: use only its supplied schema. "

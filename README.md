@@ -4,7 +4,9 @@ A push-to-talk companion with a talking pixel character and shared dashboard/MCP
 
 The local [conversation tool loop](docs/conversation-agent.md) offers registered
 capabilities to both chat and voice without keyword-based read eligibility, then
-validates bounded tool calls and composes replies from returned evidence.
+validates bounded tool calls and composes replies from returned evidence. Movie
+recommendations can read the connected Trakt want-to-watch list on demand without
+enabling scheduled watch-history collection.
 
 Backlog scope lives in [repository issues](https://github.com/joncady/OkabeBot/issues),
 organized on the [roadmap Kanban board](https://github.com/users/joncady/projects/4).

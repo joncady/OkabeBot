@@ -165,6 +165,14 @@ def get_home_activity(period: Literal["today", "yesterday", "last_24_hours"] = "
 
 
 @mcp.tool(annotations=READ)
+def get_trakt_watchlist(kind: Literal["movies", "shows", "all"] = "movies", page: int = 1) -> dict:
+    """Read saved want-to-watch titles from connected Trakt for grounded movie/show recommendations. This is an on-demand read, not watched-history collection or streaming availability."""
+    from .trakt_library import watchlist
+
+    return watchlist(state_dir() / "amadeus", page=page, kind=kind)
+
+
+@mcp.tool(annotations=READ)
 def get_context_feed(
     source: Literal[
         "tasks", "device_activity", "appliances", "meals", "transit", "watch_history", "calendar"

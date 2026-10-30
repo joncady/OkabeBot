@@ -1,6 +1,7 @@
 """Owner-initiated device authorization; private credentials and bounded polling."""
 
 import threading
+from pathlib import Path
 from urllib.error import HTTPError
 from .adapters.context.providers import request
 from .amadeus import encode
@@ -9,10 +10,16 @@ from .amadeus_onboarding import SYSTEM, KEY
 
 
 class TraktAuth:
+    _locks = {}
+    _locks_guard = threading.Lock()
+
     def __init__(self, feeds, read=request):
         self.feeds, self.read = feeds, read
         self.pending = None
-        self.lock = threading.Lock()
+        # Background ingestion and on-demand reads in one controller share
+        # single-use token rotation rather than racing through separate wrappers.
+        with self._locks_guard:
+            self.lock = self._locks.setdefault(str(Path(feeds.folder).resolve()), threading.Lock())
 
     def call(self, path, data):
         return self.read(

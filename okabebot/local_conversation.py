@@ -24,6 +24,7 @@ READ_TOOLS = {
     "get_focus_session",
     "get_home_activity",
     "get_context_feed",
+    "get_trakt_watchlist",
     "get_recent_notifications",
     "list_reminders",
     "list_spotify_devices",
@@ -321,6 +322,19 @@ def acknowledgement(name, result):
             ("I'm already at " if result.get("already_there") else "Heading to ")
             + result["destination_name"]
             + "."
+        )
+    if name == "get_trakt_watchlist":
+        if result.get("state"):
+            return "I couldn't read your Trakt watchlist. Check its connection and private setup."
+        titles = [i["title"] for i in result.get("items", [])]
+        return (
+            (
+                "Your Trakt want-to-watch list includes "
+                + ", ".join(titles[:3])
+                + ". Streaming availability hasn't been checked."
+            )
+            if titles
+            else "No titles were returned on this Trakt watchlist page."
         )
     if name == "get_context_feed":
         items = result.get("items", [])
