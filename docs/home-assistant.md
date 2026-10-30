@@ -220,3 +220,26 @@ Backups live privately under `/config/.local-compat-backups`. Image replacement
 removes the workaround; see [deployment inventory](deployment.md#readiness-and-ha-push-diagnostics).
 An unknown Ring model needs verified upstream support, and a ThinQ unsupported
 profile needs cloud/provider support; suppressing those logs does not restore capability.
+
+## Sonos on Docker bridge networking
+
+HA's built-in Sonos integration uses local speaker APIs plus event callbacks.
+When multicast discovery cannot cross Docker's network, use the optional
+[Sonos package](../examples/home-assistant/sonos.yaml), with private
+`sonos_hosts` and `sonos_advertise_addr` secrets. The latter is the controller's
+reachable LAN IPv4 address, not the container's internal address.
+
+For a new container, set `OKABEBOT_HA_SONOS_BIND` to that LAN address when running
+`start-home-assistant.sh`; it publishes TCP 1400 there. This setting is opt-in and
+does not expose all container ports or enable host networking. Existing containers
+keep their original port mapping: recreate deliberately with rollback and the same
+config volume when adding this port, rather than assuming `docker start` changes it.
+Keep the host address stable; changed addresses require updating both mappings.
+HA may choose another event port if 1400 is already occupied; inspect and correct
+that conflict before claiming callbacks work. Do not forward this port from the internet.
+
+Bonded surround speakers and a subwoofer may appear as devices associated with
+the main room player rather than independent playback targets. Adding HA Sonos
+does not change OkabeBot's existing audio route, group speakers, play a test,
+enable Amadeus observation or adjust volume. Verify readiness separately from
+physical playback. See [HA Sonos documentation](https://www.home-assistant.io/integrations/sonos/).

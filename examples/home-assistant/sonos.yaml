@@ -1,0 +1,7 @@
+# Optional Sonos configuration for Docker bridge/NAT deployments.
+# Supply owned speaker hosts and the Mac/Linux LAN address privately in HA secrets.
+# Publish TCP 1400 on that same LAN address; do not expose it to the internet.
+sonos:
+  media_player:
+    advertise_addr: !secret sonos_advertise_addr
+    hosts: !secret sonos_hosts

@@ -119,6 +119,7 @@ flowchart TB
         App -->|"Characters without Qwen references"| SystemVoice["macOS system voice fallback"]
         ThinQ["LG ThinQ cloud: registered appliance integration"] --> HA
         Watts["Watts Home cloud: selected thermostat context"] --> HA
+        Sonos["Sonos room players and bonded speakers"] <-->|"Local API and LAN callback: 1400"| HA
         Kasa["TP-Link Kasa: configured local switches"] <-->|"Local authenticated protocol where required"| HA
         Forecast["Weather forecast service: configured"] --> HA
         HA["Home Assistant Container: 8123"] -->|"Scoped notifications, Alexa schedules and arrivals"| App

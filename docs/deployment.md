@@ -1800,3 +1800,24 @@ now have loaded HA entries. Discovery
 used bounded SSDP/mDNS and TP-Link read-only queries on the current LAN. No light
 was toggled, no new light-observation feed was enabled and no new network service
 was exposed. Household addresses, names and scan details stay in ignored state.
+
+## Sonos HA local integration
+
+HA's native Sonos integration is installed and loaded. It exposes the room
+coordinator as a media player; bonded surrounds/subwoofer are not independent
+playback destinations. Read-only diagnostics confirm coordinator availability,
+active event subscriptions without subscription failure, and received event/cache
+entries. This is service-level validation, not an audible playback test.
+
+The Docker container retains the same image, configuration volume, environment,
+restart policy and HA HTTP bindings. It additionally publishes Sonos TCP 1400 on
+the controller's specific LAN address. Private HA Sonos configuration supplies
+manual speaker hosts and the advertised LAN callback address, avoiding Docker
+multicast discovery limitations. A stopped pre-change container is retained
+privately for rollback. Only one HA container is running against the volume.
+
+The optional `OKABEBOT_HA_SONOS_BIND` launcher setting reproduces the callback
+mapping for a new container; it defaults off and rejects unspecified, public or
+loopback addresses. See the Sonos section of [HA setup](home-assistant.md).
+No volume, grouping, playback, Amadeus source consent or existing character
+announcement route was changed.
