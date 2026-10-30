@@ -1944,3 +1944,9 @@ existing destination audio route. Weather sprites are authored canvas pixels in
 the existing TV lab renderer, with no downloaded assets or external requests.
 README topology nodes/edges remain unchanged. Source checks and synthetic visual
 preview are distinct from installed-state and physical wake/audio acceptance.
+
+Installed Mac owner-API checks confirmed the new report-section controls,
+consented-context card selection and served weather-sprite asset. Controller,
+speech, Pi links and existing feeds recovered after the idle update. No report
+was presented or spoken as part of these checks; physical wake, rendering and
+listening acceptance remain separate.
