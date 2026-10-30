@@ -1,5 +1,6 @@
 """Permission-gated shadow metadata adapters. Never predicts, speaks or acts."""
 
+from datetime import datetime
 import hashlib
 import json
 import math
@@ -247,6 +248,39 @@ class Collector:
         bindings = json.loads((self.folder / "ha-bindings.json").read_text())
         entity = data["entity_id"]
         source = "door_presence"
+        # Timestamp entities survive reconnects. Deduplicate by the actual
+        # occurrence, never by HA's reconnect context or receipt time.
+        ring = bindings.get("ring", {})
+        if entity in ring:
+            category = ring[entity]
+            if category not in ("motion", "doorbell", "activity"):
+                raise ValueError("Unsupported Ring category")
+            try:
+                occurrence = datetime.fromisoformat(data["state"].replace("Z", "+00:00"))
+                if occurrence.tzinfo is None:
+                    raise ValueError("Ring timestamp needs timezone")
+                occurred = occurrence.timestamp()
+            except ValueError:
+                return {"state": "no_metadata"}
+            if not 0 <= self.clock() - occurred <= 300:
+                return {"state": "no_metadata"}
+            return self._record(
+                source,
+                lambda _: [
+                    (
+                        "household_event",
+                        {
+                            "provider": "Ring",
+                            "event": category,
+                            "detail": "Front door " + category + " detected",
+                            "provenance": "sensor",
+                        },
+                        "household",
+                        digest([entity, occurred, category]),
+                        occurred,
+                    )
+                ],
+            )
         if entity in bindings.get("tv", []):
             state = data["state"]
             if state in ("unknown", "unavailable"):

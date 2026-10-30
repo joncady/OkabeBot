@@ -61,6 +61,42 @@ class AmadeusHttpTests(unittest.TestCase):
         ) as r:
             return json.load(r)
 
+    def test_context_feeds_are_owner_only_and_credentials_write_only(self):
+        from okabebot.amadeus_feeds import Feeds
+
+        self.bridge.amadeus_feeds = Feeds(self.folder / "amadeus")
+        self.request("/amadeus/api/settings", SETUP)
+        initial = self.request("/amadeus/api/feeds")
+        self.assertEqual(len(initial["feeds"]), 6)
+        self.assertFalse(initial["delivery_enabled"])
+        self.request(
+            "/amadeus/api/feed-connection",
+            {
+                "transport": "ha",
+                "url": "http://ha.example.test:8123",
+                "token": "synthetic-feed-secret",
+            },
+        )
+        self.assertNotIn("synthetic-feed-secret", json.dumps(self.request("/amadeus/api/feeds")))
+        for path in ("/amadeus/api/feeds", "/amadeus/api/feed-connection"):
+            with self.assertRaises(HTTPError) as caught:
+                self.request(
+                    path, {} if path.endswith("connection") else None, token="publish-only"
+                )
+            self.assertEqual(caught.exception.code, 403)
+        with self.assertRaises(HTTPError) as caught:
+            self.request(
+                "/amadeus/api/feeds",
+                {"id": "transit", "config": {"enabled": True, "routes": ["1", "2"]}},
+                extra={"Origin": "http://foreign.example.test"},
+            )
+        self.assertEqual(caught.exception.code, 403)
+        self.request(
+            "/amadeus/api/feeds",
+            {"id": "transit", "config": {"enabled": True, "routes": ["1", "2"]}},
+        )
+        self.assertTrue(self.request("/amadeus/api/settings")["settings"]["paused"])
+
     def test_opportunities_are_owner_only_default_off_shadow(self):
         self.request("/amadeus/api/settings", SETUP)
         result = self.request("/amadeus/api/opportunities")
@@ -408,3 +444,59 @@ class AmadeusHttpTests(unittest.TestCase):
                 extra=headers,
             )
         self.assertEqual(e.exception.code, 403)
+
+
+class LiveConversationHttpTests(AmadeusHttpTests):
+    def test_live_setup_is_owner_only_and_attention_cannot_read_or_enable_it(self):
+        from okabebot.amadeus_live import ProactiveConversation
+
+        self.bridge.proactive = ProactiveConversation(self.folder / "amadeus")
+        self.bridge.surfaces.snapshot.return_value = {
+            "locations": [
+                {"id": "fictional-desk", "name": "Desk", "adapter": "pi", "approved": True}
+            ]
+        }
+        self.request("/amadeus/api/settings", dict(SETUP, sources=["door_presence"]))
+        result = self.request(
+            "/amadeus/api/conversation", {"enabled": True, "destination": "fictional-desk"}
+        )
+        self.assertTrue(result["config"]["enabled"])
+        self.assertFalse(result["ambient_recording"])
+        with self.assertRaises(HTTPError) as error:
+            self.request("/amadeus/api/conversation", token="publisher")
+        self.assertEqual(error.exception.code, 403)
+        folder = self.folder / "amadeus"
+        (folder / "ha-source-token").write_text("synthetic-source-token-long-enough-12345")
+        (folder / "ha-bindings.json").write_text(json.dumps({"door": ["binary_sensor.invented"]}))
+        headers = {"X-Amadeus-Source-Token": "synthetic-source-token-long-enough-12345"}
+        self.request("/amadeus/api/control", {"paused": False})
+        result = self.request(
+            "/amadeus/source/ha",
+            dict(
+                entity_id="binary_sensor.invented",
+                state="on",
+                event_id="invented-1",
+                observed_at=time.time(),
+            ),
+            token="",
+            extra=headers,
+        )
+        self.assertEqual(result["state"], "stored")
+        self.request(
+            "/amadeus/source/conversation",
+            dict(
+                observed_at=time.time(),
+                dnd_reported_at=time.time(),
+                dnd="off",
+                focus="off",
+                media="clear",
+                presence="unknown",
+            ),
+            token="",
+            extra=headers,
+        )
+        self.assertIsNone(self.bridge.proactive.context())  # No speech/claim from ingestion.
+        with self.assertRaises(HTTPError):
+            self.request(
+                "/amadeus/api/conversation", {"enabled": True, "destination": "invented-tv"}
+            )

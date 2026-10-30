@@ -23,9 +23,10 @@ class SceneWorldTests(unittest.TestCase):
     def assign(self, location, selected, character="okabe"):
         self.registry.update(location, {"scene_selections": {character: selected}}, self.places)
 
-    def test_catalog_has_two_sets_per_character_and_pi_supports_all(self):
+    def test_catalog_has_dedicated_desk_set_per_character_and_pi_supports_all(self):
         for choices in CATALOG["characters"].values():
-            self.assertEqual(len(choices), 2)
+            self.assertEqual(len(choices), 3)
+            self.assertIn("mac-desk", choices)
             self.assertTrue(all(c in CATALOG["sets"] for c in choices))
         self.assertEqual(set(CATALOG["sets"]), set(scene.scene_sets.SETS))
 

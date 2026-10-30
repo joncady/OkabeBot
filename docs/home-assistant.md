@@ -189,3 +189,16 @@ The optional Samsung preparation package and TV-state publisher are documented i
 [morning setup](morning.md#optional-tv-power-and-input-preparation). They use private
 per-TV bindings, local wake/input controls and a separate TV-state consent category;
 existing media playback metadata remains independent.
+
+## Companion device
+
+The optional [MQTT companion facade](ha-companion.md) registers the existing Pi
+as a grouped HA device with bounded controls and service-state entities. It keeps
+speech and animation under the existing controller and documents the remaining
+manual integrations and proposed HA ownership boundaries.
+
+For Ring history, add selected timestamp entities to `amadeus_entities` and map them in private `ha-bindings.json` as `"ring": {"sensor.example_last_activity": "activity", "event.example_motion": "motion", "event.example_ding": "doorbell"}`. Reload automations after editing the entity allowlist. This uses existing door/presence consent and retention; it does not capture video or identify deliveries.
+
+NFC scan-to-destination mapping uses a scoped HA publisher and the existing
+companion movement interface. See [NFC tag setup](nfc-tags.md); tag-writing occurs
+in the mobile HA app, while action configuration stays in the owner dashboard.

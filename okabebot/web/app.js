@@ -152,6 +152,27 @@ document.querySelector("#focus-cancel").onclick = async () => { try { await api(
 
 function musicUI(s) {
   agendaUI(s);
+  document.querySelector('#natural-tool-replies').checked=s.personality?.natural_tool_replies!==false;
+  const tone=document.querySelector('#character-tone');if(document.activeElement!==tone)tone.value=s.personality?.tone||'subtle';
+  const mac=s.mac_screen||{}, macForm=document.querySelector('#mac-screen-form');
+  if(mac.config&&!macForm.contains(document.activeElement)){
+    document.querySelector('#mac-screen-enabled').checked=mac.config.enabled;
+    document.querySelector('#mac-screen-media').checked=mac.config.respect_media;
+    document.querySelector('#mac-screen-hold').checked=mac.config.respect_manual_hold;
+    document.querySelector('#mac-screen-cooldown').value=mac.config.cooldown_seconds;
+    const select=document.querySelector('#mac-screen-destination');select.replaceChildren();
+    for(const place of (s.surfaces?.locations||[]).filter(p=>p.adapter==='mac'&&p.approved)){
+      const option=document.createElement('option');option.value=place.id;option.textContent=place.name;select.append(option);
+    }select.value=mac.config.destination;
+  }
+  document.querySelector('#mac-screen-state').textContent=`Mac screen: ${mac.state||'unknown'} · ${mac.reason||'waiting'}`;
+  const presence=s.presence || {};
+  const following=document.querySelector('#presence-follow');
+  following.hidden=!presence.configured;
+  following.dataset.enabled=String(Boolean(presence.follow_enabled));
+  following.textContent=presence.follow_enabled ? 'Pause Watch following' : 'Enable Watch following';
+  document.querySelector('#presence-health').textContent=presence.configured
+    ? `Watch: ${presence.presence || 'unknown'} · ${presence.healthy_scanners || 0}/2 scanners · ${presence.follow_reason || 'starting'}` : '';
   const focus = s.focus || {};
   const left = Math.max(0, Math.ceil((focus.ends_at || 0) - Date.now()/1000));
   document.querySelector("#focus-status").textContent = focus.active ? (left ? `${Math.floor(left/60)}:${String(left%60).padStart(2,"0")} left · Keep going` : "Complete · reminder queued") : "Choose a session. I’ll remind you to take a break.";
@@ -318,6 +339,14 @@ function requests(items) {
 async function refresh() {
   try {
     const s = await api("/state");
+    const portal = document.querySelector('#home-assistant-portal');
+    if (portal) {
+      let url;
+      try { url = new URL(s.home_assistant_url); } catch (_) {}
+      const valid = url && ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash;
+      portal.hidden = !valid;
+      if (valid) portal.href = url.href; else portal.removeAttribute('href');
+    }
     if (connectionError && document.querySelector("#error").textContent === connectionError) document.querySelector("#error").textContent = "";
     connectionError = "";
     enabled = s.enabled;
@@ -412,6 +441,23 @@ async function refresh() {
       `${name === 'voice' ? 'Speaker/button Pi' : 'Display Pi'}: ${health.available ? 'connected' : 'reconnecting'}`);
     if (s.speech_health) components.push(`Voice: ${s.speech_health.available ? s.speech_health.fallback ? `${s.speech_health.backend} · system fallback (no character reference)` : 'ready' : s.speech_health.error || 'warming'}`);
     if (s.github_queue_health?.configured && !s.github_queue_health.available) components.push(s.github_queue_health.error || 'GitHub relay reconnecting');
+    if (!document.querySelector('#amadeus-respect-dnd').disabled) {
+      document.querySelector('#amadeus-respect-dnd').checked=s.amadeus_interruptions?.respect_dnd!==false;
+    }
+    const shadow=s.amadeus_shadow || {};
+    if (!document.querySelector('#amadeus-shadow-enabled').disabled) document.querySelector('#amadeus-shadow-enabled').checked=shadow.enabled===true;
+    document.querySelector('#amadeus-shadow-status').textContent=shadow.enabled
+      ? `Shadow only · ${shadow.status} · ${shadow.candidates || 0} candidates · no delivery`
+      : 'Shadow trial disabled';
+    const cameraGreeting=s.camera_greeting || {};
+    const greetingConfig=cameraGreeting.settings||{};
+    for(const [id,key,fallback] of [['greeting-source','source','camera'],['greeting-near','near_mm',800],['greeting-far','far_mm',1100],['greeting-dwell','dwell_seconds',2],['greeting-cooldown','cooldown_seconds',120]]){
+      const input=document.getElementById(id);if(!greetingSettingsDirty&&document.activeElement!==input)input.value=greetingConfig[key]??fallback;
+    }
+    if(!greetingSettingsDirty)document.getElementById('greeting-home').checked=greetingConfig.require_home!==false;
+    if(!greetingSettingsDirty)document.getElementById('greeting-media').checked=greetingConfig.allow_during_media===true;
+    document.querySelector('#camera-greeting-enabled').checked=cameraGreeting.enabled===true;
+    document.querySelector('#camera-greeting-status').textContent=cameraGreeting.status || 'Disabled';
     if (s.codex_alive === false) components.push(s.conversation_backend === 'local' ? 'Local model unavailable; restart controller' : 'Codex: reconnecting');
     document.querySelector('#system-health').textContent=components.join(' · ');
     document.querySelector("#thread").textContent =
@@ -584,4 +630,54 @@ document.querySelector('#surface-preview').onclick=async()=>{
   const preview=window.open('about:blank','okabebot-tv-preview');
   try{const result=await api('/surfaces/preview',{});if(preview)preview.location=result.url;const link=document.querySelector('#surface-preview-link');link.href=result.url;link.hidden=false;}
   catch(e){if(preview)preview.close();document.querySelector('#error').textContent=e.message;}
+};
+
+
+document.querySelector('#presence-follow').onclick = async () => {
+  try {
+    const button = document.querySelector('#presence-follow');
+    await api('/presence/follow', {enabled:button.dataset.enabled !== 'true'});
+  } catch (e) { document.querySelector('#error').textContent=e.message; }
+};
+
+let greetingSettingsDirty=false;
+for(const id of ['greeting-source','greeting-near','greeting-far','greeting-dwell','greeting-cooldown','greeting-media','greeting-home'])document.getElementById(id).oninput=()=>{greetingSettingsDirty=true;};
+const cameraGreetingToggle=document.querySelector('#camera-greeting-enabled');
+cameraGreetingToggle.onchange=async()=>{
+  cameraGreetingToggle.disabled=true;
+  try { await api('/camera/greeting',{enabled:cameraGreetingToggle.checked}); }
+  catch(error){document.querySelector('#error').textContent=error.message;}
+  finally{cameraGreetingToggle.disabled=false;}
+};
+
+document.querySelector('#amadeus-respect-dnd').onchange=async event=>{
+  const toggle=event.target;
+  toggle.disabled=true;
+  try { const result=await api('/amadeus/interruptions',{respect_dnd:toggle.checked});toggle.checked=result.respect_dnd; }
+  catch(error){toggle.checked=!toggle.checked;document.querySelector('#error').textContent=error.message;}
+  finally{toggle.disabled=false;}
+};
+
+document.querySelector('#amadeus-shadow-enabled').onchange=async event=>{
+ const toggle=event.target;toggle.disabled=true;
+ try{await api('/amadeus/shadow',{enabled:toggle.checked});}
+ catch(error){toggle.checked=!toggle.checked;document.querySelector('#error').textContent=error.message;}
+ finally{toggle.disabled=false;}
+};
+
+document.querySelector('#mac-screen-form').onsubmit=async event=>{event.preventDefault();try{
+ await api('/mac/screen',{enabled:document.querySelector('#mac-screen-enabled').checked,destination:document.querySelector('#mac-screen-destination').value,
+ respect_media:document.querySelector('#mac-screen-media').checked,respect_manual_hold:document.querySelector('#mac-screen-hold').checked,
+ cooldown_seconds:Number(document.querySelector('#mac-screen-cooldown').value)});
+}catch(e){document.querySelector('#error').textContent=e.message;}};
+
+document.querySelector("#character-tone").onchange=event=>action("/character/tone",{tone:event.target.value});
+
+document.querySelector("#natural-tool-replies").onchange=event=>action("/character/tone",{natural_tool_replies:event.target.checked});
+
+document.querySelector('#greeting-save').onclick=async()=>{
+ try{await api('/camera/greeting',{require_home:document.querySelector('#greeting-home').checked,allow_during_media:document.querySelector('#greeting-media').checked,source:document.querySelector('#greeting-source').value,
+ near_mm:Number(document.querySelector('#greeting-near').value),far_mm:Number(document.querySelector('#greeting-far').value),
+ dwell_seconds:Number(document.querySelector('#greeting-dwell').value),cooldown_seconds:Number(document.querySelector('#greeting-cooldown').value)});greetingSettingsDirty=false;}
+ catch(error){document.querySelector('#error').textContent=error.message;}
 };

@@ -8,3 +8,20 @@ fieldset{margin:24px 0;padding:16px;border:2px solid #50666b}legend{padding:0 8p
 pre{white-space:pre-wrap;overflow-wrap:anywhere}#memory-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;overflow-wrap:anywhere}
 details{margin:20px 0}summary{min-height:44px}button,a,input,select,summary{touch-action:manipulation}
 @media(max-width:500px){body{padding:16px}.panel{padding:16px}.amadeus-options{grid-template-columns:1fr}}
+
+/* Provider-local setup: keep connection, health and selection together. */
+#feed-list {display:grid;gap:16px;margin-top:16px}
+.feed-card {border:2px solid var(--border,#465166);padding:18px;background:rgba(0,0,0,.12)}
+.feed-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.feed-heading h3 {margin:0}
+.feed-status {font-size:.8rem;border:1px solid currentColor;padding:4px 8px;text-transform:capitalize}
+.feed-help {opacity:.8;font-size:.9rem;line-height:1.5}
+.feed-connection {padding:12px 0;border-bottom:1px solid var(--border,#465166);margin-bottom:16px}
+.feed-actions {display:flex;gap:10px;flex-wrap:wrap}
+.feed-card fieldset {margin:14px 0;padding:12px;min-width:0;border:1px solid var(--border,#465166)}
+.feed-entity-row {display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.feed-entity-row input {min-width:0;flex:1;width:auto}
+.feed-entity-row button {flex:none}
+@media(max-width:540px){.feed-card{padding:12px}.feed-entity-row{flex-wrap:wrap}.feed-entity-row input{flex-basis:65%}}
+.feed-connection .amadeus-grid label {display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.feed-connection .amadeus-grid input {width:100%;box-sizing:border-box}

@@ -261,6 +261,51 @@ class ContextPlanner(HabitPlanner):
                     local,
                 )
                 proposals.append(p)
+        # Feed-derived opportunities are shadow-only and use the same attention
+        # gates. Enabling collection is not permission to dispatch these proposals.
+        from .amadeus_feeds import context as feed_context
+
+        source_context = feed_context(self.store)
+        cue = screen if active_screen else occupied if room else None
+        if cue:
+            for feed in source_context:
+                useful = []
+                if feed["source"] == "transit":
+                    useful = [
+                        i["title"]
+                        for i in feed["items"]
+                        if i.get("effect")
+                        in ("NO_SERVICE", "REDUCED_SERVICE", "SIGNIFICANT_DELAYS", "DETOUR")
+                    ]
+                elif feed["source"] == "appliances":
+                    useful = [
+                        i["label"] + ": " + i["state"]
+                        for i in feed["items"]
+                        if i.get("state", "").casefold()
+                        in ("complete", "completed", "finished", "error")
+                    ]
+                elif feed["source"] == "tasks":
+                    for item in feed["items"]:
+                        if item.get("state") != "needs_action" or not item.get("due"):
+                            continue
+                        try:
+                            due = datetime.fromisoformat(item["due"].replace("Z", "+00:00"))
+                            if due.tzinfo is None:
+                                due = due.replace(tzinfo=zone)
+                            if now <= due.timestamp() <= now + 86400:
+                                useful.append(item["title"] + " · due " + item["due"])
+                        except ValueError:
+                            continue
+                if useful:
+                    proposals.append(
+                        self._proposal(
+                            feed["source"],
+                            "; ".join(useful[:2]),
+                            cue,
+                            {"source": feed["source"], "complete": feed["complete"]},
+                            local,
+                        )
+                    )
         for p in proposals:
             reason = self._gate(setup, config, events, p["kind"], local)
             if reason is None:
@@ -331,7 +376,10 @@ class ContextPlanner(HabitPlanner):
                 television[e["payload"].get("device_id", "")] = e
             if e["kind"] == "media":
                 media[e["payload"].get("device_id", e["payload"].get("app", ""))] = e
-        for signal in ("dnd", "focus"):
+        respect_dnd = preference(
+            self.store, setup["profile"], "conversation.interruptions", {}
+        ).get("respect_dnd", True)
+        for signal in ("dnd", "focus") if respect_dnd else ("focus",):
             devices = [e for (name, _), e in signals.items() if name == signal]
             if not devices or any(
                 now - e["observed_at"] > 600 or e["payload"].get("state") != "off" for e in devices
@@ -479,6 +527,11 @@ class ContextPlanner(HabitPlanner):
         genres = {g.casefold() for g in prefs.get("genres", [])}
         avoids = {g.casefold() for g in prefs.get("avoid", [])}
         watched = set(prefs.get("watched_titles", [])) | set(prefs.get("disliked_titles", []))
+        from .amadeus_feeds import context as feed_context
+
+        for feed in feed_context(self.store):
+            if feed["source"] == "watch_history":
+                watched.update(i["title"] for i in feed["items"] if i.get("type") == "movie")
         exposed = {
             row[0]
             for row in self.store.db.execute(

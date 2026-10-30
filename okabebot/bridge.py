@@ -1,6 +1,6 @@
 """Local push-to-talk control page, Whisper transcription, and Codex bridge."""
 
-from .profiles import current_character, select_profile, selection
+from .profiles import current_character, select_profile, selection, personality
 
 from contextlib import ExitStack
 import argparse
@@ -34,6 +34,7 @@ from .codex import Codex
 from . import character as character_tools
 from concurrent.futures import ThreadPoolExecutor
 from .config import get_config, state_dir
+from .presence_control import status as presence_status
 from .transport import device
 
 
@@ -58,9 +59,26 @@ class Bridge:
         from .amadeus_sources import Collector
 
         self.amadeus = Collector(state_dir() / "amadeus")
+        from .mac_screen import MacScreen
+
+        self.mac_screen = MacScreen(state_dir())
+        from .amadeus_feeds import Feeds
+
+        self.amadeus_feeds = Feeds(state_dir() / "amadeus")
+        from .amadeus_live import ProactiveConversation
+
+        self.proactive = ProactiveConversation(
+            state_dir() / "amadeus", presence_provider=lambda: presence_status(state_dir())
+        )
         from .tv_prepare import TVPreparation
 
         self.tv_preparation = TVPreparation(state_dir())
+        from .camera_greeting import CameraGreeting
+
+        self.camera_greeting = CameraGreeting(self)
+        from .amadeus_shadow import ShadowTrial
+
+        self.amadeus_shadow = ShadowTrial(state_dir() / "amadeus")
         self.morning_lock = threading.Lock()
         try:
             self.enabled = json.loads((state_dir() / "button-settings.json").read_text())["enabled"]
@@ -142,6 +160,14 @@ class Bridge:
         )
         self.resources.callback(self.cast_surfaces.close)
         self.surfaces = Surfaces(scene.rpc, cast_resolver=self.cast_surfaces.get)
+        from .tags import Tags
+
+        self.tag_source_token = persistent_token(state_dir() / "tags", "ha-source-token")
+        self.tags = Tags(
+            state_dir() / "tags",
+            lambda: self.surfaces.snapshot()["locations"],
+            lambda location: self.application.execute("/surfaces/move", {"location_id": location}),
+        )
         self.resources.callback(self.surfaces.close)
         from .surface_audio import AudioHub
 
@@ -191,6 +217,10 @@ class Bridge:
         threading.Thread(target=self.poll_music, daemon=True).start()
         threading.Thread(target=self.poll_music_meter, daemon=True).start()
         threading.Thread(target=self.poll_health, daemon=True).start()
+        threading.Thread(target=self.poll_proactive, daemon=True).start()
+        threading.Thread(target=self.camera_greeting.run, daemon=True).start()
+        threading.Thread(target=self.amadeus_shadow.run, args=(self.closing,), daemon=True).start()
+        threading.Thread(target=self.amadeus_feeds.run, args=(self.closing,), daemon=True).start()
 
     @property
     def url(self):
@@ -388,6 +418,27 @@ class Bridge:
                 "Local model" if get_config()["conversation"]["backend"] == "local" else "Codex"
             ) + " is working"
             self.timings["submitted_at"] = time.time()
+            proactive = getattr(self, "proactive", None)
+            if proactive is not None and hasattr(self.codex, "compose_preference"):
+                from .local_conversation import preference_device_request
+
+                if proactive.context() and not preference_device_request(text, self.codex.specs):
+                    try:
+                        answer = proactive.answer(text, self.codex.compose_preference)
+                        if answer is not None:
+                            self.notify("assistant", {"text": answer, "phase": "final_answer"})
+                            self.reply(answer, "completed")
+                            self.notify("turn_completed", {"status": "completed", "error": None})
+                            return True
+                    except Exception:
+                        proactive.end()
+                        self.reply(
+                            "I lost that thought. Nothing new was saved. Let's try again later.",
+                            "completed",
+                        )
+                        return True
+                elif proactive.context():
+                    proactive.end()  # Explicit device commands keep the ordinary grounded tool path.
             self.codex.submit(text)
             with sqlite3.connect(self.folder / "clips.sqlite3") as db:
                 db.execute("UPDATE clips SET status=? WHERE id=?", ("submitted", clip_id))
@@ -637,6 +688,106 @@ class Bridge:
         threading.Thread(target=present, daemon=True).start()
         return True
 
+    def proactive_offer(self, *, owned=False):
+        state = self.surfaces.snapshot()
+        music, video = self.media_state.music, self.media_state.video
+        media = (
+            not self.media_state.status.get("connected")
+            or (
+                not video
+                and not music.get("is_playing")
+                and self.media_state.status.get("app", "").casefold()
+                not in ("", "backdrop", "ambient mode")
+            )
+            or bool(music.get("is_playing"))
+            or video.get("state", "IDLE") not in ("IDLE", "OFF", "STOPPED", "PAUSED")
+        )
+        route = self.application.execute("/audio/resolve", {"purpose": "reply"})
+        # First live trial is a single explicit Pi location, never a fallback broadcast.
+        ready = (
+            route.get("target") == "pi"
+            and self.device_health["voice"]["available"]
+            and self.device_health["display"]["available"]
+            and self.speech_health.get("available")
+        )
+        return self.proactive.check(
+            destination=state.get("current_location"),
+            busy=bool(
+                self.processing
+                or self.recording
+                or (self.announcing and not owned)
+                or (self.codex and self.codex.busy)
+                or self.active_notification
+                and time.time() < self.notification_until
+            ),
+            focus=self.focus.status()["active"],
+            media=media,
+            quiet=self.notification_policy.quiet()
+            or self.notification_policy.snapshot()["snoozed"],
+            audio_ready=ready,
+        )
+
+    def poll_proactive(self):
+        while not self.closing.wait(15):
+            try:
+                if (
+                    not self.enabled
+                    or not self.codex
+                    or not hasattr(self.codex, "compose_preference")
+                ):
+                    continue
+                offer = self.proactive_offer()
+                if not offer:
+                    continue
+                with self.lock:
+                    if self.processing or self.recording or self.announcing or self.codex.busy:
+                        continue
+                    self.announcing = True
+                try:
+                    with self.proactive.store() as store:
+                        from .amadeus_habits import preference
+                        from .amadeus_onboarding import KEY, SYSTEM
+
+                        setup = preference(store, SYSTEM, KEY)
+                        prefs = preference(store, setup["profile"], "context.preferences", {})
+                    opening = self.codex.compose_preference(
+                        "Start one optional conversation about an interest or hobby. I can answer with the button or skip it.",
+                        {"preferences": prefs},
+                    )
+                    text = opening.get("reply")
+                    if (
+                        not isinstance(text, str)
+                        or not 1 <= len(text) <= 300
+                        or opening.get("memory") is not None
+                        or "<" in text
+                        or "{" in text
+                    ):
+                        continue
+                    fresh = self.proactive_offer(owned=True)
+                    if fresh != offer or not self.proactive.claim(fresh):
+                        continue
+                    # Consume before speech: uncertain delivery is never replayed.
+                    self.pi({"op": "ptt", "enabled": False})
+                    self.show_activity("speaking")
+                    self.notify("assistant", {"text": text, "phase": "final_answer"})
+                    try:
+                        character_tools.speak(text, "curious", purpose="proactive")
+                    except Exception:
+                        self.proactive.end()
+                        raise
+                    with self.proactive.store() as store:
+                        from .amadeus_live import STATE
+
+                        trial = preference(store, setup["profile"], STATE, {})
+                        trial["last_reply"] = text
+                        store.remember(setup["profile"], STATE, trial)
+                    timing.write("amadeus-conversation", {"state": "delivered"})
+                finally:
+                    self.announcing = False
+                    self.show_activity("idle")
+            except Exception:
+                timing.write("amadeus-conversation", {"state": "waiting_or_failed"})
+
     def poll_sources(self):
         while not self.closing.is_set():
             self.sources.poll()
@@ -769,7 +920,14 @@ class Bridge:
                 with self.codex.lock:
                     approvals = list(self.codex.approvals.values())
             return {
+                "presence": presence_status(state_dir()),
+                "mac_screen": self.mac_screen.snapshot(),
+                "personality": personality(),
+                "camera_greeting": dict(self.camera_greeting.state),
+                "amadeus_interruptions": self.proactive.interruptions(),
+                "amadeus_shadow": dict(self.amadeus_shadow.state),
                 "surfaces": self.surfaces.snapshot(),
+                "home_assistant_url": get_config()["web"]["home_assistant_url"],
                 "spotify": self.media_source.status(),
                 "media": self.media_source.status(),
                 "music": dict(self.media_state.music),
@@ -859,6 +1017,10 @@ def handler(bridge):
             )
 
         def do_GET(self):
+            from .tags_http import handle as handle_tags
+
+            if handle_tags(self, bridge):
+                return
             from .amadeus_http import handle as handle_amadeus
 
             if handle_amadeus(self, bridge):
@@ -900,7 +1062,14 @@ def handler(bridge):
                     (Path(__file__).parent / "web/index.html").read_text(),
                     "text/html; charset=utf-8",
                 )
-            elif self.path in ("/style.css", "/app.js", "/locations.js", "/dashboard-auth.js"):
+            elif self.path in (
+                "/style.css",
+                "/app.js",
+                "/tags.js",
+                "/amadeus-text.js",
+                "/locations.js",
+                "/dashboard-auth.js",
+            ):
                 kind = "text/css" if self.path.endswith(".css") else "application/javascript"
                 self.respond(200, (Path(__file__).parent / "web" / self.path[1:]).read_text(), kind)
             elif self.path in (
@@ -927,6 +1096,10 @@ def handler(bridge):
                 self.respond(403, {"error": "Open the control URL printed by the bridge"})
 
         def do_POST(self):
+            from .tags_http import handle as handle_tags
+
+            if handle_tags(self, bridge, post=True):
+                return
             from .amadeus_http import handle as handle_amadeus
 
             if handle_amadeus(self, bridge, post=True):
@@ -1005,6 +1178,13 @@ def handler(bridge):
                     data = json.loads(self.rfile.read(n))
                     from .arrival import queue_greeting
 
+                    if bridge.proactive.enabled() and data.get("trigger", "presence") in (
+                        "door_after_time",
+                        "presence",
+                    ):
+                        # The allowlisted door observation arms the trial, not this recap endpoint.
+                        self.respond(200, {"queued": False, "deferred_to_amadeus": True})
+                        return
                     item = queue_greeting(bridge.inbox, bridge.notification_policy, **data)
                     self.respond(200, {"queued": True, "id": item["id"]})
                 except Exception:

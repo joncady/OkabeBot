@@ -161,7 +161,22 @@ def scan(settings, seconds):
         emit({"state": "scanning"})
         GLib.timeout_add_seconds(seconds, lambda: (loop.quit(), False)[1])
 
+        last_heartbeat = [0.0]
+
         def tick():
+            now = time.monotonic()
+            if now - last_heartbeat[0] >= 5:
+                try:
+                    properties = dbus.Interface(
+                        bus.get_object("org.bluez", path), "org.freedesktop.DBus.Properties"
+                    )
+                    healthy = properties.Get("org.bluez.Adapter1", "Powered") and properties.Get(
+                        "org.bluez.Adapter1", "Discovering"
+                    )
+                    emit({"state": "heartbeat" if healthy else "unavailable"})
+                except Exception:
+                    emit({"state": "unavailable"})
+                last_heartbeat[0] = now
             event = gate.update(time.monotonic())
             if event:
                 emit({"state": event})

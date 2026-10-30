@@ -1,0 +1,52 @@
+# Optional live conversation attention snapshot. No audio, titles or event history.
+# Private secrets choose the phone DND entity, focus helper and OTHER media players.
+# The controller separately verifies its primary Cast/Spotify connection and focus timer.
+# An ON-only TV state is ambiguous and blocks, never silently assumed idle.
+input_boolean:
+  amadeus_conversation_focus:
+    name: Amadeus conversation focus
+    icon: mdi:headphones
+    # Restored across restart. Turn on manually or from an existing focus automation.
+rest_command:
+  amadeus_conversation_attention:
+    url: !secret amadeus_conversation_url
+    method: POST
+    content_type: application/json
+    headers:
+      X-Amadeus-Source-Token: !secret amadeus_source_token
+    payload: >-
+      {% set d = states[dn_entity] %}
+      {% set f = states(focus_entity) %}
+      {% set ns = namespace(occupied=false, unknown=false) %}
+      {% for entity in media_entities %}
+        {% set state = states(entity) %}
+        {% if state in ['playing', 'buffering'] %}{% set ns.occupied = true %}
+        {% elif state not in ['off', 'standby', 'idle', 'paused'] %}{% set ns.unknown = true %}{% endif %}
+      {% endfor %}
+      {{ {'observed_at': as_timestamp(now()),
+          'dnd': ('off' if d is not none and d.state == 'off' else 'on' if d is not none and d.state in ['priority_only', 'total_silence', 'alarms_only', 'on'] else 'unknown'),
+          'dnd_reported_at': as_timestamp(d.last_reported, 0) if d is not none else 0,
+          'focus': f if f in ['on', 'off'] else 'unknown',
+          'media': 'occupied' if ns.occupied else 'unknown' if ns.unknown else 'clear',
+          'presence': 'unknown'} | to_json }}
+    timeout: 5
+
+automation:
+  - id: amadeus_conversation_attention
+    alias: Amadeus - refresh live conversation gates
+    triggers:
+      - trigger: time_pattern
+        minutes: "/1"
+      - trigger: state
+        entity_id: !secret amadeus_conversation_attention_entities
+      - trigger: homeassistant
+        event: start
+    actions:
+      - action: rest_command.amadeus_conversation_attention
+        data:
+          dn_entity: !secret amadeus_conversation_dnd_entity
+          focus_entity: input_boolean.amadeus_conversation_focus
+          media_entities: !secret amadeus_conversation_media_entities
+    mode: queued
+    max: 2
+    max_exceeded: silent

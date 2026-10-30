@@ -1,17 +1,51 @@
 {
-  "presentations": {"room": "Room", "companion": "Companion"},
+  "presentations": {
+    "room": "Room",
+    "companion": "Companion"
+  },
   "characters": {
-    "okabe": ["pixel-lab", "maid-cafe"],
-    "kurisu": ["pixel-lab", "maid-cafe"],
-    "pip": ["pip-workshop", "rooftop-garden"],
-    "sonic": ["green-hill", "star-light"]
+    "okabe": [
+      "pixel-lab",
+      "maid-cafe",
+      "mac-desk"
+    ],
+    "kurisu": [
+      "pixel-lab",
+      "maid-cafe",
+      "mac-desk"
+    ],
+    "pip": [
+      "pip-workshop",
+      "rooftop-garden",
+      "mac-desk"
+    ],
+    "sonic": [
+      "green-hill",
+      "star-light",
+      "mac-desk"
+    ]
   },
   "sets": {
-    "pixel-lab": {"name": "Future Gadget Lab"},
-    "maid-cafe": {"name": "May Queen Café"},
-    "pip-workshop": {"name": "Pip’s Workshop"},
-    "rooftop-garden": {"name": "Rooftop Garden"},
-    "green-hill": {"name": "Green Hill"},
-    "star-light": {"name": "Star Light"}
+    "pixel-lab": {
+      "name": "Future Gadget Lab"
+    },
+    "maid-cafe": {
+      "name": "May Queen Café"
+    },
+    "pip-workshop": {
+      "name": "Pip’s Workshop"
+    },
+    "rooftop-garden": {
+      "name": "Rooftop Garden"
+    },
+    "green-hill": {
+      "name": "Green Hill"
+    },
+    "star-light": {
+      "name": "Star Light"
+    },
+    "mac-desk": {
+      "name": "Desktop Nook"
+    }
   }
 }

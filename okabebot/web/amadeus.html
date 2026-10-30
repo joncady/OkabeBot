@@ -30,8 +30,11 @@
 <button class="primary" type="submit">Save private choices</button>
 </form></section>
 <section id="amadeus-controls" class="panel" hidden><h2>Your boundaries</h2>
+<form id="conversation-form"><label class="amadeus-option"><input id="conversation-enabled" type="checkbox"> Optional door-armed conversations</label>
+<p>One invitation after the first door opening, only in a quiet available window. Answer with push-to-talk; there is no continuous recording. Phone DND, focus, media, quiet hours, pause and guest mode protect your time. Door opening is a home assumption, not identity detection.</p>
+<label>Starting location<select id="conversation-destination"></select></label><button>Save conversation choice</button><button type="button" id="conversation-resume">Resume reply</button></form>
 <div class="controls"><button id="amadeus-pause" aria-pressed="true">Learning paused</button><button id="amadeus-guest" aria-pressed="false">Guest mode off</button></div>
-<p>Only permitted metadata is observed in shadow mode. Pause and guest mode stop new observations. Routine previews are separately opt-in; general nudges stay off. Morning speech is separately configurable below.</p>
+<p>Only permitted metadata is observed. Pause and guest mode stop new observations and proactive conversations. Routine predictions stay in shadow. Optional conversations and morning speech have separate controls.</p>
 <div class="controls"><button id="coaching-later">Snooze coaching</button><button id="coaching-stop">Stop coaching</button><button id="coaching-resume">Resume chosen topics</button></div>
 <p id="coaching-state"></p></section>
 <section id="amadeus-morning" class="panel" hidden><h2>Morning window</h2>
@@ -54,6 +57,7 @@
 <button>Save spoken briefing</button></form>
 <button id="morning-show" type="button">Show today’s briefing · speak once if enabled</button><p id="morning-show-status" role="status"></p>
 <details><summary>Private card preview</summary><pre id="morning-preview"></pre></details></section>
+<section id="amadeus-feeds" class="panel" hidden><h2>Context feeds</h2><p>Each feed is read-only. Enabling explicitly permits its metadata; global pause, guest mode and retention still apply. Credentials stay in the controller’s private storage. No feed speaks or controls devices.</p><button id="feeds-refresh" type="button">Refresh connection status</button><div id="feed-list"></div><details><summary>Current private source context</summary><pre id="feed-context"></pre></details></section>
 <section id="amadeus-habits" class="panel" hidden><h2>Routine previews</h2>
 <p>Learn approximate cue windows from prior days of permitted observations. These are household patterns, not proof of sleep, identity or preference. Suggestions stay here; no screen movement, speech or device actions.</p>
 <label class="amadeus-option"><input id="habits-enabled" type="checkbox"> Enable private shadow previews</label>

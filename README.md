@@ -77,6 +77,7 @@ flowchart TB
     subgraph Mac["Mac - active controller"]
         Supervisor["Login LaunchAgent and runtime supervisor"] --> App["OkabeBot controller and shared actions"]
         Supervisor --> Speech["Warm Qwen TTS worker"]
+        App --> Vision["Opt-in local anonymous face detection; gated camera wave"]
         App --> ASR["Whisper base.en transcription"]
         App --> Chat["Warm Qwen 4B MLX conversation worker"]
         App -->|"Private Unix socket"| Speech
@@ -84,6 +85,9 @@ flowchart TB
         ThinQ["LG ThinQ cloud: registered appliance integration"] --> HA
         Forecast["Weather forecast service: configured"] --> HA
         HA["Home Assistant Container: 8123"] -->|"Scoped notifications, Alexa schedules and arrivals"| App
+        App -->|"Bounded state and shared controls"| HAFacade["Companion MQTT facade: LaunchAgent"]
+        HAFacade <-->|"Loopback 1883; authenticated private Docker network"| MQTT["Mosquitto Container"]
+        MQTT <--> HA
         MCP["Optional stdio MCP server"] --> App
         AlexaLocal["Opt-in private Alexa conversation adapter: Unix socket"] --> Chat
         AlexaLocal --> Speech
@@ -92,21 +96,42 @@ flowchart TB
         App --> Morning["Opt-in first-screen/alarm morning rule; grounded cards"]
         Morning -->|"Configured TV card rail and shared handoff"| Places
         HA -->|"Write-only phone cue / alarm / weather metadata"| Morning
-        App --> Amadeus["Owner-only Amadeus setup; consent-gated shadow metadata; private SQLite; no nudges"]
-        HA -->|"Write-only, entity-bound person name, door/presence and TV metadata"| Amadeus
+        App --> Amadeus["Owner-only Amadeus setup; consent-gated metadata and optional door-armed conversations; private SQLite"]
+        Amadeus -->|"Opt-in preference conversation"| Chat
+        App --> ContextFeeds["Optional read-only context feeds: HA tasks/activity/appliances/meals, rail alerts, watch history"]
+        ContextFeeds -->|"Permitted fresh snapshots; private storage"| Amadeus
+        App --> Shadow["Opt-in silent shadow evaluator: five-minute checks"]
+        Amadeus -->|"Consented inputs and private decision log"| Shadow
+        HA -->|"Write-only, entity-bound metadata and opt-in conversation attention gates"| Amadeus
         App -->|"Existing calendar/media snapshots and interaction metadata"| Amadeus
+        MacPanel -->|"Paired coarse display signals; optional wake handoff"| App
+        App -->|"Current Mac display state"| HAFacade
         MacPanel["Native floating Mac companion"] <-->|"Paired surface, hold-to-talk and streamed audio: localhost 8768"| App
     end
     subgraph Pi["One Pi Zero W - hardware satellite"]
-        Display["hardware-lab: loopback 8765"] --> LCD["UCTRONICS 3.5 inch LCD: 480 x 320"]
+        Uno["Elegoo Uno: distance + room sensors"] -. "USB serial distance + room metadata" .-> Display
+        NFCTags["Phone NFC tag scan"] --> HATags["HA tag_scanned publisher"]
+        HATags --> TagMap["Controller private tag mappings"]
+        TagMap --> Display
+        Display["hardware-lab: loopback 8765"] --> LCD["ELECROW 5 inch HDMI: 1024 x 600 + USB touch"]
         Display --- Camera["CSI camera and IR LED boards"]
         Display <-->|"Bluetooth LE"| Bot["SwitchBot Bot"]
         BeaconScan["Optional bounded BLE proximity scanner"]
         Voice["hardware-voice: loopback 8766"] --- Bonnet["AIY Voice Bonnet: mic, speaker and button"]
     end
     BeaconScan -->|"Target-only signal events over verified SSH"| Proximity["Opt-in Mac proximity trial; one shared handoff"]
+    HomePresence["Opt-in Watch context, welcome and controlled following: LaunchAgent"] <-->|"Target-only SSH radio heartbeats and observations"| UpstairsScan
+    HomePresence <-->|"Target-only SSH radio heartbeats and observations"| BeaconScan
+    HomePresence <-->|"Presence estimate / fresh door cue"| MQTT
+    HomePresence -->|"Dedicated arrival capability; one consumed greeting"| App
+    HASatellite["Read-only satellite telemetry: LaunchAgent"] -->|"MQTT Discovery"| MQTT
+    HASatellite -->|"Verified SSH diagnostics"| UpstairsScan
+    UpstairsScan["Second Pi - bounded BLE scanner preparation"] -->|"Target-only observations over verified SSH; comparison trial"| Proximity
     Proximity --> Places
     App <-->|"Verified SSH: scenes, camera and Bot tools"| Display
+    HomePresence -->|"Fresh home and nearby-anchor gates"| Vision
+    Camera -->|"Gated stdout-only JPEG over existing SSH RPC"| Vision
+    Vision -->|"Transient silent wave"| Display
     App <-->|"Verified SSH: recordings, PCM and button events"| Voice
     TV["Vizio TV / Cast receiver"] -->|"Cast media callbacks"| App
     App -->|"Explicit DashCast launch and scoped TV dashboard: 8768"| TV
@@ -611,3 +636,135 @@ conversational mapping; a dashboard-wide network/BLE scan remains planned.
 A [bounded phone proximity trial](docs/proximity.md) can use the Pi's BLE adapter
 to request one shared character handoff. It is optional, calibrated per setup and
 separate from Amadeus history or home/away tracking; permanent following is pending.
+
+[Optional proactive conversations](docs/amadeus-conversations.md) can use the first
+fresh door opening to arm one spoken invitation on a configured Pi location.
+Focus, media, quiet hours and missing signals suppress it. Answer with the usual
+push-to-talk; lasting preferences require a separate confirmation. The private
+setup offers Resume reply for interrupted exchanges without replaying an invitation. Defaults remain
+off, and room-level recipient localization is not available.
+
+The [home-map dashboard proposal](docs/home-map.md) keeps HA rooms/floors separate
+from screen orientation, and distinguishes a person's estimated room from a
+character's acknowledged screen. Room tracking and native Mac BLE are planned.
+Set `web.home_assistant_url` for a Home Assistant portal link in the dashboard;
+this does not authorize API access or import devices.
+
+The optional [HA companion facade and ownership audit](docs/ha-companion.md) exposes
+Pi controls and service connectivity without relocating speech or animation into HA.
+
+A bounded [wearable/room-motion presence proof](docs/ha-companion.md#bounded-two-screen-presence-trial)
+can request existing screen handoffs. It is opt-in and separately configured;
+wearable detection is not proof of a person's room, and unattended following is
+not enabled by default.
+An optional [Alexa communications deadline compatibility patch](docs/alexa.md#optional-communications-request-deadline)
+bounds ancillary cloud requests that can delay sensor startup; it does not make
+occupancy updates immediate.
+The opt-in [two-anchor BLE follow trial](docs/ha-companion.md#two-anchor-ble-follow-proof)
+compares two satellite scanners locally and uses the shared screen-movement API;
+it remains bounded and requires physical validation before unattended use.
+
+The HA telemetry agents reconnect after broker outages with bounded queues and
+graceful shutdown. See [adapter reliability and roadmap](docs/amadeus-todo.md#next-reliability-and-destination-checkpoints).
+Multiple independent Pi display destinations are planned; a second BLE scanner
+is supported separately from that future screen capability.
+
+An opt-in [Watch home-presence bridge](docs/ha-companion.md#watch-home-estimate-and-return-greeting)
+exposes home/probably-away/unknown separately from HA Person and can deliver an
+explicitly armed return greeting through the existing announcement policy.
+
+Announcements use a complete, single-use audio upload before Pi playback; normal
+interactive replies remain streamed. The dashboard's Watch-follow button controls
+the supervised home bridge, with manual-move holds and health/media guards. See
+[current presence and announcement behavior](docs/ha-companion.md#supervised-following-and-amadeus-context).
+
+The dashboard's **Dev → Amadeus text lab** supports silent, local preference
+conversations and private feedback. Clear preferences auto-save by default above a configurable evidence threshold; uncertain ones ask first. See
+[conversation controls](docs/amadeus-conversations.md#silent-developer-chat).
+
+Dev text chat can also use the existing approved tools (for example, calendar,
+media and reminders). Its location defaults to the browser's paired companion
+screen; use the location selector when the dashboard browser is not paired.
+Replies stay silent, and requested hardware actions retain normal approval rules.
+
+Text conversation receives the configured tool capability descriptions and recent
+private context; ordinary questions are answered before optional preference learning.
+
+Calendar chat reports its queried date window and configured-feed coverage;
+“where are you” reports the companion's actual confirmed screen. Explicit Spotify
+phone requests require a discovered phone and never fall back to another speaker.
+
+
+Optional [camera greeting](docs/camera-greeting.md): a silent visual wave when a
+face is in front of the companion, enabled only with fresh home and nearby Watch
+BLE evidence. Detection is local to the Mac, without recognition or image storage.
+Configure it in Dev; the repository default is off.
+
+The main dashboard's **Respect phone Do Not Disturb** switch controls only Amadeus
+proactive conversations. Turning it off leaves quiet hours, focus and media gates
+active and does not change the phone's DND setting.
+
+
+[Private shadow trial](docs/amadeus-shadow.md) logs planner candidates, suppression
+reasons and missing input prerequisites without speaking or controlling devices.
+Enable or pause it in Dev; participant results never belong in public repo content.
+
+### Extensible Amadeus context feeds
+
+**Amadeus setup → Context feeds** exposes editable, individually permitted inputs
+for HA tasks (Google Tasks or Local To-do), device activity, LG ThinQ status,
+Mealie plans/shopping, Sound Transit rail alerts and Trakt recent watch history.
+Connections use write-only credential fields; source defaults are off. Inputs
+provide grounded local conversation context and silent shadow opportunities,
+not automatic device actions. See [setup and source limits](docs/amadeus-feeds.md).
+The same registry supplies the setup UI and adapter validation for new providers.
+
+**Mac screen following** in the dashboard can bring the character to an approved
+Mac destination on native display wake, with editable media/manual protections
+and cooldown. Ordinary heartbeats or starting Little Lab do not trigger movement.
+The existing MQTT facade can expose a separate coarse Mac display sensor in HA;
+Amadeus collection remains independently opt-in. See [the wake rule](docs/surfaces.md#mac-display-wake-following).
+
+The **Desktop Nook** scene provides an additional unique workstation for every
+built-in character, including a transparent compact view for the Mac companion.
+Assign or change it in dashboard Locations; existing TV reservations stay separate.
+
+**Character flavor** can be changed between Plain, Subtle (default), and Playful.
+Household-history questions use the read-only `get_home_activity` tool and state
+coverage limits rather than inventing character-world events. See
+[conversation grounding](docs/amadeus-conversations.md#grounded-household-questions-and-character-flavor).
+
+**Natural tool replies** uses the existing local conversation model to turn
+completed tool results into short, grounded spoken/text summaries. Disable it
+beside Character flavor for faster fixed replies. The extra pass cannot execute
+or retry tools; structured MCP results remain unchanged. See
+[natural tool summaries](docs/amadeus-conversations.md#natural-tool-result-replies).
+
+Household recaps include consented Ring activity metadata when its timestamp entities are mapped to the private `ring` binding. Motion is not parcel recognition; explicit delivery confirmations retain user provenance.
+
+Context-feed setup groups credentials with their provider status. HA-backed feeds share one connection; entity selections use individual rows and transit uses line checkboxes.
+
+Ultrasonic proximity prototype: see [wiring and serial diagnostics](docs/ultrasonic.md). Firmware uploads are separate from enabling HA or companion actions.
+
+Prepared [room-sensor firmware and wiring](docs/room-sensors.md) adds photoresistor, DHT11 and tilt inputs to the Uno prototype. Combined firmware is uploaded; DHT11 readings and tilt contact changes are verified; the Pi reader and HA sensors are installed. Photoresistor is disabled.
+
+Installed Pi USB room sensing reuses the companion MQTT facade for HA sensors and adds a dashboard-selectable ultrasonic wave trigger. Installed migration status is tracked in deployment documentation.
+
+Silent approach waves can optionally run during media playback using the dashboard greeting setting; spoken interruption policy is independent.
+
+Silent-wave media permission is propagated to the Pi renderer; this does not bypass notification, active speech, away or home-presence policy.
+
+Ultrasonic silent greetings can explicitly allow any nearby visitor via the dashboard’s home-presence checkbox. Camera-mode privacy gates remain mandatory.
+
+### NFC tags
+
+The dashboard now maps scanned HA tags to approved companion destinations, with private registration, editing and a test button. See [NFC setup](docs/nfc-tags.md).
+
+Unmapped NFC scans can be mapped directly from the dashboard’s latest-scan button; new registration clears the prior captured tag before enabling Save.
+
+
+Context-feed setup now includes an explicit read-only HA room/entity preview,
+private screen-to-room assignment and Trakt code-based authorization with token
+refresh. These use the existing controller connection shown above; discovering a
+device does not authorize observation or control. See
+[context-feed onboarding](docs/amadeus-feeds.md).

@@ -21,7 +21,7 @@ def shapes(
     coat, seam, shirt = "#e9e5dc", "#a8aaa7", "#57514d"
     rect(34, 72, 87, 75, "#091319")
     # Lab coat, dark shirt and angular lapels.
-    phone = pose == "phone"
+    phone = pose in ("phone", "wave")
     rect(35, 57, 80 if phone else 85, 72, seam)
     rect(31, 62, 40, 73, coat)
     if not phone:
@@ -88,6 +88,12 @@ def shapes(
         rect(83, 44, 88, 64, coat)
         rect(82, 44, 88, 48, seam)
         rect(81, 38, 87, 45, skin)
-        rect(78, 32, 84, 45, "#131a24")
-        rect(79, 34, 83, 42, "#52728a")
+        if pose == "wave":
+            wag = round(math.sin(phase * 8) * 2)
+            rect(81 + wag, 30, 88 + wag, 42, skin)
+            for finger in range(3):
+                rect(81 + wag + finger * 2, 27 - finger % 2, 82 + wag + finger * 2, 33, skin)
+        else:
+            rect(78, 32, 84, 45, "#131a24")
+            rect(79, 34, 83, 42, "#52728a")
     return out

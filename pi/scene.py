@@ -133,7 +133,8 @@ def shapes(
     reaction = video.get("reaction") or {}
     idle_frame = idle_seconds % 48
     idle_action = (
-        idle_seconds >= 35
+        gesture == "idle"
+        and idle_seconds >= 35
         and 35 <= idle_frame < 43
         and not notification
         and not watching
@@ -167,7 +168,26 @@ def shapes(
         character["emotion"] = reactions.EMOTIONS.get(reaction.get("reaction"), "neutral")
         if character.get("style") == "kurisu":
             character["show_emphasis"] = False
+    waving = gesture == "wave" and not notification and character.get("activity", "idle") == "idle"
+    if waving:
+        character["emotion"] = "happy"
+        if character.get("style", "okabe") in ("okabe", "kurisu", "pip"):
+            character["pose"] = "wave"
+        elif character.get("style") == "sonic":
+            character["arms"] = False
     original = pip_face.shapes(**character)
+    if waving and character.get("style") == "sonic":
+        wag = round(math.sin(character.get("phase", 0) * 8) * 8)
+        original.extend(
+            [
+                ("rectangle", (192, 216, 207, 259), "#edc59c", 1),
+                ("rectangle", (180, 252, 211, 271), "#f5f4ed", 1),
+                ("polygon", (280, 242, 309, 236, 326, 191, 311, 185, 289, 218), "#edc59c", 1),
+                ("rectangle", (306 + wag, 158, 334 + wag, 194), "#f5f4ed", 1),
+                ("rectangle", (309 + wag, 146, 315 + wag, 162), "#f5f4ed", 1),
+                ("rectangle", (320 + wag, 142, 326 + wag, 162), "#f5f4ed", 1),
+            ]
+        )
     if selected_set == "unassigned":
         return original[:1]
     if selected_set in scene_sets.SETS and not notification and gesture != "present":

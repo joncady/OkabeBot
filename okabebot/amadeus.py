@@ -13,8 +13,10 @@ import uuid
 
 
 FIELDS = {
+    "feed_snapshot": {"provider", "items", "complete", "valid_until_at"},
     "presence": {"state", "room"},
     "door": {"state"},
+    "household_event": {"provider", "event", "detail", "provenance"},
     "interaction": {"action", "surface"},
     "media": {"app", "title", "content_id", "state", "duration_s", "position_s", "device_id"},
     "calendar": {"event_id", "summary", "start_at", "end_at", "snapshot_id", "busy", "all_day"},
@@ -107,7 +109,13 @@ class Store:
             raise ValueError("Provide a supported event kind and structured payload")
         if set(payload) - FIELDS[kind]:
             raise ValueError("Unsupported event fields; raw bodies/audio are not accepted")
+        if kind == "feed_snapshot":
+            from .adapters.context import validate_snapshot
+
+            validate_snapshot(payload)
         for key, value in payload.items():
+            if kind == "feed_snapshot" and key == "items":
+                continue
             if key.endswith("_s") or key.endswith("_at") or key in ("event_count", "temperature_c"):
                 if key == "temperature_c":
                     if (
@@ -192,6 +200,13 @@ class Store:
                 count += self.db.execute(
                     "DELETE FROM context_exposures WHERE subject=?", (subject,)
                 ).rowcount
+            if self.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_decisions'"
+            ).fetchone():
+                self.db.execute(
+                    "DELETE FROM shadow_decisions WHERE evaluated_at<=?",
+                    (self.clock() - min(self.retention, 7 * 86400),),
+                )
             return (
                 count + self.db.execute("DELETE FROM events WHERE subject=?", (subject,)).rowcount
             )
@@ -206,6 +221,13 @@ class Store:
                     "DELETE FROM context_exposures WHERE shown_at<=?",
                     (self.clock() - min(self.retention, 7 * 86400),),
                 ).rowcount
+            if self.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_decisions'"
+            ).fetchone():
+                self.db.execute(
+                    "DELETE FROM shadow_decisions WHERE evaluated_at<=?",
+                    (self.clock() - min(self.retention, 7 * 86400),),
+                )
             return (
                 count
                 + self.db.execute(

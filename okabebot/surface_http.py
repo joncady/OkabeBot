@@ -63,6 +63,7 @@ def handle(handler, bridge, post=False):
         "/surfaces/voice",
         "/surfaces/audio",
         "/surfaces/summon",
+        "/surfaces/display-signal",
     ):
         return False
     try:
@@ -77,7 +78,16 @@ def handle(handler, bridge, post=False):
         handler.connection.settimeout(10)
         data = json.loads(handler.rfile.read(size))
         token = handler.headers.get("X-Surface-Token", "")
-        if path.endswith("summon"):
+        if path.endswith("display-signal"):
+            item = bridge.surfaces.registry.heartbeat(token)
+            from .config import get_config
+
+            base = "http://%s:%s" % (get_config()["web"]["host"], bridge.port)
+            result = bridge.mac_screen.signal(
+                item, data, bridge.snapshot, lambda identity: bridge.surfaces.move(identity, base)
+            )
+            handler.respond(200, result)
+        elif path.endswith("summon"):
             item = bridge.surfaces.registry.heartbeat(token)
             if data != {}:
                 raise ValueError("Summon only targets this screen")

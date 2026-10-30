@@ -26,6 +26,7 @@ def handle(handler, bridge, *, post=False):
         return True
     if path in (
         "/amadeus/source/ha",
+        "/amadeus/source/conversation",
         "/amadeus/source/availability",
         "/amadeus/source/morning",
         "/amadeus/source/tv-ready",
@@ -58,7 +59,10 @@ def handle(handler, bridge, *, post=False):
                 raise ValueError("Invalid source size")
             handler.connection.settimeout(5)
             data = json.loads(handler.rfile.read(size))
-            if path.endswith("availability"):
+            if path.endswith("conversation"):
+                bridge.proactive.attention(data)
+                result = {"state": "accepted"}
+            elif path.endswith("availability"):
                 result = Collector(folder).availability(data)
             elif path.endswith("person"):
                 from .morning_briefing import Briefing
@@ -74,6 +78,8 @@ def handle(handler, bridge, *, post=False):
                     bridge.dispatch_morning()
             else:
                 result = Collector(folder).home_assistant(data)
+                if result.get("state") == "stored" and getattr(bridge, "proactive", None):
+                    bridge.proactive.door(data)
             handler.respond(200, result)
         except PermissionError:
             handler.respond(403, {"error": "Source binding forbidden"})
@@ -103,7 +109,58 @@ def handle(handler, bridge, *, post=False):
             handler.connection.settimeout(5)
             data = json.loads(handler.rfile.read(size))
         service = Onboarding(state_dir() / "amadeus")
-        if path == "/amadeus/api/habits":
+        if path == "/amadeus/api/feed-connection" and post:
+            result = bridge.amadeus_feeds.connect(data)
+        elif path == "/amadeus/api/feed-check" and post:
+            result = bridge.amadeus_feeds.check(data)
+        elif path == "/amadeus/api/trakt-auth" and post:
+            result = bridge.amadeus_feeds.trakt_auth.action(data)
+        elif path == "/amadeus/api/ha-inventory":
+            from .ha_inventory import HomeMap
+
+            inventory = bridge.amadeus_feeds.inventory()
+            locations = bridge.surfaces.snapshot()["locations"]
+            home = HomeMap(bridge.amadeus_feeds)
+            result = (
+                home.bind(data, inventory, locations)
+                if post
+                else home.snapshot(inventory, locations)
+            )
+        elif path == "/amadeus/api/feeds":
+            result = (
+                bridge.amadeus_feeds.configure(data) if post else bridge.amadeus_feeds.snapshot()
+            )
+        elif path == "/amadeus/api/conversation-resume" and post:
+            if data != {}:
+                raise ValueError("Resume only the existing reply context")
+            result = bridge.proactive.resume_reply()
+        elif path == "/amadeus/api/conversation":
+            from .amadeus_habits import preference
+            from .amadeus_live import CONFIG
+
+            if not service.settings():
+                raise ValueError("Save private setup first")
+            if post:
+                if not isinstance(data, dict) or set(data) != {"enabled", "destination"}:
+                    raise ValueError("Choose enabled and destination")
+                places = bridge.surfaces.snapshot()["locations"]
+                if not any(
+                    p["id"] == data["destination"] and p["adapter"] == "pi" and p["approved"]
+                    for p in places
+                ):
+                    raise ValueError("This trial requires an approved Pi destination")
+                bridge.proactive.configure(**data)
+            result = {
+                "config": preference(service.store, service.subject(), CONFIG, {}),
+                "destinations": [
+                    {"id": p["id"], "name": p["name"]}
+                    for p in bridge.surfaces.snapshot()["locations"]
+                    if p["adapter"] == "pi" and p["approved"]
+                ],
+                "reply_method": "push_to_talk",
+                "ambient_recording": False,
+            }
+        elif path == "/amadeus/api/habits":
             from .amadeus_habits import HabitPlanner, configure, preference, CONFIG_KEY, DEFAULTS
 
             if not service.settings():

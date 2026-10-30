@@ -31,6 +31,37 @@ class Camera:
                 return executable, name
         raise RuntimeError("No supported camera application installed")
 
+    def probe(self):
+        """Low-resolution anonymous detection frame, stdout only: never writes an image."""
+        if not self.lock.acquire(False):
+            raise ValueError("Camera busy")
+        try:
+            executable, backend = self.executable(False)
+            result = subprocess.run(
+                [
+                    executable,
+                    "--nopreview",
+                    "--timeout",
+                    "700",
+                    "--width",
+                    "640",
+                    "--height",
+                    "480",
+                    "--encoding",
+                    "jpg",
+                    "-o",
+                    "-",
+                ],
+                check=True,
+                capture_output=True,
+                timeout=8,
+            )
+            if not 100 < len(result.stdout) <= 300000:
+                raise ValueError("Invalid detection frame size")
+            return {"jpeg_base64": base64.b64encode(result.stdout).decode("ascii")}
+        finally:
+            self.lock.release()
+
     def capture(self, video=False, duration_seconds=5, low_light=False):
         if type(duration_seconds) is not int or not 1 <= duration_seconds <= 20:
             raise ValueError("duration_seconds must be an integer from 1 to 20")

@@ -150,6 +150,7 @@ DEFAULTS = {
     "web": {
         "port": 8768,
         "host": "127.0.0.1",
+        "home_assistant_url": "",
         "allowed_hosts": [],
         "tls": {"port": 8780, "certificate": "", "key": "", "ca_certificate": ""},
     },
@@ -282,6 +283,23 @@ def load(path):
         for value in settings["web"]["allowed_hosts"]
     ):
         raise ValueError("web.allowed_hosts must contain explicit host:port entries")
+    from urllib.parse import urlsplit
+
+    portal = settings["web"]["home_assistant_url"]
+    if not isinstance(portal, str):
+        raise ValueError("web.home_assistant_url must be an HTTP(S) portal URL")
+    if portal:
+        parsed = urlsplit(portal)
+        if (
+            parsed.scheme not in ("http", "https")
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.query
+            or parsed.fragment
+            or any(c.isspace() for c in portal)
+        ):
+            raise ValueError("Use a portal URL without credentials, query or fragment")
     tls = settings["web"]["tls"]
     if bool(tls["certificate"]) != bool(tls["key"]):
         raise ValueError("TLS requires both certificate and key")

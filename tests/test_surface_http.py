@@ -61,6 +61,36 @@ class SurfaceHttpTests(unittest.TestCase):
             timeout=2,
         )
 
+    def test_only_approved_mac_can_publish_display_signal(self):
+        from okabebot.mac_screen import MacScreen
+        import time
+
+        self.controller.mac_screen = MacScreen(self.surface.registry.path.parent)
+        self.controller.port = self.server.server_port
+        data = {
+            "state": "on",
+            "cause": "snapshot",
+            "observed_at": time.time(),
+            "event_id": "invented",
+        }
+        for kind, secret in (("mac", "a" * 64), ("browser", "b" * 64)):
+            with self.request(
+                "/surfaces/register", secret, {"name": "Invented " + kind, "kind": kind}
+            ) as r:
+                device = json.load(r)
+            with self.assertRaises(HTTPError) as caught:
+                self.request("/surfaces/display-signal", secret, data)
+            self.assertEqual(caught.exception.code, 403)
+            self.surface.layout({"id": device["id"], "approved": True})
+            if kind == "mac":
+                with self.request("/surfaces/display-signal", secret, data) as r:
+                    self.assertTrue(json.load(r)["accepted"])
+            else:
+                with self.assertRaises(HTTPError) as caught:
+                    self.request("/surfaces/display-signal", secret, data)
+                self.assertEqual(caught.exception.code, 403)
+        self.surface.rpc.assert_not_called()
+
     def test_preview_is_read_only_and_never_receives_transcripts(self):
         with self.request("/surfaces/state", self.surface.preview_token) as r:
             value = json.load(r)

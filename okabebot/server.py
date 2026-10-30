@@ -155,6 +155,15 @@ def get_recent_notifications(source: str = "", status: str = "", limit: int = 10
     }
 
 
+@mcp.tool(annotations=READ)
+def get_home_activity(period: Literal["today", "yesterday", "last_24_hours"] = "today") -> dict:
+    """Read partial consented household history: door/presence, TV/media and appliance readings.
+    Missing observations are not evidence nothing happened; no safety/all-clear claim."""
+    from .home_activity import recap
+
+    return recap(state_dir() / "amadeus", period)
+
+
 @mcp.tool(annotations=WRITE)
 def set_speaker_volume(percent: Annotated[int, Field(ge=0, le=100)]) -> dict:
     """Set the Pi speaker's actual volume, 0–100; shared with the dashboard slider."""

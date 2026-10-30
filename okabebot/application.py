@@ -8,7 +8,19 @@ from .reminders import Reminders
 
 class Application:
     ROUTES = {
+        "/amadeus/text/location",
+        "/amadeus/text/policy",
+        "/amadeus/text",
+        "/amadeus/text/reset",
+        "/amadeus/text/feedback",
         "/speaker/volume",
+        "/amadeus/shadow",
+        "/amadeus/interruptions",
+        "/camera/greeting",
+        "/character/tone",
+        "/mac/screen",
+        "/presence/follow",
+        "/presence/move",
         "/audio/resolve",
         "/audio/stream",
         "/surfaces/move",
@@ -33,15 +45,163 @@ class Application:
 
     def __init__(self, controller):
         self.controller = controller
+        from .amadeus_text import TextConversation
+
+        self.text_conversation = TextConversation(state_dir() / "amadeus")
 
     def execute(self, path, data):
         b = self.controller
+        if path.startswith("/amadeus/text"):
+            chat = self.text_conversation
+            if path == "/amadeus/text/location":
+                from .chat_location import resolve
+
+                if set(data) - {"location_id", "surface_secret"}:
+                    raise ValueError("Choose dashboard location")
+                place = resolve(b.surfaces, data)
+                return {
+                    "location": place,
+                    "locations": [
+                        {"id": p["id"], "name": p["name"]}
+                        for p in b.surfaces.snapshot()["locations"]
+                        if p.get("approved")
+                    ],
+                }
+            if path == "/amadeus/text/policy":
+                from .preference_confidence import DEFAULTS, KEY as POLICY_KEY
+                from .amadeus_habits import preference
+                from .amadeus_onboarding import SYSTEM, KEY
+
+                if set(data) - {"auto_accept", "threshold"}:
+                    raise ValueError("Unsupported memory policy")
+                if "auto_accept" in data and type(data["auto_accept"]) is not bool:
+                    raise ValueError("Choose auto accept on or off")
+                if "threshold" in data and (
+                    type(data["threshold"]) not in (float, int) or not 0.9 <= data["threshold"] <= 1
+                ):
+                    raise ValueError("Confidence threshold must be 0.90–1.00")
+                with chat.lock, chat.store() as s:
+                    setup = preference(s, SYSTEM, KEY, {})
+                    if not setup.get("profile"):
+                        raise ValueError("Save Amadeus setup first")
+                    policy = {**DEFAULTS, **preference(s, setup["profile"], POLICY_KEY, {}), **data}
+                    if data:
+                        s.remember(setup["profile"], POLICY_KEY, policy)
+                    return policy
+            if path == "/amadeus/text/feedback":
+                return chat.feedback(data)
+            if path == "/amadeus/text/reset":
+                chat.end()
+                return {"reset": True}
+            if "text" not in data or set(data) - {"text", "location_id", "surface_secret"}:
+                raise ValueError("Provide a text message")
+            generate = getattr(b.codex, "compose_preference", None)
+            if generate is None:
+                raise ValueError("Text Amadeus requires the local conversation worker")
+            from .chat_location import resolve, ground
+
+            place = resolve(b.surfaces, data)
+            text = data["text"]
+            if not isinstance(text, str) or not 1 <= len(text.strip()) <= 1000:
+                raise ValueError("Use a message of 1–1000 characters")
+            result = chat.send(
+                ground(text, place), generate, tool_turn=b.codex.text_turn, specs=b.codex.specs
+            )
+            result["location"] = {"id": place["id"], "name": place["name"]} if place else None
+            return result
+        if path == "/amadeus/shadow":
+            return b.amadeus_shadow.configure(data)
+        if path == "/amadeus/interruptions":
+            return b.proactive.interruptions(data)
+        if path == "/camera/greeting":
+            from .camera_greeting import configure
+
+            return configure(data)
+        if path == "/character/tone":
+            from .profiles import set_personality
+
+            return set_personality(data)
+        if path == "/mac/screen":
+            return b.mac_screen.configure(data, b.surfaces.snapshot()["locations"])
+        if path == "/presence/follow":
+            from .presence_control import configure
+
+            return configure(state_dir(), data)
+        if path == "/presence/move":
+            from .presence_control import status
+
+            p = status(state_dir())
+            if (
+                set(data) != {"location_id"}
+                or not p.get("fresh")
+                or not p.get("follow_enabled")
+                or data.get("location_id") not in p.get("follow_destinations", [])
+                or p.get("healthy_scanners") != 2
+                or time.time() < p.get("manual_hold_until", 0)
+            ):
+                raise ValueError("Presence following is paused or unavailable")
+            snapshot = b.snapshot()
+            if (
+                snapshot["busy"]
+                or snapshot["recording"]
+                or snapshot["focus"].get("active")
+                or snapshot["music"].get("is_playing")
+                or snapshot["tv"].get("is_playing")
+            ):
+                raise ValueError("Companion or media is busy")
+            if (
+                snapshot["surfaces"].get("phase") not in ("pi", "tv")
+                or snapshot["surfaces"].get("current_location") not in p["follow_destinations"]
+            ):
+                raise ValueError("Character moved outside the follow pair")
+            place = next(
+                (
+                    x
+                    for x in snapshot["surfaces"]["locations"]
+                    if x["id"] == data["location_id"] and x.get("approved")
+                ),
+                None,
+            )
+            if not place:
+                raise ValueError("Destination is not approved")
+            if place["adapter"] == "cast":
+                from pychromecast.config import APP_BACKDROP
+
+                cast = b.surfaces.cast_for(place["id"])
+                if (
+                    cast is None
+                    or cast.status.app_id != APP_BACKDROP
+                    or cast.status.is_active_input is not True
+                ):
+                    raise ValueError("TV must be on its idle Cast input")
+            return b.surfaces.move(
+                data["location_id"], "http://%s:%s" % (get_config()["web"]["host"], b.port)
+            )
         if path == "/audio/stream":
             return b.surface_audio.command(data["device_id"], data["command"])
         if path == "/audio/resolve":
             from . import audio_output
 
             purpose = data.get("purpose", "reply")
+            if purpose == "proactive":
+                from .amadeus_habits import preference
+                from .amadeus_onboarding import SYSTEM, KEY
+                from .amadeus_live import CONFIG
+
+                with b.proactive.store() as store:
+                    setup = preference(store, SYSTEM, KEY, {})
+                    cfg = preference(store, setup.get("profile", SYSTEM), CONFIG, {})
+                surface = b.surfaces.snapshot()
+                if (
+                    not b.proactive.permitted(setup, cfg)
+                    or surface.get("current_location") != cfg.get("destination")
+                    or not any(
+                        p["id"] == cfg.get("destination") and p["adapter"] == "pi" and p["approved"]
+                        for p in surface["locations"]
+                    )
+                ):
+                    raise ValueError("Proactive destination changed; no fallback speaker")
+                return {"target": "pi"}
             fallback = audio_output.target(purpose)
             if purpose == "announcement":
                 return {"target": fallback}
@@ -69,6 +229,10 @@ class Application:
                 }
             return {"target": fallback if target == "default" else target}
         if path.startswith("/surfaces/"):
+            if path in ("/surfaces/move", "/surfaces/return", "/surfaces/tv"):
+                from .presence_control import manual_move
+
+                manual_move(state_dir())
             base = "http://%s:%s" % (get_config()["web"]["host"], b.port)
             if path == "/surfaces/layout":
                 return b.surfaces.layout(data)

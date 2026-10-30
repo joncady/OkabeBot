@@ -48,6 +48,62 @@ Alexa conversation work is paused with its failed audio-deadline acceptance
 recorded below; this does not remove the accepted Show demo/destination. Pausing
 development is not evidence that its manually launched cloud workers were stopped.
 
+## Home Assistant portal navigation (2026-10-28)
+
+The installed dashboard header now exposes the configured `web.home_assistant_url`
+through the owner-authenticated state response. It opens HA's existing portal in a
+separate tab, using its own sign-in; it does not transfer credentials or grant API
+access. The client-reachable local hostname URL returned HTTP 200 during setup.
+No new listener or integration route was added. An idle controller-only restart
+preserved the existing proactive-trial configuration, state and speaker settings.
+
+The [home-map design](home-map.md), HA registry sync, room-level person/device
+fusion and native Mac BLE positioning remain proposals. Reading the locally mounted
+HA registries for this audit is not evidence that a supported registry connector is
+installed. Public documentation includes no household floor plan or inventory export.
+
+## Door-armed conversational trial (2026-10-28)
+
+The installed Mac controller now has an explicitly enabled, owner-configurable
+first-door conversation trial; new-install defaults remain off. It uses the existing
+warm MLX worker for tool-free invitation/reply generation, the existing Qwen speech
+worker, and the configured Pi destination and push-to-talk input. There is no
+ambient recording, automatic TV wake or new process/listener. Speaker levels and
+ordinary action approval controls were preserved during deployment.
+
+Home Assistant owns the optional `conversation.yaml` package, a restorable focus
+helper and exact private phone/media entity selections. Its scoped publisher
+updates `/amadeus/source/conversation` on the existing bridge with bounded current
+DND/report freshness, focus and aggregate media gates; it cannot enable the trial,
+read memory or choose a speaker. A refreshed server cache is not treated as a new
+phone report. The original entity-bound door observer arms the invitation; recovery
+snapshots are marked separately. Existing arrival greetings defer to the trial
+while enabled, preventing a second immediate welcome.
+
+Enable/destination state is stored as `conversation.live`; the consumed daily
+attempt, short reply session and current gate snapshot remain private. Pause,
+guest mode, source revocation, quiet hours, calendar busy/unknown coverage, stale
+phone reports, focus, media and device/route readiness protect delivery. The Pi
+must remain the current character destination; audio resolution explicitly rejects
+relocation instead of falling back. No room-level recipient localization is claimed.
+The power-only secondary TV source is excluded from this trial’s media gate; its
+morning wake/control path remains configured. Expired DND is marked unknown without
+rejecting the publisher’s current media/focus snapshot. No timeout was relaxed.
+The installed reply path supports food/drink tastes and general interests; invalid
+optional memory annotations do not discard a valid conversational reply. Clear
+affirmative sentences confirm the pending meaning without another model call;
+conditional/corrective responses remain unresolved. Owner
+“Resume reply” restores recent input context without replaying invitations.
+Confirmed usual preferences enter `context.preferences`; temporary mood and silence
+do not. Owner memory controls expose forgetting of that preference object.
+
+Verified in software: installed owner configuration/API, live authenticated HA
+attention ingestion, healthy model/device services, synthetic button-response and
+confirmation paths, and valid local speech PCM discarded without playback. Physical
+invitation timing, audibility and conversational acceptance await the user trial.
+The source, HA secrets/package and private database have local rollback backups.
+See [conversation setup and limits](amadeus-conversations.md).
+
 ## Additional HA source survey (2026-10-27)
 
 A read-only registry/recorded-state survey verified native LG ThinQ appliance and
@@ -140,7 +196,7 @@ configurable runtime-owned sleep policy remains a follow-up.
 | --- | --- | --- |
 | Apple Silicon Mac, 16 GiB RAM | Controller, local transcription, conversation and speech inference, integration adapters, dashboard, private application state; separate Home Assistant Docker container | Active host. Native controller is supervised by a user login LaunchAgent; Docker/HA has a separate lifecycle. |
 | Raspberry Pi Zero W Rev 1.1 | One Wi-Fi/SSH satellite running `hardware-lab` and `hardware-voice` systemd services | Reachable again during the 2026-10-27 scene acceptance pass; both services verified active. Wi-Fi logs show earlier carrier losses followed by reconnection. No conversation or speech model inference runs here. Legacy OS/AIY dependencies remain in place. |
-| UCTRONICS B010601 3.5-inch LCD | Pi X11/Tk character renderer through the existing OS display configuration | Native framebuffer verified 480×320. Screen blanking disabled by the display service. Touch is not configured; no new GPIO-display conversion is claimed. |
+| ELECROW 5-inch HDMI/USB touchscreen | Pi X11/Tk character renderer through the existing OS display configuration | USB QDtech MPI5001 touch driver and MPI5006 EDID detected. EDID reports 1024×600; previous output was 480×320. Native-mode boot configuration saved with a rollback copy. After a delayed reboot reconnect, firmware and X11 report 1024×600 at 60 Hz; renderer reports output 1024×600, canonical canvas 480×320, no animation error, and both hardware services active. No throttling flags were reported. Physical image quality and touch calibration still need user validation. |
 | Google AIY Voice Bonnet, speaker, microphone and large button | Attached to that same Pi; ALSA audio and AIY button input | Hold-to-talk capture, streamed PCM playback and local music energy metering. PTT preempts the music meter. Dev volume controls the physical speaker mixer and persists on the Pi. |
 | CSI camera and infrared LED boards | Attached to the same Pi; camera tools invoked by `hardware-lab` | Still capture/recording tools available. Night illumination depends on the physical IR boards and lens adjustment; it is not an always-on camera stream. |
 | SwitchBot Bot | Direct Bluetooth LE from the Pi; legacy `gatttool` adapter | Press mode with application-owned request IDs. A SwitchBot hub is available for future pairing, but no hub migration is enabled. The Tuya Zigbee gateway is not its current transport. |
@@ -153,7 +209,8 @@ configurable runtime-owned sleep policy remains a follow-up.
 | Android phone | Home Assistant Companion app/person tracker; paired browser character target | Browser location approved and user confirmed visible animation. Phone PiP confirmed floating/animating; voice input confirmed; routed output retest pending. HA away updates remain unreliable with LAN-only access; automatic presence welcomes cannot be assumed. |
 | HP Stream 7 Windows tablet | Intended browser-only dashboard console | Restart/power stability remains unresolved. It does not host the backend. Other browsers can use the same dashboard. |
 | Dell Inspiron 7559 | Previous Linux/controller experiments | Not the active controller. Live-USB persistence and Linux inference compatibility remain migration work; do not start a competing controller. |
-| Earlier display Pi, iPad and Elegoo R3 kit | Spare/test hardware | Not required by the current pipeline; no active backend or adapter role is assigned here. |
+| Earlier display Pi and iPad | Spare/test hardware | Not required by the current pipeline; no active backend or adapter role is assigned here. |
+| Elegoo Uno R3 + HC-SR04 | Pi USB room-sensor satellite | Uno firmware sends 115200-baud JSON to the companion Pi display service. Distance, DHT11 and tilt are published through the existing controller MQTT facade; ultrasonic wave physical validation is pending. No automatic location-follow or new Amadeus-history collector is enabled. |
 
 Both SSH role endpoints target the same Pi. The deployed display role lives at
 `/home/pi/hardware-lab`; the audio/button role lives at `/home/pi/hardware-voice`.
@@ -1137,3 +1194,363 @@ existing future-only feeds are not silently promoted to complete availability.
 No installed publisher, device setting, worker or notification dispatcher was
 changed for the isolated replay. Catalogue fixtures do not represent a deployed
 streaming provider connection.
+
+## Companion MQTT facade
+
+The installed Mac now runs a separate launchd-supervised companion MQTT facade.
+It reads the existing local controller state through its authenticated API and
+publishes eight bounded HA entities grouped as a companion satellite device.
+The private installation assigns the user's selected room through MQTT Discovery.
+An authenticated Mosquitto container persists discovery on the Mac, shares a Docker
+network with HA, and exposes port 1883 only on host loopback. HA's MQTT integration
+was configured through its UI. Docker startup remains a prerequisite after reboot.
+The facade uses the controller environment's Python/paho-mqtt dependency; it does
+not require a new Pi process or change existing speaker settings.
+
+Speech/model/scene ownership is unchanged. HA area synchronization, raw satellite
+telemetry and an HA Bluetooth-proxy adapter are not deployed. See the
+[responsibility audit](ha-companion.md). Source tests cover discovery grouping and
+bounded commands; no speaker playback or physical movement test is implied.
+
+An opt-in, bounded two-destination wearable/room-motion proof is prepared using
+the existing Pi target-only scanner and HA MQTT automations. A separate foreground
+controller trial consumes on-body and motion signals; no persistent follow service
+or full home-map fusion has been installed. Live HA wearable and occupancy entity
+bindings remain private. BLE identity detection and publisher delivery are verified;
+physical room discrimination and both movement directions remain pending validation.
+
+The local Alexa dependency now has an optional source-guarded communications-request
+deadline compatibility patch, backed up privately before application. It bounds
+ancillary preference retrieval during sensor startup; it does not change Amazon
+authentication or sensor polling intervals. A process restart loads it; image updates
+replace it. See [Alexa compatibility notes](alexa.md#optional-communications-request-deadline).
+Wearable following now uses a fresh non-health device heartbeat alongside the
+unchanged on-body state, avoiding false staleness from event-driven wearable sensors.
+
+## Second BLE observation satellite
+
+The previously separate display Pi is reachable again and has the existing
+Python-compatible target-only BLE scanner copied into its hardware directory.
+Bluetooth and DBus/GLib prerequisites were verified. It is being evaluated as a
+second fixed BLE observation point through bounded SSH scans; no persistent scanner
+service, new radio pairing, room-inference service or automatic two-anchor following
+has been installed. Existing display service state was observed, not migrated or
+reconfigured. Model workers, active display/audio duties and collection consent
+remain on their existing hosts. Private radio measurements and room calibration
+results remain in ignored local state.
+
+A bounded Mac two-anchor follow prototype now compares both prepared Pi scanners
+and requests existing destination handoffs. It is launched explicitly for testing,
+not supervised as an always-on service. HA contributes the scoped wearable-worn
+and device-heartbeat feed; native Echo occupancy is not consumed by this variant.
+Physical two-direction movement validation remains pending. No display/audio role
+migration, new port or additional model worker is involved.
+
+The supervised two-anchor movement trial temporarily follows the selected beacon
+as a device because wearable heartbeat delivery is sparse. Its private bounded
+configuration disables worn-state gating for that test only; source default remains
+required. This is not a deployed unattended person-presence rule.
+
+## Upstairs satellite HA registration
+
+A separate Mac launchd agent now runs `okabebot.ha_satellite`, reading fixed
+diagnostics over the existing verified SSH key and publishing four read-only MQTT
+Discovery entities for the second Pi. The installed HA device is named Upstairs
+BLE Pi and uses the owner-selected TV room. Published values are SSH connectivity,
+Wi-Fi signal, CPU temperature and uptime; no raw Bluetooth identity, movement
+history, commands or media content are exposed. Availability describes successful
+SSH diagnostic delivery; it does not claim a BLE scan is running. The broker and
+HA integration are reused; there is no new satellite listener or cloud dependency.
+The agent is supervised across Mac logins; Docker must be running. The bounded
+two-anchor follow trial is a separate process and is not made permanent by this
+telemetry registration.
+
+
+## Adapter lifecycle reliability update
+
+The installed read-only companion and satellite MQTT agents now use asynchronous
+broker connection, bounded publish queues and reconnect backoff. They avoid
+queueing stale telemetry while disconnected, establish offline availability before
+fresh health on reconnect, and handle SIGTERM/SIGINT with interruptible waits and
+bounded shutdown publication. Both agents were restarted and read-only telemetry
+recovery checked. Neither controller/device placement nor volume was changed by
+the update. No new ports, roles or cloud integrations were added.
+
+Source-only BLE follow improvements handle termination by reaping scanner children,
+pause when the controller API is unavailable, reset dwell after recovery, stop if
+a scanner exits, validate thresholds and cap sample memory. These changes are not
+an enabled unattended service. The temporary movement trial was stopped during the
+maintenance pass; no character handoff, playback or TV wake was used for validation.
+Fault-injection regressions use invented fixtures and local fake transports.
+
+
+## Watch home-presence return trial
+
+The installed Mac now supervises `okabebot.home_presence` through a separate login
+agent. Both satellite scanner scripts have a five-second heartbeat that checks
+powered/discovering radio state. This service observes only the configured target,
+cycles bounded SSH scans and publishes a separate MQTT home estimate and scanner
+health count. The HA door publisher was configuration-checked and loaded without
+restarting all integrations. Current private state and bindings remain outside Git.
+
+An explicit return trial uses the existing dedicated arrival capability through a
+new bounded `ble_presence` trigger. The installed controller has the arrival change
+loaded; normal announcement output, speaker volume, quiet policy and generated
+welcome/recap behavior remain unchanged. The older generic door/person arrival
+paths still defer to the Amadeus conversation trial when enabled; the explicitly
+armed BLE welcome is independent. No new listener or cloud resource is introduced.
+This is a device-presence estimate, not canonical person tracking or always-on
+character following. Synthetic gate/arrival tests pass; physical return speech is
+pending the user's next real arrival. Scanner disconnection and missing observations
+must remain unknown rather than being labeled a confirmed departure.
+
+
+## Current supervised following and announcement rollout
+
+This checkpoint supersedes the earlier bounded-only following stage for the
+installed home bridge: following is owner-enabled through the dashboard, shares
+the existing two scanner streams and persists manual holds/request cooldowns.
+The standalone BLE trial command remains bounded. The controller owns final
+movement validation, including idle active Cast input and approved-pair checks.
+There is no new listener, credential grant or model process.
+
+Amadeus live conversation delivery now uses the expiring Watch home estimate when
+configured. Installed private presence observer bindings select the derived sensor;
+phone/person entities are no longer that observer's presence source. HA Person
+itself is unchanged. Existing source consent, quiet, focus and media rules remain.
+
+The active Voice service now loads `prepared_audio.py` and supports bounded
+single-use upload/playback. Pi announcements use one persistent tunnel and the
+returned device clock for scheduling. Normal replies still stream. Installed
+controller and Voice updates were checked with a silent preparation probe and a
+short real announcement; software reports playback and animation success. Human
+confirmation of audible smoothness is tracked separately. Mixer settings were
+preserved. Device/code backups are private. Runtime data, audio and calibration
+remain outside public documentation.
+
+### Silent Amadeus developer chat
+
+The existing controller serves owner-authenticated text conversation and private
+feedback routes in its dashboard Dev panel. It reuses the Mac's warm local
+conversation worker and private Amadeus preference store; it introduces no new
+listener, model worker, cloud route or hardware service. Spoken invitation context
+is separate from the text session. Source and installed state should be verified
+independently when deploying this panel.
+
+The installed Mac controller now serves this panel. A silent browser request was
+verified through the local worker and returned character-styled text. Synthetic
+checks cover explicit preference confirmation and spoken-session isolation. No
+hardware audio test is needed for this text-only surface.
+
+
+Preference memory acceptance now shares a private confidence policy across text
+and spoken conversations. Auto-accept defaults on at 0.90, with owner controls in
+the Dev panel. Existing consent, guest and pause controls remain required. This
+uses the same controller/store/worker; hosting and integration topology are unchanged.
+
+### Dashboard chat tool dispatch
+
+The existing Mac controller now implements silent text tool turns on its shared
+local conversation worker, with the same grounded MCP tool implementations and
+approval policy used by voice. Browser-paired or explicitly selected location
+context resolves movement to "here"; no user-location sensor or additional network
+listener is introduced. Text session context and response feedback remain private
+controller state. No new Pi service or changed audio routing is required.
+
+The installed controller was verified with a silent calendar read followed by a
+relative-date follow-up; both used the calendar tool. Browser-location resolution
+is served by the owner API, and unpaired browsers require an explicit selection
+before movement to "here". No physical device action was used for this verification.
+
+The text conversation prompt and capability context use the existing local Qwen
+worker. No model, hosting, network or device-role change is introduced by this
+conversation-quality update.
+
+Text/voice tool grounding now resolves common calendar windows against the same
+configured private feed, reports live companion position, and validates Spotify
+phone targeting using on-demand Connect discovery. This changes no hosting roles,
+ports, configured calendars, device assignments or volume settings.
+
+### Optional gated camera greeting
+
+The Mac controller now has an opt-in background anonymous face detector using the
+`vision` extra (OpenCV's bundled cascade). The companion Pi serves bounded,
+stdout-only 640×480 camera frames over its existing verified SSH RPC transport.
+The existing Watch home bridge publishes a current nearby-anchor projection;
+fresh home plus strong companion-anchor evidence gates capture. An independent
+three-second display gesture waves silently and never actuates the SwitchBot.
+No new port, cloud service, image archive or identity model is introduced.
+
+The source default is disabled; the private owner control is in the dashboard Dev
+panel. See [camera greeting](camera-greeting.md) for gating, cooldown, privacy and
+physical acceptance checks. A missing BLE anchor blocks detection rather than
+falling back to phone presence or camera-only monitoring.
+
+Installed rollout: the Mac vision dependency, controller greeting worker, nearby
+Watch projection and companion Pi camera/display changes are installed. The private
+owner setting is enabled. At the latest software check, one BLE anchor was
+unavailable, so the live status correctly waited for home/nearby evidence. No real
+camera detection or physical wave is claimed from that blocked state; the owner
+must complete the near-camera acceptance check when both anchors recover.
+
+The main dashboard now exposes a private per-profile phone DND gate for proactive
+conversations. It uses the existing owner HTTP control and private store; no phone
+setting, Home Assistant configuration, device route or hosting role is changed.
+
+### Private shadow evaluation worker
+
+The existing Mac controller owns an optional five-minute habit/context evaluator.
+It writes `shadow_decisions` to the existing private Amadeus SQLite database and
+exposes a current operational summary in the owner dashboard. It does not call
+models, speakers, displays, notifications or device actions. Enabling shadow mode
+turns on planner evaluation only; existing consent and minimum-history thresholds
+remain authoritative. No additional service, credential or network listener is
+required. See [shadow trial](amadeus-shadow.md) for retention and review boundaries.
+
+Installed shadow rollout: enabled on the current Mac controller. The background
+worker and initial private decision record were verified, with delivery explicitly
+false. The new Dev control exposes pause/status; the trial did not add observation
+sources or change device state. Existing briefing, arrival and conversation flows
+remain separately configured.
+
+## Read-only Amadeus context feeds
+
+Source implementation adds an optional controller-owned background reader and
+owner routes `/amadeus/api/feeds` and `/amadeus/api/feed-connection` on the existing
+listener. No new port, Pi service or model worker is introduced. The registry
+supports selected HA to-do/sensor/calendar reads, Sound Transit public rail alerts
+and Trakt recent history. Credentials, entity bindings and enable choices belong
+to private Amadeus SQLite (or private environment), not repository defaults.
+Provider account setup and installed/connected verification are separate from
+source availability. See [context feed setup](amadeus-feeds.md). The optional
+feed reader is represented as such in the README diagram; no account connection
+or physical test is implied by that node.
+
+Installed verification (2026-10-29): the Mac controller's feed registry and
+owner-only configuration route responded after a supervised idle restart. The
+public rail adapter produced a fresh normalized snapshot. Other account-based
+feeds remain available but unconnected pending private credentials and entity
+selection. The live setup page rendered the registry controls. Pi services,
+volumes, model selection and device bindings were not changed for this install.
+
+## Native Mac display signal
+
+Source now connects Little Lab's native display wake/sleep notifications through
+its existing paired-screen HTTP connection to a bounded current-state tracker.
+The existing MQTT facade has an additional Mac device/sensor projection. No new
+listener, vendor login or active-application collection is introduced. The owner
+`/mac/screen` route configures automatic wake following on the shared movement
+interface; defaults remain disabled. Display state is transient, not a restored
+presence assertion. Installed verification is recorded separately after rollout.
+
+Installed verification (2026-10-29): the rebuilt Little Lab app reported a fresh
+coarse display-on snapshot to the installed controller. The existing MQTT facade
+registered its separate Mac display entity in HA. Automatic wake following is
+owner-configurable; a physical wake-to-arrival check remains pending a unique
+Mac scene assignment. No microphone capture, speech or TV wake was used to verify
+the state signal.
+
+The scene catalogue adds a character-independent Desktop Nook for approved Mac
+visits, with both compact and room presentations. This expands available world
+capacity without changing existing TV reservations. Selection remains owned by
+private surface layout, editable from the dashboard. Source renderers support
+this set on the controller and Pi; Pi source support is not evidence of a satellite
+rollout, and no Pi set is reassigned by this change.
+
+Installed desk verification (2026-10-29): the controller catalogue and browser
+renderers were installed, and the approved Mac was assigned the new unique desk
+set without changing TV reservations. The controller confirmed arrival and the
+native Mac window visibly rendered the character and desk. Display wake routing
+has a scene-ready destination; a physical screen-off/wake cycle is still a
+separate acceptance check. No Pi renderer rollout or microphone/audio test was
+performed for this scene change.
+
+## Household recap and personality control
+
+Source adds the read-only `get_home_activity` MCP/local tool over existing private
+observation storage and household notification titles. It does not add a network
+provider or history collector. The owner `/character/tone` route stores private
+Plain/Subtle/Playful prompt preference in `state_dir()/personality.json`; defaults
+are Subtle. Existing workers consume the selected persona per turn. Deployment
+requires a controller restart to register the tool and updated worker prompts;
+source availability alone is not evidence of an installed reply.
+
+Installed recap verification (2026-10-29): an idle controller restart registered
+`get_home_activity` and the updated persona controls. A silent owner text request
+executed that read tool and returned an explicit coverage limitation. No speech,
+volume change, device action or participant result is included in this verification.
+The existing topology, ports and worker roles remain unchanged.
+
+## Local tool-result composition
+
+Source adds a tool-free reply task to the existing warm MLX conversation worker.
+The controller projects bounded human-facing result fields and composes the
+user-facing response after the tool finishes; structured MCP results are unchanged.
+No new worker, port, cloud provider or device authority is introduced. Owner
+`personality.json` also stores the dashboard's natural-tool-replies preference,
+on by default. The existing README topology therefore remains unchanged. A model
+or validation failure uses the already known outcome without replaying the action.
+
+Installed composition verification (2026-10-29): the Mac controller and existing
+MLX worker were updated. A silent owner text request executed its read tool and
+used the generated summary rather than the formatter fallback. Operational timing
+metadata confirmed the composition path. No spoken audio/device action was used
+for this check, and participant facts/drafts are not included in public evidence.
+
+Ring household history: the installed metadata observer now watches Ring activity timestamps under door/presence consent. It stores bounded occurrence records, deduplicates reconnects, and rejects stale live events. No new hosting service or network route is required. Delivery confirmations remain private and distinct from sensor detections. The installed controller recap was silently verified to retrieve a confirmed household event; no speaker, volume or device-state test was performed. The existing README HA → controller route remains accurate.
+
+Context-feed dashboard cleanup uses the existing owner API and installed controller: provider-local credentials/status, shared HA credentials, entity rows and transit checkboxes. No hosting, port, model or topology changes.
+
+The Uno room-sensor extension compiled and was uploaded from the Mac. Serial diagnostics verified continued valid ultrasound samples, and valid DHT11 temperature/humidity samples after correcting orientation. Tilt contact changes were physically verified in both user-selected orientations. Photoresistor is intentionally disabled (null rather than floating ADC values). Wiring diagnosis, calibration and HA integration remain pending; no persistent collector or actions are enabled.
+
+### Prepared Uno-to-Pi migration
+
+Source now includes a dependency-free Pi serial reader inside the display service, bounded room-sensor RPC, five HA MQTT-discovered sensor entities through the existing facade, and an ultrasonic wave option with editable hysteresis/dwell/cooldown. No separate broker, listening port or model worker is introduced. The Uno is now attached through a USB hub alongside the touchscreen. The installed Pi display service reads its stable serial path, and the installed controller/facade deliver all five sensors to HA. Fresh distance, DHT11 and tilt values were verified through Pi RPC, controller state and HA Recorder. Ultrasonic wave is enabled with dashboard-editable thresholds; its physical approach/wave test remains pending. The voice service and volume were unchanged.
+
+Silent wave media exception: installed greeting configuration allows visual
+waves during TV/music playback. Dashboard can disable it. Speech policy, volume,
+hosting and integration routes are unchanged; README topology remains accurate.
+
+Wave media-policy repair: the installed controller now passes an explicit visual
+media exception through to the Pi renderer. The renderer accepted a direct silent
+wave request; automatic approach triggering still preserves the configured home
+gate and requires user validation. Notifications, active speech and away state
+remain renderer blockers. Focused checks and 704 Python regressions passed.
+
+Anonymous ultrasonic greeting is now enabled in the installed private config
+(`require_home=false`). The owner can restore home-only behavior from the
+dashboard. Nearby visitors/objects can trigger only the existing silent visual
+wave; speech, camera capture, BLE scanning and location-follow settings are
+unchanged. No topology, device endpoint or hosting changes.
+
+### NFC dashboard mapping
+
+The installed Mac controller owns private NFC mappings and a separate publish-only
+HA scan endpoint on its existing web listener. The installed HA tag package
+forwards scan IDs/times with a scoped private token. RESTful commands and
+automations were reloaded without restarting HA; its tag bridge is observed on.
+The owner dashboard exposes scan-to-register, name, approved destination, enabled
+state, edit/remove and test controls. No mapping is configured until the owner
+saves one. API, HA configuration validation, 710 Python and 58 browser regressions
+passed; the installed panel was visually checked. The owner subsequently confirmed
+that the second tag was working. No model, volume or device deployment
+role changed. README includes the additional HA-to-controller tag route.
+
+
+## Context-feed onboarding and HA room preview
+
+The installed controller now includes owner-only HA registry preview and private
+screen-to-area bindings through `/amadeus/api/ha-inventory`, and Trakt device
+sign-in through `/amadeus/api/trakt-auth`. These reuse the existing owner listener;
+no new port, HA package, Pi service or model worker is introduced. Optional
+`aiohttp` in the `home-assistant` extra supplies the authenticated WebSocket read.
+Registry preview is explicitly refreshed, not a background subscription. Imported
+rooms do not change orientation, observation consent, device control or routing.
+
+Installed source rollout: modules and dashboard were copied with rollback material
+and the idle controller restarted. The live owner-only registry route returned room, entity and approved-destination
+metadata using the saved private HA connection. Provider authorization and selected
+feed acceptance remain separate manual checkpoints. Source regression
+success is not account-onboarding or physical acceptance. See
+[feed onboarding](amadeus-feeds.md). Private room bindings and provider credentials
+belong to local Amadeus SQLite; they are not repository configuration.

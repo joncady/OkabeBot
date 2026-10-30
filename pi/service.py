@@ -16,12 +16,14 @@ from PIL import Image
 from bot import Bot
 from presses import PressController
 from camera import Camera
+from room_sensors import Reader as RoomReader
 import pip_face
 import scene
 import layout
 import reactions
 import prop_art
 import travel
+from gesture_policy import wave_allowed
 from device_config import load
 from display_power import keep_awake
 import math
@@ -262,6 +264,7 @@ class Display:
             data["activity"] = "idle"
             self.state["activity"] = "idle"
         return dict(
+            gesture="wave" if now < getattr(self, "wave_until", 0) else "idle",
             idle_seconds=max(0, now - self.idle_since),
             emotion=data["emotion"],
             intensity=data["intensity"],
@@ -517,7 +520,7 @@ class Display:
                     **{
                         k: v
                         for k, v in self.face_args().items()
-                        if k not in ("idle_seconds", "environment")
+                        if k not in ("idle_seconds", "environment", "gesture")
                     }
                 )
                 if phase == "away":
@@ -682,6 +685,21 @@ class Display:
                         result = self.cache_crest(data)
                     elif op == "music":
                         result = self.set_music(data)
+                    elif op == "gesture":
+                        if data.get("gesture") != "wave":
+                            raise ValueError("Unknown gesture")
+                        if not wave_allowed(
+                            self.character,
+                            self.motion.phase,
+                            self.notification,
+                            self.music,
+                            self.deploying,
+                            data.get("allow_during_media", False),
+                        ):
+                            result = {"waved": False, "reason": "busy or away"}
+                        else:
+                            self.wave_until = time.monotonic() + 3
+                            result = {"waved": True}
                     elif op == "character":
                         result = self.set_character(data)
                     elif op == "preview":
@@ -720,6 +738,8 @@ def main():
     presses = PressController(ROOT / "presses.sqlite3", bot)
     camera = Camera(ROOT / "recordings")
 
+    room_reader = RoomReader(load()["room_sensor_port"])
+
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
             pass
@@ -736,6 +756,10 @@ def main():
                 elif op == "bot_status":
                     with presses.lock:
                         result = bot.status()
+                elif op == "room_sensors":
+                    result = room_reader.snapshot()
+                elif op == "camera_probe":
+                    result = camera.probe()
                 elif op in ("camera_photo", "camera_record"):
                     result = camera.capture(
                         video=op == "camera_record",
@@ -748,6 +772,7 @@ def main():
                     "status",
                     "preview",
                     "character",
+                    "gesture",
                     "notification",
                     "deployments",
                     "music",

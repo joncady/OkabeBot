@@ -1,5 +1,6 @@
 """Invented context-policy regressions; no household data or actuators."""
 
+import json
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -106,6 +107,55 @@ class OpportunityTests(unittest.TestCase):
         self.assertEqual([c["title"] for c in p["context"]["choices"]], ["New"])
         self.planner.acknowledge(p)
         self.assertEqual(self.planner.snapshot()["proposals"], [])
+
+    def test_new_context_sources_create_shadow_candidates_and_exclude_watched_movie(self):
+        self.ready()
+        from okabebot.amadeus_habits import preference
+
+        extra = ["tasks", "transit", "appliances", "watch_history"]
+        setup = preference(self.store, SYSTEM, KEY)
+        setup["sources"] += extra
+        self.store.remember(SYSTEM, KEY, setup)
+        self.store.sources = frozenset(set(self.sources) | set(extra))
+        fixtures = {
+            "tasks": [
+                {
+                    "id": "task",
+                    "title": "Invented errand",
+                    "state": "needs_action",
+                    "due": datetime.fromtimestamp(self.now + 3600, timezone.utc).isoformat(),
+                }
+            ],
+            "transit": [
+                {
+                    "id": "alert",
+                    "title": "Invented delay",
+                    "effect": "SIGNIFICANT_DELAYS",
+                    "routes": "1 Line",
+                }
+            ],
+            "appliances": [{"id": "washer", "label": "Invented washer", "state": "finished"}],
+            "watch_history": [
+                {"id": "watch", "title": "New", "type": "movie", "watched_at": self.now - 60}
+            ],
+        }
+        for source, items in fixtures.items():
+            self.store.remember(SYSTEM, "feed." + source, {"enabled": True})
+            self.event(
+                source,
+                "feed_snapshot",
+                {
+                    "provider": source,
+                    "items": items,
+                    "complete": "yes",
+                    "valid_until_at": self.now + 600,
+                },
+            )
+        proposals = self.planner.snapshot()["proposals"]
+        self.assertEqual({p["kind"] for p in proposals}, {"tasks", "transit", "appliances"})
+        self.assertTrue(all(p["shadow"] for p in proposals))
+        self.event("media", "media", {"app": "Invented Player", "state": "PLAYING"})
+        self.assertTrue(all(not p["eligible"] for p in self.planner.snapshot()["proposals"]))
 
     def test_any_player_active_even_if_another_stopped(self):
         self.ready()
@@ -394,3 +444,28 @@ class OpportunityTests(unittest.TestCase):
             {"signal": "room", "device_id": "living", "state": "on", "observation": "snapshot"},
         )
         self.assertEqual(self.planner.snapshot()["proposals"], [])
+
+    def test_dnd_policy_off_still_requires_focus_and_other_attention(self):
+        self.ready()
+        self.event(
+            "availability",
+            "availability",
+            {"signal": "dnd", "state": "on", "observation": "change"},
+        )
+        # Bind the private profile from this synthetic fixture rather than assuming its name.
+        from okabebot.amadeus_habits import preference
+
+        profile = preference(self.store, SYSTEM, KEY)["profile"]
+        self.store.remember(profile, "conversation.interruptions", {"respect_dnd": False})
+        self.assertIsNone(
+            self.planner._attention_gate(
+                [
+                    dict(r, payload=json.loads(r["payload"]))
+                    for r in self.store.db.execute(
+                        "SELECT * FROM events ORDER BY observed_at,rowid"
+                    )
+                ],
+                preference(self.store, SYSTEM, KEY),
+                self.now,
+            )
+        )

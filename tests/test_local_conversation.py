@@ -97,6 +97,29 @@ class LocalToolTests(unittest.TestCase):
         obj.completed.assert_called_once_with("Speaker volume is now 5 percent.", "completed")
         self.assertFalse(obj.busy)
 
+    @patch("okabebot.server.get_home_activity")
+    def test_household_history_bypasses_model_and_requires_actual_read(self, activity):
+        obj = self.adapter('{"clarify":"not a tool summary"}')
+        obj.specs = {
+            **SPECS,
+            "get_home_activity": {
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "period": {
+                            "type": "string",
+                            "enum": ["today", "yesterday", "last_24_hours"],
+                        }
+                    },
+                }
+            },
+        }
+        activity.return_value = {"summary": "Connected records are partial."}
+        obj._turn("Hey friend, did I miss anything around the house today?")
+        activity.assert_called_once_with(period="today")
+        obj._read.assert_called_once()  # Rendering only; no model tool selection.
+        obj.completed.assert_called_once_with("Connected records are partial.", "completed")
+
     @patch("okabebot.server.press_bot")
     def test_ambiguous_actual_adapter_cannot_execute(self, press):
         obj = self.adapter('<tool_call>{"name":"press_bot","arguments":{}}</tool_call>')
@@ -105,7 +128,7 @@ class LocalToolTests(unittest.TestCase):
         self.assertIn("Which device", obj.completed.call_args.args[0])
 
     @patch("okabebot.server.get_companion_locations")
-    def test_destination_discovery_uses_live_registry_without_model_paraphrase(self, locations):
+    def test_destination_discovery_uses_live_registry_before_reply_rendering(self, locations):
         import copy
 
         locations.return_value = {"locations": [{"name": "Desk"}, {"name": "TV"}]}
@@ -114,8 +137,8 @@ class LocalToolTests(unittest.TestCase):
         obj.specs["get_companion_locations"] = {"parameters": {"type": "object", "properties": {}}}
         obj._turn("Which screens can you go to?")
         locations.assert_called_once_with()
-        obj._read.assert_not_called()
-        obj.process.stdin.write.assert_not_called()
+        obj._read.assert_called_once()  # Rendering pass, not tool selection.
+        self.assertIn('"task": "tool_reply"', obj.process.stdin.write.call_args.args[0])
         obj.completed.assert_called_once_with("My destinations are Desk, TV.", "completed")
 
     @patch("okabebot.server.set_speaker_volume", side_effect=TimeoutError())
@@ -153,8 +176,11 @@ class LocationAcknowledgementTests(unittest.TestCase):
         from okabebot.server import get_companion_locations
 
         for places, expected in (
-            ([{"name": "Desk"}, {"name": "TV"}], "My destinations are Desk, TV."),
-            ([], "I have no configured destinations."),
+            (
+                [{"name": "Desk"}, {"name": "TV"}],
+                "My current screen is not confirmed. Available screens: Desk, TV.",
+            ),
+            ([], "My current screen is not confirmed. No destinations are configured."),
         ):
             with patch(
                 "okabebot.controller_tools.projection",
@@ -170,3 +196,86 @@ class LocationAcknowledgementTests(unittest.TestCase):
             ):
                 result = get_companion_locations()
             self.assertEqual(acknowledgement("get_companion_locations", result), expected)
+
+
+class PreferenceResultTests(unittest.TestCase):
+    def test_invalid_json_does_not_end_the_worker_or_execute_anything(self):
+        obj = LocalConversation.__new__(LocalConversation)
+        obj.lock = threading.RLock()
+        obj.busy = False
+        obj.closed = False
+        obj.cancelled = threading.Event()
+        obj.process = Mock()
+        obj.process.poll.return_value = None
+        obj._read = Mock(return_value={"text": "{malformed"})
+        result = obj.compose_preference("An invented reply", {})
+        self.assertIsNone(result["memory"])
+        self.assertIn("another way", result["reply"])
+        self.assertFalse(obj.busy)
+        obj.process.terminate.assert_not_called()
+
+
+class SilentTextTurnTests(unittest.TestCase):
+    @patch("okabebot.server.get_current_media")
+    def test_text_tools_share_validation_without_voice_callbacks(self, media):
+        media.return_value = {"tv": {"title": "Invented match"}}
+        obj = LocalConversation.__new__(LocalConversation)
+        obj.process = Mock()
+        obj.process.poll.return_value = None
+        obj.cancelled = threading.Event()
+        obj.lock = threading.RLock()
+        obj.busy = False
+        obj.closed = False
+        obj.notify = Mock()
+        obj.completed = Mock()
+        obj.specs = SPECS
+        obj.policy = POLICY
+        obj._read = Mock(
+            return_value={
+                "text": "",
+                "selection_s": 0.1,
+                "tool_call": {"name": "get_current_media", "arguments": {}},
+            }
+        )
+        result = obj.text_turn("What is playing on TV?")
+        self.assertIn("Invented match", result["reply"])
+        media.assert_called_once()
+        obj.notify.assert_not_called()
+        obj.completed.assert_not_called()
+        self.assertFalse(obj.busy)
+
+
+class FeedbackGroundingTests(unittest.TestCase):
+    def test_where_are_you_routes_and_uses_actual_location(self):
+        from okabebot.local_conversation import preference_device_request, acknowledgement
+
+        self.assertTrue(preference_device_request("Where are you", {"get_companion_locations": {}}))
+        result = {"locations": [{"id": "desk", "name": "Desk"}], "current_location": "desk"}
+        self.assertIn("I'm on Desk", acknowledgement("get_companion_locations", result))
+
+    def test_unavailable_phone_cannot_fall_back_to_configured_speaker(self):
+        obj = LocalConversation.__new__(LocalConversation)
+        obj.process = Mock()
+        obj.process.poll.return_value = None
+        obj.cancelled = threading.Event()
+        obj.lock = threading.RLock()
+        obj.busy = False
+        obj.closed = False
+        obj.notify = Mock()
+        obj.completed = Mock()
+        obj.specs = {"control_spotify": {"parameters": {"type": "object"}}}
+        obj.policy = {"auto_approve_hardware": True, "allowed_tools": ["control_spotify"]}
+        obj._read = Mock(
+            return_value={
+                "text": "",
+                "selection_s": 0.1,
+                "tool_call": {"name": "control_spotify", "arguments": {"action": "play"}},
+            }
+        )
+        with (
+            patch("okabebot.server.list_spotify_devices", return_value={"devices": []}),
+            patch("okabebot.server.control_spotify") as play,
+        ):
+            result = obj.text_turn("Play Spotify on my phone")
+        play.assert_not_called()
+        self.assertIn("can't identify", result["reply"])

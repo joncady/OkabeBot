@@ -77,3 +77,16 @@ confirmed map privately. Never publish scan results or infer a person's identity
 from room activity, RSSI or a device name. Explain unsupported discovery transports
 and the next concrete manual step. The dashboard-wide scan feature is planned;
 do not claim it already exists.
+
+## Amadeus context feeds
+
+Use [context feed setup](../../../docs/amadeus-feeds.md) for tasks, selected device
+activity, LG appliance states, Mealie, public rail alerts and Trakt watch history.
+Prefer the owner dashboard's **Amadeus → Context feeds** controls for binding and
+connection changes. Keep every user-selectable integration option editable from
+the dashboard; never make a one-off household choice a source-code constant.
+Saved connection tokens are write-only. Do not print them, put them in URLs or
+use streaming account passwords. Adding HA integrations/OAuth remains distinct
+from enabling Amadeus observation. Verify one bounded read, current freshness,
+partial coverage, pause/guest/revoke behavior and source attribution before
+claiming a feed is connected. No provider connection implies nudge/speech consent.

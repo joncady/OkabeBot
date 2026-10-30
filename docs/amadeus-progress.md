@@ -180,3 +180,200 @@ explicit policy change; aggregation alone does not authorize it.
   silent days and missed opportunities, with hidden truth separate from input.
 - Remaining: real provider coverage, recipient identity and human acceptance;
   synthetic persona reviews cannot establish real-world usefulness.
+
+## Conversational preference elicitation foundation
+
+- Improved: an isolated policy can offer one optional contextual question after a
+  requested recommendation or a conversation ending, with confirmed private identity,
+  availability, quiet/media gates and a delivery-acknowledged daily limit.
+- Improved: confirmed usual preferences update the existing recommendation store;
+  current-conversation constraints stay ephemeral. Silence never writes memory.
+  Speech requires both profile permission and an explicit permitted-channel flag.
+- Improved: an opt-in first-door trial now connects the warm local conversation
+  worker, Pi speech, push-to-talk responses and owner controls. Typed, fresh
+  attention snapshots and existing focus/media/calendar/quiet gates suppress speech.
+  Attempts are consumed before playback; memory still requires separate confirmation.
+- Limited: no room-level recipient identity, automatic microphone listening or
+  specialized hobby/goal recommendation engine. Physical conversational acceptance
+  remains separate from software checks. Model output is untrusted and validated.
+- Next: collect private user feedback on timing and relevance, then refine source
+  health, recipient localization and one shared invitation budget across policies.
+
+## Attention-source freshness separation
+
+- Improved: an expired phone DND report marks that gate unknown while accepting
+  the publisher's current media/focus snapshot. It no longer rejects the entire
+  feed or hides unrelated source recovery. Unknown DND still suppresses speech.
+- Limited: a change-driven DND value is not a communication heartbeat. Source
+  health needs independently verified phone updates; no timeout was relaxed.
+
+## Conversational reply resilience
+
+- Improved: explicit food/drink tastes and general interests have supported private
+  preference fields, still requiring separate user confirmation before persistence.
+- Improved: malformed/unsupported optional memory annotations are discarded while
+  preserving valid conversational replies. Malformed generated JSON asks for a
+  rephrase without terminating the warm worker. No field is guessed from an alias.
+- Improved: an owner-requested Resume reply action restores a recent input session
+  without replaying an invitation or resetting the consumed daily attempt.
+- Limited: model classification is not authoritative, and no unsupported memory
+  annotation is promoted to a lasting preference. Real conversational acceptance
+  remains separate from synthetic regressions.
+
+## Natural confirmation handling
+
+- Improved: a clear affirmative with additional supporting words confirms the
+  existing pending preference without another model call or repeated question.
+  Conditions, corrections, uncertainty and question-form responses stay unresolved.
+- Limited: this is a bounded confirmation parser, not unrestricted semantic consent
+  classification; it never saves new trailing content as an additional preference.
+
+### Wearable presence prototype
+
+Added a bounded, consented two-screen follow experiment with timestamp validation,
+on-body gating, positive room evidence, playback/focus guards and movement cooldowns.
+Synthetic regressions cover ambiguous activity and stale wearable signals. Low-power
+BLE advertising requires physical calibration; no general person-localization
+accuracy or automatic home-map inference is claimed.
+
+Improved the wearable proof's freshness semantics: an unchanged on-body state uses
+an independent recent device heartbeat rather than being mistaken for an offline
+wearable. Added isolated coverage for stale/unknown heartbeat rejection. Ancillary
+Alexa request failures now have a reversible local compatibility workaround; cloud
+occupancy latency remains a limitation, not a validated responsive location signal.
+
+Added a bounded two-anchor wearable-follow evaluator with evidence margins, dwell,
+expiry and movement cooldowns. Ambiguous or absent observations hold the current
+screen; no general identity or room certainty is inferred. Physical acceptance
+remains separate from synthetic guard checks and scanner preparation.
+
+
+### Adapter lifecycle reliability
+
+MQTT telemetry adapters now tolerate initial broker absence without accumulating
+stale state, use bounded queues and reconnect backoff, and clean up on termination.
+Synthetic regressions verify private-content exclusion and offline startup behavior.
+The bounded BLE proof now pauses through controller outages, requires a fresh dwell
+on recovery and reaps scanner children. These source checks do not establish
+unattended presence reliability or multiple Pi-screen support; physical acceptance
+remains a separate checkpoint.
+
+
+### Watch home-presence estimate
+
+Added an opt-in bridge with independent radio health, conservative unknown states,
+departure-intent/door correlation and restart-safe welcome consumption. It separates
+read-only home estimation from movement and uses the existing generated greeting
+and delivery policy. Synthetic checks cover radio loss, ambiguous absence, stale
+door evidence and one-shot return eligibility. Physical return acceptance remains
+pending; BLE detects the selected device and does not establish wearer identity.
+
+
+### Unified presence gate and prepared announcements
+
+The home bridge now shares observations with a controlled follow adapter instead
+of duplicating scanner processes. Added owner pause/enable, manual precedence,
+persisted cooldowns and final controller-side destination checks. Live conversation
+delivery favors fresh qualified Watch context over stale phone state; probable
+absence remains distinct from confirmed-away memory. Announcement audio is prepared
+on the satellite before scheduling playback through a persistent connection, while
+interactive speech keeps streaming. Isolated regressions cover gating, restart
+holds, occupied destinations, prepared-audio expiry and purpose-based speech paths.
+Physical listening and room-transition acceptance remain separate from software
+success and connectivity checks.
+
+- Added a silent developer conversation surface sharing explicit preference
+  confirmation policy, with separate pending context from spoken sessions.
+  Bounded private feedback supports owner evaluation without public trial logs.
+
+- Added configurable confidence-based acceptance for clear preference statements,
+  preserving clarification for ambiguity and distinguishing automatic provenance
+  from explicit confirmation. No participant evaluation results are published.
+
+- Connected developer text requests to existing validated tools with silent reply
+  callbacks, explicit browser-location grounding, and bounded conversation context.
+  Reduced forced character references and made private feedback contextual.
+
+- Replaced preference-interview framing in ordinary text conversation with direct
+  question answering and supplied capability context. Added a regression against
+  misattributing character-directed questions as owner preference statements.
+
+- Corrected current-location routing and calendar window grounding, and made empty
+  calendar replies disclose coverage. Added phone-target discovery checks to avoid
+  unintended playback fallback. Improved guidance against repetitive suggestions.
+
+- Added an opt-in anonymous camera greeting gated by fresh home and nearby Watch
+  evidence, with fail-closed capture, transient silent waves and no image storage.
+  Software regressions cover blocked capture and post-inference context changes;
+  physical detection remains a separate acceptance check.
+
+- Added an explicit owner dashboard control for the proactive conversation phone
+  DND gate, keeping other interruption protections independent and active.
+
+- Added persistent opt-in shadow evaluations with bounded private decision records,
+  including no-candidate outcomes, evidence recency and missing prerequisites.
+  Shadow evaluation has no delivery interface; forget/revocation and retention
+  apply to the derived trial log. Context attention shares the owner DND policy.
+
+## Read-only context feed foundation
+
+A declarative registry now describes task, coarse device activity, appliance,
+meal-planning, rail-alert and confirmed-watch-history inputs. Owner setup exposes
+editable per-feed bindings and write-only connection settings. Bounded snapshots
+feed local conversation context and silent shadow evaluations with independent
+consent, freshness, partial-data markers and empty-list clearing. Revocation and
+forget are rechecked after network reads. These are capability improvements;
+account integrations and useful real-world recommendations require separate
+acceptance. No participant observations or trial outcomes are included here.
+
+## Native display context and wake routing
+
+A paired native Mac can now report only coarse display state, independently of
+scene readiness. A separate owner-configurable wake rule reuses shared handoffs
+and blocks busy, focus, media and manual-hold cases. Heartbeats cannot summon a
+character; blocked or uncertain events are not replayed. A separate MQTT Mac sensor
+is available without collecting active-application names. Unique scene assignment
+remains a destination prerequisite; sensor readiness alone is not arrival proof.
+
+A dedicated workstation set expands destination capacity without borrowing a
+reserved TV scene. Both presentations use shared scene ownership and handoff
+rules; sensor availability and destination scene readiness remain separate checks.
+
+## Household recap grounding
+
+Informal household-history questions now force a read-only recap instead of
+falling through to unconstrained character dialogue. Missing coverage is explicit;
+fictional status and unsupported safety claims are excluded. Character flavor is
+owner-editable with a quieter default. Synthetic regressions cover read execution,
+source consent, unavailable history and preference/tool routing boundaries.
+
+## Browser chat pairing recovery
+
+An expired or absent paired-screen registration now resolves to an unpaired
+browser instead of raising a location lookup exception. Ordinary owner chat and
+location selection remain usable; location-dependent movement still requires an
+explicit approved destination. Synthetic regressions cover null registration,
+owner application routing and the unchanged no-guessed-location boundary.
+
+## Conversational tool summaries
+
+Completed tool results now support a bounded local reply-composition pass instead
+of mechanically reading field-oriented acknowledgements. Browser and voice paths
+share this behavior, with an owner-editable fast fallback option and timing
+metadata. Richer household observations can be combined into a short recap while
+preserving limited coverage. Composition is isolated from tool execution and never
+retries uncertain actions. Conservative checks reduce known overclaims but do not
+constitute a general entailment guarantee.
+
+- Household recaps now prioritize recorded alerts over routine state snapshots. Ring timestamp ingestion distinguishes occurrence time from reconnect time, and user-confirmed events retain separate provenance. Public regression fixtures contain invented events only.
+
+
+## Guided source binding
+
+Owner-requested HA registry previews now resolve device and entity area assignments
+for domain-filtered setup suggestions. Private destination-to-area bindings retain
+stable identity through room renames and flag removed areas. Discovery grants no
+observation or device authority. Trakt device authorization keeps credentials
+write-only and rotates refresh tokens; provider account acceptance remains a
+separate manual checkpoint. Full spatial fusion and continuous registry event
+subscriptions remain future work.

@@ -198,3 +198,27 @@ class SourceTests(unittest.TestCase):
         self.assertEqual(
             self.collector.home_assistant(dict(event, event_id="new"))["state"], "not_permitted"
         )
+
+    def test_ring_timestamp_dedupes_recovery_and_rejects_old_occurrence(self):
+        from datetime import datetime, timezone
+
+        p = self.path / "ha-bindings.json"
+        p.write_text(json.dumps({"ring": {"sensor.synthetic_activity": "activity"}}))
+        self.owner.control({"paused": False})
+        event = {
+            "entity_id": "sensor.synthetic_activity",
+            "state": datetime.fromtimestamp(self.now - 20, timezone.utc).isoformat(),
+            "event_id": "first",
+            "observed_at": self.now,
+        }
+        self.assertEqual(self.collector.home_assistant(event)["state"], "stored")
+        self.assertEqual(
+            self.collector.home_assistant(dict(event, event_id="reconnect"))["state"], "duplicate"
+        )
+        old = datetime.fromtimestamp(self.now - 600, timezone.utc).isoformat()
+        self.assertEqual(
+            self.collector.home_assistant(dict(event, state=old))["state"], "no_metadata"
+        )
+        self.owner.control({"paused": True})
+        fresh = datetime.fromtimestamp(self.now - 1, timezone.utc).isoformat()
+        self.assertEqual(self.collector.home_assistant(dict(event, state=fresh))["state"], "paused")

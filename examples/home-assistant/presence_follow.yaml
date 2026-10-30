@@ -1,0 +1,43 @@
+# Opt-in bounded proof. Bind these secrets privately; run the controller trial separately.
+# No event history or health measurements are published.
+automation:
+  - alias: Companion wearable availability for presence trial
+    id: companion_wearable_presence_trial
+    triggers:
+      - trigger: time_pattern
+        seconds: '/30'
+      - trigger: state
+        entity_id: !secret companion_watch_on_body
+    actions:
+      - action: mqtt.publish
+        data:
+          topic: !secret companion_watch_body_topic
+          retain: false
+          payload: >-
+            {% set entity = states[watch_entity] %}
+            {% set heartbeat = states[heartbeat_entity] %}
+            {{ {'at': as_timestamp(now()), 'worn':
+              (entity.state == 'on') if entity is not none and
+              entity.state in ['on','off'] and heartbeat is not none and
+              heartbeat.state not in ['unknown','unavailable'] and
+              0 <= (as_timestamp(now()) - as_timestamp(heartbeat.last_reported)) < 300
+              else none} | to_json }}
+    variables:
+      watch_entity: !secret companion_watch_on_body
+      heartbeat_entity: !secret companion_watch_heartbeat
+    mode: single
+  - alias: Companion room occupancy presence trial
+    id: companion_room_presence_trial
+    triggers:
+      - trigger: state
+        entity_id: !secret companion_echo_motion
+        from: 'off'
+        to: 'on'
+        for: '00:00:05'
+    actions:
+      - action: mqtt.publish
+        data:
+          topic: !secret companion_echo_motion_topic
+          retain: false
+          payload: "{{ {'at': as_timestamp(now()), 'occupied': true} | to_json }}"
+    mode: single

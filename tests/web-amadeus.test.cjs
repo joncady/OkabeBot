@@ -1,5 +1,5 @@
 const test=require('node:test'), assert=require('node:assert/strict'), fs=require('node:fs'), vm=require('node:vm');
-async function fixture(){
+async function fixture(withInventory=false){
  const nodes={},requests=[];let denied=false,token='synthetic-owner',hold=false,release;
  function node(){return {hidden:false,children:[],value:'',checked:false,textContent:'',
   append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;},
@@ -18,7 +18,7 @@ async function fixture(){
  const context={document,Intl,Date,JSON,URL,Blob,setTimeout,
   dashboardAccess:{token:()=>token,remember(){},required(){get('dashboard-auth').hidden=false;}},
   fetch:async(url,options)=>{requests.push({url,options});if(hold)await new Promise(resolve=>release=resolve);return{status:denied?403:200,ok:!denied,
-   json:async()=>url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
+   json:async()=>url.endsWith('feeds')?{feeds:[{id:'tasks',label:'<img src=x>',instructions:'Read only',status:'disabled',fields:[{key:'entities',label:'To-do lists'}],config:{enabled:false,entities:[]}}],context:[],connections:withInventory?[{transport:'ha',url:'http://ha.invalid',has_token:true}]:[]}:url.endsWith('ha-inventory')?{rooms:[{id:'study',name:'Study'}],entities:[{id:'todo.invented',name:'Invented list',room:'Study',available:true}],locations:[{id:'screen-a',name:'Desk',area_id:null}]}:url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
    {events:[],preferences:[{key:'user.test',value:'<img src=x onerror=alert(1)>'}]}};}};
  vm.createContext(context);
  vm.runInContext(fs.readFileSync('okabebot/web/amadeus.js','utf8')+'\nglobalThis.ui=amadeusUI;',context);
@@ -57,4 +57,36 @@ test('routine preview stays owner scoped and enabling it cannot enable delivery'
  assert.deepEqual(JSON.parse(request.options.body),{enabled:true});
  assert.equal(request.options.headers['X-Hardware-Token'],'synthetic-owner');
  assert.match(f.nodes['habits-state'].textContent,/off|paused/);
+});
+
+test('registry feeds render as literal text and are cleared with private access',async()=>{
+ const f=await fixture();assert.equal(f.nodes['amadeus-feeds'].hidden,false);
+ assert.equal(f.nodes['feed-list'].children[0].children[0].children[0].textContent,'<img src=x>');
+ f.nodes['dashboard-forget'].onclick();assert.equal(f.nodes['feed-list'].children.length,0);
+ assert.equal(f.nodes['amadeus-feeds'].hidden,true);
+});
+
+test('entity rows save arrays and allow individual additions and removals',async()=>{
+ const f=await fixture();const card=f.nodes['feed-list'].children[0],form=card.children[2];
+ const fieldset=form.children[1],rows=fieldset.children[2],add=fieldset.children[3];
+ rows.children[0].children[0].value='todo.invented';add.onclick();
+ assert.equal(rows.children.length,2);assert.equal(rows.children[0].children[0].value,'todo.invented');
+ rows.children[1].children[0].value='todo.second';rows.children[0].children[1].onclick();
+ assert.equal(rows.children.length,1);assert.equal(rows.children[0].children[0].value,'todo.second');
+ form.onsubmit({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve));
+ const post=f.requests.find(r=>r.url.endsWith('feeds')&&r.options.method==='POST');
+ assert.deepEqual(JSON.parse(post.options.body),{id:'tasks',config:{enabled:false,entities:['todo.second']}});
+});
+
+test('HA inventory is owner-requested and discovery never enables a feed',async()=>{
+ const f=await fixture(true);
+ assert.ok(!f.requests.some(r=>r.url.endsWith('ha-inventory')));
+ const shared=f.nodes['feed-list'].children[0];
+ const refresh=shared.children.find(c=>c.textContent==='Refresh rooms and entities');
+ await refresh.onclick();
+ assert.ok(f.requests.some(r=>r.url.endsWith('ha-inventory')&&r.options.method==='GET'));
+ assert.ok(!f.requests.some(r=>r.options.method==='POST'));
+ assert.match(f.nodes['feed-list'].children[0].children[4].textContent,/Study/);
+ f.nodes['dashboard-forget'].onclick();
+ assert.equal(f.nodes['feed-list'].children.length,0);
 });

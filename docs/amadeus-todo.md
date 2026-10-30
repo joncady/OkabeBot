@@ -185,3 +185,103 @@ available streaming catalogue, a preferred title, a health need or observed slee
   against provider reporting cadence rather than calling a refreshed cache current.
 - [ ] Scope attention to verified recipient/destination areas before household-wide
   playback gates are relaxed; unknown room or viewer identity remains explicit.
+- [x] Wire the bounded first-door preference trial into the local conversation harness with explicit
+  opt-in, skip/stop and confirmation before remembering. Keep temporary
+  mood/time constraints in the conversation, not durable preference fields; use
+  hobbies/goals only through supported recommendation capabilities. Revalidate
+  attention/quiet/media state before the invitation, with a bounded daily trial budget.
+
+- [ ] Extend proactive conversations with verified room/recipient localization, correction of individual confirmed preferences, shared prompt budgets and private real-use feedback.
+
+## Home map and room-aware delivery (proposed)
+
+- [ ] Read-only HA floor/area/device/entity registry sync with event-driven refresh,
+  stable identity reconciliation and a self-service unassigned-device review tray.
+- [ ] Home-map dashboard with acknowledged character position, explicit/inferred/
+  unknown person-device states, evidence age, floor tabs and room detail panels.
+- [ ] Separate physical room adjacency from per-room screen orientation; portable
+  displays inherit device room estimates without silently changing the house plan.
+- [ ] Calibrated HA room presence in shadow; evaluate fixed BLE proxies/Bermuda,
+  distinguishing device proximity, household occupancy and actual person identity.
+- [ ] Optional native Mac BLE room estimate from known fixed anchors; front-loaded
+  permissions, mobile-versus-fixed scanner roles, sleep expiry and calibration.
+- [ ] Opt-in room-aware audio routing after wrong-room, ambiguity and stale-signal
+  acceptance, preserving media/focus/quiet/permission and character handoff rules.
+
+See [home-map design](home-map.md). Portal navigation is implemented separately;
+registry sync, map tracking and Mac BLE scanning remain planned.
+
+## HA companion follow-up
+
+- Import approved HA area/device bindings into the private home map; keep stable destination IDs.
+- Export calibrated BLE proximity and explicit Pi power/temperature telemetry through the bounded facade.
+- Consolidate selected HA event publishers after parity tests; retain one owner for speech and screen handoffs.
+
+## Next reliability and destination checkpoints
+
+1. [Presence health and lifecycle controls (#15)](https://github.com/joncady/OkabeBot/issues/15):
+   expose scanner heartbeat, stale/ambiguous evidence, pause reasons and explicit
+   enable/pause state before unattended following. Reconnect handling is not proof
+   that an unresponsive remote scanner is healthy. Add manual-move precedence.
+2. [Approved HA room/device sync (#14)](https://github.com/joncady/OkabeBot/issues/14):
+   supported read-only API, stable area identity and a self-service mapping review.
+3. [Multiple Pi display destinations (#13)](https://github.com/joncady/OkabeBot/issues/13):
+   per-screen transport and ready acknowledgment, scene reservation, single actor
+   ownership, optional local audio, and destination-loss recovery. The current
+   registry intentionally supports one Pi display; an extra scanner is not another
+   configured screen. Existing display transport can be replaced independently,
+   but keeping both Pi screens requires this work.
+4. Room-aware Amadeus delivery after the above physical acceptance: use qualified
+   location evidence and explicit fallback policy; preserve focus/media/quiet rules.
+
+Completed source reliability work: bounded MQTT queues, asynchronous initial broker
+connection and reconnect backoff, interruptible adapter shutdown, bounded scanner
+cleanup, and controller-outage pause with fresh-dwell recovery. Only the read-only
+HA bridge updates are installed; updated BLE trial lifecycle awaits physical
+acceptance. Device-follow trial mode remains distinct from person localization.
+
+
+Presence-control checkpoint: owner follow controls, current health/pause status,
+manual holds and persisted request cooldowns are implemented in the home bridge.
+Amadeus live delivery uses the qualified Watch estimate; read-only HA room-map
+sync and multiple Pi screens remain next milestones. Complete multi-direction,
+manual-override, disconnect/reconnect and interrupted-playback physical acceptance
+before treating following as dependable unattended person localization.
+
+## Next private shadow checkpoint
+
+- Review several ordinary days of private candidate and no-candidate decisions.
+- Choose additional context integrations with the owner before adding consented
+  sources: task/to-do lists, selected charging/focus signals, appliance events,
+  recipe/shopping context, optional travel time and verified media catalogue.
+- Keep candidate evaluation distinct from any future live delivery rollout; do not
+  infer success or helpfulness from silence or copy participant reports here.
+
+## Context-feed onboarding follow-up
+
+- [x] Declarative read-only adapters for HA tasks/device activity/ThinQ/Mealie,
+  Sound Transit rail alerts and Trakt recent watch history; owner-editable setup.
+- [x] Synthetic consent, failure, freshness, normalized-wire and conversation checks.
+- [ ] [#16](https://github.com/joncady/OkabeBot/issues/16): Guided HA entity picker with room/provider labels and connection checks.
+- [ ] [#17](https://github.com/joncady/OkabeBot/issues/17): Trakt interactive authorization, safe refresh and configurable/paginated
+  history import; preserve explicit partial coverage and household attribution.
+- [ ] Help owners connect Google Tasks OAuth, optional Mealie and Trakt accounts;
+  verify real entities without copying participant results into public artifacts.
+- [ ] Design user-controlled relevance/delivery for transit/task/meal suggestions;
+  existing feed-derived opportunities stay in silent shadow evaluation.
+
+
+## Current release checkpoint
+
+- Implemented: owner-requested HA room/entity preview, domain-filtered entity
+  suggestions and private destination-to-area bindings. Room renames preserve IDs;
+  removed assignments require review. Explicit refresh is supported; continuous
+  registry subscriptions and the complete spatial map remain open (#14).
+- Implemented: bounded selected-feed connection checks, Trakt device authorization
+  and persisted rotating refresh credentials. Provider account consent, selected
+  entities and real-account acceptance remain owner setup checkpoints (#16, #17).
+- Physical checks outstanding: automatic ultrasonic approach wave and new-screen
+  touch accuracy. Existing sensor API health does not establish those behaviors.
+- Source setup outstanding: Google Tasks OAuth,
+  selected ThinQ entities and optional Trakt/Mealie account configuration. Do not
+  enable unrelated feeds or infer completion from available adapter code.

@@ -1,0 +1,29 @@
+# Write tags with the HA Companion app. Mapping stays in the owner dashboard.
+# The dedicated credential can only submit recent scans for configured actions.
+rest_command:
+  okabebot_tag_scan:
+    url: !secret okabebot_tag_url
+    method: POST
+    headers:
+      X-Tag-Token: !secret okabebot_tag_token
+    content_type: application/json
+    payload: >-
+      {{ {"tag_id": tag_id, "event_id": event_id,
+          "observed_at": observed_at | float} | to_json }}
+    timeout: 15
+
+automation:
+  - id: okabebot_tag_bridge
+    alias: OkabeBot - NFC tag bridge
+    triggers:
+      - trigger: event
+        event_type: tag_scanned
+    actions:
+      - action: rest_command.okabebot_tag_scan
+        data:
+          tag_id: "{{ trigger.event.data.tag_id }}"
+          event_id: "{{ trigger.event.context.id }}"
+          observed_at: "{{ as_timestamp(trigger.event.time_fired) }}"
+    mode: queued
+    max: 10
+    max_exceeded: silent

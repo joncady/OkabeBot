@@ -28,7 +28,8 @@ automation:
         data:
           entity_id: "{{ trigger.entity_id }}"
           state: "{{ trigger.to_state.state }}"
-          event_id: "{{ trigger.to_state.context.id }}"
+          # Recovery observations are not proof of a new physical door opening.
+          event_id: "{{ ('snapshot:' if trigger.from_state.state in ['unknown', 'unavailable'] else '') ~ trigger.to_state.context.id }}"
           observed_at: "{{ as_timestamp(trigger.to_state.last_updated) }}"
     mode: queued
     max: 10

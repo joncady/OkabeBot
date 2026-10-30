@@ -106,3 +106,10 @@ class ArrivalTests(unittest.TestCase):
                 )
                 self.assertEqual(presence.result()["id"], door.result()["id"])
         self.assertEqual(len(self.inbox.items()), 1)
+
+    def test_ble_presence_uses_same_bounded_recap_and_quiet_policy(self):
+        with patch("okabebot.arrival.time.time", return_value=2000):
+            result = queue_greeting(self.inbox, self.policy, 1000, 2000, trigger="ble_presence")
+        self.assertIn("while you were away", result["body"])
+        with patch.object(self.policy, "quiet", return_value=True):
+            self.assertEqual(self.policy.audio(result), "silent")

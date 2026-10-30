@@ -6,11 +6,14 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .amadeus import Store, identifier
 from .amadeus_coaching import Coaching, TOPICS
+from .adapters.context import FEEDS
 
 
 SYSTEM = "amadeus-system"
 KEY = "onboarding"
+
 SOURCES = {
+    **{feed.id: feed.label for feed in FEEDS.values()},
     "availability": "Selected DND/focus, charging and shared-room occupancy states (separate opt-in)",
     "tv_usage": "TV power/state snapshots (household context; no titles or viewer identity)",
     "phone_context": "Phone screen on/off and next-alarm time (no location, apps or health)",
@@ -156,6 +159,17 @@ class Onboarding:
                 (value["retention_days"] * 86400,),
             )
             self.store.db.execute("DELETE FROM events WHERE expires_at<=?", (self.store.clock(),))
+            if self.store.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_decisions'"
+            ).fetchone():
+                self.store.db.execute(
+                    "DELETE FROM shadow_decisions WHERE evaluated_at<?",
+                    (self.store.clock() - min(7, value["retention_days"]) * 86400,),
+                )
+                if previous and set(previous.get("sources", [])) - set(value["sources"]):
+                    self.store.db.execute(
+                        "DELETE FROM shadow_decisions WHERE subject=?", (profile,)
+                    )
             if previous and set(previous.get("sources", [])) - set(value["sources"]):
                 # Revocation invalidates derived opportunity state; adding a source
                 # later cannot silently resume an old personalized context trial.
@@ -232,6 +246,10 @@ class Onboarding:
                 self.store.db.execute("DELETE FROM events")
                 self.store.db.execute("DELETE FROM preferences")
                 if self.store.db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_decisions'"
+                ).fetchone():
+                    self.store.db.execute("DELETE FROM shadow_decisions")
+                if self.store.db.execute(
                     "SELECT 1 FROM sqlite_master WHERE type='table' AND name='context_exposures'"
                 ).fetchone():
                     self.store.db.execute("DELETE FROM context_exposures")
@@ -239,11 +257,20 @@ class Onboarding:
         if not isinstance(data, dict) or set(data) != {"key"}:
             raise ValueError("Confirm deletion or provide a preference key")
         key = identifier(data["key"])
-        if not key.startswith("user."):
+        if not key.startswith("user.") and key != "context.preferences":
             raise ValueError("Use the coaching controls to change coaching consent")
         with self.store.db:
             self.store.db.execute("BEGIN IMMEDIATE")
             self.store.forget(self.subject(), key=key)
+            if (
+                key == "context.preferences"
+                and self.store.db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_decisions'"
+                ).fetchone()
+            ):
+                self.store.db.execute(
+                    "DELETE FROM shadow_decisions WHERE subject=?", (self.subject(),)
+                )
         return self.memory()
 
     def feedback(self, data):
