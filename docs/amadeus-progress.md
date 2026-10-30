@@ -412,3 +412,16 @@ collectors/recording budgets and full provider pagination remain separate work.
 - Remaining: resumable provider pagination, recording budgets and broader collector
   compaction remain separate backlog issues. Roadmap scope now uses repository
   issues with a project status view.
+
+
+## Shared structured conversation tools
+
+- Improved: model-selected capability routing replaces keyword read eligibility
+  for text and ordinary/proactive voice. Bounded read chaining, schema repair,
+  duplicate suppression and explicit failure replies prevent abandoned lookups.
+- Improved: source coverage remains distinct from current snapshots; task providers
+  and local reminders have separate semantics. Retained household occurrence
+  counts preserve provider/category/provenance rather than guessing deliveries.
+- Limited: local model relevance and semantic grounding still need ongoing
+  synthetic evaluation. Alexa's isolated conversation is outside this change.
+- Privacy: no new collection source, recording consent or public trial artifacts.

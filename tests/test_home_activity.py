@@ -105,4 +105,46 @@ class ActivityTests(unittest.TestCase):
         self.assertEqual(result["observations"][0]["kind"], "household_event")
         self.assertIn("motion", result["summary"])
         self.owner.save(dict(SETUP, sources=["media"]))
-        self.assertNotIn("motion", json.dumps(recap(self.path, clock=lambda: self.now)))
+        revoked = recap(self.path, clock=lambda: self.now)
+        self.assertEqual(revoked["recorded_event_counts"], [])
+        self.assertEqual(revoked["observations"], [])
+
+    def test_occurrence_counts_are_not_limited_by_prose_sample_and_keep_provenance(self):
+        store = self.owner.store
+        store.sources = frozenset(["door_presence"])
+        for n in range(220):
+            store.observe(
+                source="door_presence",
+                external_id="motion-" + str(n),
+                subject="household",
+                kind="household_event",
+                observed_at=self.now - n - 1,
+                payload={
+                    "provider": "Ring",
+                    "event": "motion",
+                    "detail": "Motion detected",
+                    "provenance": "sensor",
+                },
+            )
+        store.observe(
+            source="door_presence",
+            external_id="confirmed-delivery",
+            subject="household",
+            kind="household_event",
+            observed_at=self.now - 300,
+            payload={
+                "provider": "User",
+                "event": "delivery",
+                "detail": "Delivery confirmed",
+                "provenance": "user-confirmed",
+            },
+        )
+        result = recap(self.path, clock=lambda: self.now)
+        counts = {
+            (r["provider"], r["event"], r["provenance"]): r["count"]
+            for r in result["recorded_event_counts"]
+        }
+        self.assertEqual(counts[("Ring", "motion", "sensor")], 220)
+        self.assertEqual(counts[("User", "delivery", "user-confirmed")], 1)
+        self.assertNotIn(("Ring", "delivery", "sensor"), counts)
+        self.assertEqual(result["coverage"], "partial")

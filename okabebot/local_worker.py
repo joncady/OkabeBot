@@ -42,6 +42,8 @@ def main():
                 by_name["move_companion"] = data["location_tool"]
             names = tuple(sorted(set(data.get("tool_names", by_name)) & set(by_name)))
             tools = [by_name[n] for n in names]
+            agent_route = data.get("task") == "agent_route"
+            agent_step = data.get("task") == "agent_step"
             preference_turn = data.get("task") == "preference"
             tool_reply = data.get("task") == "tool_reply"
             morning = data.get("task") == "morning"
@@ -50,6 +52,11 @@ def main():
             if welcome or alexa or morning or preference_turn or tool_reply:
                 tools, names = [], ()
             system = system_prompt(data["persona"])
+            if agent_route or agent_step:
+                from .conversation_agent import ROUTING, CONTINUATION
+
+                system = data["persona"] + " " + (ROUTING if agent_route else CONTINUATION)
+                system += " Today is " + datetime.date.today().isoformat() + "."
             if preference_turn:
                 system = (
                     data["persona"]
@@ -61,6 +68,8 @@ def main():
                     "A separate application dispatcher handles supported calendar, media, reminders and device requests. "
                     "Do not claim those capabilities are absent. You have no additional knowledge of the user's day, mood or surroundings beyond supplied context. "
                     "Never claim you saved anything, performed an action or will monitor them. "
+                    "Without retrieved evidence do not assert connected household/transit/calendar facts "
+                    "or promise to check later; explain that they have not been checked. "
                     "Do not turn ordinary questions into a preference interview. If asked about yourself, answer as the fictional character without attributing that taste to the user. "
                     "When asked how you can help, describe the supplied real capabilities with concrete examples, not a vague question. "
                     "Return ONLY valid JSON with exactly reply (string, max 350 characters) and memory. "
@@ -195,7 +204,7 @@ def main():
                 [{"role": "system", "content": system}]
                 + (
                     data.get("history", [])
-                    if alexa
+                    if alexa or agent_route or agent_step
                     else []
                     if names or welcome or morning or preference_turn or tool_reply
                     else history
@@ -294,6 +303,8 @@ def main():
                 output = revised
             if (
                 not names
+                and not agent_route
+                and not agent_step
                 and not data.get("warmup")
                 and not welcome
                 and not alexa

@@ -36,6 +36,23 @@ def recap(folder, period="today", clock=time.time):
                 else (day.timestamp(), now)
             )
         )
+        # Count occurrence-keyed retained events independently of the small prose sample.
+        # These are reported observations, never inferred physical deliveries/visitors.
+        sources = setup.get("sources", [])
+        event_counts = []
+        if sources:
+            groups = store.db.execute(
+                "SELECT json_extract(payload,'$.provider') provider, json_extract(payload,'$.event') event, "
+                "json_extract(payload,'$.provenance') provenance, count(*) count FROM events "
+                "WHERE kind='household_event' AND observed_at>=? AND observed_at<? AND expires_at>? "
+                "AND subject IN (?, 'unknown', 'household') AND source IN ("
+                + ",".join("?" for _ in sources)
+                + ") GROUP BY provider,event,provenance ORDER BY provider,event,provenance LIMIT 21",
+                (start, end, now, setup["profile"], *sources),
+            ).fetchall()
+            event_counts = [dict(r) for r in groups[:20]]
+        else:
+            groups = []
         rows = store.db.execute(
             "SELECT source,kind,payload,observed_at FROM events WHERE observed_at>=? AND observed_at<? "
             "AND expires_at>? AND subject IN (?, 'unknown', 'household') "
@@ -154,4 +171,7 @@ def recap(folder, period="today", clock=time.time):
             "start_at": start,
             "end_at": end,
             "observations": observations[:12],
+            "recorded_event_counts": event_counts,
+            "event_categories_truncated": len(groups) > 20,
+            "count_scope": "Retained consented event records in this period only. User-confirmed delivery records are distinct from Ring motion/doorbell detections; no complete delivery total is established.",
         }

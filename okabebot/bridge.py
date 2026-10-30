@@ -420,11 +420,14 @@ class Bridge:
             self.timings["submitted_at"] = time.time()
             proactive = getattr(self, "proactive", None)
             if proactive is not None and hasattr(self.codex, "compose_preference"):
-                from .local_conversation import preference_device_request
-
-                if proactive.context() and not preference_device_request(text, self.codex.specs):
+                if proactive.context():
                     try:
-                        answer = proactive.answer(text, self.codex.compose_preference)
+                        result = self.codex.text_turn(text)
+                        if result.get("conversation") is True:
+                            answer = proactive.answer(text, self.codex.compose_preference)
+                        else:
+                            proactive.end()
+                            answer = result["reply"]
                         if answer is not None:
                             self.notify("assistant", {"text": answer, "phase": "final_answer"})
                             self.reply(answer, "completed")
@@ -433,12 +436,10 @@ class Bridge:
                     except Exception:
                         proactive.end()
                         self.reply(
-                            "I lost that thought. Nothing new was saved. Let's try again later.",
+                            "I couldn't finish that request. No lookup is pending; check any requested action before retrying.",
                             "completed",
                         )
                         return True
-                elif proactive.context():
-                    proactive.end()  # Explicit device commands keep the ordinary grounded tool path.
             self.codex.submit(text)
             with sqlite3.connect(self.folder / "clips.sqlite3") as db:
                 db.execute("UPDATE clips SET status=? WHERE id=?", ("submitted", clip_id))

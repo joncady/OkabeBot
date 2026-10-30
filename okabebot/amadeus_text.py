@@ -42,8 +42,6 @@ class TextConversation(ProactiveConversation):
                             session_until=self.clock() + 600, turns=0, pending=None, last_reply=""
                         ),
                     )
-            from .local_conversation import preference_device_request
-
             current = self.context() or {}
             tool_text = text
             if (
@@ -57,8 +55,11 @@ class TextConversation(ProactiveConversation):
             ):
                 tool_text = "What is on my calendar " + text
             result = None
-            if tool_turn and preference_device_request(tool_text, specs or {}):
-                result = tool_turn(tool_text.strip())
+            if tool_turn:
+                result = tool_turn(tool_text.strip(), history=current.get("history", []))
+                if result.get("conversation") is True:
+                    result = None
+            if result is not None:
                 reply = result["reply"]
             else:
 

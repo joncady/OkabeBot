@@ -199,6 +199,7 @@ class LiveTests(unittest.TestCase):
         bridge.proactive = self.live
         bridge.codex = Mock()
         bridge.codex.specs = {}
+        bridge.codex.text_turn.return_value = {"conversation": True, "reply": "", "tools": []}
         bridge.codex.compose_preference.return_value = {
             "reply": "That sounds fun.",
             "memory": {

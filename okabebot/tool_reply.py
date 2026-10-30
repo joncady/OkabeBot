@@ -26,6 +26,10 @@ def facts(name, result, reference):
         return value
     if name == "get_context_feed":
         value["scope"] = result.get("scope")
+        value["source"] = result.get("queried_source")
+        value["state"] = result.get("state")
+        value["source_snapshot_complete"] = result.get("source_snapshot_complete")
+        value["view"] = result.get("view", "current")
         value["more_available"] = result.get("next_offset") is not None
         value["records"] = [
             {
@@ -73,6 +77,8 @@ def facts(name, result, reference):
         value.update(
             period=result.get("period"),
             coverage=result.get("coverage"),
+            recorded_event_counts=result.get("recorded_event_counts", [])[:20],
+            count_scope=result.get("count_scope"),
             observations=[
                 {"kind": i.get("kind"), "text": str(i.get("text", ""))[:160]}
                 for i in result.get("observations", [])[:8]
@@ -158,7 +164,20 @@ def facts(name, result, reference):
 
 
 def preserve_scope(reply, name, result):
-    if not isinstance(reply, str) or name != "get_home_activity":
+    if not isinstance(reply, str):
+        return reply
+    if name == "get_context_feed":
+        if result.get("state"):
+            return "That source is paused or has not been enabled; I haven't checked its records."
+        if not result.get("items"):
+            return "No matching records were returned from the selected feed. That does not establish there were none today."
+        if result.get("queried_source") == "transit" and result.get("view", "current") == "current":
+            reply = (
+                reply.rstrip()
+                + " This is the current selected feed, not a complete history of today."
+            )
+        return reply
+    if name != "get_home_activity":
         return reply
     # Household context does not identify viewers/visitors or establish that a
     # home is empty. Remove affirmative person/occupancy claims; keep uncertainty.

@@ -138,7 +138,7 @@ class LocalToolTests(unittest.TestCase):
         obj._turn("Which screens can you go to?")
         locations.assert_called_once_with()
         obj._read.assert_called_once()  # Rendering pass, not tool selection.
-        self.assertIn('"task": "tool_reply"', obj.process.stdin.write.call_args.args[0])
+        self.assertIn('"task": "agent_step"', obj.process.stdin.write.call_args.args[0])
         obj.completed.assert_called_once_with("My destinations are Desk, TV.", "completed")
 
     @patch("okabebot.server.set_speaker_volume", side_effect=TimeoutError())
@@ -167,7 +167,7 @@ class LocalToolTests(unittest.TestCase):
         obj = self.adapter("Done, your volume is five percent.")
         obj._turn("Set speaker volume to 5 percent")
         volume.assert_not_called()
-        self.assertIn("Which device", obj.completed.call_args.args[0])
+        self.assertIn("haven't checked", obj.completed.call_args.args[0])
 
 
 class LocationAcknowledgementTests(unittest.TestCase):

@@ -168,7 +168,11 @@ def validate_call(text, call, specs, policy, request_id, resolved_device_id=""):
     if preflight(text):
         raise ValueError(preflight(text))
     name, args = call.get("name"), call.get("arguments", {})
-    if name not in specs or name not in shortlist(text, specs) or not isinstance(args, dict):
+    if (
+        name not in specs
+        or (name not in READ_TOOLS and name not in shortlist(text, specs))
+        or not isinstance(args, dict)
+    ):
         raise ValueError("That command is not available locally. Could you be more specific?")
     args = dict(args)
     if name in ("press_bot", "create_reminder"):
@@ -334,16 +338,20 @@ def acknowledgement(name, result):
             )
             for i in items
         ]
+        if not titles:
+            return "No matching records were returned from the selected feed. This is not a complete history of today."
+        details = ", ".join(" ".join(t.split())[:80] for t in titles[:3])
+        more = (
+            " More records are available."
+            if result.get("next_offset") is not None or len(titles) > 3
+            else ""
+        )
         return (
             "The connected records include "
-            + ", ".join(titles[:5])
-            + (
-                ". More are available."
-                if result.get("next_offset") is not None or len(items) > 5
-                else "."
-            )
-            if titles
-            else "No matching connected records were found."
+            + details
+            + "."
+            + more
+            + " This is a selected snapshot, not a complete history."
         )
     if name == "get_home_activity":
         return result["summary"]
@@ -540,18 +548,21 @@ class LocalConversation:
             self.close()
             raise
         try:
-            for text in (
-                "Hello.",
-                "Set speaker volume to five percent.",
-                "What is playing on TV?",
-                "Wave with SwitchBot.",
+            for task, text in (
+                ("agent_route", "Hello."),
+                ("agent_step", '{"question":"What is playing?","evidence":[]}'),
             ):
                 self.process.stdin.write(
                     json.dumps(
                         {
+                            "task": task,
                             "text": text,
                             "persona": current_character()["persona"],
-                            "tool_names": shortlist(text, self.specs),
+                            "tool_names": sorted(
+                                self.specs
+                                if task == "agent_route"
+                                else READ_TOOLS & self.specs.keys()
+                            ),
                             "warmup": True,
                         }
                     )
@@ -780,7 +791,7 @@ class LocalConversation:
             )
         )
 
-    def text_turn(self, text):
+    def text_turn(self, text, *, history=None):
         """Run the same validated tools silently, without voice callbacks or transcript events."""
         with self.lock:
             if self.busy or self.closed or self.process.poll() is not None:
@@ -793,11 +804,14 @@ class LocalConversation:
             text,
             notify=lambda kind, data: events.append((kind, data)),
             completed=lambda answer, status: answers.append(answer),
+            history=history or [],
+            conversation_probe=True,
         )
         if not answers:
             raise ValueError("Tool outcome uncertain. Check device state before retrying")
         return {
             "reply": answers[-1],
+            "conversation": getattr(self, "last_conversational", False),
             "tools": [data["tool"] for kind, data in events if kind == "local_tool"],
             "reply_composition": next(
                 (data for kind, data in reversed(events) if kind == "local_tool_reply"), None
@@ -835,13 +849,46 @@ class LocalConversation:
             pass
         return reference, False
 
-    def _turn(self, text, notify=None, completed=None):
+    def agent_request(self, text, *, history=None, evidence=None, timeout=45):
+        """Native typed tool selection; no lexical eligibility gate for read tools."""
+        task = "agent_step" if evidence is not None else "agent_route"
+        names = sorted(self.specs if evidence is None else READ_TOOLS & self.specs.keys())
+        prompt = text[:2000]
+        if evidence is not None:
+            prompt = json.dumps({"question": text[:2000], "evidence": evidence})
+        self.process.stdin.write(
+            json.dumps(
+                {
+                    "task": task,
+                    "text": prompt,
+                    "persona": current_character()["persona"],
+                    "history": (history or [])[-4:],
+                    "tool_names": names,
+                    "location_tool": {
+                        "type": "function",
+                        "function": self.specs.get("move_companion"),
+                    },
+                }
+            )
+            + "\n"
+        )
+        self.process.stdin.flush()
+        return self._read(timeout)
+
+    def _turn(self, text, notify=None, completed=None, *, history=None, conversation_probe=False):
         from . import server
 
         notify = notify or self.notify
         completed = completed or self.completed
 
+        voice_history = history is None
+        character_key = current_character()["style"]
+        if voice_history:
+            history = getattr(self, "agent_history", {}).get(character_key, [])
         status = "completed"
+        records = []
+        action_started = False
+        self.last_conversational = False
         try:
             self.refresh_locations()
             clarification = preflight(text)
@@ -850,12 +897,18 @@ class LocalConversation:
                 if not self.cancelled.is_set():
                     completed(clarification, status)
                 return
+            from .conversation_agent import (
+                MAX_CALLS,
+                MAX_SECONDS,
+                conversational,
+                dangling_promise,
+                evidence,
+            )
+
+            self.last_conversational = False
+            deadline = time.monotonic() + MAX_SECONDS
             candidates = shortlist(text, self.specs)
-            if household_request(text) and not candidates:
-                raise ValueError(
-                    "Household history isn't available in this session; I can't verify what happened."
-                )
-            if candidates == ["get_home_activity"]:
+            if household_request(text) and "get_home_activity" in self.specs:
                 period = (
                     "yesterday"
                     if re.search(r"\byesterday\b", text, re.I)
@@ -873,133 +926,232 @@ class LocalConversation:
                     "tool_call": {"name": "get_home_activity", "arguments": {"period": period}},
                 }
             elif candidates == ["get_companion_locations"]:
-                # Argument-free discovery is grounded in the live registry. Avoid
-                # a model paraphrase that can omit the tool and invent destinations.
                 result = {
                     "text": "",
                     "selection_s": 0,
                     "tool_call": {"name": "get_companion_locations", "arguments": {}},
                 }
             else:
-                self.process.stdin.write(
-                    json.dumps(
-                        {
-                            "text": text[:2000],
-                            "location_tool": {
-                                "type": "function",
-                                "function": self.specs.get("move_companion"),
-                            },
-                            "persona": current_character()["persona"],
-                            "tool_names": candidates,
-                        }
+                result = self.agent_request(text, history=history)
+            records, context, seen_calls = [], [], set()
+            validation_repairs = 0
+            for step in range(MAX_CALLS + 1):
+                if time.monotonic() >= deadline:
+                    output = (
+                        " ".join(r[3] for r in records)[:500]
+                        or "I couldn't finish checking that source. No lookup is pending."
                     )
-                    + "\n"
-                )
-                self.process.stdin.flush()
-                result = self._read()
-            if result.get("error"):
-                raise RuntimeError("Local generation failed; no action executed")
-            if self.cancelled.is_set():
-                return
-            notify(
-                "local_model",
-                {
-                    k: result[k]
-                    for k in (
-                        "selection_s",
-                        "prompt_tokens",
-                        "generated_tokens",
-                        "cached_tokens",
-                        "prefill_s",
-                    )
-                    if k in result
-                },
-            )
-            output = result["text"].strip()
-            call = result["tool_call"] if "tool_call" in result else parse_tool_call(output)
-            if call is not None:
-                if call.get("name") == "get_calendar_agenda":
-                    from .agenda import conversation_range
-
-                    window = conversation_range(
-                        text, timezone=get_config()["notifications"]["agenda_timezone"]
-                    )
-                    if window:
-                        call = {"name": "get_calendar_agenda", "arguments": window}
-                    elif re.search(r"\b(week|month|year)\b", text, re.I) and not call.get(
-                        "arguments", {}
-                    ).get("start_date"):
-                        raise ValueError(
-                            "Which date range should I check? Please give start and end dates."
-                        )
-                resolved_device_id = ""
-                if call.get("name") == "control_spotify" and re.search(
-                    r"\b(?:on|to) (?:my |the )?phone\b", text, re.I
-                ):
-                    devices = (
-                        self.executor("list_spotify_devices", {})
-                        if getattr(self, "executor", None)
-                        else server.list_spotify_devices()
-                    )["devices"]
-                    phones = [
-                        d
-                        for d in devices
-                        if d.get("type") == "Smartphone"
-                        and d.get("id")
-                        and not d.get("is_restricted")
-                    ]
-                    if len(phones) != 1:
-                        raise ValueError(
-                            "I can't identify one available phone in Spotify Connect. Open Spotify on your phone, then ask me to check available devices."
-                        )
-                    resolved_device_id = phones[0]["id"]
-                    call = {
-                        "name": "control_spotify",
-                        "arguments": {**call.get("arguments", {}), "device_id": resolved_device_id},
-                    }
-                name, args = validate_call(
-                    text,
-                    call,
-                    self.specs,
-                    self.policy,
-                    "local-" + uuid.uuid4().hex,
-                    resolved_device_id,
-                )
+                    break
+                if result.get("error"):
+                    raise RuntimeError("Local generation failed; no action executed")
                 if self.cancelled.is_set():
                     return
-                notify("local_tool", {"tool": name, "selection_s": result["selection_s"]})
-                tool_started = time.monotonic()
-                actual = (
-                    self.executor(name, args)
-                    if getattr(self, "executor", None)
-                    else getattr(server, name)(**args)
-                )
                 notify(
-                    "local_execution",
-                    {"tool": name, "duration_s": round(time.monotonic() - tool_started, 3)},
-                )
-                reference = acknowledgement(name, actual)
-                reply_started = time.monotonic()
-                output, natural = self.render_tool_reply(text, name, actual, reference)
-                notify(
-                    "local_tool_reply",
+                    "local_model",
                     {
-                        "duration_s": round(time.monotonic() - reply_started, 3),
-                        "model_used": natural,
-                        "fallback": not natural,
+                        k: result[k]
+                        for k in (
+                            "selection_s",
+                            "prompt_tokens",
+                            "generated_tokens",
+                            "cached_tokens",
+                            "prefill_s",
+                        )
+                        if k in result
                     },
                 )
-            elif output.startswith("{"):
-                try:
-                    output = json.loads(output).get("clarify", "Please name the device and action.")
-                except ValueError:
-                    output = "Please name the device and action."
-            if call is None and re.search(
-                r"\b(set|turn|press|wave|pause|start|cancel|snooze|dismiss|remind|show|play|mute)\b",
-                text,
-                re.I,
-            ):
-                output = "Which device and action do you mean?"
+                output = result["text"].strip()
+                call = result["tool_call"] if "tool_call" in result else parse_tool_call(output)
+                if call is not None:
+                    if records and call.get("name") not in READ_TOOLS:
+                        raise ValueError(
+                            "I won't perform an additional action from a tool result. Please ask separately."
+                        )
+                    signature = json.dumps(call, sort_keys=True)
+                    if signature in seen_calls:
+                        output = (
+                            " ".join(r[3] for r in records)[:500]
+                            or "I couldn't validate that lookup. No tool ran and nothing is pending."
+                        )
+                        break
+                    seen_calls.add(signature)
+                    if call.get("name") == "get_calendar_agenda":
+                        from .agenda import conversation_range
+
+                        window = conversation_range(
+                            text, timezone=get_config()["notifications"]["agenda_timezone"]
+                        )
+                        if window:
+                            call = {"name": "get_calendar_agenda", "arguments": window}
+                        elif re.search(r"\b(week|month|year)\b", text, re.I) and not call.get(
+                            "arguments", {}
+                        ).get("start_date"):
+                            raise ValueError(
+                                "Which date range should I check? Please give start and end dates."
+                            )
+                    resolved_device_id = ""
+                    if call.get("name") == "control_spotify" and re.search(
+                        r"\b(?:on|to) (?:my |the )?phone\b", text, re.I
+                    ):
+                        devices = (
+                            self.executor("list_spotify_devices", {})
+                            if getattr(self, "executor", None)
+                            else server.list_spotify_devices()
+                        )["devices"]
+                        phones = [
+                            d
+                            for d in devices
+                            if d.get("type") == "Smartphone"
+                            and d.get("id")
+                            and not d.get("is_restricted")
+                        ]
+                        if len(phones) != 1:
+                            raise ValueError(
+                                "I can't identify one available phone in Spotify Connect. Open Spotify on your phone, then ask me to check available devices."
+                            )
+                        resolved_device_id = phones[0]["id"]
+                        call = {
+                            "name": "control_spotify",
+                            "arguments": {
+                                **call.get("arguments", {}),
+                                "device_id": resolved_device_id,
+                            },
+                        }
+                    try:
+                        name, args = validate_call(
+                            text,
+                            call,
+                            self.specs,
+                            self.policy,
+                            "local-" + uuid.uuid4().hex,
+                            resolved_device_id,
+                        )
+                    except ValueError:
+                        tool = call.get("name")
+                        if tool not in READ_TOOLS or tool not in self.specs or validation_repairs:
+                            raise
+                        validation_repairs += 1
+                        context.append(
+                            {
+                                "tool": tool,
+                                "error": "No tool executed: invalid arguments. Use the exact schema; do not invent date/filter fields.",
+                                "parameters": self.specs[tool]["parameters"],
+                            }
+                        )
+                        result = self.agent_request(
+                            text,
+                            history=history,
+                            evidence=context,
+                            timeout=max(1, min(45, deadline - time.monotonic())),
+                        )
+                        continue
+                    if self.cancelled.is_set():
+                        return
+                    notify("local_tool", {"tool": name, "selection_s": result["selection_s"]})
+                    tool_started = time.monotonic()
+                    action_started = name not in READ_TOOLS
+                    try:
+                        actual = (
+                            self.executor(name, args)
+                            if getattr(self, "executor", None)
+                            else getattr(server, name)(**args)
+                        )
+                    except Exception:
+                        if name not in READ_TOOLS:
+                            raise
+                        actual = {
+                            "error": "unavailable",
+                            "summary": "I couldn't read that source; its state is unknown.",
+                        }
+                    notify(
+                        "local_execution",
+                        {"tool": name, "duration_s": round(time.monotonic() - tool_started, 3)},
+                    )
+                    if name == "get_context_feed" and isinstance(actual, dict):
+                        actual = {**actual, "queried_source": args.get("source")}
+                    reference = (
+                        "I couldn't read that source; its state is unknown."
+                        if isinstance(actual, dict) and actual.get("error")
+                        else acknowledgement(name, actual)
+                    )
+                    records.append((name, args, actual, reference))
+                    if name not in READ_TOOLS:
+                        output, natural = self.render_tool_reply(text, name, actual, reference)
+                        notify("local_tool_reply", {"model_used": natural, "fallback": not natural})
+                        break
+                    context.append(evidence(name, args, actual, reference))
+                    if len(records) >= MAX_CALLS or time.monotonic() >= deadline:
+                        output = " ".join(r[3] for r in records)[:500]
+                        break
+                    result = self.agent_request(
+                        text,
+                        history=history,
+                        evidence=context,
+                        timeout=max(1, min(45, deadline - time.monotonic())),
+                    )
+                    continue
+                else:
+                    if not records:
+                        if conversational(output):
+                            self.last_conversational = True
+                            if conversation_probe:
+                                output = ""
+                            else:
+                                self.process.stdin.write(
+                                    json.dumps(
+                                        {
+                                            "text": text[:2000],
+                                            "persona": current_character()["persona"],
+                                            "tool_names": [],
+                                        }
+                                    )
+                                    + "\n"
+                                )
+                                self.process.stdin.flush()
+                                output = self._read().get("text", "").strip()
+                        elif output.startswith("{"):
+                            try:
+                                value = json.loads(output)
+                                output = value.get("clarify") if isinstance(value, dict) else None
+                            except ValueError:
+                                output = None
+                            output = (
+                                output
+                                if isinstance(output, str)
+                                else "I couldn't validate that request. Nothing was changed."
+                            )
+                        else:
+                            # The routing pass may only choose a tool, conversation or clarification.
+                            output = "I haven't checked a source for that. Please try asking again."
+                    else:
+                        from .tool_reply import preserve_scope, acceptable
+
+                        for tool, _, value, reference in records:
+                            output = preserve_scope(output, tool, value)
+                        if dangling_promise(output) or not all(
+                            acceptable(output, tool, value, ref) for tool, _, value, ref in records
+                        ):
+                            output = " ".join(r[3] for r in records)[:500]
+                        notify(
+                            "local_tool_reply",
+                            {
+                                "model_used": True,
+                                "fallback": output == " ".join(r[3] for r in records)[:500],
+                            },
+                        )
+                    break
+            if dangling_promise(output):
+                output = "I couldn't finish checking that source. No lookup is pending."
+            if voice_history and not self.cancelled.is_set():
+                self.agent_history = {
+                    character_key: (
+                        history
+                        + [
+                            {"role": "user", "content": text[:600]},
+                            {"role": "assistant", "content": output[:550]},
+                        ]
+                    )[-4:]
+                }
             notify("assistant", {"text": output[:550], "phase": "final_answer"})
             if not self.cancelled.is_set():
                 completed(output[:550], status)
@@ -1009,6 +1161,13 @@ class LocalConversation:
                 completed(str(exc)[:400], status)
         except Exception:
             status = "failed"
+            if not action_started and not self.cancelled.is_set():
+                output = (
+                    " ".join(r[3] for r in records)[:500]
+                    or "I couldn't finish checking that source. No lookup is pending."
+                )
+                notify("assistant", {"text": output, "phase": "final_answer"})
+                completed(output, "completed")
             notify(
                 "error",
                 {

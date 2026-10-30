@@ -131,3 +131,24 @@ class TextTests(unittest.TestCase):
         self.assertEqual(
             generate.call_args.args[1]["capabilities"][0]["name"], "get_calendar_agenda"
         )
+
+    def test_past_tense_question_always_reaches_shared_tool_dispatcher(self):
+        tool = Mock(
+            return_value={
+                "reply": "The connected feed contains a notice.",
+                "tools": ["get_context_feed"],
+            }
+        )
+        result = self.chat.send(
+            "Were there any transit notices today?", self.generate, tool, {"get_context_feed": {}}
+        )
+        tool.assert_called_once()
+        self.generate.assert_not_called()
+        self.assertEqual(result["tools"], ["get_context_feed"])
+
+    def test_explicit_conversation_route_preserves_preference_policy(self):
+        tool = Mock(return_value={"reply": "", "tools": [], "conversation": True})
+        result = self.chat.send("I like pottery", self.generate, tool, {"get_context_feed": {}})
+        tool.assert_called_once()
+        self.generate.assert_called_once()
+        self.assertEqual(result["pending"]["field"], "hobbies")

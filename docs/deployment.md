@@ -1597,3 +1597,23 @@ guards. These changes do not move hosting, listeners, model workers, credentials
 or device responsibilities; the README topology remains accurate. This checkpoint
 is prepared for PR review and has not been installed as part of the reliability
 audit. The earlier installed context-store verification above remains distinct.
+
+
+## Structured local conversation checkpoint
+
+Source changes replace text/proactive-voice keyword eligibility with the shared
+local tool loop. The existing MLX worker consumes typed capability schemas and
+bounded result projections; there is no added service, port, model or external
+account. README's conversation-to-context retrieval edge still describes this
+route. Action approval, source consent, private storage and raw recording ownership
+are unchanged. See [conversation contract](conversation-agent.md). This source
+checkpoint requires matching controller/worker modules during installation; source
+tests alone do not prove installed or physical acceptance.
+
+Installed verification for this checkpoint: the idle Mac controller and local
+worker were restarted with matching modules after a private database/module backup.
+An authenticated silent dashboard-chat request selected the connected-source tool
+and returned a completed reply. Separate read-only local model probes exercised
+transit, household history, connected lists and preference handoff. Physical
+microphone/speaker acceptance was not performed; output volume, device actions and
+source permissions were unchanged. Private traces and source contents remain local.

@@ -174,7 +174,7 @@ def get_context_feed(
     limit: int = 20,
     view: Literal["current", "changes", "aggregates"] = "current",
 ) -> dict:
-    """Retrieve consented current items, meaningful changes or signal aggregates on demand. Use a blank query for general lists, or a literal title/list-name substring. Page through results; stale/missing is not an all-clear."""
+    """Read connected to-do/shopping lists (source=tasks), transit rail notices, appliances or watch history. Current feeds are not a full history of today. Use blank query for all selected items; page through next_offset."""
     from .amadeus_feeds import Feeds
 
     return Feeds(state_dir() / "amadeus").retrieve(
@@ -264,7 +264,7 @@ def create_reminder(
 
 @mcp.tool(annotations=READ)
 def list_reminders() -> dict:
-    """List up to 100 pending personal reminders in due order."""
+    """Read this companion app's scheduled reminders only. External to-do/shopping lists use get_context_feed(source=tasks)."""
     from .controller_tools import request
 
     return request("/reminders/list", {})
