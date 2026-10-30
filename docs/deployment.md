@@ -1794,8 +1794,9 @@ Diagnostic entities may have separate capability limits; loaded state does not
 prove every optional vendor sensor works. No setpoint or heating-mode change was tested.
 
 TP-Link Smart Home now has configured legacy Kasa switch entries loaded through
-local discovery. Other discovered Kasa switches require private TP-Link credentials
-before onboarding; discovered and configured devices remain distinct. Discovery
+local discovery. Credential-dependent Kasa switches were subsequently onboarded
+using the owner-saved TP-Link connection; all switches found in that bounded scan
+now have loaded HA entries. Discovery
 used bounded SSDP/mDNS and TP-Link read-only queries on the current LAN. No light
 was toggled, no new light-observation feed was enabled and no new network service
 was exposed. Household addresses, names and scan details stay in ignored state.
