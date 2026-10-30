@@ -1784,3 +1784,18 @@ The Watts Home community component is installed in the private
 HA configuration; account setup and live thermostat reads remain unverified until
 the owner signs in. No vendor credentials or household bindings are in source.
 NextCentury API access is a pending account capability check, not a deployed feed.
+
+## Watts and TP-Link HA onboarding verification
+
+Watts Home account setup is complete: its HA entry is loaded and selected climate,
+room-temperature and floor-temperature entities returned available metadata through
+the home-device feed. Selection remains private and editable in Context feeds.
+Diagnostic entities may have separate capability limits; loaded state does not
+prove every optional vendor sensor works. No setpoint or heating-mode change was tested.
+
+TP-Link Smart Home now has configured legacy Kasa switch entries loaded through
+local discovery. Other discovered Kasa switches require private TP-Link credentials
+before onboarding; discovered and configured devices remain distinct. Discovery
+used bounded SSDP/mDNS and TP-Link read-only queries on the current LAN. No light
+was toggled, no new light-observation feed was enabled and no new network service
+was exposed. Household addresses, names and scan details stay in ignored state.

@@ -118,6 +118,8 @@ flowchart TB
         App -->|"Private Unix socket"| Speech
         App -->|"Characters without Qwen references"| SystemVoice["macOS system voice fallback"]
         ThinQ["LG ThinQ cloud: registered appliance integration"] --> HA
+        Watts["Watts Home cloud: selected thermostat context"] --> HA
+        Kasa["TP-Link Kasa: configured local switches"] <-->|"Local authenticated protocol where required"| HA
         Forecast["Weather forecast service: configured"] --> HA
         HA["Home Assistant Container: 8123"] -->|"Scoped notifications, Alexa schedules and arrivals"| App
         App -->|"Bounded state and shared controls"| HAFacade["Companion MQTT facade: LaunchAgent"]
