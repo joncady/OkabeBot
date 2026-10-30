@@ -491,3 +491,5 @@ collectors/recording budgets and full provider pagination remain separate work.
   conversational agreement does not complete tasks or grant preference consent.
 
 - Added owner-selected read-only home-device context for HA covers, thermostats and related sensors, with explicit observation scope and household recap support. Device state is not treated as identity or arrival evidence. Vendor account authorization remains separate.
+
+- Added minimized room-activity context with editable HA light/switch/speaker selection, existing aggregation/privacy controls, grounded household recap retrieval and a conservative speaker-availability gate for proactive invitations. Activity is not occupancy evidence.

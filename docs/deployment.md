@@ -1821,3 +1821,21 @@ mapping for a new container; it defaults off and rejects unspecified, public or
 loopback addresses. See the Sonos section of [HA setup](home-assistant.md).
 No volume, grouping, playback, Amadeus source consent or existing character
 announcement route was changed.
+
+## Amadeus room-activity source
+
+The source adapter adds selected HA lights, switches and speaker states through
+the existing Mac-to-HA read connection. It shares the private stable-ID store,
+retention and noisy-signal aggregation; there is no new service, port or credential.
+The owner dashboard edits selections and consent. Track titles/URLs and light
+brightness/speaker volume are excluded. Source permission does not authorize
+actuation or infer occupancy/identity.
+
+The additional proactive speech gate defers on selected playing/buffering speakers
+or incomplete/expired/unknown playback evidence. Polling is once a minute and
+freshness is 150 seconds; immediate detection is not promised. Existing attention
+gates and audio destinations remain unchanged. The Mac adapter is installed; an
+owner-authenticated feed read confirmed complete minimized records for explicitly
+selected primary light-switch and Sonos player entities. HA configuration/diagnostic
+switches were excluded from the private selection. No actuation or audible test
+was performed.

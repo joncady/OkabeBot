@@ -133,6 +133,20 @@ class HomeAssistant:
                             "state": state if state in ("on", "off") else "unknown",
                         }
                     )
+        elif feed.id == "room_activity":
+            for field, _, category in feed.fields:
+                for entity in cfg[field]:
+                    value = self.call("states/" + quote(entity, safe=""))
+                    items.append(
+                        {
+                            "id": identity(entity),
+                            "label": clean(
+                                value.get("attributes", {}).get("friendly_name", "Room device")
+                            ),
+                            "state": clean(value["state"]),
+                            "category": category,
+                        }
+                    )
         elif feed.id == "home_devices":
             for field, category in (
                 ("covers", "cover"),

@@ -53,6 +53,21 @@ FEEDS = {
             "Enable selected Companion app sensors; use binary sensors only. No app names, GPS or keystrokes.",
         ),
         Feed(
+            "room_activity",
+            "Room activity · lights, switches and speakers",
+            "ha",
+            (
+                ("lights", "Light entities", "light"),
+                ("switches", "Light-switch entities", "switch"),
+                ("players", "Speaker / media player entities", "media_player"),
+            ),
+            ("id", "label", "state", "category"),
+            "Read selected device states only; no track titles, brightness, volume or commands. Activity is not proof of occupancy or identity. Selected playing/unknown speaker states defer proactive check-ins.",
+            interval=60,
+            freshness=150,
+            household=True,
+        ),
+        Feed(
             "home_devices",
             "Home devices · garage doors and thermostats",
             "ha",

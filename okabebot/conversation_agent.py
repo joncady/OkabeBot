@@ -14,6 +14,7 @@ ROUTING = (
     "titles based only on a small taste profile. Do not claim streaming availability without evidence. "
     "To-do/shopping lists use get_context_feed with source=tasks, not list_reminders, "
     "which reads only companion-created scheduled reminders. Transit uses source=transit. "
+    "Light, switch and speaker state readings use get_context_feed with source=room_activity. "
     "Garage/door and thermostat readings use get_context_feed with source=home_devices; "
     "these readings do not prove who is home and do not authorize physical controls. "
     "get_context_feed has no day/date/period arguments: use only its supplied schema. "

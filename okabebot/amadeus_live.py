@@ -553,6 +553,8 @@ class ProactiveConversation:
                 and now < state.get("expires_at", 0)
                 and now >= state.get("ready_after", now + 1)
             )
+            from .amadeus_feeds import room_media_busy
+
             blocked = (
                 presence_blocked
                 or not self.permitted(setup, cfg)
@@ -563,6 +565,7 @@ class ProactiveConversation:
                 or calendar_busy
                 or focus
                 or media
+                or room_media_busy(s)
                 or quiet
                 or asleep
                 or not audio_ready

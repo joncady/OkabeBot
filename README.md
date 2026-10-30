@@ -817,3 +817,5 @@ through bounded tools rather than preloading feed contents. See
 retention/export boundaries and recording-policy follow-ups.
 
 Selected HA garage covers, thermostats and related sensors can supply read-only Amadeus context through **Context feeds → Home devices**. Device state does not identify occupants or trigger arrival. See [context feeds](docs/amadeus-feeds.md).
+
+**Context feeds → Room activity** adds selected HA light, switch and speaker states to private Amadeus context. Selected active or uncertain speakers defer proactive check-ins; no device actuation or occupancy inference is enabled.

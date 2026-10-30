@@ -546,7 +546,7 @@ class Feeds:
                             full_items,
                             complete=source_complete,
                             valid_until=now + feed.freshness,
-                            noisy=feed.id in ("device_activity", "appliances"),
+                            noisy=feed.id in ("device_activity", "appliances", "room_activity"),
                             window_seconds=60
                             * preference(
                                 store, SYSTEM, "feed.storage_policy", {"signal_window_minutes": 15}
@@ -589,3 +589,22 @@ class Feeds:
             except Exception:
                 pass  # Keep provider failures isolated from the controller.
             stop.wait(15)
+
+
+def room_media_busy(store):
+    """Additional fail-closed speech gate for consented selected room players."""
+    setup = preference(store, SYSTEM, KEY, {})
+    cfg = preference(store, SYSTEM, PREFIX + "room_activity", {})
+    if (
+        not permitted(setup, FEEDS["room_activity"])
+        or not cfg.get("enabled")
+        or not cfg.get("players")
+    ):
+        return False
+    snapshot = next((v for v in context(store, full=True) if v["source"] == "room_activity"), None)
+    if not snapshot or snapshot["complete"] is not True:
+        return True
+    players = [v for v in snapshot["items"] if v.get("category") == "media_player"]
+    return len(players) != len(cfg["players"]) or any(
+        p["state"] not in ("off", "standby", "idle", "paused") for p in players
+    )

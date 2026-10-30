@@ -14,6 +14,7 @@ private choices prevents both network reads and use of its retained context.
 | --- | --- | --- |
 | Tasks | Add Google Tasks or Local To-do in HA; select `todo.*` entities | Item title, hashed UID, status and optional due date. No descriptions. Google Tasks remains accessible through Google's mobile app away from HA. |
 | Device activity | Enable selected phone/Mac Companion binary sensors; bind charging, focus, device-lock and optional display-awake entities | Coarse on/off/unknown; no app usage, keystrokes, GPS or sleep inference. Existing attention gates remain authoritative. |
+| Room activity | Select HA `light.*`, `switch.*`, and `media_player.*` entities | Friendly label, device category and on/off/playback state only. No titles, brightness, volume, controls or occupant identity. Selected active/unknown speakers defer proactive check-ins. |
 | Home devices | Add the vendor integration in HA; select `cover.*`, `climate.*` and related `sensor.*` entities | Read-only door state, thermostat mode/current/target temperature and selected sensor state. No device commands, person identity or arrival inference. |
 | Appliances | Add LG ThinQ to HA; select cycle/status/error `sensor.*` entities | Friendly device label and state. Cloud upstream; no appliance commands. Alexa's ThinQ skill alone does not create HA entities. |
 | Meals | Self-host Mealie, add its HA integration, select meal-plan calendars and shopping lists | Next two days of planned meals and shopping item states. Not a pantry, purchase history, nutrition or ingredient-stock inference. |
@@ -194,3 +195,23 @@ consent. Watts account credentials belong in HA, never this repository.
 NextCentury gateways have a cloud API for usage and alerts. API documentation
 requires an Admin/Developer account in its web portal; an NCSS login alone does
 not establish access. No NextCentury collector is implemented or enabled here.
+
+## Room activity
+
+Owner-selected lights, switches and speakers use the same read-only HA connection
+and stable-ID records. Polling is once a minute with 150-second freshness; it is
+not an immediate transition log. Noisy repeated readings are aggregated by the
+existing context storage policy. Dashboard selections and feed consent remain
+editable, and pause/guest/revoke/forget apply normally.
+
+The conversation tool retrieves `room_activity` explicitly. Household recaps may
+include recorded states, with partial coverage; a light or speaker does not
+establish room occupancy, identity, sleep or a physical arrival. Sonos track titles,
+media URLs, brightness and volume are excluded from this feed.
+
+For proactive check-ins, selected speakers must have a fresh complete snapshot in
+an idle/paused/off/standby state. Playing, buffering, unknown, unavailable, missing
+or stale states defer invitations. A lights-only selection adds no speech gate.
+This additional gate does not replace existing media/focus/quiet-hours policies or
+change output routing. No automatic light switch-off, energy-saving prompt or
+room-presence inference is implemented by enabling this source.
