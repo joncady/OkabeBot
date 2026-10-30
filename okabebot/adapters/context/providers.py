@@ -1,5 +1,6 @@
 """Bounded HTTP readers and pure provider normalizers; no device actions."""
 
+from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 import hashlib
 import json
@@ -28,7 +29,13 @@ class NoRedirect(HTTPRedirectHandler):
         raise ValueError("Provider redirects are not permitted")
 
 
-def request(url, headers=None, data=None):
+@dataclass(frozen=True)
+class ProviderPage:
+    body: object
+    headers: dict
+
+
+def request_page(url, headers=None, data=None):
     parts = urlsplit(url)
     if (
         parts.scheme not in ("http", "https")
@@ -42,9 +49,18 @@ def request(url, headers=None, data=None):
     )
     with build_opener(NoRedirect()).open(req, timeout=10) as response:
         raw = response.read(2_000_001)
+        pagination = {
+            str(k).lower(): v
+            for k, v in response.headers.items()
+            if str(k).lower().startswith("x-pagination-")
+        }
     if len(raw) > 2_000_000:
         raise ValueError("Provider response too large")
-    return json.loads(raw)
+    return ProviderPage(json.loads(raw), pagination)
+
+
+def request(url, headers=None, data=None):
+    return request_page(url, headers, data).body
 
 
 class HomeAssistant:
@@ -213,34 +229,14 @@ def trakt(value, now):
     return items, False
 
 
-def fetch(feed, cfg, now, connection=None):
+def fetch(feed, cfg, now, connection=None, *, allowed=lambda: True):
     connection = connection or {}
     if feed.transport == "ha":
         return HomeAssistant(connection=connection).read_feed(feed, cfg, now)
     if feed.transport == "sound_transit":
         return transit(request(SOUND_TRANSIT_URL), cfg, now)
     if feed.transport == "trakt":
-        client = connection.get("client_id") or env_value("AMADEUS_TRAKT_CLIENT_ID")
-        token = connection.get("token") or env_value("AMADEUS_TRAKT_ACCESS_TOKEN")
-        if not client or not token:
-            raise ValueError("Trakt authorization required")
-        query = urlencode(
-            {
-                "limit": 100,
-                "page": 1,
-                "start_at": datetime.fromtimestamp(now - 30 * 86400, timezone.utc).isoformat(),
-            }
-        )
-        return trakt(
-            request(
-                "https://api.trakt.tv/sync/history?" + query,
-                {
-                    "Authorization": "Bearer " + token,
-                    "trakt-api-key": client,
-                    "trakt-api-version": "2",
-                    "User-Agent": "OkabeBot/0.1.0",
-                },
-            ),
-            now,
-        )
+        from ...trakt_history import collect
+
+        return collect(cfg, now, connection, allowed=allowed)
     raise ValueError("Unknown feed transport")

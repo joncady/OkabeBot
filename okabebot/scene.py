@@ -80,3 +80,8 @@ def set_music(music):
 def wave(*, allow_during_media=False):
     """A bounded silent visual greeting; never presses the physical SwitchBot."""
     return rpc({"op": "gesture", "gesture": "wave", "allow_during_media": allow_during_media})
+
+
+def set_focus(status):
+    """Project only timer state; no speaker, animation pixels or completion action."""
+    return rpc({"op": "focus", "active": status["active"], "ends_at": status["ends_at"]})

@@ -3,6 +3,25 @@
 'use strict';
 const W=960,H=600;
 const environments=typeof module!=='undefined'&&module.exports?require('./character-environments.js'):root.CharacterEnvironments;
+function focusState(s,now,walking=false){
+ const f=s?.focus||{},end=f.ends_at;
+ const epoch=Number.isFinite(s.server_time)&&Number.isFinite(s.receivedAt)
+  ?s.server_time+Math.max(0,now-s.receivedAt)/1000:(Date.now()+(s.serverOffset||0))/1000;
+ const seconds=typeof end==='number'&&Number.isFinite(end)?Math.max(0,Math.ceil(end-epoch)):0;
+ const active=f.active===true&&seconds>0&&seconds<=10860;
+ const quiet=active&&!walking&&(!s.phase||['tv','preview'].includes(s.phase))&&f.ambient_allowed!==false
+  &&(!s.presenter?.activity||s.presenter.activity==='idle')&&!s.notification&&!(s.deployments||[]).length;
+ return {active,remaining_seconds:active?seconds:0,quiet};
+}
+function focusBadge(c,s,now,walking=false,origin=[208,8],scale=1){
+ const f=focusState(s,now,walking);if(!f.quiet)return false;
+ c.save();c.translate(origin[0]-208*scale,origin[1]-8*scale);c.scale(scale,scale);c.imageSmoothingEnabled=false;c.fillStyle='#172b34';c.fillRect(209,8,102,32);c.fillRect(208,10,104,28);
+ c.fillStyle='#789b99';c.fillRect(212,8,96,2);c.fillStyle='#42635f';c.fillRect(212,38,96,2);
+ c.fillStyle='#9ac5bb';c.fillRect(218,16,12,2);c.fillRect(218,30,12,2);
+ for(let i=0;i<5;i++){c.fillRect(220+i*2,18+i*2,2,2);c.fillRect(228-i*2,18+i*2,2,2);}
+ c.fillStyle='#c2d9cf';c.font='bold 16px monospace';c.textAlign='left';c.fillText(`${Math.floor(f.remaining_seconds/60)}:${String(f.remaining_seconds%60).padStart(2,'0')}`,238,31);
+ c.restore();return true;
+}
 const anchors={door:[11.45,.25],landing:[11.1,1.9],center:[8,4],bench:[5.8,2.5],window:[2.5,5.5],rest:[8,6.3]};
 const edges={door:['landing'],landing:['door','center'],center:['landing','bench','window','rest'],bench:['center'],window:['center'],rest:['center']};
 // Center the projected cutaway bounds, including its raised foundation.
@@ -102,7 +121,7 @@ class Room{
       const date=new Date(s.server_time*1000+(now-(s.receivedAt||now)));
       label(m,date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),18,38,24,'#c9d6ae');
       const event=!s.agenda?.stale&&(s.agenda?.events||[])[0];
-      if(s.focus?.active){const sec=Math.max(0,Math.ceil(s.focus.ends_at-date.getTime()/1000));label(m,`${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`,18,72,19);label(m,'FOCUS',18,100,10,'#8aa8a2');}
+      if(focusState(s,now).active){const sec=focusState(s,now).remaining_seconds;label(m,`${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`,18,72,19);label(m,'FOCUS',18,100,10,'#8aa8a2');}
       else if(event){label(m,new Date(event.start*1000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),18,65,11);lines(m,event.title,18,88,204,2,11);}
       else label(m,s.agenda?.stale?'CALENDAR OFFLINE':'NO UPCOMING EVENTS',18,85,10,'#8aa8a2');
     },focus==='agenda');
@@ -147,7 +166,7 @@ class Room{
   }
   plant(c,x,y){const p=iso(x,y);box(c,x-.3,y-.3,0,.6,.6,.6,['#8e6455','#654c46','#b28a6e']);for(const [dx,dy,w,h] of [[-13,-45,11,24],[1,-54,9,31],[8,-39,14,10],[-20,-30,18,9]]){c.fillStyle=dx<0?'#6b9a81':'#83ad8c';c.fillRect(p[0]+dx,p[1]+dy,w,h);} }
   avatar(c,position,walking,now,s,opacity=1){
-    if(!this.portraits.length)return;const p=iso(...position),step=walking?Math.sin(now/78):0,bob=walking?Math.abs(step)*2:Math.sin(now/700)*.5;
+    if(!this.portraits.length)return;const quiet=focusState(s,now,walking).quiet;const p=iso(...position),step=walking?Math.sin(now/78):0,bob=walking?Math.abs(step)*2:Math.sin(now/(quiet?2800:700))*(quiet?0.15:0.5);
     c.save();c.globalAlpha=opacity;c.fillStyle='#14292c';c.beginPath();c.ellipse(p[0],p[1],19,7,0,0,Math.PI*2);c.fill();c.translate(Math.round(p[0]),Math.round(p[1]-bob));
     const style=s.character?.style,sonic=style==='sonic',pip=style==='pip';
     if(sonic){
@@ -220,9 +239,9 @@ class Room{
     if(model.state.environment?.presentation==='companion'){
       c.clearRect(0,0,W,H);c.fillStyle='#101b27';c.fillRect(0,0,W,H);
       c.save();c.translate(W/2-320,H/2-320);c.scale(2,2);this.idleEnvironment(c,model.now,model.state,model.opacity);c.restore();
-      if(model.visible){const p=iso(8,4);c.save();c.translate(W/2,H/2+235);c.scale(2.6,2.6);c.translate(-p[0],-p[1]);this.avatar(c,model.position,model.walking,model.now,model.state,model.opacity);c.restore();}return;
+      if(model.visible){const p=iso(8,4);c.save();c.translate(W/2,H/2+235);c.scale(2.6,2.6);c.translate(-p[0],-p[1]);this.avatar(c,model.position,model.walking,model.now,model.state,model.opacity);c.restore();focusBadge(c,model.state,model.now,model.walking,[728,12],2);}return;
     }
-    if(['green-hill','star-light','rooftop-garden'].includes(set)){environments.room(c,model,this,iso,anchors.door,set);return;}
+    if(['green-hill','star-light','rooftop-garden'].includes(set)){environments.room(c,model,this,iso,anchors.door,set);if(model.visible)focusBadge(c,model.state,model.now,model.walking,[model.state.morning?460:728,12],2);return;}
     const {state:s,now,visible,position,walking,focus,opacity}=model;
     c.imageSmoothingEnabled=false;this.drawArchitecture(c,s,focus,now);
     // Painter's order follows world depth so the companion can move around props.
@@ -231,6 +250,6 @@ class Room{
     drawables.sort((a,b)=>a.depth-b.depth).forEach(item=>item.draw());
   }
 }
-const api={Room,Actor,iso,pathAt,route,anchors,W,H};
+const api={Room,Actor,iso,pathAt,route,anchors,W,H,focusState,focusBadge};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.LabRoom=api;
 })(typeof window==='undefined'?{}:window);

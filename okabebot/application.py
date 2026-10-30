@@ -8,6 +8,8 @@ from .reminders import Reminders
 
 class Application:
     ROUTES = {
+        "/storage/usage",
+        "/storage/policy",
         "/screen/power",
         "/runtime/policy",
         "/amadeus/text/location",
@@ -53,6 +55,12 @@ class Application:
 
     def execute(self, path, data):
         b = self.controller
+        if path == "/storage/usage":
+            if data:
+                raise ValueError("Read storage usage without filters")
+            return b.private_storage.snapshot()
+        if path == "/storage/policy":
+            return b.private_storage.configure(data)
         if path == "/screen/power":
             if data == {"action": "wake"}:
                 return b.screen_power.wake()

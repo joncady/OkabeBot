@@ -6,6 +6,23 @@ import time
 import uuid
 
 
+def surface_focus(state):
+    """Forward a coarse presentation gate, never media titles or source details."""
+
+    def playing(value):
+        value = value if isinstance(value, dict) else {}
+        return bool(value.get("is_playing")) or str(
+            value.get("player_state") or value.get("state") or ""
+        ).lower() in ("playing", "buffering")
+
+    focus = state.get("focus") or {}
+    return dict(
+        focus,
+        ambient_allowed=not any(playing(state.get(key)) for key in ("music", "tv", "media"))
+        and not bool(state.get("deployments")),
+    )
+
+
 class Surfaces:
     DURATION = 1.4
     RECEIVER_LEASE = 6
@@ -724,7 +741,7 @@ class Surfaces:
             },
             profile=state.get("profile"),
             agenda=state.get("agenda", {}),
-            focus=state.get("focus", {}),
+            focus=surface_focus(state),
             notification=state.get("active_notification"),
             deployments=state.get("deployments", []),
             device_health=state.get("device_health", {}),

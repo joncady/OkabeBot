@@ -150,3 +150,27 @@ change-history or aggregate pages. Deterministic rules can inspect full fresh
 collections independently of the bounded owner/model preview. See
 [storage contract](amadeus-storage.md). Upstream partial coverage, including the
 current bounded Trakt history reader, is still explicit.
+
+
+## Bounded Trakt history and date-unknown lists
+
+The watch-history feed offers `history_days` (1–365), a shared `page_budget` (1–20)
+and up to 19 explicitly selected owned `watched_lists`. Defaults remain 30 days,
+one history page, no custom lists. The page budget must cover at least one request
+per selected source; remaining requests advance sources round-robin. The owner
+picker loads one page of owned list metadata only after an explicit click. List
+names are not remembered as observations until selected and separately consented.
+
+Provider pagination headers determine exhaustion, including server-clamped page
+sizes. Missing/changing metadata, failed pages or budget exhaustion retain partial
+coverage and successful records; they do not falsely delete prior unseen items.
+Complete means the configured history-window/list union, never lifetime coverage.
+Selected list membership is `watched_date_unknown` with list provenance; `listed_at`
+is never treated as a watched date. Unchecked/want-to-watch remains a different
+on-demand library tool. No streaming entitlement or viewer identity is inferred.
+
+Pause, guest, forgetting, disconnect and account rebinding are rechecked between
+network reads and before persistence. Refresh rotates credentials without changing
+account generation; owner rebind/revoke changes generation and cancels stale reads.
+Narrowing collection scope clears excluded source context. Large/lifetime imports,
+resumable cursors and historical snapshot consistency remain issue #18.

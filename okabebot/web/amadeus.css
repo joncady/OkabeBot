@@ -25,3 +25,14 @@ details{margin:20px 0}summary{min-height:44px}button,a,input,select,summary{touc
 @media(max-width:540px){.feed-card{padding:12px}.feed-entity-row{flex-wrap:wrap}.feed-entity-row input{flex-basis:65%}}
 .feed-connection .amadeus-grid label {display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
 .feed-connection .amadeus-grid input {width:100%;box-sizing:border-box}
+
+/* Keep boundaries visible; sources, previews and detailed policies expand on demand. */
+body { max-width:1100px; }
+#amadeus-controls > .controls { margin-top:14px; }
+#amadeus-controls > p { max-width:72ch; }
+details.panel { margin:0 0 18px; }
+details.panel > summary { color:var(--pixel-ink,#eef3df); }
+details.panel[open] > summary { border-bottom:1px solid var(--pixel-edge,#668781); margin-bottom:18px; }
+.feed-card { min-width:0; }
+.feed-heading { margin-bottom:12px; }
+@media(min-width:760px){#feed-list { grid-template-columns:repeat(2,minmax(0,1fr)); } #feed-list > .feed-card:first-child { grid-column:1 / -1; }}

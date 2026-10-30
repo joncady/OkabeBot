@@ -22,7 +22,7 @@ from .notifications import Inbox
 from .notification_policy import NotificationPolicy
 from .github_webhook import GitHubWebhook
 from .github_queue import GitHubQueue, AwsQueueClient
-from .focus import FocusTimer
+from .focus import FocusTimer, FocusProjection
 from .sources import Sources
 from .adapters.media import MediaSnapshot, create_media_source, begin_auth
 from .content import ContentContext, ContentPreview, PRESETS
@@ -131,6 +131,7 @@ class Bridge:
 
         self.application = Application(self)
         self.focus = FocusTimer(self.inbox)
+        self.focus_projection = FocusProjection(self.focus, scene.set_focus)
         self.sources = Sources(self.inbox, state_dir(), config["notifications"])
         self.active_notification = None
         self.notification_until = 0
@@ -213,6 +214,9 @@ class Bridge:
         from .readiness import Readiness
 
         self.readiness = Readiness(state_dir())
+        from .private_storage import PrivateStorage
+
+        self.private_storage = PrivateStorage(state_dir())
         self.status = "Ready — hold the button to talk"
         self.show_activity("idle")
         (self.folder / "control.json").write_text(json.dumps({"url": self.url, "pid": os.getpid()}))
@@ -223,6 +227,7 @@ class Bridge:
         threading.Thread(target=self.poll_sources, daemon=True).start()
         threading.Thread(target=self.poll_screen_power, daemon=True).start()
         threading.Thread(target=self.poll_readiness, daemon=True).start()
+        threading.Thread(target=self.poll_storage, daemon=True).start()
         threading.Thread(target=self.poll_music, daemon=True).start()
         threading.Thread(target=self.poll_music_meter, daemon=True).start()
         threading.Thread(target=self.poll_health, daemon=True).start()
@@ -260,6 +265,8 @@ class Bridge:
                     if result.get("error"):
                         raise RuntimeError("Device status unavailable")
                     self.device_health[name] = {"available": True, "error": None}
+                    if name == "display" and "focus" in result:
+                        self.focus_projection.sync(result.get("session_id"))
                     if name == "display" and result.get("kind") == "idle":
                         # A reboot clears the Pi canvas even when the desired activity is unchanged.
                         self.face_worker.submit(scene.set_activity, self.face_activity or "idle")
@@ -314,6 +321,23 @@ class Bridge:
             if kind == "error":
                 self.status = str(data.get("message", data))
         print(kind, json.dumps(data)[:500], flush=True)
+
+    def poll_storage(self):
+        while not self.closing.is_set():
+            try:
+                self.private_storage.cleanup(
+                    busy=self.processing
+                    or self.recording
+                    or self.announcing
+                    or bool(self.codex and self.codex.busy)
+                )
+            except Exception:
+                self.private_storage.last_cleanup = {
+                    "state": "unavailable",
+                    "checked_at": time.time(),
+                }
+                # Storage maintenance never interrupts a user turn.
+            self.closing.wait(60)
 
     def poll_readiness(self):
         while not self.closing.is_set():
@@ -1102,6 +1126,8 @@ def handler(bridge):
                 "/style.css",
                 "/app.js",
                 "/tags.js",
+                "/storage.js",
+                "/dashboard-navigation.js",
                 "/amadeus-text.js",
                 "/locations.js",
                 "/dashboard-auth.js",

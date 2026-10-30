@@ -97,7 +97,7 @@ const amadeusUI = (() => {
     const draw=()=>{
       rows.replaceChildren();inputs=[];list.replaceChildren();
       for(const entity of haInventory.filter(e=>e.id.startsWith((field.domain||'entity')+'.'))){
-        const option=document.createElement('option');option.value=entity.id;option.label=[entity.name,entity.room,entity.provider,entity.available?'':'unavailable'].filter(Boolean).join(' · ');list.append(option);
+        const option=document.createElement('option');option.value=entity.id;option.label=[entity.name,entity.floor,entity.room,entity.provider,entity.available?'':'unavailable'].filter(Boolean).join(' · ');list.append(option);
       }
       entries.forEach((value,index)=>{
         const row=document.createElement('div');row.className='feed-entity-row';
@@ -129,6 +129,47 @@ const amadeusUI = (() => {
     box.append(hint,rows,add,actions,note,list);
     return {element:box,read:()=>[...new Set(inputs.map(i=>i.value.trim()).filter(Boolean))]};
   }
+  function feedOption(option, value, onSelection) {
+    const box=document.createElement('fieldset'),title=document.createElement('legend');title.textContent=option.label;box.append(title);
+    if(option.type==='number'){
+      const input=document.createElement('input');input.type='number';input.min=option.min;input.max=option.max;input.required=true;
+      input.value=value??option.default;input.setAttribute('aria-label',option.label);box.append(input);
+      return {element:box,input,read:()=>Number(input.value)};
+    }
+    const selected=new Set(value||option.default||[]),available=new Map();let nextPage=1;
+    const help=document.createElement('p');help.className='feed-help';help.textContent='Only explicitly selected lists are read. Entries are watched with date unknown; collection never assigns a watched date.';
+    const choices=document.createElement('div');choices.className='feed-list-choices';
+    const note=document.createElement('p');note.className='feed-help';
+    function draw(){
+      choices.replaceChildren();
+      for(const id of new Set([...selected,...available.keys()])){
+        const label=document.createElement('label'),check=document.createElement('input');label.className='amadeus-option';check.type='checkbox';check.value=id;check.checked=selected.has(id);
+        const name=available.get(id)?.title||`Saved list ${id} · name not loaded`;
+        check.setAttribute('aria-label',name);
+        check.onchange=()=>{
+          if(check.checked&&selected.size>=19){check.checked=false;note.textContent='Choose at most 19 lists so each can fit within the read budget.';return;}
+          if(check.checked)selected.add(id);else selected.delete(id);
+          onSelection(selected.size);note.textContent='Selection changed. Save feed to apply; no list was read.';
+        };
+        label.append(check,document.createTextNode(name));choices.append(label);
+      }
+    }
+    const load=document.createElement('button');load.type='button';load.textContent='Load my lists';
+    load.onclick=()=>run(async()=>{
+      load.disabled=true;
+      try{
+        const result=await api('trakt-lists',{page:nextPage});
+        if(result.state!=='connected'){note.textContent='List discovery is unavailable. Your saved selections are preserved.';return;}
+        for(const item of result.items||[])available.set(item.id,item);
+        nextPage=result.next_page;draw();
+        note.textContent='Choose the lists containing watched titles with unknown dates. No selection is automatic.';
+        load.textContent=nextPage?'Load more lists':'Refresh my lists';
+        if(!nextPage)nextPage=1;
+      }finally{load.disabled=false;}
+    });
+    draw();box.append(help,choices,load,note);
+    return {element:box,read:()=>[...selected]};
+  }
   async function feeds() {
     const value=await api('feeds');$('amadeus-feeds').hidden=false;$('feed-list').replaceChildren();
     const connections=Object.fromEntries((value.connections||[]).map(c=>[c.transport,c]));
@@ -138,13 +179,18 @@ const amadeusUI = (() => {
       const help=document.createElement('p');help.className='feed-help';help.textContent='Used by Tasks, Device activity, Appliances and Meals. Connect the providers in Home Assistant first.';
       const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Refresh rooms and entities';
       refresh.onclick=()=>run(async()=>{const inventory=await api('ha-inventory');haInventory=inventory.entities||[];homePreview=inventory;await feeds();message('Read-only preview refreshed. Discovered devices have not been enabled for observation.');});
-      const rooms=document.createElement('p');rooms.className='feed-help';rooms.textContent=[...new Set(haInventory.map(e=>e.room).filter(Boolean))].join(' · ');
+      const rooms=document.createElement('p');rooms.className='feed-help';rooms.textContent=[...new Set(haInventory.map(e=>[e.floor,e.room].filter(Boolean).join(' / ')).filter(Boolean))].join(' · ');
       shared.append(heading,help,feedConnection(connections.ha),refresh,rooms);
+      if(homePreview){
+        const review=document.createElement('p');review.className='feed-help';
+        const count=(homePreview.devices||[]).filter(d=>d.needs_review).length;
+        review.textContent=`${count} devices need room review. `+(homePreview.floor_registry_available===false?'This HA version does not expose floor data.':'Room bindings stay separate from screen orientation.');shared.append(review);
+      }
       for(const place of homePreview?.locations||[]){
         const row=document.createElement('label');row.className='feed-entity-row';row.append(document.createTextNode(place.name+(place.needs_review?' · room removed; review':'')));
         const select=document.createElement('select');
         const unassigned=document.createElement('option');unassigned.value='';unassigned.textContent='Unassigned';select.append(unassigned);
-        for(const room of homePreview.rooms||[]){const option=document.createElement('option');option.value=room.id;option.textContent=room.name;select.append(option);}
+        for(const room of homePreview.rooms||[]){const option=document.createElement('option');option.value=room.id;option.textContent=[room.floor_name,room.name].filter(Boolean).join(' / ');select.append(option);}
         select.value=place.area_id||'';select.onchange=()=>run(async()=>{homePreview=await api('ha-inventory',{location_id:place.id,area_id:select.value||null});message('Room binding saved. Display orientation and movement are unchanged.');});
         row.append(select);shared.append(row);
       }$('feed-list').append(shared);
@@ -160,11 +206,18 @@ const amadeusUI = (() => {
       const form=document.createElement('form'),label=document.createElement('label'),enabled=document.createElement('input');enabled.type='checkbox';enabled.checked=feed.config.enabled;
       label.className='amadeus-option';label.append(enabled,document.createTextNode('Allow this feed’s metadata'));form.append(label);
       const inputs={};for(const field of feed.fields){inputs[field.key]=feedSelection(field,feed.config[field.key],feed.id);form.append(inputs[field.key].element);}
+      const options={};
+      const adjustBudget=count=>{const budget=options.page_budget?.input;if(budget){budget.min=count+1;if(Number(budget.value)<count+1)budget.value=count+1;}};
+      for(const option of feed.options||[]){
+        if(!['number','trakt_lists'].includes(option.type))continue;
+        options[option.key]=feedOption(option,feed.config[option.key],adjustBudget);form.append(options[option.key].element);
+      }
+      if(options.watched_lists){adjustBudget(options.watched_lists.read().length);const help=document.createElement('p');help.className='feed-help';help.textContent='The page budget is shared across history and selected lists. It must allow one page per selected source; larger budgets may increase completeness and API usage.';form.append(help);}
       const save=document.createElement('button');save.textContent='Save feed';form.append(save);
       const check=document.createElement('button');check.type='button';check.textContent='Check selected feed';check.disabled=!feed.config.enabled;
       check.onclick=()=>run(async()=>{await api('feed-check',{id:feed.id});await feeds();message('Selected feed checked. See its status and retained context below.');});form.append(check);
       form.onsubmit=event=>{event.preventDefault();run(async()=>{
-        const config={enabled:enabled.checked};for(const [key,input] of Object.entries(inputs))config[key]=input.read();
+        const config={enabled:enabled.checked};for(const [key,input] of Object.entries({...inputs,...options}))config[key]=input.read();
         await api('feeds',{id:feed.id,config});await load();message('Feed saved. Pause and guest mode remain unchanged.');
       });};card.append(form);$('feed-list').append(card);
     }

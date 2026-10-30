@@ -140,3 +140,51 @@ class AuthTests(unittest.TestCase):
                 )
             self.assertEqual(auth.refresh(connection)["token"], "new")
             read.assert_called_once()
+
+    def test_owner_reauthorization_clears_old_account_records_but_refresh_does_not(self):
+        from okabebot.context_records import ingest
+        from okabebot.amadeus import Store
+        from contextlib import closing
+
+        with tempfile.TemporaryDirectory() as folder:
+            owner = Onboarding(folder)
+            self.addCleanup(owner.close)
+            owner.save(SETUP)
+            feeds = Feeds(folder, clock=lambda: 2000000000)
+            old = {"client_id": "invented", "token": "old"}
+            new = {"client_id": "invented", "token": "rotated"}
+            feeds.trakt_auth.save({}, old)
+            with feeds.store() as store, store.db:
+                ingest(
+                    store,
+                    "watch_history",
+                    SETUP["profile"],
+                    [{"id": "invented", "title": "Invented Movie", "type": "movie"}],
+                    complete=True,
+                    valid_until=2000000600,
+                )
+            feeds.trakt_auth.save(old, new)
+            with feeds.store() as store:
+                self.assertEqual(
+                    1,
+                    store.db.execute(
+                        "SELECT count(*) FROM context_records WHERE source='watch_history'"
+                    ).fetchone()[0],
+                )
+            feeds.trakt_auth.save(
+                new, {"client_id": "invented", "token": "other-account"}, rebind=True
+            )
+            with closing(Store(folder)) as store:
+                self.assertEqual(
+                    0,
+                    store.db.execute(
+                        "SELECT count(*) FROM context_records WHERE source='watch_history'"
+                    ).fetchone()[0],
+                )
+                self.assertEqual(
+                    0,
+                    store.db.execute(
+                        "SELECT count(*) FROM context_changes WHERE source='watch_history'"
+                    ).fetchone()[0],
+                )
+                self.assertTrue(preference(store, SYSTEM, "feed_connection_revision.trakt"))

@@ -12,7 +12,8 @@ class FocusTimer:
     def status(self):
         with self.inbox.connect() as db:
             row = db.execute(
-                "SELECT id,due FROM notifications WHERE dedupe LIKE 'system:focus-%' AND status='pending' ORDER BY created DESC LIMIT 1"
+                "SELECT id,due FROM notifications WHERE dedupe LIKE 'system:focus-%' AND status='pending' AND due>? ORDER BY created DESC LIMIT 1",
+                (time.time(),),
             ).fetchone()
         return {
             "active": bool(row),
@@ -58,3 +59,29 @@ class FocusTimer:
                 ),
             )
         return self.status()
+
+
+class FocusProjection:
+    """Deduplicated visual-only sync; a new Pi session receives current durable state."""
+
+    def __init__(self, timer, send):
+        self.timer, self.send = timer, send
+        self.last = None
+        self.health = {"state": "waiting"}
+
+    def sync(self, display_session=None):
+        try:
+            value = self.timer.status()
+            key = (display_session, value["active"], value["ends_at"], value["id"])
+            if key == self.last:
+                return False
+            result = self.send(value)
+            if isinstance(result, dict) and result.get("error"):
+                raise ValueError("Visual projection unavailable")
+            self.last = key
+            self.health = {"state": "ready"}
+            return True
+        except Exception:
+            # Do not turn a failed visual update into failed hardware health/audio replay.
+            self.health = {"state": "unavailable"}
+            return False

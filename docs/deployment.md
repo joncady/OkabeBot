@@ -1710,3 +1710,35 @@ profile (including devices without ThinQ cloud support), which cannot be repaire
 by changing local credentials. Local-only appliances require a separate supported
 local interface; their appearance in an account/device list does not create one. Unknown Ring model
 kinds remain explicitly unclassified rather than being assigned guessed capabilities.
+
+
+## Dashboard/integration reliability checkpoint: source versus installed
+
+The checkpoint adds in-process private disposable-file maintenance under the
+existing authenticated owner application. It does not create a listener, change
+ports or grant capture/source permissions. Policy defaults disabled; eligible
+local files and protection boundaries are described in [private storage](private-storage.md).
+The README topology remains the same hosts, routes and model workers; only the
+controller's administrative responsibilities expand. HA floor/device inventory
+reads use the existing authenticated registry connection, not a new discovery agent.
+
+The dashboard has centered arrangement and progressive disclosure. Trakt source
+options default to the existing 30-day, one-page read with no newly selected lists.
+Larger owner-requested budgets are bounded across the history/list union; partial
+coverage, account generation changes and watched-date provenance are explicit.
+No automatic provider enrollment, account writes or cloud appliance enablement is
+part of this change. Source/tests do not prove provider or physical acceptance.
+
+Focus visual projection adds a high-level Pi `focus` operation with local absolute
+expiry and a small countdown. Controller sync deduplicates by display session and
+timer state, and only addresses a Pi reporting focus support. Existing Pi services
+remain compatible without repeated unsupported RPCs. Compact browser/Mac and TV
+renderers use a coarse media/presentation gate, not additional media titles.
+The Pi code is source-validated; the installed satellite is intentionally unchanged
+in this unattended checkpoint, so its focus badge requires the normal later update.
+No speaker test, volume adjustment, display restart or physical handoff is claimed.
+
+Checkpoint deployment decisions and final verification are recorded in the PR.
+Do not infer installation merely from this source inventory note. Protected-state
+backup/restore drills remain planned in issue #81; broader collection/storage
+consolidation and lifetime-history imports remain issue #18.

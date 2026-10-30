@@ -460,3 +460,18 @@ collectors/recording budgets and full provider pagination remain separate work.
   or cloud-provider profile support; container replacement requires patch review.
 - Next: prefer released upstream fixes and validate real notification delivery
   independently of synthetic crypto and service-level health checks.
+
+
+## Administrative hierarchy and source coverage
+
+- Improved: dashboard and private setup separate daily controls from advanced
+  detail; relative screens retain centered, usable targets across viewport sizes.
+- Improved: HA inventory includes floor context and explicit unassigned review;
+  source permission remains separate from registry discovery.
+- Improved: Trakt pagination, date-unknown provenance and account-generation checks
+  preserve explicit coverage and cancel stale reads across account changes.
+- Improved: optional disposable-file limits expose content-free private counters
+  without broadening capture or treating protected state as a cleanup target.
+- Limited: very large historical imports, remote recording budgets and isolated
+  backup/restore are separate planned work. Broader coaching and sentiment remain
+  open; finishing administrative controls does not imply autonomous health advice.

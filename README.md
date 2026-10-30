@@ -6,11 +6,22 @@ The local [conversation tool loop](docs/conversation-agent.md) offers registered
 capabilities to both chat and voice without keyword-based read eligibility, then
 validates bounded tool calls and composes replies from returned evidence. Movie
 recommendations can read the connected Trakt want-to-watch list on demand without
-enabling scheduled watch-history collection.
+enabling scheduled watch-history collection. Scheduled history has owner-editable
+window/page budgets and explicitly selected date-unknown watched lists; coverage
+never implies account lifetime, a guessed watch date or streaming entitlement.
 
 Backlog scope lives in [repository issues](https://github.com/joncady/OkabeBot/issues),
 organized on the [roadmap Kanban board](https://github.com/users/joncady/projects/4).
 See [roadmap maintenance](docs/roadmap.md) for status and checkpoint rules.
+
+The owner dashboard groups **Companion**, **Locations**, **Today** and **Settings**
+with compact, bookmarkable sections. Pairing, policy, transcripts and advanced
+Amadeus setup stay behind disclosures; pause/guest controls remain visible.
+The screen-arrangement grid centers relative destinations and scrolls unusually
+wide layouts without shrinking touch targets. HA room mapping includes available
+floor metadata and explicit unassigned-device review; discovery never grants consent.
+Optional [private disposable-file budgets](docs/private-storage.md) default off.
+
 
 **Amadeus** is the new local memory and proactive-assistance trial. Its
 [specification and conditional 14-day timeline](docs/amadeus.md) and

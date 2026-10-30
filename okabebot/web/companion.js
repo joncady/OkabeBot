@@ -28,7 +28,7 @@ async function poll(generation=pollGeneration){if(stopped||generation!==pollGene
  if(!registered){const p=await request('/surfaces/register',{name,kind:native?'mac':'browser'});if(stopped||generation!==pollGeneration)return;document.querySelector('#device-name').textContent=p.name;displayApproved=Boolean(p.approved);ui.connected(p.approved);if(!p.approved){summon.disabled=true;setStatus('Approve this screen in the dashboard → Locations.');return;}registered=true;ui.restore();}
  const s=await request('/surfaces/state');if(stopped||generation!==pollGeneration)return;if(s.environment?.assigned===false)throw Error('Assign a unique scene set to this screen in Locations.');if(style!==s.character.style){room.setAssets(await request('/surfaces/assets'),s.character.style);style=s.character.style;}
  if(stopped||generation!==pollGeneration)return;
- if(ui.error==='Screen unavailable. Check pairing and the current turn.')ui.error='';state=s;lastSeen=performance.now();const owned=['preparing','leaving_pi','entering_tv','tv','leaving_tv'].includes(s.phase);
+ if(ui.error==='Screen unavailable. Check pairing and the current turn.')ui.error='';s.receivedAt=performance.now();s.serverOffset=s.server_time*1000-Date.now();state=s;lastSeen=performance.now();const owned=['preparing','leaving_pi','entering_tv','tv','leaving_tv'].includes(s.phase);
  // Readiness follows an actual successful frame, never only a network response.
  draw(performance.now());if(owned)await request('/surfaces/heartbeat',{});
  if(!capture)setStatus(s.phase==='tv'?'Here with you':owned?'Moving…':'Ready · move the companion here from Locations');
@@ -48,7 +48,7 @@ function draw(now){ctx.clearRect(0,0,320,320);if(!native){ctx.fillStyle='#101b27
  }else motion=null;
  if(visible){const presented={...state,presenter:capture?.node?{activity:'listening'}:speaker.presenter()||state.presenter};if(state.environment?.presentation==='room'){
   ctx.save();ctx.translate(0,60);ctx.scale(1/3,1/3);room.render(ctx,{state:presented,now,visible:true,position:[8+x*3/56+y*3/28,4-x*3/56+y*3/28],walking,opacity,focus:null});ctx.restore();
- }else{room.idleEnvironment?.(ctx,now,state,opacity);const p=LabRoom.iso(8,4);ctx.save();ctx.translate(160+x,278+y);ctx.scale(2.6,2.6);ctx.translate(-p[0],-p[1]);room.avatar(ctx,[8,4],walking,now,presented,opacity);ctx.restore();}}
+ }else{room.idleEnvironment?.(ctx,now,state,opacity);const p=LabRoom.iso(8,4);ctx.save();ctx.translate(160+x,278+y);ctx.scale(2.6,2.6);ctx.translate(-p[0],-p[1]);room.avatar(ctx,[8,4],walking,now,presented,opacity);ctx.restore();LabRoom.focusBadge?.(ctx,presented,now,walking);}}
  if(visible)CompanionUI.notification(ctx,state.notification);
 }
 function frame(now){try{draw(now);}catch(e){state=null;visible=false;setStatus('Character renderer reconnecting…');}finally{requestAnimationFrame(frame);}}requestAnimationFrame(frame);

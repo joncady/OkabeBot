@@ -41,15 +41,31 @@ test('drag snaps to grid and rejects occupied screen space',async()=>{
  assert.deepEqual(JSON.parse(JSON.stringify(d.calls[0].data)),{id:'home',position:[1,1]});
 });
 
-test('viewport resize refits screen arrangement on the next state update',()=>{
+test('viewport resize centers the layout and preserves usable targets with internal scrolling',()=>{
  const d=dashboard(true),map=d.nodes['#location-map'];
  const first=map.children[0];
  map.clientWidth=240;map.clientHeight=160;d.events.resize();d.context.locationsUI(d.state);
- assert.notEqual(map.children[0],first);
- const scale=Number(map.children[0].style.transform.match(/scale\((.*)\)/)[1]);
- assert.ok(scale<1);
- assert.ok(parseFloat(map.children[0].style.width)*scale<=240);
- assert.ok(parseFloat(map.children[0].style.height)*scale<=160);
+ const stage=map.children[0];assert.notEqual(stage,first);
+ assert.ok(parseFloat(stage.style.width)>=240);assert.ok(parseFloat(stage.style.height)>=160);
+ assert.ok(stage.children.every(card=>parseFloat(card.style.width)>=48&&parseFloat(card.style.height)>=48));
+ const x=stage.children.map(card=>parseFloat(card.style.left));
+ const y=stage.children.map(card=>parseFloat(card.style.top));
+ assert.ok(Math.abs((Math.min(...x)+Math.max(...x))/2-parseFloat(stage.style.width)/2)<.001);
+ assert.ok(Math.abs((Math.min(...y)+Math.max(...y))/2-parseFloat(stage.style.height)/2)<.001);
+});
+test('negative and extreme coordinates remain centered and reachable within the scrollable map',()=>{
+ const d=dashboard(true);d.state.locations[0].position=[-10,-10];d.state.locations[1].position=[10,10];
+ const map=d.nodes['#location-map'];map.clientWidth=320;map.clientHeight=340;d.context.locationsUI(d.state);
+ const stage=map.children[0],width=parseFloat(stage.style.width),height=parseFloat(stage.style.height);
+ for(const card of stage.children){
+   const x=parseFloat(card.style.left),y=parseFloat(card.style.top),w=parseFloat(card.style.width),h=parseFloat(card.style.height);
+   assert.ok(x-w/2>=0&&x+w/2<=width);assert.ok(y-h/2>=0&&y+h/2<=height);
+ }
+ assert.ok(map.scrollLeft>0&&map.scrollTop>0);
+});
+test('empty location state clears stale placement labels',()=>{
+ const d=dashboard(true);d.state.locations=[];d.context.locationsUI(d.state);
+ assert.equal(d.nodes['#location-map'].children.length,0);assert.equal(d.nodes['#location-arrangement'].children.length,0);
 });
 test('Alexa screens expose only their artwork and Room presentation, with revoke controls',()=>{
  const d=dashboard(true);d.state.locations[1].scene_selections={};

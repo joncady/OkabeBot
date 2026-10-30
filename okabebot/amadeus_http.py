@@ -125,6 +125,12 @@ def handle(handler, bridge, *, post=False):
             result = bridge.amadeus_feeds.retrieve(**data)
         elif path == "/amadeus/api/feed-check" and post:
             result = bridge.amadeus_feeds.check(data)
+        elif path == "/amadeus/api/trakt-lists" and post:
+            if not isinstance(data, dict) or set(data) != {"page"}:
+                raise ValueError("Choose an owned-list discovery page")
+            from .trakt_library import owned_lists
+
+            result = owned_lists(state_dir() / "amadeus", page=data["page"])
         elif path == "/amadeus/api/trakt-auth" and post:
             result = bridge.amadeus_feeds.trakt_auth.action(data)
         elif path == "/amadeus/api/ha-inventory":

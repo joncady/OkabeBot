@@ -79,3 +79,61 @@ class WatchlistTests(unittest.TestCase):
                 "Try Invented Moon Film from your watchlist.", "get_trakt_watchlist", result, ""
             )
         )
+
+    def test_owned_list_discovery_is_explicit_transient_and_not_observation(self):
+        from okabebot.trakt_library import owned_lists
+        from okabebot.adapters.context.providers import ProviderPage
+
+        read = Mock(
+            return_value=ProviderPage(
+                [{"name": "Invented Watched Dates Unknown", "ids": {"trakt": 42}, "item_count": 7}],
+                {
+                    "X-Pagination-Page": "1",
+                    "X-Pagination-Page-Count": "1",
+                    "X-Pagination-Limit": "100",
+                },
+            )
+        )
+        result = owned_lists(self.tmp.name, read=read)
+        self.assertEqual("42", result["items"][0]["id"])
+        self.assertTrue(result["complete"])
+        self.assertIsNone(result["next_page"])
+        self.assertIn("/users/me/lists?", read.call_args.args[0])
+        self.assertNotIn("Invented Watched", json.dumps(self.owner.export()))
+        self.assertNotIn("watch_history", self.owner.settings()["sources"])
+        self.owner.control({"guest": True})
+        read.reset_mock()
+        self.assertEqual("paused_or_not_configured", owned_lists(self.tmp.name, read=read)["state"])
+        read.assert_not_called()
+
+    def test_connection_generation_change_during_refresh_aborts_before_read(self):
+        from unittest.mock import patch
+        from okabebot.amadeus_feeds import Feeds
+        from okabebot.trakt_library import owned_lists
+
+        read = Mock(return_value=[])
+
+        def rebind(connection):
+            self.owner.store.remember(SYSTEM, "feed_connection_revision.trakt", "new-binding")
+            return connection
+
+        with patch("okabebot.trakt_auth.TraktAuth.refresh", side_effect=rebind):
+            self.assertEqual("context_changed", watchlist(self.tmp.name, read=read)["state"])
+            self.owner.store.db.execute(
+                "DELETE FROM preferences WHERE key='feed_connection_revision.trakt'"
+            )
+            self.owner.store.db.commit()
+            self.assertEqual("context_changed", owned_lists(self.tmp.name, read=read)["state"])
+        read.assert_not_called()
+        feeds = Feeds(self.tmp.name)
+        feeds.connect({"transport": "trakt", "client_id": "invented", "token": "new-token"})
+        with feeds.store() as store:
+            from okabebot.amadeus_habits import preference
+
+            old = preference(store, SYSTEM, "feed_connection_revision.trakt")
+        feeds.connect({"transport": "trakt", "client_id": "invented", "token": ""})
+        with feeds.store() as store:
+            self.assertEqual(old, preference(store, SYSTEM, "feed_connection_revision.trakt"))
+        feeds.connect({"transport": "trakt", "disconnect": True})
+        with feeds.store() as store:
+            self.assertNotEqual(old, preference(store, SYSTEM, "feed_connection_revision.trakt"))

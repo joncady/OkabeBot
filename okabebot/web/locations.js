@@ -3,20 +3,32 @@ let locationSignature='',locationDragging=false,arrangedScreen='';
 if(typeof window!=='undefined')window.addEventListener('resize',()=>{locationSignature='';});
 
 function screenDirection(a,b){const dx=b[0]-a[0],dy=b[1]-a[1];return Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down');}
-function screenArrangement(map,places,surface,save){
- if(!places.length)return;
- if(!places.some(p=>p.id===arrangedScreen))arrangedScreen=surface.current_location||places[0].id;
- const selected=places.find(p=>p.id===arrangedScreen)||places[0],cell=[144,112];
- const xs=places.map(p=>p.position[0]),ys=places.map(p=>p.position[1]);
- const bounds=[Math.max(-10,Math.min(...xs)-1),Math.max(-10,Math.min(...ys)-1),Math.min(10,Math.max(...xs)+1),Math.min(10,Math.max(...ys)+1)];
+function screenMapGeometry(places, viewportWidth=864, viewportHeight=420){
+ const cell=[144,112],xs=places.map(p=>p.position[0]),ys=places.map(p=>p.position[1]);
+ const bounds=[Math.min(...xs)-1,Math.min(...ys)-1,Math.max(...xs)+1,Math.max(...ys)+1];
  const width=(bounds[2]-bounds[0]+1)*cell[0],height=(bounds[3]-bounds[1]+1)*cell[1];
- const scale=Math.min(1,(map.clientWidth||864)/width,(map.clientHeight||420)/height);
- const stage=document.createElement('div');stage.className='location-stage';stage.style.width=width+'px';stage.style.height=height+'px';stage.style.transform=`scale(${scale})`;map.append(stage);
+ // Keep phone-shaped targets at least 48px wide. Large worlds scroll inside the map.
+ const scale=Math.max(48/74,Math.min(1,viewportWidth/width,viewportHeight/height));
+ const stageWidth=Math.max(viewportWidth,width*scale),stageHeight=Math.max(viewportHeight,height*scale);
+ const offset=[(stageWidth-width*scale)/2,(stageHeight-height*scale)/2];
+ return {cell,bounds,scale,width:stageWidth,height:stageHeight,
+  center:point=>[offset[0]+(point[0]-bounds[0]+.5)*cell[0]*scale,offset[1]+(point[1]-bounds[1]+.5)*cell[1]*scale]};
+}
+function screenArrangement(map,places,surface,save){
+ if(!places.length){document.querySelector('#location-arrangement').replaceChildren();return;}
+ if(!places.some(p=>p.id===arrangedScreen))arrangedScreen=surface.current_location||places[0].id;
+ const selected=places.find(p=>p.id===arrangedScreen)||places[0];
+ const viewport=[map.clientWidth||864,map.clientHeight||420],geometry=screenMapGeometry(places,...viewport);
+ const {cell,scale}=geometry;
+ const stage=document.createElement('div');stage.className='location-stage';stage.style.width=geometry.width+'px';stage.style.height=geometry.height+'px';
+ stage.style.backgroundSize=`${cell[0]*scale}px ${cell[1]*scale}px`;map.append(stage);
+ map.scrollLeft=Math.max(0,(geometry.width-viewport[0])/2);map.scrollTop=Math.max(0,(geometry.height-viewport[1])/2);
  for(const place of places){
   const card=document.createElement('button');card.className='location-screen'+(place.id===selected.id?' selected':'');card.textContent=place.name+(surface.current_location===place.id?' · Here':'');card.dataset.adapter=place.adapter;card.setAttribute('aria-pressed',String(place.id===selected.id));
   card.setAttribute('aria-label',`Arrange ${place.name}, column ${place.position[0]}, row ${place.position[1]}`);
-  const center=point=>[(point[0]-bounds[0]+.5)*cell[0],(point[1]-bounds[1]+.5)*cell[1]];
-  const paint=point=>{const xy=center(point);card.style.left=xy[0]+'px';card.style.top=xy[1]+'px';};paint(place.position);stage.append(card);
+  const size=place.adapter==='browser'?[74,94]:place.adapter==='pi'?[110,78]:[124,78];
+  card.style.width=size[0]*scale+'px';card.style.height=Math.max(48,size[1]*scale)+'px';card.style.fontSize=Math.max(10,12*scale)+'px';
+  const paint=point=>{const xy=geometry.center(point);card.style.left=xy[0]+'px';card.style.top=xy[1]+'px';};paint(place.position);stage.append(card);
   let start=null,moved=false,point=place.position;
   card.onclick=()=>{if(moved)return;arrangedScreen=place.id;locationSignature='';locationsUI(surface);};
   card.onpointerdown=e=>{start=[e.clientX,e.clientY];point=place.position;moved=false;locationDragging=true;card.setPointerCapture(e.pointerId);};

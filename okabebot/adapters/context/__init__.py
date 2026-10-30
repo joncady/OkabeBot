@@ -85,11 +85,21 @@ FEEDS = {
         ),
         Feed(
             "watch_history",
-            "Trakt · confirmed watch history",
+            "Trakt · history and selected watched lists",
             "trakt",
             (),
-            ("id", "title", "type", "watched_at", "show"),
-            "Save a Trakt client ID and access token here (or in private .env). Read-only recent history; no streaming passwords.",
+            (
+                "id",
+                "title",
+                "type",
+                "watched_at",
+                "show",
+                "watch_state",
+                "provenance",
+                "list_id",
+                "trakt_id",
+            ),
+            "Read a configured recent-history window and explicitly selected owned lists marked watched with unknown dates. List membership never supplies a watched date or streaming entitlement.",
             interval=1800,
             freshness=7200,
         ),
@@ -97,8 +107,58 @@ FEEDS = {
 }
 
 
+TRAKT_DEFAULTS = {"history_days": 30, "page_budget": 1, "watched_lists": []}
+TRAKT_OPTIONS = (
+    {
+        "key": "history_days",
+        "label": "History window (days)",
+        "type": "number",
+        "min": 1,
+        "max": 365,
+        "default": 30,
+    },
+    {
+        "key": "page_budget",
+        "label": "Maximum pages per polling cycle",
+        "type": "number",
+        "min": 1,
+        "max": 20,
+        "default": 1,
+    },
+    {
+        "key": "watched_lists",
+        "label": "Watched — date unknown lists",
+        "type": "trakt_lists",
+        "default": [],
+    },
+)
+
+
 def validate_config(feed, value):
-    if not isinstance(value, dict) or set(value) != {"enabled", *(f[0] for f in feed.fields)}:
+    if feed.id == "watch_history" and isinstance(value, dict):
+        if set(value) - {"enabled", *TRAKT_DEFAULTS}:
+            raise ValueError("Use declared Trakt collection settings")
+        value = {**TRAKT_DEFAULTS, "watched_lists": [], **value}
+        if type(value["history_days"]) is not int or not 1 <= value["history_days"] <= 365:
+            raise ValueError("Choose a history window from 1 to 365 days")
+        if type(value["page_budget"]) is not int or not 1 <= value["page_budget"] <= 20:
+            raise ValueError("Choose a page budget from 1 to 20")
+        lists = value["watched_lists"]
+        if (
+            not isinstance(lists, list)
+            or len(lists) > 19
+            or any(
+                not isinstance(v, str) or not re.fullmatch(r"[1-9][0-9]{0,18}", v) for v in lists
+            )
+            or len(set(lists)) != len(lists)
+        ):
+            raise ValueError("Choose up to 19 distinct owned Trakt list IDs")
+        if value["page_budget"] < 1 + len(lists):
+            raise ValueError("Page budget must allow one page for history and each selected list")
+        expected = {"enabled", *TRAKT_DEFAULTS}
+    else:
+        expected = {"enabled", *(f[0] for f in feed.fields)}
+    if not isinstance(value, dict) or set(value) != expected:
         raise ValueError("Use declared feed configuration")
     if type(value["enabled"]) is not bool:
         raise ValueError("Choose enabled or disabled")

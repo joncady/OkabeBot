@@ -47,7 +47,7 @@ infrequent; warnings and notifications interrupt with purpose.
 
 | Surface | Visual role | Controls and information |
 | --- | --- | --- |
-| Pi 3.5-inch | Always-on pixel companion with opaque dark scene | Expression first; readable notification in lower panel, app/content assets in reserved side areas. Hardware button handles talk. No developer text or repeated setup chrome. |
+| Pi companion display | Always-on pixel companion with opaque dark scene | Expression first; readable notification in lower panel, app/content assets in reserved side areas. Hardware button handles talk. No developer text or repeated setup chrome. |
 | TV | Spacious pixel laboratory | Character moves between room anchors. Notifications and agenda live on in-world monitors; avoid floating dashboard paragraphs. Doorways communicate movement. Voice/MCP remain primary input on the current Vizio. |
 | Native Mac | Quiet transparent desktop companion | Small borderless floating character, small six-dot drag button beside controls, icon toolbar revealed on hover/focus. No persistent heading, status sentence or permission buttons after setup. Compact notification strip remains contextual. Settings contain volume, naming and permission review. |
 | Phone browser | Touch-friendly portable companion | Same icons/activity language, larger targets and an opaque readable stage. Tap/hold talk, summon, return and PiP; advanced preferences behind settings. Browser video PiP is view-only. |
@@ -134,3 +134,23 @@ set per character across both sizes; never imply the same place exists on two
 screens. Unassigned screens have no actor. Preserve the movement owner and door
 directions when changing scenery. The scene catalog, ownership rules and current
 source-preview limitations are documented in [surfaces](surfaces.md#scene-sets-and-world-rules).
+
+
+## Owner dashboard hierarchy
+
+Companion and current location are primary; daily tools are a compact secondary
+column. Navigation anchors preserve remembered access and restore an authorized
+collapsed section without revealing a hidden owner panel. Pairing/scene/audio
+configuration, notification policy, transcript and runtime diagnostics are advanced
+disclosures rather than a continuous stack of forms. Amadeus sources, morning,
+routine preview and memory use closed disclosures; pause/guest boundaries stay
+prominent. Native details/summary preserve keyboard interaction and accessible names.
+
+Relative-screen maps center their occupied grid in both axes. Use scrollable
+internal bounds for extreme coordinates; never shrink destination buttons below
+usable touch size or hide negative coordinates. Physical HA floors/rooms remain
+separate from visual screen directions and from inferred presence.
+
+Silent focus uses a small pixel hourglass/countdown and calmer idle motion. It
+expires locally and yields to speech, listening, thinking, notifications, media,
+deployments and travel. It neither speaks nor changes notification audio policy.

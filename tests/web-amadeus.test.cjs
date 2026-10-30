@@ -1,9 +1,9 @@
 const test=require('node:test'), assert=require('node:assert/strict'), fs=require('node:fs'), vm=require('node:vm');
-async function fixture(withInventory=false){
+async function fixture(withInventory=false,withTrakt=false){
  const nodes={},requests=[];let denied=false,token='synthetic-owner',hold=false,release;
  function node(){return {hidden:false,children:[],value:'',checked:false,textContent:'',
   append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;},
-  setAttribute(){},reset(){},querySelectorAll(){return [];},
+  setAttribute(key,value){this[key]=value;},reset(){},querySelectorAll(){return [];},
   set innerHTML(value){throw Error('Private content must never be parsed as HTML');}};}
  const get=id=>nodes[id]||=(node());
  const radios=['choose_topics','not_now','no'].map(value=>Object.assign(node(),{value,checked:value==='not_now'}));
@@ -18,7 +18,7 @@ async function fixture(withInventory=false){
  const context={document,Intl,Date,JSON,URL,Blob,setTimeout,
   dashboardAccess:{token:()=>token,remember(){},required(){get('dashboard-auth').hidden=false;}},
   fetch:async(url,options)=>{requests.push({url,options});if(hold)await new Promise(resolve=>release=resolve);return{status:denied?403:200,ok:!denied,
-   json:async()=>url.endsWith('feeds')?{feeds:[{id:'tasks',label:'<img src=x>',instructions:'Read only',status:'disabled',fields:[{key:'entities',label:'To-do lists',domain:'todo'}],config:{enabled:false,entities:[]}}],context:[],connections:withInventory?[{transport:'ha',url:'http://ha.invalid',has_token:true}]:[]}:url.endsWith('ha-inventory')?{rooms:[{id:'study',name:'Study'}],entities:[{id:'todo.invented',name:'Invented list',room:'Study',available:true}],locations:[{id:'screen-a',name:'Desk',area_id:null}]}:url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
+   json:async()=>url.endsWith('trakt-lists')?{state:'connected',items:[{id:'7',title:'Invented watched list'},{id:'8',title:'Another invented list'}],page:1,next_page:null}:url.endsWith('feeds')?{feeds:[withTrakt?{id:'watch_history',label:'Watch history',instructions:'Read only',status:'disabled',fields:[],options:[{key:'history_days',label:'History window (days)',type:'number',min:1,max:365,default:30},{key:'page_budget',label:'Maximum requests per polling cycle',type:'number',min:1,max:20,default:1},{key:'watched_lists',label:'Watched lists',type:'trakt_lists',default:[]}],config:{enabled:false,history_days:30,page_budget:2,watched_lists:['7']}}:{id:'tasks',label:'<img src=x>',instructions:'Read only',status:'disabled',fields:[{key:'entities',label:'To-do lists',domain:'todo'}],config:{enabled:false,entities:[]}}],context:[],connections:withInventory?[{transport:'ha',url:'http://ha.invalid',has_token:true}]:[]}:url.endsWith('ha-inventory')?{rooms:[{id:'study',name:'Study'}],entities:[{id:'todo.invented',name:'Invented list',room:'Study',available:true}],locations:[{id:'screen-a',name:'Desk',area_id:null}]}:url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
    {events:[],preferences:[{key:'user.test',value:'<img src=x onerror=alert(1)>'}]}};}};
  vm.createContext(context);
  vm.runInContext(fs.readFileSync('okabebot/web/amadeus.js','utf8')+'\nglobalThis.ui=amadeusUI;',context);
@@ -103,4 +103,24 @@ test('Select all discovers choices on demand without a separate refresh or enabl
  assert.notEqual(all.disabled,true);
  fieldset.children[4].children[1].onclick();
  assert.equal(rows.children[0].children[0].value,'');
+});
+
+function descendants(node){return [node,...(node.children||[]).flatMap(descendants)];}
+test('Trakt list discovery is explicit, keeps saved selection, and adjusts the shared request budget',async()=>{
+ const f=await fixture(false,true),card=f.nodes['feed-list'].children[0];
+ assert.ok(!f.requests.some(r=>r.url.endsWith('trakt-lists')));
+ let nodes=descendants(card),load=nodes.find(n=>n.textContent==='Load my lists');
+ assert.ok(nodes.some(n=>n.checked&&n.value==='7'));
+ await load.onclick();
+ nodes=descendants(card);
+ const first=nodes.find(n=>n.type==='checkbox'&&n.value==='7'),second=nodes.find(n=>n.type==='checkbox'&&n.value==='8');
+ assert.equal(first.checked,true);assert.equal(second.checked,false);
+ assert.ok(!f.requests.some(r=>r.url.endsWith('feeds')&&r.options.method==='POST'));
+ second.checked=true;second.onchange();
+ const budget=nodes.find(n=>n['aria-label']==='Maximum requests per polling cycle');
+ assert.equal(budget.min,3);assert.equal(budget.value,3);
+ const form=card.children.find(n=>n.onsubmit);form.onsubmit({preventDefault(){}});
+ await new Promise(resolve=>setImmediate(resolve));
+ const post=f.requests.find(r=>r.url.endsWith('feeds')&&r.options.method==='POST');
+ assert.deepEqual(JSON.parse(post.options.body),{id:'watch_history',config:{enabled:false,history_days:30,page_budget:3,watched_lists:['7','8']}});
 });
