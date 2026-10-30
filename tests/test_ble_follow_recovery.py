@@ -14,7 +14,9 @@ from tests.test_mqtt_recovery import Stop
 class FollowRecoveryTests(unittest.TestCase):
     def test_controller_outage_pauses_without_moving_and_reaps_both_scanners(self):
         client = Mock()
+        paho = ModuleType("paho")
         mqtt = ModuleType("paho.mqtt")
+        paho.mqtt = mqtt
         mqtt.client = SimpleNamespace(
             Client=Mock(return_value=client), CallbackAPIVersion=SimpleNamespace(VERSION2=2)
         )
@@ -50,7 +52,9 @@ class FollowRecoveryTests(unittest.TestCase):
                 )
             )
             with (
-                patch.dict(sys.modules, {"paho.mqtt": mqtt, "paho.mqtt.client": mqtt.client}),
+                patch.dict(
+                    sys.modules, {"paho": paho, "paho.mqtt": mqtt, "paho.mqtt.client": mqtt.client}
+                ),
                 patch.object(sys, "argv", ["follow", "--config", str(cfg), "--seconds", "60"]),
                 patch("subprocess.Popen", side_effect=processes),
                 patch(
