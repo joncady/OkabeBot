@@ -108,6 +108,13 @@ class HouseholdTests(unittest.TestCase):
             s.remember(SYSTEM, KEY, {**setup, "sources": ["door_presence"]})
         self.assertEqual([], self.snapshot()["preview"])
 
+    def test_fractional_canonical_thresholds_accept_fahrenheit_edits(self):
+        with self.live.store() as store:
+            configure(store, {**self.policy, "cold_c": 18.3333, "hot_c": 26.6667})
+            for invalid in (True, float("nan"), float("inf")):
+                with self.assertRaises(ValueError):
+                    configure(store, {**self.policy, "cold_c": invalid})
+
     def test_comfort_requires_repeated_sample_known_units_and_never_compares_floor(self):
         self.policy["bedtime_enabled"] = False
         with self.live.store() as s:
@@ -120,7 +127,7 @@ class HouseholdTests(unittest.TestCase):
         self.refresh()
         values = self.snapshot(update=True)["preview"]
         self.assertEqual(["comfort"], [x["topic"] for x in values])
-        self.assertIn("16.0", values[0]["text"])
+        self.assertIn("60.8 degrees Fahrenheit", values[0]["text"])
         self.items["home_devices"][1]["unit"] = "unknown"
         self.refresh()
         self.assertEqual([], self.snapshot(update=True)["preview"])

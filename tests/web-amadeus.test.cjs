@@ -153,8 +153,8 @@ test('household controls use typed complete configuration without changing devic
  f.nodes['household-departure-away-minutes'].value='25';
  f.nodes['household-bedtime-start'].value='20:30';
  f.nodes['household-bedtime-end'].value='23:30';
- f.nodes['household-cold-c'].value='17';
- f.nodes['household-hot-c'].value='28';
+ f.nodes['household-cold-c'].value='62.6';
+ f.nodes['household-hot-c'].value='82.4';
  f.nodes['household-cooldown-hours'].value='24';
  f.nodes['household-form'].onsubmit({preventDefault(){}});
  await new Promise(resolve=>setImmediate(resolve));
@@ -174,6 +174,8 @@ test('household controls use typed complete configuration without changing devic
 test('household preview is literal private content and explicit refresh never saves',async()=>{
  const f=await fixture(false,false,{}, {enabled:true,bedtime_enabled:false,comfort_enabled:false});
  assert.equal(f.nodes['household-enabled'].checked,true);
+ assert.equal(f.nodes['household-cold-c'].value,64.4);
+ assert.equal(f.nodes['household-hot-c'].value,80.6);
  assert.equal(f.nodes['household-bedtime-enabled'].checked,false);
  assert.equal(f.nodes['household-comfort-enabled'].checked,false);
  assert.match(f.nodes['household-preview'].textContent,/<img src=x/);
@@ -188,8 +190,8 @@ test('household preview is literal private content and explicit refresh never sa
 test('household HTML exposes bounded thresholds and retains attention/identity caveats',()=>{
  const html=fs.readFileSync('okabebot/web/amadeus.html','utf8');
  assert.match(html,/household-departure-away-minutes[^>]+min="1"[^>]+max="120"/);
- assert.match(html,/household-cold-c[^>]+min="5"[^>]+max="25"/);
- assert.match(html,/household-hot-c[^>]+min="20"[^>]+max="40"/);
+ assert.match(html,/household-cold-c[^>]+min="41"[^>]+max="77"/);
+ assert.match(html,/household-hot-c[^>]+min="68"[^>]+max="104"/);
  assert.match(html,/household-cooldown-hours[^>]+min="1"[^>]+max="72"/);
  assert.match(html,/Device activity does not identify anyone or prove occupancy/);
  assert.match(html,/separate from optional health-habit coaching/);

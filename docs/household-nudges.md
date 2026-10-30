@@ -19,8 +19,9 @@ quiet hours, speaker routing, health preferences or the existing daily speech bu
   report, not that the owner forgot them or must go to bed. Missing garage data is
   not a claim that the garage is closed. Cross-midnight windows are supported.
 - **Comfort:** repeated fresh thermostat **current room temperature** samples
-  outside the owner's Celsius thresholds can create an optional comfort check.
-  Fahrenheit readings are converted only with explicit units. Floor temperatures
+  outside the owner's thresholds can create an optional comfort check.
+  Controls and spoken notes use Fahrenheit; comparisons normalize explicit source
+  units to Celsius internally. Existing saved thresholds retain their meaning. Floor temperatures
   are retained as selected context but never compared to room thresholds; unknown
   units, non-finite readings and unavailable devices do not produce advice. This
   is not medical, freeze protection, HVAC diagnostics or an energy-savings claim.
@@ -71,7 +72,7 @@ when a thermostat omits its unit attribute; other HA configuration fields are
 never retained by this adapter.
 
 Initial generic defaults: away delay 10 minutes, bedtime 21:00–23:00 local,
-room comfort below 18 °C or above 27 °C sustained over 15 minutes of observed
+room comfort below 64.4 °F or above 80.6 °F sustained over 15 minutes of observed
 samples, and 12-hour per-topic cooldown. These are editable suggestions, not claims
 about any household's preferences. Physical acceptance and active owner choices
 are separate from synthetic regression coverage and source implementation.

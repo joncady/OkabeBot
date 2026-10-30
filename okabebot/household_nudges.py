@@ -42,7 +42,11 @@ def configure(store, data):
         ("comfort_hold_minutes", 1, 120),
         ("cooldown_hours", 1, 72),
     ):
-        if type(data[key]) is not int or not low <= data[key] <= high:
+        if (
+            type(data[key]) not in ((int, float) if key in ("cold_c", "hot_c") else (int,))
+            or not math.isfinite(data[key])
+            or not low <= data[key] <= high
+        ):
             raise ValueError("Household threshold outside supported range")
     if data["cold_c"] >= data["hot_c"]:
         raise ValueError("Cold threshold must be below hot threshold")
@@ -254,8 +258,8 @@ class HouseholdNudges:
                     text = (
                         label(item)
                         + " reports "
-                        + str(round(temperature, 1))
-                        + " degrees Celsius, outside your "
+                        + str(round(temperature * 9 / 5 + 32, 1))
+                        + " degrees Fahrenheit, outside your "
                         + direction
                         + " comfort threshold. Would checking the room or adjusting a layer help?"
                     )

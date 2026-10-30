@@ -290,7 +290,7 @@ const amadeusUI = (() => {
     const value=await api('household-nudges');if(!value.config)return;
     for(const [key,[id,type,fallback]] of Object.entries(householdFields)){
       const node=$('household-'+id),setting=value.config[key]??fallback;
-      if(type==='checkbox')node.checked=setting===true;else node.value=setting;
+      if(type==='checkbox')node.checked=setting===true;else node.value=(key==='cold_c'||key==='hot_c')?Math.round((setting*9/5+32)*10)/10:setting;
     }
     $('household-state').textContent=value.config.enabled?'Household nudges configured. Source consent and attention gates still apply.':'Household nudges off.';
     if(value.state)$('household-state').textContent+=' '+value.state.replaceAll('_',' ')+'.';
@@ -344,7 +344,9 @@ const amadeusUI = (() => {
   $('household-form').onsubmit=event=>{event.preventDefault();run(async()=>{
     const config={};
     for(const [key,[id,type]] of Object.entries(householdFields)){
-      const node=$('household-'+id);config[key]=type==='checkbox'?node.checked:type==='number'?Number(node.value):node.value;
+      const node=$('household-'+id);let value=type==='checkbox'?node.checked:type==='number'?Number(node.value):node.value;
+      if(key==='cold_c'||key==='hot_c')value=Math.round((value-32)*5/9*10000)/10000;
+      config[key]=value;
     }
     await api('household-nudges',config);await household();message('Household choices saved. No device-control permission was changed.');
   });};

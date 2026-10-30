@@ -1857,3 +1857,7 @@ voice/display and feed connections recovered. Private owner choices remain in
 local state. No physical acceptance, audible test or device-control action was
 performed; volume, destinations, source scope and health preferences were preserved.
 See [household-nudge semantics and privacy](household-nudges.md).
+
+Household comfort presentation uses Fahrenheit in its controls and spoken notes;
+canonical Celsius threshold storage and unit-aware comparison remain internal.
+This changes no thermostat setpoint or device unit setting.
