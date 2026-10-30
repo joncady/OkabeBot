@@ -530,3 +530,9 @@ speech remain separate from collection consent. Weather gains animated local
 pixel sprites and readable temperature/gear cues. Forecast coverage remains an
 explicit gap. Synthetic regressions and invented visual fixtures contain no
 participant report, schedule, measurements or outcomes.
+
+TV launch review identified asynchronous warmup navigation as a possible handoff
+race. Acknowledgment sequencing and live-receiver replay preservation now have
+isolated regressions, and diagnostic coverage includes secondary Cast targets.
+Restart ownership reconciliation remains an open reliability gap. No participant
+observations, report contents or personal measurements are published here.

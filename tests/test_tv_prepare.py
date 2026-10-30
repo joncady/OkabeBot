@@ -189,6 +189,7 @@ class PrepareTests(unittest.TestCase):
         class FakeDashCast:
             def load_url(self, *args, **kwargs):
                 controller.load_url(*args, **kwargs)
+                kwargs["callback_function"](True, None)
 
         bridge = Bridge.__new__(Bridge)
         bridge.surfaces = Mock(phase="pi", active_id="other-tv")
@@ -198,9 +199,11 @@ class PrepareTests(unittest.TestCase):
             patch("okabebot.bridge.get_config", return_value={"web": {"host": "127.0.0.1"}}),
         ):
             self.assertTrue(bridge.wake_destination_cast("test-tv"))
-            controller.load_url.assert_called_once_with(
-                "http://127.0.0.1:8768/tv/wake/", force=True
+            self.assertEqual(
+                controller.load_url.call_args.args, ("http://127.0.0.1:8768/tv/wake/",)
             )
+            self.assertTrue(controller.load_url.call_args.kwargs["force"])
+            self.assertTrue(callable(controller.load_url.call_args.kwargs["callback_function"]))
             bridge.surfaces.phase, bridge.surfaces.active_id = "tv", "test-tv"
             bridge.surfaces.refresh_receiver.return_value = True
             self.assertTrue(bridge.wake_destination_cast("test-tv"))
@@ -210,3 +213,71 @@ class PrepareTests(unittest.TestCase):
             self.assertEqual(controller.load_url.call_count, 1)
             bridge.surfaces.cast_for.return_value = None
             self.assertFalse(bridge.wake_destination_cast("test-tv"))
+
+    def test_morning_replay_preserves_live_receiver_but_prepares_missing_or_other_target(self):
+        from unittest.mock import Mock
+        from okabebot.bridge import Bridge
+
+        bridge = Bridge.__new__(Bridge)
+        bridge.surfaces = Mock()
+        bridge.tv_preparation = Mock()
+        bridge.surfaces.snapshot.return_value = {
+            "phase": "tv",
+            "current_location": "test-tv",
+            "receiver_connected": True,
+        }
+        self.assertTrue(bridge.prepare_morning_destination("test-tv", reuse_live=True))
+        bridge.tv_preparation.prepare.assert_not_called()
+        bridge.tv_preparation.prepare.return_value = False
+        self.assertFalse(bridge.prepare_morning_destination("test-tv"))
+        bridge.tv_preparation.prepare.reset_mock()
+
+        for current in (
+            {"phase": "tv", "current_location": "other", "receiver_connected": True},
+            {"phase": "tv", "current_location": "test-tv", "receiver_connected": False},
+            {"phase": "pi", "current_location": "test-tv", "receiver_connected": True},
+        ):
+            bridge.surfaces.snapshot.return_value = current
+            bridge.tv_preparation.prepare.return_value = False
+            self.assertFalse(bridge.prepare_morning_destination("test-tv", reuse_live=True))
+        self.assertEqual(bridge.tv_preparation.prepare.call_count, 3)
+        bridge.surfaces.snapshot.return_value = {
+            "phase": "tv",
+            "current_location": "test-tv",
+            "receiver_connected": True,
+        }
+        bridge.destination_input_active = Mock(return_value=False)
+        self.assertFalse(bridge.prepare_morning_destination("test-tv", reuse_live=True))
+        self.assertEqual(bridge.tv_preparation.prepare.call_count, 4)
+
+    def test_warmup_waits_for_navigation_ack_and_rejects_failed_send(self):
+        from unittest.mock import Mock
+        from okabebot.bridge import Bridge
+
+        pending = threading.Event()
+        callbacks = []
+
+        class FakeDashCast:
+            def load_url(self, *args, **kwargs):
+                callbacks.append(kwargs["callback_function"])
+                pending.set()
+
+        bridge = Bridge.__new__(Bridge)
+        bridge.surfaces = Mock(phase="pi", active_id="other")
+        bridge.port = 8768
+        for success in (True, False):
+            result = []
+            pending.clear()
+            with (
+                patch("pychromecast.controllers.dashcast.DashCastController", FakeDashCast),
+                patch("okabebot.bridge.get_config", return_value={"web": {"host": "127.0.0.1"}}),
+            ):
+                t = threading.Thread(
+                    target=lambda: result.append(bridge.wake_destination_cast("test-tv"))
+                )
+                t.start()
+                self.assertTrue(pending.wait(2))
+                self.assertEqual(result, [])
+                callbacks[-1](success, None)
+                t.join(2)
+                self.assertEqual(result, [success])

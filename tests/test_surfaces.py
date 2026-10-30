@@ -94,6 +94,23 @@ class SurfaceTests(unittest.TestCase):
         s.tick()
         assert s.phase == "pi" and not s.authorized(token)
 
+    def test_receiver_request_diagnostics_include_additional_configured_casts(self):
+        s = Surfaces(Mock(), start=False)
+        s.settings = {
+            **s.settings,
+            "locations": [
+                *s.settings["locations"],
+                {"id": "extra", "adapter": "cast", "cast_host": "192.0.2.8"},
+            ],
+        }
+        with patch(
+            "okabebot.config.get_config", return_value={"spotify": {"cast_host": "192.0.2.7"}}
+        ):
+            s.observe("192.0.2.8", "/tv/")
+            s.observe("192.0.2.8", "/surfaces/state")
+            s.observe("192.0.2.9", "/surfaces/state")
+        self.assertEqual(s.tv_requests, {"page": 1, "state": 1})
+
     def test_failed_receiver_never_hides_pi(self):
         rpc = Mock()
         s = Surfaces(rpc, start=False)

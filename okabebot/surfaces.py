@@ -326,7 +326,12 @@ class Surfaces:
         from .config import get_config
 
         config = get_config()
-        if address == config["spotify"]["cast_host"]:
+        hosts = {config["spotify"]["cast_host"]} | {
+            p["cast_host"]
+            for p in self.settings["locations"]
+            if p.get("adapter") == "cast" and p.get("cast_host")
+        }
+        if address in hosts:
             names = {
                 "/tv/": "page",
                 "/tv.js": "script",

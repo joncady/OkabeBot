@@ -651,10 +651,36 @@ class Bridge:
             cast.quit_app(timeout=5)
         controller = FreshDashCast()
         cast.register_handler(controller)
+        sent = threading.Event()
+        result = {"success": False}
+
+        def acknowledged(success, response=None):
+            result["success"] = success is True
+            sent.set()
+
         controller.load_url(
-            "http://%s:%s/tv/wake/" % (get_config()["web"]["host"], self.port), force=True
+            "http://%s:%s/tv/wake/" % (get_config()["web"]["host"], self.port),
+            force=True,
+            callback_function=acknowledged,
         )
-        return True  # HA must still confirm the TV is on before handoff.
+        # Do not let a delayed warmup navigation overwrite the actual dashboard.
+        return sent.wait(10) and result["success"]  # HA still verifies power/input.
+
+    def prepare_morning_destination(self, destination, *, reuse_live=False):
+        surface = self.surfaces.snapshot()
+        if (
+            reuse_live
+            and surface.get("phase") == "tv"
+            and surface.get("current_location") == destination
+            and surface.get("receiver_connected") is True
+            and self.destination_input_active(destination) is not False
+        ):
+            return True  # An explicit replay must not relaunch a live receiver.
+        return self.tv_preparation.prepare(
+            destination,
+            lambda: self.destination_input_active(destination),
+            wake_cast=lambda: self.wake_destination_cast(destination),
+        )
 
     def dispatch_morning(self, *, manual=False, replay=False):
         """One bounded wake/handoff/optional briefing, never replay failed speech."""
@@ -678,11 +704,7 @@ class Bridge:
                         return
                     self.announcing = True
                     owned = True
-                if not self.tv_preparation.prepare(
-                    config["destination"],
-                    lambda: self.destination_input_active(config["destination"]),
-                    wake_cast=lambda: self.wake_destination_cast(config["destination"]),
-                ):
+                if not self.prepare_morning_destination(config["destination"], reuse_live=manual):
                     return
                 if morning.settings() != config or not morning.view(config["destination"]):
                     return

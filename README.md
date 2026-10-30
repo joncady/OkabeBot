@@ -849,3 +849,7 @@ that day's selected meal-plan entries to weather/calendar/status cards. Section
 choices and one bounded spoken highlight are editable separately from collection
 consent. TV weather uses local animated pixel sprites; current conditions are not
 a forecast. See [morning setup](docs/amadeus-feeds.md#morning-report-sections).
+
+TV wake preparation waits for its warmup navigation acknowledgment before
+handoff; morning replay can reuse an already-connected destination without
+relaunching it. Receiver request diagnostics cover additional configured TVs.

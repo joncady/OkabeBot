@@ -1950,3 +1950,12 @@ consented-context card selection and served weather-sprite asset. Controller,
 speech, Pi links and existing feeds recovered after the idle update. No report
 was presented or spoken as part of these checks; physical wake, rendering and
 listening acceptance remain separate.
+
+TV launch hardening in source waits for the warmup-page send acknowledgment
+before proceeding to dashboard handoff. An already-live matching morning
+receiver can bypass redundant wake/reload preparation. Request counters now
+include explicitly configured secondary Cast hosts rather than only the primary
+media receiver. The diagnostic counter update is installed; the launch/replay
+hardening remains source-only pending deployment so a working receiver is not
+interrupted during review. No new ports, devices or ownership routes are added.
+Controller-restart reconciliation remains tracked separately.
