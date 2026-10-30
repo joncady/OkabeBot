@@ -24,7 +24,46 @@ def facts(name, result, reference):
     value = {"tool": name, "grounded_reference": reference[:900]}
     if not isinstance(result, dict) or result.get("error"):
         return value
-    if name == "get_home_activity":
+    if name == "get_context_feed":
+        value["scope"] = result.get("scope")
+        value["more_available"] = result.get("next_offset") is not None
+        value["records"] = [
+            {
+                "fresh": row.get("fresh"),
+                "historical": row.get("historical", False),
+                "observed_at": row.get("observed_at"),
+                **{
+                    k: v
+                    for k, v in row.get("value", {}).items()
+                    if k
+                    in (
+                        "unit",
+                        "reports",
+                        "transitions",
+                        "minimum",
+                        "maximum",
+                        "mean_observed",
+                        "window_seconds",
+                        "change",
+                        "summary",
+                        "start_at",
+                        "end_at",
+                        "title",
+                        "list",
+                        "state",
+                        "due",
+                        "label",
+                        "signal",
+                        "type",
+                        "show",
+                        "start",
+                        "end",
+                    )
+                },
+            }
+            for row in result.get("items", [])[:12]
+        ]
+    elif name == "get_home_activity":
         value["grounded_reference"] = (
             "Partial household evidence. State readings do not prove actions, people or chronology."
         )
@@ -111,6 +150,10 @@ def facts(name, result, reference):
         if not lists:
             break
         value[lists[-1]].pop()
+    if name == "get_context_feed":
+        value["more_available"] = result.get("next_offset") is not None or len(
+            result.get("items", [])
+        ) > len(value.get("records", []))
     return value
 
 

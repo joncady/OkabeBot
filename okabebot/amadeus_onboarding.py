@@ -158,6 +158,25 @@ class Onboarding:
                 "UPDATE events SET expires_at=MIN(expires_at,observed_at+?)",
                 (value["retention_days"] * 86400,),
             )
+            from .context_records import clear, prune
+
+            for table, origin in (
+                ("context_records", "last_seen"),
+                ("context_changes", "observed_at"),
+                ("context_signal_buckets", "bucket"),
+                ("context_feed_status", "checked_at"),
+            ):
+                if self.store.db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE name=?", (table,)
+                ).fetchone():
+                    self.store.db.execute(
+                        "UPDATE " + table + " SET expires_at=MIN(expires_at," + origin + "+?)",
+                        (value["retention_days"] * 86400,),
+                    )
+            if previous:
+                for revoked in set(previous.get("sources", [])) - set(value["sources"]):
+                    clear(self.store.db, source=revoked)
+            prune(self.store.db, self.store.clock())
             self.store.db.execute("DELETE FROM events WHERE expires_at<=?", (self.store.clock(),))
             if self.store.db.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_decisions'"
@@ -200,7 +219,10 @@ class Onboarding:
         )
 
     def export(self):
+        from .context_records import export
+
         result = self.memory()
+        result.update(export(self.store, self.subject()))
         rows = self.store.db.execute(
             "SELECT * FROM events WHERE subject=? AND expires_at>? ORDER BY observed_at,id",
             (self.subject(), self.store.clock()),
@@ -243,6 +265,9 @@ class Onboarding:
     def forget(self, data):
         if data == {"confirm": "forget_amadeus"}:
             with self.store.db:
+                from .context_records import clear
+
+                clear(self.store.db)
                 self.store.db.execute("DELETE FROM events")
                 self.store.db.execute("DELETE FROM preferences")
                 if self.store.db.execute(

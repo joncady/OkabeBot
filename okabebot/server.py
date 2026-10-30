@@ -164,6 +164,24 @@ def get_home_activity(period: Literal["today", "yesterday", "last_24_hours"] = "
     return recap(state_dir() / "amadeus", period)
 
 
+@mcp.tool(annotations=READ)
+def get_context_feed(
+    source: Literal[
+        "tasks", "device_activity", "appliances", "meals", "transit", "watch_history", "calendar"
+    ],
+    query: str = "",
+    offset: int = 0,
+    limit: int = 20,
+    view: Literal["current", "changes", "aggregates"] = "current",
+) -> dict:
+    """Retrieve consented current items, meaningful changes or signal aggregates on demand. Use a blank query for general lists, or a literal title/list-name substring. Page through results; stale/missing is not an all-clear."""
+    from .amadeus_feeds import Feeds
+
+    return Feeds(state_dir() / "amadeus").retrieve(
+        source, query=query, offset=offset, limit=limit, view=view
+    )
+
+
 @mcp.tool(annotations=WRITE)
 def set_speaker_volume(percent: Annotated[int, Field(ge=0, le=100)]) -> dict:
     """Set the Pi speaker's actual volume, 0–100; shared with the dashboard slider."""

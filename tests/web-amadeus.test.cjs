@@ -18,7 +18,7 @@ async function fixture(withInventory=false){
  const context={document,Intl,Date,JSON,URL,Blob,setTimeout,
   dashboardAccess:{token:()=>token,remember(){},required(){get('dashboard-auth').hidden=false;}},
   fetch:async(url,options)=>{requests.push({url,options});if(hold)await new Promise(resolve=>release=resolve);return{status:denied?403:200,ok:!denied,
-   json:async()=>url.endsWith('feeds')?{feeds:[{id:'tasks',label:'<img src=x>',instructions:'Read only',status:'disabled',fields:[{key:'entities',label:'To-do lists'}],config:{enabled:false,entities:[]}}],context:[],connections:withInventory?[{transport:'ha',url:'http://ha.invalid',has_token:true}]:[]}:url.endsWith('ha-inventory')?{rooms:[{id:'study',name:'Study'}],entities:[{id:'todo.invented',name:'Invented list',room:'Study',available:true}],locations:[{id:'screen-a',name:'Desk',area_id:null}]}:url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
+   json:async()=>url.endsWith('feeds')?{feeds:[{id:'tasks',label:'<img src=x>',instructions:'Read only',status:'disabled',fields:[{key:'entities',label:'To-do lists',domain:'todo'}],config:{enabled:false,entities:[]}}],context:[],connections:withInventory?[{transport:'ha',url:'http://ha.invalid',has_token:true}]:[]}:url.endsWith('ha-inventory')?{rooms:[{id:'study',name:'Study'}],entities:[{id:'todo.invented',name:'Invented list',room:'Study',available:true}],locations:[{id:'screen-a',name:'Desk',area_id:null}]}:url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
    {events:[],preferences:[{key:'user.test',value:'<img src=x onerror=alert(1)>'}]}};}};
  vm.createContext(context);
  vm.runInContext(fs.readFileSync('okabebot/web/amadeus.js','utf8')+'\nglobalThis.ui=amadeusUI;',context);
@@ -89,4 +89,18 @@ test('HA inventory is owner-requested and discovery never enables a feed',async(
  assert.match(f.nodes['feed-list'].children[0].children[4].textContent,/Study/);
  f.nodes['dashboard-forget'].onclick();
  assert.equal(f.nodes['feed-list'].children.length,0);
+});
+
+test('Select all discovers choices on demand without a separate refresh or enabling collection',async()=>{
+ const f=await fixture(true);
+ const card=f.nodes['feed-list'].children[1],form=card.children[2],fieldset=form.children[1];
+ const all=fieldset.children[4].children[0],rows=fieldset.children[2];
+ assert.notEqual(all.disabled,true);
+ await all.onclick();
+ assert.equal(rows.children[0].children[0].value,'todo.invented');
+ assert.equal(form.children[0].children[0].checked,false);
+ assert.ok(!f.requests.some(r=>r.options.method==='POST'));
+ assert.notEqual(all.disabled,true);
+ fieldset.children[4].children[1].onclick();
+ assert.equal(rows.children[0].children[0].value,'');
 });

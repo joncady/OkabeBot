@@ -178,7 +178,7 @@ event claim are enforced again at the controller boundary. See [Alexa setup](ale
 its ID, label, transport, editable binding fields, normalized item allowlist,
 poll interval, freshness and attribution scope. `providers.fetch` reads upstream
 metadata; `amadeus_feeds.Feeds` owns consent checks, lifecycle, isolation and
-bounded private snapshots. No provider receives a presenter, actuator or model.
+stable-ID records and bounded previews. No provider receives a presenter, actuator or model.
 
 Add a registry entry and a read-only transport reader, then test its real wire
 shape with invented fixtures. The owner setup UI is generated from the declared
@@ -188,11 +188,14 @@ configuration choice must remain editable through the dashboard; do not encode
 household entities or preferences in adapter code. Credential fields are
 write-only, owner-authenticated and never returned in GET responses.
 
-Snapshots are atomic: an empty successful snapshot clears old current items;
-truncated lists are explicitly partial. Revalidate consent, private setup,
+Complete snapshots are atomic: an empty authoritative snapshot retires old current
+items; partial/failed reads never establish deletion. The small preview is not the
+collection limit. Providers must expose stable namespaced item identity; source
+provenance and separate occurrences must survive normalization. Revalidate consent, private setup,
 bindings/revision and connection after network reads. Pause/guest/revocation or
-forget during HTTP must discard the result. Context reads only the newest fresh
-snapshot per provider; retained history never makes stale context current.
+forget during HTTP must discard the result. Current-context rules use fresh records; retained observations expose freshness
+separately and never establish current state by themselves. Retrieval is paged
+and consent-checked. See [storage contract](amadeus-storage.md).
 Failures are generic and isolated. Read-only HA `todo.get_items` uses POST because
 HA represents that read as a service; this is not permission to invoke other
 services. Never follow upstream redirect URLs with credentials.

@@ -66,14 +66,17 @@ limited history window cannot guarantee that an older recommendation is new.
 A controller background thread polls selected HA/transit feeds every five minutes
 and history every thirty minutes. Browser refreshes do not initiate provider reads.
 Reads have timeouts, response-size limits, no redirects, and normalized field
-allowlists. At most 20 items / approximately 3.5 KiB are retained per snapshot;
-truncation is marked partial. Empty successful reads supersede old items. HA
+allowlists. The compatibility preview holds at most 20 items / approximately 3.5 KiB; its
+truncation is marked partial. Complete normalized provider results are retained
+separately by stable ID and retrieved in pages; the preview is not the ingestion
+limit. Empty successful reads supersede old items. HA
 snapshots expire after fifteen minutes, rail alerts after ten minutes and history
 after two hours without refresh. The transit reader additionally rejects stale
 upstream GTFS timestamps and inactive alert periods. Missing data is not an all-clear.
 
-Current permitted snapshots are available to text/voice preference conversation
-context and the private shadow log. Task due-soon, explicit appliance-complete/error
+Conversation prompts and the private shadow log receive source availability
+metadata. Item contents are available through consent-checked retrieval tools;
+deterministic rules read the fresh normalized collection separately. Task due-soon, explicit appliance-complete/error
 states and significant rail disruption candidates use existing home/quiet/focus/
 media/calendar attention gates, in shadow only. No automatic spoken rail/task/meal
 announcements or new physical actions are enabled. Context is untrusted data, not
@@ -133,3 +136,17 @@ The manual access-token path remains available for existing installations.
 Google Tasks and ThinQ account consent happen in HA, not inside Amadeus. Add those
 integrations in HA, then refresh discovery and select the specific lists/status
 sensors. Optional Mealie requires its own server; it is not provisioned here.
+
+
+## Collection and prompt budgets
+
+The former 12-entity selection limit is removed. Select all discovers supported
+entities on demand; Save feed still applies the explicit observation choice.
+Current records, meaningful changes and signal aggregates share the private store
+and existing retention. A separate storage-policy control adjusts aggregation
+windows. Owner exports and forgetting include these projections. Conversation
+prompts use source availability metadata and `get_context_feed` for current,
+change-history or aggregate pages. Deterministic rules can inspect full fresh
+collections independently of the bounded owner/model preview. See
+[storage contract](amadeus-storage.md). Upstream partial coverage, including the
+current bounded Trakt history reader, is still explicit.

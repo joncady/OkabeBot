@@ -1562,3 +1562,30 @@ keeps legacy-secret connections supported. Device authorization and a bounded
 history API read were verified independently of observation enablement. No account
 identities, credentials or private history results are included in this inventory.
 The existing controller listener and private credential ownership are unchanged.
+
+
+## Compact context records and on-demand retrieval
+
+Source implementation adds current-item, observed-change and signal-aggregate
+projections in the existing private Amadeus SQLite database, plus an owner-only
+paged retrieval route and shared read-only MCP/local-conversation tool. The old
+small feed-selection restriction is removed; prompt/preview budgets remain bounded.
+The owner can adjust signal bucket size in Context feeds. Calendar occurrence
+identity now uses ICS UID/original recurrence metadata when available. Retention,
+revoke/rebind/disconnect, exports and forgetting cover the added tables. Existing
+model workers, Pi services, listener ports and raw recording settings are unchanged.
+README's context-feed edge and conversation retrieval edge reflect this data path.
+Source availability is not evidence of installed migration or physical acceptance.
+See [storage/logging contract](amadeus-storage.md) for remaining collector/recording
+work and the private migration/rollback boundary.
+
+
+Installed context-store verification: the Mac controller was restarted while idle
+with a matching private SQLite rollback backup and module backups. Owner retrieval
+and storage-policy routes responded, and an isolated silent local conversation
+selected the shared context retrieval tool and composed a response. Existing feed
+permissions and selections, device state and volume were preserved. No raw audio,
+transcript or camera collection was enabled. Broader recording budgets, remaining
+heartbeat collectors and resumable transport pagination remain tracked in #18.
+Rollback should restore matching code and database backup together; older code
+alone does not manage the new projections' forgetting/retention lifecycle.

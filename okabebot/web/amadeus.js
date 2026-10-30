@@ -86,29 +86,47 @@ const amadeusUI = (() => {
         label.className='amadeus-option';label.append(input,document.createTextNode(name));box.append(label);
       }
       const hint=document.createElement('p');hint.className='feed-help';hint.textContent='No lines selected means all rail lines.';box.append(hint);
+      const all=document.createElement('button');all.type='button';all.textContent='Select all';all.onclick=()=>checks.forEach(i=>i.checked=true);
+      const clear=document.createElement('button');clear.type='button';clear.textContent='Clear';clear.onclick=()=>checks.forEach(i=>i.checked=false);box.append(all,clear);
       return {element:box,read:()=>checks.filter(i=>i.checked).map(i=>i.value)};
     }
     const rows=document.createElement('div');rows.className='feed-entities';let entries=values.length?[...values]:[''];
     const hint=document.createElement('p');hint.className='feed-help';hint.textContent=haInventory.length?'Search discovered entities by name or room. Saving a feed is a separate observation choice.':'Use Refresh rooms and entities to discover choices, or enter an entity ID.';
     let inputs=[];
+    const list=document.createElement('datalist');list.id='ha-choice-'+feedId+'-'+field.key;
     const draw=()=>{
-      rows.replaceChildren();inputs=[];
+      rows.replaceChildren();inputs=[];list.replaceChildren();
+      for(const entity of haInventory.filter(e=>e.id.startsWith((field.domain||'entity')+'.'))){
+        const option=document.createElement('option');option.value=entity.id;option.label=[entity.name,entity.room,entity.provider,entity.available?'':'unavailable'].filter(Boolean).join(' · ');list.append(option);
+      }
       entries.forEach((value,index)=>{
         const row=document.createElement('div');row.className='feed-entity-row';
         const input=document.createElement('input');input.value=value;input.maxLength=100;input.autocomplete='off';input.spellcheck=false;
-        const list=document.createElement('datalist');list.id='ha-choice-'+feedId+'-'+field.key+'-'+index;
-        for(const entity of haInventory.filter(e=>e.id.startsWith((field.domain||'entity')+'.'))){
-          const option=document.createElement('option');option.value=entity.id;option.label=[entity.name,entity.room,entity.provider,entity.available?'':'unavailable'].filter(Boolean).join(' · ');list.append(option);
-        }
         input.setAttribute('list',list.id);
         input.placeholder=(field.domain||'entity')+'.example';input.setAttribute('aria-label',field.label+' '+(index+1));inputs.push(input);
         const remove=document.createElement('button');remove.type='button';remove.textContent='Remove';remove.setAttribute('aria-label','Remove '+field.label+' '+(index+1));
-        remove.onclick=()=>{entries=inputs.map(i=>i.value);entries.splice(index,1);draw();};row.append(input,remove,list);rows.append(row);
+        remove.onclick=()=>{entries=inputs.map(i=>i.value);entries.splice(index,1);draw();};row.append(input,remove);rows.append(row);
       });
     };
     draw();const add=document.createElement('button');add.type='button';add.textContent='＋ Add entity';
-    add.onclick=()=>{entries=inputs.map(i=>i.value);if(entries.length<12){entries.push('');draw();}};
-    box.append(hint,rows,add);
+    add.onclick=()=>{entries=inputs.map(i=>i.value);if(entries.length<1000){entries.push('');draw();}};
+    const choices=()=>[...new Set(haInventory.filter(e=>e.id.startsWith((field.domain||'entity')+'.')).map(e=>e.id))];
+    const eligible=choices();
+    const all=document.createElement('button');all.type='button';all.textContent='Select all';
+    all.onclick=()=>run(async()=>{
+      all.disabled=true;
+      try {
+        if(!homePreview){const inventory=await api('ha-inventory');haInventory=inventory.entities||[];homePreview=inventory;}
+        const selected=choices();
+        if(!selected.length){note.textContent='No matching entities were found in Home Assistant.';return;}
+        if(selected.length>1000){note.textContent='The source returned an unusually large inventory; choose a narrower set.';return;}
+        entries=selected;draw();note.textContent='Selected '+selected.length+' entities. Save feed to apply; collection has not been enabled.';
+      } finally {all.disabled=false;}
+    });
+    const clear=document.createElement('button');clear.type='button';clear.textContent='Clear';clear.onclick=()=>{entries=[''];draw();};
+    const note=document.createElement('p');note.className='feed-help';note.textContent=eligible.length?'Select all fills this field only. Save feed applies your choices.':'Refresh rooms and entities to enable Select all.';
+    const actions=document.createElement('div');actions.className='feed-actions';actions.append(all,clear);
+    box.append(hint,rows,add,actions,note,list);
     return {element:box,read:()=>[...new Set(inputs.map(i=>i.value.trim()).filter(Boolean))]};
   }
   async function feeds() {
@@ -149,6 +167,13 @@ const amadeusUI = (() => {
         const config={enabled:enabled.checked};for(const [key,input] of Object.entries(inputs))config[key]=input.read();
         await api('feeds',{id:feed.id,config});await load();message('Feed saved. Pause and guest mode remain unchanged.');
       });};card.append(form);$('feed-list').append(card);
+    }
+    if(value.storage_policy){
+      const form=document.createElement('form');form.className='feed-card';
+      const label=document.createElement('label');label.textContent='Signal aggregation window (minutes)';
+      const input=document.createElement('input');input.type='number';input.min='1';input.max='60';input.value=value.storage_policy.signal_window_minutes;label.append(input);
+      const save=document.createElement('button');save.textContent='Save storage policy';form.append(label,save);
+      form.onsubmit=event=>{event.preventDefault();run(async()=>{await api('feed-storage-policy',{signal_window_minutes:Number(input.value)});message('Signal aggregation window saved. Existing retention and collection permissions are unchanged.');});};$('feed-list').append(form);
     }
     $('feed-context').textContent=JSON.stringify(value.context||[],null,2);
   }

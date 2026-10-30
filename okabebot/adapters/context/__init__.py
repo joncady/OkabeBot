@@ -36,7 +36,7 @@ FEEDS = {
             "Tasks · Local To-do / Google Tasks",
             "ha",
             (("entities", "To-do entity IDs", "todo"),),
-            ("id", "title", "state", "due"),
+            ("id", "title", "state", "due", "list"),
             "Add Local To-do or Google Tasks in Home Assistant. Select only the lists to observe.",
         ),
         Feed(
@@ -57,7 +57,7 @@ FEEDS = {
             "LG ThinQ · appliance status",
             "ha",
             (("entities", "Appliance status / error sensor IDs", "sensor"),),
-            ("id", "label", "state"),
+            ("id", "label", "state", "unit"),
             "Connect LG ThinQ in Home Assistant, then select cycle/status/error sensors. LG uses its cloud.",
             household=True,
         ),
@@ -69,7 +69,7 @@ FEEDS = {
                 ("calendars", "Meal-plan calendar IDs", "calendar"),
                 ("shopping", "Shopping to-do IDs", "todo"),
             ),
-            ("id", "title", "category", "start", "end", "state", "due"),
+            ("id", "title", "category", "start", "end", "state", "due", "list"),
             "Connect your self-hosted Mealie to Home Assistant. Plans and shopping lists do not prove pantry stock.",
             household=True,
         ),
@@ -104,8 +104,14 @@ def validate_config(feed, value):
         raise ValueError("Choose enabled or disabled")
     for key, _, domain in feed.fields:
         entries = value[key]
-        if not isinstance(entries, list) or len(entries) > 12 or len(set(entries)) != len(entries):
-            raise ValueError("Choose at most twelve unique entities/routes per field")
+        if (
+            not isinstance(entries, list)
+            or len(entries) > 1000
+            or len(set(entries)) != len(entries)
+        ):
+            raise ValueError(
+                "Choose unique entity/route identifiers (maximum 1000 per field for request safety)"
+            )
         for entry in entries:
             if not isinstance(entry, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", entry):
                 raise ValueError("Use bounded entity/route identifiers")

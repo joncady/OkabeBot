@@ -285,3 +285,17 @@ before treating following as dependable unattended person localization.
 - Source setup outstanding: Google Tasks OAuth,
   selected ThinQ entities and optional Trakt/Mealie account configuration. Do not
   enable unrelated feeds or infer completion from available adapter code.
+
+
+## Collection/recording consolidation checkpoint
+
+Implemented stable-ID current items and observed revisions, configurable numeric
+signal aggregates, calendar occurrence identity and checkpoint compaction, paged
+source retrieval tools, metadata-only prompt/shadow feed context, and lifecycle
+coverage for retention, revoke, export and forgetting. Small entity-selection
+limits no longer serve as prompt budgets. Existing source choices remain explicit.
+
+Remaining consolidation and raw recording/log budgets: GitHub #18. Provider-specific
+pagination/custom Trakt list coverage also remains part of #17. These are not
+claims of complete cross-provider history, automatic identity fusion or new capture
+permissions. Validation uses invented fixtures; private outputs are not public evidence.

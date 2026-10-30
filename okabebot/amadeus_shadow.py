@@ -116,7 +116,7 @@ class ShadowTrial:
             from .amadeus_feeds import context as feed_context
 
             result = {
-                "source_context": feed_context(s),
+                "source_context": feed_context(s, include_items=False),
                 "mode": "shadow",
                 "delivery_enabled": False,
                 "evaluated_at": now,

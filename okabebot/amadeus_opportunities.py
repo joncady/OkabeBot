@@ -265,7 +265,7 @@ class ContextPlanner(HabitPlanner):
         # gates. Enabling collection is not permission to dispatch these proposals.
         from .amadeus_feeds import context as feed_context
 
-        source_context = feed_context(self.store)
+        source_context = feed_context(self.store, full=True)
         cue = screen if active_screen else occupied if room else None
         if cue:
             for feed in source_context:
@@ -529,7 +529,7 @@ class ContextPlanner(HabitPlanner):
         watched = set(prefs.get("watched_titles", [])) | set(prefs.get("disliked_titles", []))
         from .amadeus_feeds import context as feed_context
 
-        for feed in feed_context(self.store):
+        for feed in feed_context(self.store, full=True):
             if feed["source"] == "watch_history":
                 watched.update(i["title"] for i in feed["items"] if i.get("type") == "movie")
         exposed = {

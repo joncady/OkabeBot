@@ -239,6 +239,42 @@ class FeedTests(unittest.TestCase):
             dict(provider="watch_history", items=items, complete="no", valid_until_at=self.now + 60)
         )
 
+    def test_large_collection_tool_pages_compaction_pause_revoke_and_forget(self):
+        self.items = [
+            {"id": str(i), "title": "Invented task " + str(i), "state": "needs_action"}
+            for i in range(80)
+        ]
+        self.enable(entities=["todo.synthetic_" + str(i) for i in range(100)])
+        self.feeds.tick()
+        self.assertEqual(len(self.feeds.retrieve("tasks", limit=50)["items"]), 50)
+        self.assertEqual(len(self.feeds.retrieve("tasks", limit=50, offset=50)["items"]), 30)
+        with self.feeds.store() as store:
+            self.assertEqual(len(context(store, include_items=False)[0]["items"]), 0)
+            self.assertEqual(len(context(store, full=True)[0]["items"]), 80)
+            count = store.db.execute("SELECT count(*) FROM context_changes").fetchone()[0]
+        self.now += 301
+        self.feeds.tick()
+        with self.feeds.store() as store:
+            self.assertEqual(
+                store.db.execute("SELECT count(*) FROM context_changes").fetchone()[0], count
+            )
+            self.assertEqual(
+                store.db.execute(
+                    "SELECT count(*) FROM events WHERE kind='feed_snapshot'"
+                ).fetchone()[0],
+                1,
+            )
+        self.owner.control({"paused": True})
+        self.assertEqual(self.feeds.retrieve("tasks")["items"], [])
+        self.owner.control({"paused": False})
+        self.assertEqual(len(self.owner.export()["context_records"]), 80)
+        self.owner.forget({"confirm": "forget_amadeus"})
+        with self.feeds.store() as store:
+            self.assertEqual(
+                store.db.execute("SELECT count(*) FROM context_records").fetchone()[0], 0
+            )
+        self.assertEqual(self.feeds.retrieve("tasks")["items"], [])
+
     def test_feed_context_reaches_conversation_without_network_or_memory_write(self):
         from okabebot.amadeus_text import TextConversation
 
@@ -255,6 +291,13 @@ class FeedTests(unittest.TestCase):
 
         chat.send("What is on my task list?", generate)
         self.assertEqual(seen[0]["source"], "tasks")
+
+    def test_large_binding_configuration_is_not_limited_by_prompt_value_size(self):
+        entities = ["todo.invented_long_binding_" + str(i) for i in range(500)]
+        result = self.enable(entities=entities)
+        self.assertEqual(
+            next(f for f in result["feeds"] if f["id"] == "tasks")["config"]["entities"], entities
+        )
 
 
 if __name__ == "__main__":

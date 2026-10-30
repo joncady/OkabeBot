@@ -37,14 +37,14 @@ def permitted(setup, feed):
     )
 
 
-def context(store, *, limit=12):
+def context(store, *, limit=12, include_items=True, full=False):
     """Latest fresh consented snapshots only; empty snapshots clear prior values."""
     setup = preference(store, SYSTEM, KEY, {})
     if not setup.get("profile") or setup.get("paused") or setup.get("guest"):
         return []
     now, found, result = store.clock(), set(), []
     rows = store.db.execute(
-        "SELECT source,payload FROM events WHERE kind='feed_snapshot' AND expires_at>? "
+        "SELECT source,payload,observed_at FROM events WHERE kind='feed_snapshot' AND expires_at>? "
         "AND observed_at<=? AND subject IN (?, 'unknown') ORDER BY observed_at DESC,rowid DESC",
         (now, now, setup["profile"]),
     )
@@ -60,6 +60,34 @@ def context(store, *, limit=12):
             continue
         value = json.loads(row["payload"])
         if value["valid_until_at"] <= now:
+            continue
+        if (
+            full
+            and store.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE name='context_records'"
+            ).fetchone()
+        ):
+            subject = "unknown" if feed.household else setup["profile"]
+            records = store.db.execute(
+                "SELECT payload FROM context_records WHERE source=? AND subject=? AND expires_at>? AND valid_until>? ORDER BY item_id LIMIT 10001",
+                (feed.id, subject, now, now),
+            ).fetchall()
+            value["items"] = [json.loads(r["payload"]) for r in records[:10000]]
+            status = store.db.execute(
+                "SELECT complete FROM context_feed_status WHERE source=? AND subject=?",
+                (feed.id, subject),
+            ).fetchone()
+            value["complete"] = "yes" if status and status[0] and len(records) <= 10000 else "no"
+        if not include_items:
+            result.append(
+                {
+                    "source": feed.id,
+                    "complete": value["complete"] == "yes",
+                    "retrieval_tool": "get_context_feed",
+                    "checked_at": row["observed_at"],
+                    "items": [],
+                }
+            )
             continue
         result.append(
             {
@@ -136,7 +164,74 @@ class Feeds:
                 "connections": connections,
                 "context": context(store),
                 "delivery_enabled": False,
+                "storage_policy": preference(
+                    store, SYSTEM, "feed.storage_policy", {"signal_window_minutes": 15}
+                ),
             }
+
+    def storage_policy(self, data):
+        if (
+            not isinstance(data, dict)
+            or set(data) != {"signal_window_minutes"}
+            or type(data["signal_window_minutes"]) is not int
+            or not 1 <= data["signal_window_minutes"] <= 60
+        ):
+            raise ValueError("Signal window must be 1–60 minutes")
+        with self.store() as store, store.db:
+            if not preference(store, SYSTEM, KEY, {}).get("profile"):
+                raise ValueError("Save private setup first")
+            store.db.execute(
+                "INSERT OR REPLACE INTO preferences VALUES (?,?,?,?)",
+                (SYSTEM, "feed.storage_policy", encode(data), self.clock()),
+            )
+        return self.snapshot()
+
+    def retrieve(self, source, *, query="", offset=0, limit=20, view="current"):
+        from .context_records import query as read_records
+
+        if source not in (*FEEDS, "calendar") or not isinstance(query, str) or len(query) > 200:
+            raise ValueError("Choose a registered source and bounded search")
+        if (
+            type(offset) is not int
+            or not 0 <= offset <= 100000
+            or type(limit) is not int
+            or not 1 <= limit <= 50
+        ):
+            raise ValueError("Use a bounded retrieval page")
+        if view not in ("current", "changes", "aggregates"):
+            raise ValueError("Choose a supported retrieval view")
+        with self.store() as store:
+            setup = preference(store, SYSTEM, KEY, {})
+            if source == "calendar":
+                if (
+                    not setup.get("profile")
+                    or setup.get("paused")
+                    or setup.get("guest")
+                    or source not in setup.get("sources", [])
+                ):
+                    return {"items": [], "state": "paused_or_not_consented", "next_offset": None}
+                return read_records(
+                    store,
+                    source,
+                    setup["profile"],
+                    text=query,
+                    offset=offset,
+                    limit=limit,
+                    view=view,
+                )
+            feed = FEEDS[source]
+            cfg = {**default(feed), **preference(store, SYSTEM, PREFIX + source, {})}
+            if not cfg["enabled"] or not permitted(setup, feed):
+                return {"items": [], "state": "paused_or_not_consented", "next_offset": None}
+            return read_records(
+                store,
+                source,
+                "unknown" if feed.household else setup["profile"],
+                text=query,
+                offset=offset,
+                limit=limit,
+                view=view,
+            )
 
     def inventory(self):
         from .ha_inventory import preview
@@ -166,12 +261,15 @@ class Feeds:
             store.db.execute(
                 "INSERT INTO preferences VALUES (?,?,?,?) ON CONFLICT(subject,key) DO UPDATE "
                 "SET value=excluded.value,updated_at=excluded.updated_at",
-                (SYSTEM, PREFIX + feed.id, encode(cfg), self.clock()),
+                (SYSTEM, PREFIX + feed.id, json.dumps(cfg, sort_keys=True), self.clock()),
             )
             store.db.execute(
                 "INSERT OR REPLACE INTO preferences VALUES (?,?,?,?)",
                 (SYSTEM, "feed_revision." + feed.id, encode(uuid.uuid4().hex), self.clock()),
             )
+            from .context_records import clear
+
+            clear(store.db, source=feed.id)
             # Bindings changed: invalidate old snapshots and derived evaluations.
             store.db.execute(
                 "DELETE FROM events WHERE source=? AND kind='feed_snapshot'", (feed.id,)
@@ -206,11 +304,14 @@ class Feeds:
                     cfg["enabled"] = False
                     store.db.execute(
                         "INSERT OR REPLACE INTO preferences VALUES (?,?,?,?)",
-                        (SYSTEM, PREFIX + feed.id, encode(cfg), self.clock()),
+                        (SYSTEM, PREFIX + feed.id, json.dumps(cfg, sort_keys=True), self.clock()),
                     )
                     store.db.execute(
                         "DELETE FROM events WHERE source=? AND kind='feed_snapshot'", (feed.id,)
                     )
+                    from .context_records import clear
+
+                    clear(store.db, source=feed.id)
                     self.next_poll.pop(feed.id, None)
                     self.health.pop(feed.id, None)
             return self.snapshot()
@@ -255,6 +356,9 @@ class Feeds:
                     store.db.execute(
                         "DELETE FROM events WHERE source=? AND kind='feed_snapshot'", (feed.id,)
                     )
+                    from .context_records import clear
+
+                    clear(store.db, source=feed.id)
                     self.next_poll.pop(feed.id, None)
                     self.health.pop(feed.id, None)
         return self.snapshot()
@@ -300,7 +404,17 @@ class Feeds:
                     )
                     if not isinstance(items, list) or type(complete) is not bool:
                         raise ValueError("Invalid adapter result")
-                    # Stable ordering; truncation is visible, never silently complete.
+                    for start in range(0, len(items), 20):
+                        validate_snapshot(
+                            dict(
+                                provider=feed.id,
+                                items=items[start : start + 20],
+                                complete="no",
+                                valid_until_at=now + feed.freshness,
+                            )
+                        )
+                    full_items, source_complete = items, complete
+                    # Prompt/legacy previews are bounded; authoritative item storage is not truncated.
                     complete = complete and len(items) <= 20
                     payload = dict(
                         provider=feed.id,
@@ -325,6 +439,26 @@ class Feeds:
                         ):
                             self.health[feed.id] = {"state": "context_changed"}
                             continue
+                        from .context_records import ingest
+
+                        store.retention = setup["retention_days"] * 86400
+                        ingest(
+                            store,
+                            feed.id,
+                            "unknown" if feed.household else setup["profile"],
+                            full_items,
+                            complete=source_complete,
+                            valid_until=now + feed.freshness,
+                            noisy=feed.id in ("device_activity", "appliances"),
+                            window_seconds=60
+                            * preference(
+                                store, SYSTEM, "feed.storage_policy", {"signal_window_minutes": 15}
+                            )["signal_window_minutes"],
+                        )
+                        # Keep one compatibility preview per source; history lives in changes/buckets.
+                        store.db.execute(
+                            "DELETE FROM events WHERE source=? AND kind='feed_snapshot'", (feed.id,)
+                        )
                         store.sources = frozenset([feed.id])
                         store.retention = setup["retention_days"] * 86400
                         store.observe(

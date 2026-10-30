@@ -23,6 +23,7 @@ READ_TOOLS = {
     "get_calendar_agenda",
     "get_focus_session",
     "get_home_activity",
+    "get_context_feed",
     "get_recent_notifications",
     "list_reminders",
     "list_spotify_devices",
@@ -47,6 +48,10 @@ TARGETS = {
 
 
 DOMAINS = (
+    (
+        r"\b(tasks?|to.?do|(?:alexa|shopping|task)\s+lists?|appliances?|laundry|transit|watch(?:ed)? history)\b",
+        {"get_context_feed"},
+    ),
     (r"\b(volume|speaker|mute|unmute)\b", {"set_speaker_volume", "get_device_health"}),
     (r"\b(spotify)\b", {"control_spotify", "get_current_media", "list_spotify_devices"}),
     (r"\b(tv|television|playing|music|video|song|watching)\b", {"get_current_media"}),
@@ -312,6 +317,33 @@ def acknowledgement(name, result):
             ("I'm already at " if result.get("already_there") else "Heading to ")
             + result["destination_name"]
             + "."
+        )
+    if name == "get_context_feed":
+        items = result.get("items", [])
+        if result.get("state"):
+            return "That source is paused or has not been enabled."
+        if result.get("view") == "aggregates" and items:
+            return (
+                "I found "
+                + str(len(items))
+                + " retained signal intervals. These are sampled observations, not continuous measurements."
+            )
+        titles = [
+            str(
+                i["value"].get("title", i["value"].get("label", i["value"].get("signal", "Record")))
+            )
+            for i in items
+        ]
+        return (
+            "The connected records include "
+            + ", ".join(titles[:5])
+            + (
+                ". More are available."
+                if result.get("next_offset") is not None or len(items) > 5
+                else "."
+            )
+            if titles
+            else "No matching connected records were found."
         )
     if name == "get_home_activity":
         return result["summary"]

@@ -99,7 +99,8 @@ flowchart TB
         App --> Amadeus["Owner-only Amadeus setup; consent-gated metadata and optional door-armed conversations; private SQLite"]
         Amadeus -->|"Opt-in preference conversation"| Chat
         App --> ContextFeeds["Optional read-only context feeds: HA tasks/activity/appliances/meals, rail alerts, watch history"]
-        ContextFeeds -->|"Permitted fresh snapshots; private storage"| Amadeus
+        ContextFeeds -->|"Stable-ID items, changes and signal aggregates; private storage"| Amadeus
+        Chat -->|"Paged, consent-checked context retrieval"| Amadeus
         App --> Shadow["Opt-in silent shadow evaluator: five-minute checks"]
         Amadeus -->|"Consented inputs and private decision log"| Shadow
         HA -->|"Write-only, entity-bound metadata and opt-in conversation attention gates"| Amadeus
@@ -768,3 +769,11 @@ private screen-to-room assignment and Trakt code-based authorization with token
 refresh. These use the existing controller connection shown above; discovering a
 device does not authorize observation or control. See
 [context-feed onboarding](docs/amadeus-feeds.md).
+
+
+Amadeus separates collection from prompt size: selected source items are stored by
+stable ID, repeated reports compact into freshness/counters, and noisy numeric
+signals use owner-configurable interval aggregates. Conversations retrieve context
+through bounded tools rather than preloading feed contents. See
+[storage, logging and retrieval](docs/amadeus-storage.md) for implemented paths,
+retention/export boundaries and recording-policy follow-ups.

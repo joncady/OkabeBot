@@ -222,3 +222,46 @@ class SourceTests(unittest.TestCase):
         self.owner.control({"paused": True})
         fresh = datetime.fromtimestamp(self.now - 1, timezone.utc).isoformat()
         self.assertEqual(self.collector.home_assistant(dict(event, state=fresh))["state"], "paused")
+
+    def test_calendar_stable_occurrence_updates_without_poll_snapshot_growth(self):
+        self.owner.control({"paused": False})
+        for title in ("Before", "Before", "After"):
+            self.collector.calendar(
+                {
+                    "calendar_checked_at": self.now,
+                    "calendar_context": [
+                        {
+                            "source_id": "invented-uid",
+                            "title": title,
+                            "start": self.now + 1000,
+                            "end": self.now + 2000,
+                            "busy": True,
+                        }
+                    ],
+                    "calendar_busy_complete": True,
+                }
+            )
+        self.assertEqual(
+            self.owner.store.db.execute(
+                "SELECT count(*) FROM context_records WHERE source='calendar'"
+            ).fetchone()[0],
+            1,
+        )
+        self.assertEqual(
+            self.owner.store.db.execute(
+                "SELECT count(*) FROM context_changes WHERE source='calendar'"
+            ).fetchone()[0],
+            2,
+        )
+        self.assertEqual(
+            self.owner.store.db.execute(
+                "SELECT count(*) FROM events WHERE kind='calendar'"
+            ).fetchone()[0],
+            1,
+        )
+        self.assertEqual(
+            self.owner.store.db.execute(
+                "SELECT count(*) FROM events WHERE kind='calendar_snapshot'"
+            ).fetchone()[0],
+            1,
+        )

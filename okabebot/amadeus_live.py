@@ -312,7 +312,7 @@ class ProactiveConversation:
             return dict(
                 profile=p,
                 preferences=preference(s, p, "context.preferences", {}),
-                source_context=feed_context(s),
+                source_context=feed_context(s, include_items=False),
                 **state,
             )
 

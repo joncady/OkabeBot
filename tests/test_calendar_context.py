@@ -78,3 +78,26 @@ TRANSP:UNCERTAIN
 SUMMARY:Unknown busy information
 END:VEVENT""")
         self.assertFalse(state["calendar_busy_complete"])
+
+    def test_uid_is_stable_across_rename_and_reschedule(self):
+        first, _ = self.run_feed(
+            "BEGIN:VEVENT\nUID:invented-stable\nDTSTART:20300107T140000Z\nDTEND:20300107T150000Z\nSUMMARY:Before\nEND:VEVENT"
+        )
+        second, _ = self.run_feed(
+            "BEGIN:VEVENT\nUID:invented-stable\nDTSTART:20300107T160000Z\nDTEND:20300107T170000Z\nSUMMARY:After\nEND:VEVENT"
+        )
+        self.assertEqual(
+            first["calendar_context"][0]["source_id"], second["calendar_context"][0]["source_id"]
+        )
+
+    def test_recurrences_stay_distinct_and_override_keeps_original_occurrence_id(self):
+        body = "BEGIN:VEVENT\nUID:series\nDTSTART:20300107T140000Z\nDTEND:20300107T150000Z\nRRULE:FREQ=DAILY;COUNT=2\nSUMMARY:Invented series\nEND:VEVENT"
+        before, _ = self.run_feed(body)
+        after, _ = self.run_feed(
+            body
+            + "\nBEGIN:VEVENT\nUID:series\nRECURRENCE-ID:20300108T140000Z\nDTSTART:20300108T160000Z\nDTEND:20300108T170000Z\nSUMMARY:Rescheduled occurrence\nEND:VEVENT"
+        )
+        original = before["calendar_context"]
+        changed = after["calendar_context"]
+        self.assertEqual(len({r["source_id"] for r in original}), 2)
+        self.assertEqual(original[1]["source_id"], changed[1]["source_id"])

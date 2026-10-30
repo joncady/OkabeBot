@@ -46,6 +46,30 @@ class Collector:
                     raise ValueError("Use one bounded observation")
                 kind, payload, scope, event_id, observed = rows[0]
                 store.retention = setting["retention_days"] * 86400
+                if kind == "calendar":
+                    from .context_records import ingest
+
+                    item = {
+                        "id": payload["event_id"],
+                        **{k: v for k, v in payload.items() if k != "snapshot_id"},
+                    }
+                    ingest(
+                        store,
+                        source,
+                        setting["profile"],
+                        [item],
+                        complete=False,
+                        valid_until=self.clock() + 900,
+                    )
+                    # Keep one compatible current event per occurrence; revisions live in compact changes.
+                    store.db.execute(
+                        "DELETE FROM events WHERE source=? AND kind='calendar' AND json_extract(payload,'$.event_id')=?",
+                        (source, payload["event_id"]),
+                    )
+                elif kind == "calendar_snapshot":
+                    store.db.execute(
+                        "DELETE FROM events WHERE source=? AND kind='calendar_snapshot'", (source,)
+                    )
                 result = store.observe(
                     source=source,
                     external_id=event_id,
@@ -146,7 +170,9 @@ class Collector:
             if start <= checked and not (valid_end and end > checked):
                 continue
             payload = {
-                "event_id": digest([item.get("title"), start]),
+                "event_id": digest(item["source_id"])
+                if item.get("source_id")
+                else digest([item.get("title"), start]),
                 "summary": text(item.get("title")),
                 "start_at": start,
             }

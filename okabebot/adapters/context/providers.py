@@ -74,11 +74,17 @@ class HomeAssistant:
         items = []
         if feed.id in ("tasks", "meals"):
             for entity in cfg.get("entities", []) + cfg.get("shopping", []):
+                label = clean(
+                    self.call("states/" + quote(entity, safe=""))
+                    .get("attributes", {})
+                    .get("friendly_name", "To-do list")
+                )
                 for item in self.todos(entity):
                     normalized = {
                         "id": identity([entity, item["uid"]]),
                         "title": clean(item["summary"]),
                         "state": clean(item["status"]),
+                        "list": label,
                     }
                     if item.get("due"):
                         normalized["due"] = clean(item["due"])
@@ -106,7 +112,7 @@ class HomeAssistant:
                     state = value["state"]
                     items.append(
                         {
-                            "id": identity(entity),
+                            "id": identity([entity, signal]),
                             "signal": signal,
                             "state": state if state in ("on", "off") else "unknown",
                         }
@@ -121,6 +127,11 @@ class HomeAssistant:
                             value.get("attributes", {}).get("friendly_name", "Appliance")
                         ),
                         "state": clean(value["state"]),
+                        **(
+                            {"unit": clean(value.get("attributes", {}).get("unit_of_measurement"))}
+                            if value.get("attributes", {}).get("unit_of_measurement")
+                            else {}
+                        ),
                     }
                 )
         return items, True

@@ -104,13 +104,25 @@ def handle(handler, bridge, *, post=False):
     try:
         if post:
             size = int(handler.headers.get("Content-Length", 0))
-            if not 0 < size <= 8192:
+            if not 0 < size <= (256000 if path == "/amadeus/api/feeds" else 8192):
                 raise ValueError("Invalid setup request size")
             handler.connection.settimeout(5)
             data = json.loads(handler.rfile.read(size))
         service = Onboarding(state_dir() / "amadeus")
         if path == "/amadeus/api/feed-connection" and post:
             result = bridge.amadeus_feeds.connect(data)
+        elif path == "/amadeus/api/feed-storage-policy" and post:
+            result = bridge.amadeus_feeds.storage_policy(data)
+        elif path == "/amadeus/api/feed-records" and post:
+            if not isinstance(data, dict) or set(data) - {
+                "source",
+                "query",
+                "offset",
+                "limit",
+                "view",
+            }:
+                raise ValueError("Choose source and retrieval page")
+            result = bridge.amadeus_feeds.retrieve(**data)
         elif path == "/amadeus/api/feed-check" and post:
             result = bridge.amadeus_feeds.check(data)
         elif path == "/amadeus/api/trakt-auth" and post:

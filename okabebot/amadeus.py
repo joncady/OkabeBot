@@ -193,6 +193,9 @@ class Store:
                 return self.db.execute(
                     "DELETE FROM preferences WHERE subject=? AND key=?", (subject, key)
                 ).rowcount
+            from .context_records import clear
+
+            clear(self.db, subject=subject)
             count = self.db.execute("DELETE FROM preferences WHERE subject=?", (subject,)).rowcount
             if self.db.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='context_exposures'"
@@ -212,6 +215,9 @@ class Store:
             )
 
     def prune(self):
+        from .context_records import prune
+
+        prune(self.db, self.clock())
         with self.db:
             count = 0
             if self.db.execute(

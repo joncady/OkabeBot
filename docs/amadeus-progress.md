@@ -386,3 +386,16 @@ that public-client configuration while retaining legacy-secret support, and send
 the required application/version headers for OAuth requests. Synthetic coverage
 checks both authorization and refresh without a secret. Provider approval remains
 separate from enabling watch-history observation.
+
+
+## Collection and retrieval separation
+
+Added stable-ID current-item storage, observed version history, repeat-report
+compaction and configurable signal interval statistics. Calendar UID/recurrence
+identity preserves distinct occurrences through title/schedule edits. Source
+binding/consent fences, retention reduction, exports and forgetting include these
+projections. Conversation prompts receive feed availability rather than item dumps;
+read-only source tools provide paged current/change/aggregate views. Synthetic
+regressions cover large collections, duplicate reports, partial omissions, calendar
+rescheduling, stale readings and meaningful discrete signal changes. Remaining
+collectors/recording budgets and full provider pagination remain separate work.

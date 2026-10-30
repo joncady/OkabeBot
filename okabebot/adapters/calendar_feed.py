@@ -44,9 +44,13 @@ def poll(context):
 
     now = dt.datetime.fromtimestamp(time.time(), dt.timezone.utc)
     lead = context.settings["calendar_lead_minutes"]
-    events = recurring_ical_events.of(load_calendar(context.settings)).between(
-        now, now + dt.timedelta(days=2)
-    )
+    calendar = load_calendar(context.settings)
+    recurring_uids = {
+        str(e.get("UID", ""))
+        for e in calendar.walk("VEVENT")
+        if e.get("RRULE") or e.get("RDATE") or e.get("RECURRENCE-ID")
+    }
+    events = recurring_ical_events.of(calendar).between(now, now + dt.timedelta(days=2))
     scheduled = []
     upcoming = []
     intervals = []
@@ -78,11 +82,17 @@ def poll(context):
             and end > interval_start
             and transparency in ("OPAQUE", "TRANSPARENT")
         )
+        uid = str(event.get("UID", ""))
+        occurrence = str(event.get("RECURRENCE-ID", "")) if uid in recurring_uids else ""
+        if not occurrence and event.get("RRULE"):
+            occurrence = str(interval_start.timestamp())
+        source_id = hashlib.sha256((uid + "|" + occurrence).encode()).hexdigest() if uid else ""
         if not valid_interval:
             busy_complete = False
         elif end > now and interval_start < now + dt.timedelta(days=2):
             intervals.append(
                 dict(
+                    source_id=source_id,
                     title=str(event.get("SUMMARY", "Calendar event"))[:100],
                     start=interval_start.timestamp(),
                     end=end.timestamp(),
@@ -98,7 +108,7 @@ def poll(context):
         if start.timestamp() <= time.time():
             continue
         title = str(event.get("SUMMARY", "Calendar event"))[:100]
-        upcoming.append(dict(title=title, start=start.timestamp()))
+        upcoming.append(dict(title=title, start=start.timestamp(), source_id=source_id))
         identifier = (
             "feed-"
             + hashlib.sha256(
