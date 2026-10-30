@@ -93,6 +93,10 @@ class Coaching:
         identity_confirmed=False,
         quiet=True,
     ):
+        from .amadeus_health import others_detected
+
+        if others_detected(self.store):
+            return {"allowed": False, "reason": "others_detected"}
         permission = self._get(subject, SETTINGS)
         if not valid_settings(permission):
             return {"allowed": False, "reason": "not_configured"}

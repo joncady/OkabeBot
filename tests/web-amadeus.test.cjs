@@ -1,5 +1,5 @@
 const test=require('node:test'), assert=require('node:assert/strict'), fs=require('node:fs'), vm=require('node:vm');
-async function fixture(withInventory=false,withTrakt=false,conversationConfig={},householdConfig={}){
+async function fixture(withInventory=false,withTrakt=false,conversationConfig={},householdConfig={},healthConfig={}){
  const nodes={},requests=[];let denied=false,token='synthetic-owner',hold=false,release;
  function node(){return {hidden:false,children:[],value:'',checked:false,textContent:'',
   append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;},
@@ -17,8 +17,8 @@ async function fixture(withInventory=false,withTrakt=false,conversationConfig={}
   quiet_start:'22:00',quiet_end:'08:00',coaching_choice:'not_now',coaching_mode:'establish',paused:true,guest:false};
  const context={document,Intl,Date,JSON,URL,Blob,setTimeout,
   dashboardAccess:{token:()=>token,remember(){},required(){get('dashboard-auth').hidden=false;}},
-  fetch:async(url,options)=>{requests.push({url,options});if(url.endsWith('conversation')&&options.method==='POST')conversationConfig=JSON.parse(options.body);if(url.endsWith('household-nudges')&&options.method==='POST')householdConfig=JSON.parse(options.body);if(hold)await new Promise(resolve=>release=resolve);return{status:denied?403:200,ok:!denied,
-   json:async()=>url.endsWith('household-nudges')?{config:{enabled:false,...householdConfig},preview:[{text:'<img src=x onerror=alert(1)>'}],state:'source_check_needed'}:url.endsWith('conversation')?{config:{enabled:false,destination:'screen-a',...conversationConfig},destinations:[{id:'screen-a',name:'Synthetic desk'}]}:url.endsWith('trakt-lists')?{state:'connected',items:[{id:'7',title:'Invented watched list'},{id:'8',title:'Another invented list'}],page:1,next_page:null}:url.endsWith('feeds')?{feeds:[withTrakt?{id:'watch_history',label:'Watch history',instructions:'Read only',status:'disabled',fields:[],options:[{key:'history_days',label:'History window (days)',type:'number',min:1,max:365,default:30},{key:'page_budget',label:'Maximum requests per polling cycle',type:'number',min:1,max:20,default:1},{key:'watched_lists',label:'Watched lists',type:'trakt_lists',default:[]}],config:{enabled:false,history_days:30,page_budget:2,watched_lists:['7']}}:{id:'tasks',label:'<img src=x>',instructions:'Read only',status:'disabled',fields:[{key:'entities',label:'To-do lists',domain:'todo'}],config:{enabled:false,entities:[]}}],context:[],connections:withInventory?[{transport:'ha',url:'http://ha.invalid',has_token:true}]:[]}:url.endsWith('ha-inventory')?{rooms:[{id:'study',name:'Study'}],entities:[{id:'todo.invented',name:'Invented list',room:'Study',available:true}],locations:[{id:'screen-a',name:'Desk',area_id:null}]}:url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
+  fetch:async(url,options)=>{requests.push({url,options});if(url.endsWith('conversation')&&options.method==='POST')conversationConfig=JSON.parse(options.body);if(url.endsWith('health')&&options.method==='POST')healthConfig=JSON.parse(options.body);if(url.endsWith('household-nudges')&&options.method==='POST')householdConfig=JSON.parse(options.body);if(hold)await new Promise(resolve=>release=resolve);return{status:denied?403:200,ok:!denied,
+   json:async()=>url.endsWith('health')?{settings:{enabled:false,daily_steps:0,nudge_after:17,others_detected:false,...healthConfig},privacy:'Private <health>',readings:[{metric:'daily_steps',value:'42',unit:'steps',sample_at:2000000000}]}:url.endsWith('household-nudges')?{config:{enabled:false,...householdConfig},preview:[{text:'<img src=x onerror=alert(1)>'}],state:'source_check_needed'}:url.endsWith('conversation')?{config:{enabled:false,destination:'screen-a',...conversationConfig},destinations:[{id:'screen-a',name:'Synthetic desk'}]}:url.endsWith('trakt-lists')?{state:'connected',items:[{id:'7',title:'Invented watched list'},{id:'8',title:'Another invented list'}],page:1,next_page:null}:url.endsWith('feeds')?{feeds:[withTrakt?{id:'watch_history',label:'Watch history',instructions:'Read only',status:'disabled',fields:[],options:[{key:'history_days',label:'History window (days)',type:'number',min:1,max:365,default:30},{key:'page_budget',label:'Maximum requests per polling cycle',type:'number',min:1,max:20,default:1},{key:'watched_lists',label:'Watched lists',type:'trakt_lists',default:[]}],config:{enabled:false,history_days:30,page_budget:2,watched_lists:['7']}}:{id:'tasks',label:'<img src=x>',instructions:'Read only',status:'disabled',fields:[{key:'entities',label:'To-do lists',domain:'todo'}],config:{enabled:false,entities:[]}}],context:[],connections:withInventory?[{transport:'ha',url:'http://ha.invalid',has_token:true}]:[]}:url.endsWith('ha-inventory')?{rooms:[{id:'study',name:'Study'}],entities:[{id:'todo.invented',name:'Invented list',room:'Study',available:true}],locations:[{id:'screen-a',name:'Desk',area_id:null}]}:url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
    {events:[],preferences:[{key:'user.test',value:'<img src=x onerror=alert(1)>'}]}};}};
  vm.createContext(context);
  vm.runInContext(fs.readFileSync('okabebot/web/amadeus.js','utf8')+'\nglobalThis.ui=amadeusUI;',context);
@@ -196,4 +196,18 @@ test('household HTML exposes bounded thresholds and retains attention/identity c
  assert.match(html,/Device activity does not identify anyone or prove occupancy/);
  assert.match(html,/separate from optional health-habit coaching/);
  assert.match(html,/Spoken reminders share the proactive daily limit/);
+});
+
+test('private health controls save explicit goals and shared-room suppression without enabling feed',async()=>{
+ const f=await fixture();
+ assert.equal(f.nodes['health-enabled'].checked,false);
+ assert.equal(f.nodes['health-state'].textContent,'Private <health>');
+ assert.match(f.nodes['health-readings'].children[0].textContent,/daily steps: 42/);
+ f.nodes['health-enabled'].checked=true;f.nodes['health-daily-steps'].value='4321';
+ f.nodes['health-nudge-after'].value='18';f.nodes['health-others-detected'].checked=true;
+ f.nodes['health-form'].onsubmit({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve));
+ const saved=f.requests.find(r=>r.url.endsWith('/health')&&r.options.method==='POST');
+ assert.deepEqual(JSON.parse(saved.options.body),{enabled:true,daily_steps:4321,nudge_after:18,others_detected:true});
+ assert.ok(!f.requests.some(r=>r.url.endsWith('/feeds')&&r.options.method==='POST'));
+ f.deny();await assert.rejects(()=>f.context.ui.load());assert.equal(f.nodes['health-readings'].children.length,0);
 });

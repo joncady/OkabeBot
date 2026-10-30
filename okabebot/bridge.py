@@ -1158,6 +1158,7 @@ def handler(bridge):
                 "/tags.js",
                 "/chores.js",
                 "/household-nudges.js",
+                "/health.js",
                 "/storage.js",
                 "/dashboard-navigation.js",
                 "/amadeus-text.js",

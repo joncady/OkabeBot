@@ -39,6 +39,14 @@
 <p class="hint">These are upper limits, not scheduled interruptions. Quiet or unavailable days may have fewer check-ins.</p>
 <button>Save conversation choice</button><button type="button" id="conversation-resume">Resume reply</button></form>
 </details>
+<details id="amadeus-health" class="subpanel"><summary>Health · private goals &amp; encouragement</summary>
+<p>Select daily wellbeing sensors in <a href="#amadeus-feeds">Health context feed</a>. Goals are yours, with no medical interpretation. Coaching topics, snooze, quiet hours, focus and media still apply. One gentle invitation or positive affirmation per day, shared with morning coaching.</p>
+<form id="health-form"><label class="amadeus-option"><input id="health-enabled" type="checkbox"> Include chosen health goal in check-ins</label>
+<label>My daily step goal (0 = none)<input id="health-daily-steps" type="number" min="0" max="100000" value="0" required></label>
+<label>Earliest local hour for an unfinished-goal invitation<input id="health-nudge-after" type="number" min="0" max="23" value="17" required></label>
+<label class="amadeus-option"><input id="health-others-detected" type="checkbox"> Others detected · suppress health discussion</label>
+<p>This manual override defaults off. Bind optional other-person sensors in the Health feed later; on, unknown or stale bound signals suppress health details and discussion. This is not person identification.</p><button>Save health choices</button></form>
+<p id="health-state" role="status"></p><ul id="health-readings"></ul></details>
 <details id="household-nudges" class="subpanel"><summary>Household nudges</summary>
 <p>Read-only reminders from your selected <a href="#amadeus-feeds">Room activity and Home devices sources</a>. These never switch lights, close doors or change heating. Device activity does not identify anyone or prove occupancy. Household reminders are separate from optional health-habit coaching.</p>
 <form id="household-form"><label class="amadeus-option"><input id="household-enabled" type="checkbox"> Allow household nudges</label>

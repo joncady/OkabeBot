@@ -61,6 +61,23 @@ class AmadeusHttpTests(unittest.TestCase):
         ) as r:
             return json.load(r)
 
+    def test_health_owner_only_and_strict_configuration(self):
+        from okabebot.amadeus_health import DEFAULTS
+
+        self.request("/amadeus/api/settings", SETUP)
+        value = self.request("/amadeus/api/health")
+        self.assertEqual(value["settings"], DEFAULTS)
+        self.assertFalse(value["others_detected"])
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/health", token="publish-only")
+        self.assertEqual(caught.exception.code, 403)
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/health", dict(DEFAULTS, daily_steps=-1))
+        self.assertEqual(caught.exception.code, 400)
+        saved = self.request("/amadeus/api/health", dict(DEFAULTS, others_detected=True))
+        self.assertTrue(saved["others_detected"])
+        self.assertEqual(saved["readings"], [])
+
     def test_household_nudges_owner_validation_and_default_off(self):
         from okabebot.household_nudges import DEFAULTS
 
@@ -91,7 +108,7 @@ class AmadeusHttpTests(unittest.TestCase):
         self.bridge.amadeus_feeds = Feeds(self.folder / "amadeus")
         self.request("/amadeus/api/settings", SETUP)
         initial = self.request("/amadeus/api/feeds")
-        self.assertEqual(len(initial["feeds"]), 8)
+        self.assertEqual(len(initial["feeds"]), 9)
         self.assertFalse(initial["delivery_enabled"])
         self.request(
             "/amadeus/api/feed-connection",

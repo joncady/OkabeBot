@@ -378,6 +378,24 @@ class ProactiveConversation:
             household=item,
         )
 
+    def _health_offer(self, store, profile, cfg, state, day):
+        from .amadeus_health import Health
+
+        if state.get("session_until", 0) > self.clock():
+            return None
+        item = Health(store).offer()
+        return (
+            dict(
+                kind="health",
+                profile=profile,
+                destination=cfg.get("destination"),
+                day=day,
+                health=item,
+            )
+            if item
+            else None
+        )
+
     @staticmethod
     def chore_text(items):
         from .chores import chore_label
@@ -387,6 +405,8 @@ class ProactiveConversation:
 
     def opening(self, offer, composer):
         """Generate framing only. Chore titles remain local, untrusted data slots."""
+        if offer.get("kind") == "health":
+            return {"reply": offer["health"]["text"], "memory": None}
         if offer.get("kind") == "household":
             fragment = offer["household"]["text"]
             template = "A household note: {household}"
@@ -453,6 +473,16 @@ class ProactiveConversation:
 
     def revalidate_chore_offer(self, offer):
         """Last factual/privacy gate after capture shutdown, before actual output."""
+        if offer.get("kind") == "health":
+            with self.store() as s:
+                setup = preference(s, SYSTEM, KEY, {})
+                profile = setup.get("profile", SYSTEM)
+                cfg = preference(s, profile, CONFIG, {})
+                state = {**preference(s, profile, self.state_key, {}), "session_until": 0}
+                return (
+                    self.permitted(setup, cfg)
+                    and self._health_offer(s, profile, cfg, state, self._day(setup)) == offer
+                )
         if offer.get("kind") == "household":
             with self.store() as s:
                 setup = preference(s, SYSTEM, KEY, {})
@@ -500,6 +530,16 @@ class ProactiveConversation:
 
     def delivered(self, offer, *, success):
         """Acknowledge only actual speech; failed attempts retain future reminders."""
+        if offer.get("kind") == "health" and success:
+            from .amadeus_coaching import Coaching
+
+            if self.revalidate_chore_offer(offer):
+                with self.store() as s:
+                    setup = preference(s, SYSTEM, KEY, {})
+                    Coaching(s, timezone=setup["timezone"]).record_delivery(
+                        setup["profile"], offer["health"]["topic"]
+                    )
+            return
         if offer.get("kind") == "household" and success:
             from .household_nudges import HouseholdNudges
 
@@ -630,6 +670,11 @@ class ProactiveConversation:
                 if self.permitted(setup, cfg)
                 else None
             )
+            health_offer = (
+                self._health_offer(s, profile, cfg, state, day)
+                if self.permitted(setup, cfg)
+                else None
+            )
             door_ready = bool(
                 state
                 and state.get("consumed") is False
@@ -642,7 +687,9 @@ class ProactiveConversation:
                 presence_blocked
                 or not self.permitted(setup, cfg)
                 or not self._budget_allowed(cfg, budget)
-                or not (chore_offer or household_offer or door_ready or checkin_offer)
+                or not (
+                    chore_offer or household_offer or health_offer or door_ready or checkin_offer
+                )
                 or destination != cfg.get("destination")
                 or busy
                 or calendar_busy
@@ -671,6 +718,7 @@ class ProactiveConversation:
             return (
                 chore_offer
                 or household_offer
+                or health_offer
                 or (
                     dict(destination=cfg["destination"], day=state["day"])
                     if door_ready
@@ -691,7 +739,10 @@ class ProactiveConversation:
             if not self.permitted(setup, cfg) or not self._budget_allowed(cfg, budget):
                 return False
             kind = offer.get("kind")
-            if kind == "household":
+            if kind == "health":
+                if self._health_offer(store, profile, cfg, state, day) != offer:
+                    return False
+            elif kind == "household":
                 if self._household_offer(store, profile, cfg, state, day) != offer:
                     return False
             elif kind == "chores":
@@ -711,7 +762,7 @@ class ProactiveConversation:
             ):
                 return False
             now = self.clock()
-            if kind in ("chores", "checkin", "household"):
+            if kind in ("chores", "checkin", "household", "health"):
                 state.update(
                     day=day, expires_at=now + 600, history=[], last_reply="", last_tools=[]
                 )
@@ -753,6 +804,14 @@ class ProactiveConversation:
                         pending=None, last_reply="", session_until=0, history=[], last_tools=[]
                     )
                     s.remember(p, self.state_key, state)
+                return None
+            from .amadeus_health import others_detected
+
+            if state.get("invitation_kind") == "health" and others_detected(s):
+                state.update(
+                    session_until=0, pending=None, last_reply="", history=[], last_tools=[]
+                )
+                s.remember(p, self.state_key, state)
                 return None
             from .amadeus_feeds import context as feed_context
 
@@ -841,6 +900,8 @@ class ProactiveConversation:
                 self.end()
                 return "No problem. I won't save it as a preference."
             result = generate(text, context)
+            if context.get("invitation_kind") == "health" and not self.context():
+                return None  # A room/privacy change during generation discards the reply.
             if not isinstance(result, dict) or set(result) != {"reply", "memory"}:
                 raise ValueError("Invalid conversation result")
             reply = result["reply"]
@@ -852,7 +913,7 @@ class ProactiveConversation:
             ):
                 raise ValueError("Invalid spoken reply")
             memory = result["memory"]
-            if context.get("invitation_kind") in ("chores", "household"):
+            if context.get("invitation_kind") in ("chores", "household", "health"):
                 # Accepting/declining a reminder is neither task completion nor a
                 # statement of taste. Chore sessions never harvest preferences.
                 memory = None

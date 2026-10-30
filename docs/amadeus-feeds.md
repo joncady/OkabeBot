@@ -215,3 +215,38 @@ or stale states defer invitations. A lights-only selection adds no speech gate.
 This additional gate does not replace existing media/focus/quiet-hours policies or
 change output routing. No automatic light switch-off, energy-saving prompt or
 room-presence inference is implemented by enabling this source.
+
+### Health: private wellbeing totals
+
+The optional **Health** HA feed reads one explicitly selected source per metric:
+daily steps, sleep duration in minutes, and daily active minutes. Select a
+daily-reset step total; the Android hardware step counter can instead count since
+reboot. Wear OS daily steps and Health Connect are different upstream sources.
+Unavailable Health Connect entities are not evidence of successful synchronization.
+No heart rate, weight, raw sleep stages or other sensor attributes are imported.
+Sensor timestamps and units are retained; stale/previous-day totals cannot establish
+a current goal achievement. Daily source values are not added together.
+
+**Today → Health** shows an owner-only summary. **Amadeus → Health** exposes a
+user-chosen step goal, an earliest local invitation hour, enablement and an
+**Others detected** override. Zero means no goal. No goal or coaching topic is
+inferred from readings. Feed consent, health-goal enablement and existing coaching
+opt-in/stop/snooze are separate controls. Current goal-backed support covers
+movement; sleep/activity readings supply private context, not inferred diagnoses
+or recommendations. Invitations are optional and nonjudgmental; fresh completion
+can receive positive acknowledgment. Proactive health offers share attention,
+quiet/focus/media, presence, delivery budget and the daily coaching cooldown with
+morning coaching. No new notification or audio route is added.
+
+Others detection defaults **false** as a prototype configuration, not proof that
+someone is alone. An owner can override it or bind optional binary sensors that
+specifically mean *another person is present*. General occupancy cannot distinguish
+the owner from guests. Any bound on/unknown/missing/stale signal suppresses health
+model/tool context, morning coaching and health check-ins. Bound signals are read
+through HA; their current state is fresh only while the health snapshot is fresh.
+A pending health offer is checked again before output, and a health conversation
+is discarded when this gate closes. Actual multi-person identification and sensor
+fusion remain future work; configure those signals before relying on automatic
+shared-room privacy. Raw personal readings, goals and outcomes stay in private
+local state, with existing retention/forget/revocation controls. No participant
+records belong in the repository or issue tracker.

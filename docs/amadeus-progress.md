@@ -503,3 +503,10 @@ collectors/recording budgets and full provider pagination remain separate work.
 - Added explicitly selected NFC room cues and same-room companion following, with unique/owner-selected screen resolution, short-lived unknown-identity context, existing handoff/deduplication and unchanged home/away semantics.
 
 - NFC routing now distinguishes automatic same-area screen selection from an explicit cross-area fallback, preserving the scan’s room cue and showing area labels beside destination choices.
+
+Private wellbeing context now has a registry-driven HA adapter, owner-only health
+sections, explicit goal controls and supportive movement check-ins. Shared-room
+suppression covers context retrieval, morning coaching and pending proactive
+output. Numeric signal updates use existing private aggregation; metrics are not
+summed across devices. Multi-person identification and broader goal types remain
+open capability gaps. No participant outcomes or measurements are reported here.

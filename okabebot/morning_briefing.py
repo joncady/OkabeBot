@@ -153,6 +153,17 @@ class Briefing:
                 return None
             if quiet(setup, store.clock()) and not voice["quiet_override"]:
                 return None
+            from .amadeus_health import Health, others_detected
+
+            if others_detected(store):
+                return None
+            if health := Health(store).offer(morning=True):
+                return {
+                    "kind": "coaching",
+                    "title": "A little encouragement",
+                    "body": health["text"],
+                    "topic": health["topic"],
+                }
             policy = Coaching(store, timezone=setup["timezone"])
             permission = policy._get(setup["profile"], SETTINGS)
             if (

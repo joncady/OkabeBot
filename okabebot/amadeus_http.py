@@ -148,6 +148,11 @@ def handle(handler, bridge, *, post=False):
             result = (
                 bridge.amadeus_feeds.configure(data) if post else bridge.amadeus_feeds.snapshot()
             )
+        elif path == "/amadeus/api/health":
+            from .amadeus_health import Health
+
+            health = Health(service.store)
+            result = health.configure(data) if post else health.snapshot()
         elif path == "/amadeus/api/household-nudges":
             from .household_nudges import HouseholdNudges, configure
 

@@ -127,7 +127,9 @@ def ingest(
         if noisy:
             bucket = int(now // window_seconds) * window_seconds
             try:
-                numeric = float(item.get("state", ""))
+                numeric = float(
+                    item.get("value", "") if source == "health" else item.get("state", "")
+                )
                 if not math.isfinite(numeric) or abs(numeric) > 1e100:
                     numeric = None
             except (ValueError, TypeError):

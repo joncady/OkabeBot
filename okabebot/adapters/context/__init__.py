@@ -53,6 +53,21 @@ FEEDS = {
             "Enable selected Companion app sensors; use binary sensors only. No app names, GPS or keystrokes.",
         ),
         Feed(
+            "health",
+            "Health · selected daily wellbeing signals",
+            "ha",
+            (
+                ("daily_steps", "Daily steps (one daily-reset source)", "sensor"),
+                ("sleep_minutes", "Sleep duration in minutes (one source)", "sensor"),
+                ("active_minutes", "Daily active minutes (one source)", "sensor"),
+                ("others", "Other people detected (optional binary sensors)", "binary_sensor"),
+            ),
+            ("id", "metric", "value", "unit", "sample_at"),
+            "Private, opt-in readings only. Choose daily-reset totals, not steps since reboot. No heart rate, weight, diagnosis or sleep-confidence inference. Others detected suppresses health discussion; unknown bound occupancy also suppresses it. Goals and coaching are separate choices.",
+            interval=300,
+            freshness=900,
+        ),
+        Feed(
             "room_activity",
             "Room activity · lights, switches and speakers",
             "ha",
@@ -216,6 +231,10 @@ def validate_config(feed, value):
                 raise ValueError("Choose a supported rail line")
             if domain not in ("text", "line") and not entry.startswith(domain + "."):
                 raise ValueError("Wrong Home Assistant entity domain")
+    if feed.id == "health" and any(
+        len(value[k]) > 1 for k in ("daily_steps", "sleep_minutes", "active_minutes")
+    ):
+        raise ValueError("Choose one source per health metric to avoid double counting")
     if value["enabled"] and feed.transport == "ha" and not any(value[f[0]] for f in feed.fields):
         raise ValueError("Select at least one entity")
     return value

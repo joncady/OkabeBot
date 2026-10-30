@@ -1903,3 +1903,20 @@ names from the metadata cache. Room cues still refer to the scanned tag’s area
 this adds no implicit adjacency, area merge or automatic cross-room fallback.
 
 The installed owner API was checked for destination-area labels and explicit fallback resolution without replaying a scan or requesting a handoff. Physical acceptance of the fallback remains an owner check.
+
+### Private health context and encouragement
+
+The controller's existing HA read connection can collect owner-selected daily
+wellbeing totals through the context-feed registry; no new service, port, cloud
+processor or device transport is introduced. Goals, shared-room overrides and
+source bindings live in private Amadeus state and are editable in owner dashboard
+controls. Movement encouragement reuses proactive/morning coaching delivery and
+its consent, timing and audio routes. Other-person detection is a configurable
+input gate, not an installed identification system; it defaults false until the
+owner binds signals. Source implementation and actual configured collection must
+be verified separately. The existing README topology remains valid.
+
+Installed capability checks confirmed controller startup, existing source feeds,
+speech and Pi connectivity after the health UI/adapter update. Health collection
+and goal-backed support remain disabled by default pending private source/goal
+selection. No health speech or physical device change was used for acceptance.

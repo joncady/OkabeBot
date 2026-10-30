@@ -12,7 +12,7 @@ const amadeusUI = (() => {
     editing=false;$('amadeus-review').hidden=true;
     for(const id of ['amadeus-setup','amadeus-controls','amadeus-memory','amadeus-morning','amadeus-habits','amadeus-feeds']) $(id).hidden=true;
     $('conversation-form').reset();$('conversation-destination').replaceChildren();
-    $('household-form').reset();$('household-preview').textContent='';$('household-state').textContent='';
+    $('health-form').reset();$('health-readings').replaceChildren();$('health-state').textContent='';$('household-form').reset();$('household-preview').textContent='';$('household-state').textContent='';
     $('amadeus-form').reset();$('memory-form').reset();
     $('sources').replaceChildren();$('topics').replaceChildren();$('memory-list').replaceChildren();
     $('morning-voice-form').reset();$('morning-person').textContent='';$('morning-show-status').textContent='';$('morning-test-status').textContent='';$('morning-test-tv').disabled=true;$('morning-preview').textContent='';$('morning-status').textContent='';$('morning-form').reset();$('morning-destination').replaceChildren();
@@ -124,6 +124,7 @@ const amadeusUI = (() => {
         entries=selected;draw();note.textContent='Selected '+selected.length+' entities. Save feed to apply; collection has not been enabled.';
       } finally {all.disabled=false;}
     });
+    if(feedId==='health'&&field.key!=='others'){add.hidden=true;all.hidden=true;hint.textContent='Choose one daily-total source for this metric to avoid double counting. Clear removes it.';}
     const clear=document.createElement('button');clear.type='button';clear.textContent='Clear';clear.onclick=()=>{entries=[''];draw();};
     const note=document.createElement('p');note.className='feed-help';note.textContent=eligible.length?'Select all fills this field only. Save feed applies your choices.':'Refresh rooms and entities to enable Select all.';
     const actions=document.createElement('div');actions.className='feed-actions';actions.append(all,clear);
@@ -287,6 +288,17 @@ const amadeusUI = (() => {
     comfort_enabled:['comfort-enabled','checkbox',true],cold_c:['cold-c','number',18],hot_c:['hot-c','number',27],
     comfort_hold_minutes:['comfort-hold-minutes','number',15],cooldown_hours:['cooldown-hours','number',12]
   };
+  async function health() {
+    const value=await api('health');if(!value.settings)return;
+    $('health-enabled').checked=value.settings.enabled===true;
+    $('health-daily-steps').value=value.settings.daily_steps;
+    $('health-nudge-after').value=value.settings.nudge_after;
+    $('health-others-detected').checked=value.settings.others_detected===true;
+    $('health-state').textContent=value.privacy;
+    $('health-readings').replaceChildren();
+    for(const reading of value.readings||[]){if(reading.metric==='others')continue;const item=document.createElement('li');item.textContent=reading.metric.replaceAll('_',' ')+': '+reading.value+' '+reading.unit+' · source updated '+new Date(reading.sample_at*1000).toLocaleString();$('health-readings').append(item);}
+    if(!(value.readings||[]).length){const item=document.createElement('li');item.textContent='No fresh selected health readings. Enable the Health feed and choose sensors.';$('health-readings').append(item);}
+  }
   async function household() {
     const value=await api('household-nudges');if(!value.config)return;
     for(const [key,[id,type,fallback]] of Object.entries(householdFields)){
@@ -333,15 +345,18 @@ const amadeusUI = (() => {
       $('amadeus-pause').textContent=current.paused?'Shadow collection paused':'Pause shadow collection';
       $('amadeus-pause').setAttribute('aria-pressed',String(current.paused));
       $('amadeus-guest').textContent=current.guest?'Guest mode on':'Guest mode off';
-      $('amadeus-guest').setAttribute('aria-pressed',String(current.guest)); await memory(); await morning(); await habits(); await conversation(); await household(); await feeds();
+      $('amadeus-guest').setAttribute('aria-pressed',String(current.guest)); await memory(); await morning(); await habits(); await conversation(); await household(); await health(); await feeds();
     }
-    if(!current){$('household-form').reset();$('household-preview').textContent='';$('household-state').textContent='';$('amadeus-habits').hidden=true;$('habits-preview').textContent='';$('habits-routines').replaceChildren();}
+    if(!current){$('health-form').reset();$('health-readings').replaceChildren();$('health-state').textContent='';$('household-form').reset();$('household-preview').textContent='';$('household-state').textContent='';$('amadeus-habits').hidden=true;$('habits-preview').textContent='';$('habits-routines').replaceChildren();}
     message(value.collection_active ? 'Metadata collection enabled · routine predictions stay in shadow; morning speech and conversations have separate controls.' : 'Metadata collection paused · proactive conversations are paused too.');
   }
   async function run(action) { try { await action(); } catch(error) { message(error.message); } }
   $('feeds-refresh').onclick=()=>run(feeds);
   $('conversation-resume').onclick=()=>run(async()=>{await api('conversation-resume',{});message('Reply resumed. Use the usual push-to-talk button; the invitation was not replayed.');});
   $('conversation-form').onsubmit=event=>{event.preventDefault();run(async()=>{await api('conversation',{enabled:$('conversation-enabled').checked,destination:$('conversation-destination').value,max_per_day:Number($('conversation-max-per-day').value),min_gap_minutes:Number($('conversation-min-gap').value)});await conversation();message('Conversation choice saved.');});};
+  $('health-form').onsubmit=event=>{event.preventDefault();run(async()=>{
+    await api('health',{enabled:$('health-enabled').checked,daily_steps:Number($('health-daily-steps').value),nudge_after:Number($('health-nudge-after').value),others_detected:$('health-others-detected').checked});await health();message('Private health choices saved. Observation and coaching consent remain separate.');
+  });};
   $('household-form').onsubmit=event=>{event.preventDefault();run(async()=>{
     const config={};
     for(const [key,[id,type]] of Object.entries(householdFields)){
@@ -349,7 +364,7 @@ const amadeusUI = (() => {
       if(key==='cold_c'||key==='hot_c')value=Math.round((value-32)*5/9*10000)/10000;
       config[key]=value;
     }
-    await api('household-nudges',config);await household();message('Household choices saved. No device-control permission was changed.');
+    await api('household-nudges',config);await household(); await health();message('Household choices saved. No device-control permission was changed.');
   });};
   $('household-refresh').onclick=()=>run(household);
   $('habits-refresh').onclick=()=>run(habits);

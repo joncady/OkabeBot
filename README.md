@@ -829,3 +829,9 @@ NFC actions and linked chores inherit room/floor metadata from HA tag entities b
 Selected NFC tags can also provide an expiring room cue and call the companion to a screen bound to that HA room. This is per-tag opt-in, never home/away or identity evidence; see [NFC chores and room cues](docs/chores.md).
 
 NFC routing prefers screens in the tag’s HA area. When that area has no screen, an owner-selected fallback may be in another area; destination choices show their assigned area. The scan’s room cue stays unchanged.
+
+Optional private health context is available through the HA feed registry and
+owner dashboard. User-chosen movement goals can contribute gentle check-ins or
+positive acknowledgments, subject to existing coaching consent and attention
+limits. Shared-room suppression has a manual override and optional sensor inputs;
+it does not identify people. See [health feed setup](docs/amadeus-feeds.md#health-private-wellbeing-totals).

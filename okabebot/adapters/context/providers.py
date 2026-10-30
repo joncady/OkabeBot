@@ -133,6 +133,52 @@ class HomeAssistant:
                             "state": state if state in ("on", "off") else "unknown",
                         }
                     )
+        elif feed.id == "health":
+            import math
+
+            units = {
+                "daily_steps": {"steps", "step"},
+                "sleep_minutes": {"min", "minutes"},
+                "active_minutes": {"min", "minutes"},
+            }
+            for metric, _, _ in feed.fields:
+                for entity in cfg[metric]:
+                    value = self.call("states/" + quote(entity, safe=""))
+                    sample = stamp(value["last_updated"])
+                    if metric == "others":
+                        state = value.get("state")
+                        items.append(
+                            {
+                                "id": identity(entity),
+                                "metric": metric,
+                                "value": state if state in ("on", "off") else "unknown",
+                                "unit": "presence",
+                                "sample_at": now,
+                            }
+                        )
+                        continue
+                    unit = value.get("attributes", {}).get("unit_of_measurement")
+                    try:
+                        number = float(value["state"])
+                    except (ValueError, TypeError):
+                        continue
+                    if (
+                        unit not in units[metric]
+                        or not math.isfinite(number)
+                        or not 0 <= number <= (200000 if metric == "daily_steps" else 1440)
+                        or sample > now
+                        or now - sample > 86400
+                    ):
+                        continue
+                    items.append(
+                        {
+                            "id": identity(entity),
+                            "metric": metric,
+                            "value": str(number),
+                            "unit": "steps" if metric == "daily_steps" else "min",
+                            "sample_at": sample,
+                        }
+                    )
         elif feed.id == "room_activity":
             for field, _, category in feed.fields:
                 for entity in cfg[field]:

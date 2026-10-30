@@ -73,6 +73,11 @@ def context(store, *, limit=12, include_items=True, full=False):
         cfg = {**default(feed), **preference(store, SYSTEM, PREFIX + feed.id, {})}
         if not cfg["enabled"]:
             continue
+        if feed.id == "health":
+            from .amadeus_health import others_detected
+
+            if others_detected(store):
+                continue
         value = json.loads(row["payload"])
         if value["valid_until_at"] <= now:
             continue
@@ -249,6 +254,11 @@ class Feeds:
             cfg = {**default(feed), **preference(store, SYSTEM, PREFIX + source, {})}
             if not cfg["enabled"] or not permitted(setup, feed):
                 return {"items": [], "state": "paused_or_not_consented", "next_offset": None}
+            if source == "health":
+                from .amadeus_health import others_detected
+
+                if others_detected(store):
+                    return {"items": [], "state": "shared_room_suppressed", "next_offset": None}
             result = read_records(
                 store,
                 source,
@@ -546,7 +556,8 @@ class Feeds:
                             full_items,
                             complete=source_complete,
                             valid_until=now + feed.freshness,
-                            noisy=feed.id in ("device_activity", "appliances", "room_activity"),
+                            noisy=feed.id
+                            in ("device_activity", "appliances", "room_activity", "health"),
                             window_seconds=60
                             * preference(
                                 store, SYSTEM, "feed.storage_policy", {"signal_window_minutes": 15}
