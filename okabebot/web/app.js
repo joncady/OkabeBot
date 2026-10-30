@@ -351,6 +351,16 @@ async function refresh() {
     if (connectionError && document.querySelector("#error").textContent === connectionError) document.querySelector("#error").textContent = "";
     connectionError = "";
     enabled = s.enabled;
+    if(s.readiness){
+      const r=s.readiness, panel=document.querySelector('#readiness-panel');
+      panel.dataset.state=r.state;
+      document.querySelector('#readiness-icon').textContent=r.state==='ready'?'✓':r.state==='starting'?'◌':'!';
+      document.querySelector('#readiness-summary').textContent=r.state==='ready'?(r.components.some(c=>c.state==='partial')?'Lab ready · limited integration coverage':'Lab ready'):r.state==='starting'?'Starting · reconnecting services':'Lab needs attention';
+      document.querySelector('#readiness-startup').textContent=r.startup_complete_at?`Startup complete ${new Date(r.startup_complete_at*1000).toLocaleTimeString()}`:'Waiting for core services; initial startup has a three-minute recovery window.';
+      const list=document.querySelector('#readiness-components');list.replaceChildren();
+      for(const c of r.components){const item=document.createElement('li');item.textContent=`${c.state==='ready'?'✓':c.state==='partial'?'◐':c.state==='not_configured'?'–':['history','recovered'].includes(c.state)?'↻':'!'} ${c.label} · ${c.detail}`;list.append(item);}
+    }
+
     if(s.screen_power){
       const c=s.screen_power.config;
       if(!powerInitialized){

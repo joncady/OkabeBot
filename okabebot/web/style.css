@@ -393,3 +393,9 @@ footer span {
 
 .tag-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:16px 0}.tag-form label{display:flex;flex-direction:column;gap:8px}.tag-form input,.tag-form select{min-width:0;width:100%;box-sizing:border-box}.tag-form input[type=checkbox]{width:auto;align-self:flex-start}.tag-card{border:2px solid var(--border,#465166);padding:12px;margin:12px 0}.tag-card h3{margin-top:0}.tag-card button{margin-right:8px}#tag-id{font-family:monospace;font-size:.85em}
 .tag-form input:not([type=checkbox]){min-height:48px;padding:10px}
+
+.readiness summary { cursor:pointer; font-weight:bold; }
+.readiness[data-state="ready"] { border-color:#6dab83; }
+.readiness[data-state="attention"] { border-color:#e9b85b; }
+.readiness #readiness-icon { display:inline-block; border:2px solid currentColor; padding:0 .3em; margin-right:.4em; }
+.readiness li { margin:.45rem 0; }

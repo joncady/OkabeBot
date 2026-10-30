@@ -76,7 +76,7 @@ combining display, camera, Bluetooth, audio and button services. **The all-in-on
 
 ## Current deployment map
 
-Last reviewed **2026-10-27**; component-specific verification is recorded in the inventory. The Mac hosts inference, orchestration and Home
+Last reviewed **2026-10-30**; component-specific verification is recorded in the inventory. The Mac hosts inference, orchestration and Home
 Assistant; the Pi handles physical I/O and renders the character. A tablet is a
 browser controller, not a backend. See the [live configuration inventory](docs/deployment.md)
 for device status, model settings, ports, private configuration and recovery.
@@ -84,12 +84,15 @@ The runtime owns an optional persistent AC-only system-sleep guard; Mac display 
 is allowed. A separate Docker login helper starts HA/MQTT after login. Dev includes
 editable Pi screen night hours and temporary touch/button wake; audio and sensors stay on.
 A user login is required after reboot; closed-lid hosting is not guaranteed.
+The dashboard readiness badge separates core startup, live faults, limited provider
+coverage and historical HA notices. Expand it for component checks; the controller
+also writes a single `Startup complete` message when core dependencies are ready.
 
 ```mermaid
 flowchart TB
     Tablet["Tablet or laptop browser"] -->|"Remembered-auth dashboard: 8768"| App
     subgraph Mac["Mac - active controller"]
-        Supervisor["Login LaunchAgent and runtime supervisor"] --> App["OkabeBot controller and shared actions"]
+        Supervisor["Login LaunchAgent and runtime supervisor"] --> App["OkabeBot controller, readiness and shared actions"]
         Supervisor --> SleepGuard["Optional AC sleep guard; display may sleep"]
         DockerLogin["Optional Docker login LaunchAgent"] --> HA
         Supervisor --> Speech["Warm Qwen TTS worker"]

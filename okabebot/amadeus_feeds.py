@@ -502,6 +502,9 @@ class Feeds:
                 except Exception:
                     # Exception text can include tokens, URLs or provider bodies.
                     self.health[feed.id] = {"state": "unavailable_check_setup"}
+                    if feed.transport == "ha":
+                        # Local HA may still be starting; do not wait a full feed interval.
+                        self.next_poll[feed.id] = now + min(feed.interval, 30)
         finally:
             self.lock.release()
 

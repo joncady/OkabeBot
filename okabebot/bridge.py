@@ -210,6 +210,9 @@ class Bridge:
         from .hardware import rpc
 
         self.screen_power = ScreenPower(state_dir(), rpc)
+        from .readiness import Readiness
+
+        self.readiness = Readiness(state_dir())
         self.status = "Ready — hold the button to talk"
         self.show_activity("idle")
         (self.folder / "control.json").write_text(json.dumps({"url": self.url, "pid": os.getpid()}))
@@ -219,6 +222,7 @@ class Bridge:
         threading.Thread(target=self.poll, daemon=True).start()
         threading.Thread(target=self.poll_sources, daemon=True).start()
         threading.Thread(target=self.poll_screen_power, daemon=True).start()
+        threading.Thread(target=self.poll_readiness, daemon=True).start()
         threading.Thread(target=self.poll_music, daemon=True).start()
         threading.Thread(target=self.poll_music_meter, daemon=True).start()
         threading.Thread(target=self.poll_health, daemon=True).start()
@@ -310,6 +314,16 @@ class Bridge:
             if kind == "error":
                 self.status = str(data.get("message", data))
         print(kind, json.dumps(data)[:500], flush=True)
+
+    def poll_readiness(self):
+        while not self.closing.is_set():
+            self.readiness.probe()
+            self.readiness.snapshot(
+                self.device_health,
+                self.speech_health,
+                self.codex is None or self.codex.process.poll() is None,
+            )
+            self.closing.wait(30)
 
     def poll_screen_power(self):
         while not self.closing.is_set():
@@ -933,6 +947,13 @@ class Bridge:
                 with self.codex.lock:
                     approvals = list(self.codex.approvals.values())
             return {
+                "readiness": self.readiness.snapshot(
+                    self.device_health,
+                    self.speech_health,
+                    self.codex is None or self.codex.process.poll() is None,
+                    dict(self.amadeus_feeds.health),
+                    dict(self.github_queue.health) if self.github_queue else None,
+                ),
                 "presence": presence_status(state_dir()),
                 "screen_power": self.screen_power.snapshot(),
                 "runtime_policy": runtime_policy.settings(state_dir()),

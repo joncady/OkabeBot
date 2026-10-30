@@ -202,3 +202,21 @@ For Ring history, add selected timestamp entities to `amadeus_entities` and map 
 NFC scan-to-destination mapping uses a scoped HA publisher and the existing
 companion movement interface. See [NFC tag setup](nfc-tags.md); tag-writing occurs
 in the mobile HA app, while action configuration stays in the owner dashboard.
+
+
+### Readiness versus historical errors
+
+Expand the dashboard **Lab ready / Starting / Lab needs attention** badge for live
+component checks and startup completion time. The controller logs `Startup complete`
+once per controller process when its core dependencies answer successfully. HA core
+`RUNNING` and an integration entry marked loaded do not prove its push listener is
+healthy. Known listener failures, limited model/profile coverage and current-run
+callback history are reported separately; raw HA logs remain in Home Assistant.
+
+For the optional pinned Ring push workaround, run `python3 scripts/patch-ha-ring-push.py`
+first (dry run), then `--apply` only for its supported versions. Restart HA to load
+the file. Validate offline with `docker exec -i okabebot-home-assistant python - < scripts/check-ha-ring-push.py`.
+Backups live privately under `/config/.local-compat-backups`. Image replacement
+removes the workaround; see [deployment inventory](deployment.md#readiness-and-ha-push-diagnostics).
+An unknown Ring model needs verified upstream support, and a ThinQ unsupported
+profile needs cloud/provider support; suppressing those logs does not restore capability.

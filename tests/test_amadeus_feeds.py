@@ -50,6 +50,18 @@ class FeedTests(unittest.TestCase):
         with closing(Store(self.path, clock=lambda: self.now)) as store:
             return context(store)
 
+    def test_ha_startup_failure_retries_and_then_returns_to_normal_interval(self):
+        self.enable(entities=["todo.invented"])
+        original = self.feeds.reader
+        self.feeds.reader = lambda *args: (_ for _ in ()).throw(OSError("starting"))
+        self.feeds.tick()
+        self.assertEqual(self.now + 30, self.feeds.next_poll["tasks"])
+        self.now += 31
+        self.feeds.reader = original
+        self.feeds.tick()
+        self.assertEqual("connected", self.feeds.health["tasks"]["state"])
+        self.assertEqual(self.now + FEEDS["tasks"].interval, self.feeds.next_poll["tasks"])
+
     def test_consent_before_io_private_context_and_empty_snapshot_clears(self):
         self.feeds.tick()
         self.assertEqual(self.calls, [])

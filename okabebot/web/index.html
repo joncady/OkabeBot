@@ -15,6 +15,12 @@
       <a id="home-assistant-portal" target="_blank" rel="noopener noreferrer" hidden>Home Assistant ↗</a><a href="/amadeus/">Amadeus setup</a><button id="dev-toggle" class="small" aria-pressed="false">Dev</button>
     </header>
     <main>
+      <details class="panel readiness" id="readiness-panel">
+        <summary><span id="readiness-icon" aria-hidden="true">◌</span> <span id="readiness-summary" role="status">Checking services…</span></summary>
+        <p id="readiness-startup" class="hint"></p>
+        <ul id="readiness-components"></ul>
+        <p class="hint">Live probes, not a cleared error log. HA core readiness does not guarantee every integration works. Database checks run at startup and hourly.</p>
+      </details>
       <section id="dashboard-auth" class="panel" hidden>
         <h2>Connect this browser</h2><p>Paste the authorized setup link once. This browser remembers access so you can bookmark this address.</p>
         <form id="dashboard-auth-form"><input id="dashboard-access" type="password" autocomplete="off" aria-label="Authorized setup link or access key" required><button>Connect</button></form>

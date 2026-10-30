@@ -448,3 +448,15 @@ collectors/recording budgets and full provider pagination remain separate work.
   controller/MCP processes, supplementing thread-level coordination.
 - Validation: invented export, forget, revoked-source and independent-lock tests.
   Review fixes are source changes, not new physical acceptance or personal trials.
+
+
+## Readiness and integration fault isolation
+
+- Improved: owner dashboard distinguishes core startup, current dependency faults,
+  partial source coverage and historical HA notices, with bounded read-only probes.
+- Improved: an optional version-guarded push compatibility backport preserves valid
+  encrypted messages and prevents malformed packets from terminating dispatch.
+- Limited: core readiness does not certify physical actuation, every model variant
+  or cloud-provider profile support; container replacement requires patch review.
+- Next: prefer released upstream fixes and validate real notification delivery
+  independently of synthetic crypto and service-level health checks.

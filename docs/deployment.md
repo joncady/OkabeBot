@@ -205,9 +205,10 @@ Defaults keep night mode and Mac startup options off until explicitly enabled.
 An offline controller cannot extend the saved schedule beyond its horizon.
 
 The runtime restart, loaded login helper, policy delivery and display power command
-acknowledgments were checked locally. A full Mac reboot/login and physical display
-backlight behavior remain separate acceptance checks; source/unit checks do not
-prove those behaviors. No volume changes are part of this update.
+acknowledgments were checked locally. User-confirmed screen sleep/touch wake and a
+subsequent Mac reboot/login were followed by read-only database/service/connection
+checks. These validate installed recovery, not every physical integration action.
+No volume changes are part of this update.
 
 ## Devices and responsibilities
 
@@ -1662,3 +1663,50 @@ lock file under the existing private Amadeus directory, not a process, port or n
 credential owner. README topology remains unchanged. These review fixes are
 prepared for merge; no live services or physical hardware were changed during
 the local review.
+
+
+## Readiness and HA push diagnostics
+
+The installed controller owns bounded read-only readiness probes, exposed in its
+existing authenticated `/state` response and dashboard. SQLite quick/foreign-key
+checks cover application databases at startup and hourly; transient failures retry
+at the health interval. These do not replace backups or check HA recorder storage.
+HA `/api/config` must report `RUNNING` outside safe/recovery mode. Pi display/audio,
+conversation process, speech worker, configured GitHub delivery and feed coverage
+remain separately reported. Failed local HA feed reads retry after at most 30 seconds
+instead of waiting their normal collection interval; successful reads restore that
+interval. Consent and pause gates still apply. No new listener or observation consent is introduced.
+
+The initial controller recovery window is three minutes. Its first successful core
+check writes `Startup complete` to the controller log and records the timestamp in
+memory for the dashboard. A later fault does not erase that startup milestone.
+This means core dependencies answered probes, not that every physical action or
+cloud integration has been tested. Partial watch-history coverage is distinct from
+a disconnected feed. A bounded HA current-run log sample produces fixed diagnostic
+labels, never raw logs, credentials, device names or event text. A stopped Firebase
+listener remains an attention item; recovered recorder sessions and callback error
+history are shown separately. Absence from the sample is not proof of no faults.
+
+The active HA 2026.10.4 container uses an optional compatibility backport for
+firebase-messaging 0.4.5, installed with `scripts/patch-ha-ring-push.py --apply`.
+It selects named Web Push header parameters and restores omitted base64 padding,
+following [upstream PR 43](https://github.com/sdb9696/firebase-messaging/pull/43).
+It also skips/acknowledges malformed encrypted packets with a rate-limited warning
+rather than terminating the notification listener. It does not weaken decryption,
+change credentials, replay physical actions or invent camera capabilities.
+
+The script defaults to a dry run, rejects unvalidated package versions/source,
+backs up into private `/config/.local-compat-backups`, and requires an HA restart.
+The patch survives container restart but **not container replacement/upgrade**;
+review upstream versions and rerun the guarded check after an image change. Restore
+the backed-up Python file and restart HA to roll it back. Other Alexa backports
+retain their existing independent lifecycle. `scripts/check-ha-ring-push.py` runs
+inside the container with generated keys and synthetic payloads, without network
+or physical events. Core startup, app database probes and synthetic encrypted push
+handling were checked; real doorbell notification acceptance remains separate.
+
+Known provider limits: ThinQ may return `2201 / Not provided feature` for a device
+profile (including devices without ThinQ cloud support), which cannot be repaired
+by changing local credentials. Local-only appliances require a separate supported
+local interface; their appearance in an account/device list does not create one. Unknown Ring model
+kinds remain explicitly unclassified rather than being assigned guessed capabilities.
