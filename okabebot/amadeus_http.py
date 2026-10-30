@@ -125,6 +125,12 @@ def handle(handler, bridge, *, post=False):
             result = bridge.amadeus_feeds.retrieve(**data)
         elif path == "/amadeus/api/feed-check" and post:
             result = bridge.amadeus_feeds.check(data)
+        elif path == "/amadeus/api/trakt-lists" and post:
+            if not isinstance(data, dict) or set(data) != {"page"}:
+                raise ValueError("Choose an owned-list discovery page")
+            from .trakt_library import owned_lists
+
+            result = owned_lists(state_dir() / "amadeus", page=data["page"])
         elif path == "/amadeus/api/trakt-auth" and post:
             result = bridge.amadeus_feeds.trakt_auth.action(data)
         elif path == "/amadeus/api/ha-inventory":
@@ -142,19 +148,35 @@ def handle(handler, bridge, *, post=False):
             result = (
                 bridge.amadeus_feeds.configure(data) if post else bridge.amadeus_feeds.snapshot()
             )
+        elif path == "/amadeus/api/health":
+            from .amadeus_health import Health
+
+            health = Health(service.store)
+            result = health.configure(data) if post else health.snapshot()
+        elif path == "/amadeus/api/household-nudges":
+            from .household_nudges import HouseholdNudges, configure
+
+            if post:
+                configure(service.store, data)
+            provider = getattr(getattr(bridge, "proactive", None), "presence_provider", None)
+            result = HouseholdNudges(service.store, provider() if provider else {}).snapshot()
         elif path == "/amadeus/api/conversation-resume" and post:
             if data != {}:
                 raise ValueError("Resume only the existing reply context")
             result = bridge.proactive.resume_reply()
         elif path == "/amadeus/api/conversation":
             from .amadeus_habits import preference
-            from .amadeus_live import CONFIG
+            from .amadeus_live import CONFIG, FREQUENCY_DEFAULTS
 
             if not service.settings():
                 raise ValueError("Save private setup first")
             if post:
-                if not isinstance(data, dict) or set(data) != {"enabled", "destination"}:
-                    raise ValueError("Choose enabled and destination")
+                if (
+                    not isinstance(data, dict)
+                    or not {"enabled", "destination"} <= set(data)
+                    or set(data) - {"enabled", "destination", "max_per_day", "min_gap_minutes"}
+                ):
+                    raise ValueError("Choose enabled, destination and bounded frequency")
                 places = bridge.surfaces.snapshot()["locations"]
                 if not any(
                     p["id"] == data["destination"] and p["adapter"] == "pi" and p["approved"]
@@ -163,7 +185,10 @@ def handle(handler, bridge, *, post=False):
                     raise ValueError("This trial requires an approved Pi destination")
                 bridge.proactive.configure(**data)
             result = {
-                "config": preference(service.store, service.subject(), CONFIG, {}),
+                "config": {
+                    **FREQUENCY_DEFAULTS,
+                    **preference(service.store, service.subject(), CONFIG, {}),
+                },
                 "destinations": [
                     {"id": p["id"], "name": p["name"]}
                     for p in bridge.surfaces.snapshot()["locations"]

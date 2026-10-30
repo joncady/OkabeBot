@@ -460,3 +460,65 @@ collectors/recording budgets and full provider pagination remain separate work.
   or cloud-provider profile support; container replacement requires patch review.
 - Next: prefer released upstream fixes and validate real notification delivery
   independently of synthetic crypto and service-level health checks.
+
+
+## Administrative hierarchy and source coverage
+
+- Improved: dashboard and private setup separate daily controls from advanced
+  detail; relative screens retain centered, usable targets across viewport sizes.
+- Improved: HA inventory includes floor context and explicit unassigned review;
+  source permission remains separate from registry discovery.
+- Improved: Trakt pagination, date-unknown provenance and account-generation checks
+  preserve explicit coverage and cancel stale reads across account changes.
+- Improved: optional disposable-file limits expose content-free private counters
+  without broadening capture or treating protected state as a cleanup target.
+- Limited: very large historical imports, remote recording budgets and isolated
+  backup/restore are separate planned work. Broader coaching and sentiment remain
+  open; finishing administrative controls does not imply autonomous health advice.
+
+
+## Explicit recurring task support
+
+- Improved: NFC and dashboard completion share stable chore identities and durable
+  recurrence. Reminders do not masquerade as completion, and stale plans cannot
+  be resurrected by a late scan or delivery acknowledgment after forgetting.
+- Improved: due tasks can be woven into morning/proactive framing with local fact
+  slots, repeated gently under task cadence and shared invitation budgets.
+- Improved: check-in frequency is editable without resetting privacy choices,
+  session state or durable rate limits. Pending/uncertain delivery is distinct from
+  successful reminder delivery.
+- Limited: latest task state is not a lifetime activity history or identity proof;
+  conversational agreement does not complete tasks or grant preference consent.
+
+- Added owner-selected read-only home-device context for HA covers, thermostats and related sensors, with explicit observation scope and household recap support. Device state is not treated as identity or arrival evidence. Vendor account authorization remains separate.
+
+- Added minimized room-activity context with editable HA light/switch/speaker selection, existing aggregation/privacy controls, grounded household recap retrieval and a conservative speaker-availability gate for proactive invitations. Activity is not occupancy evidence.
+
+- Added optional grounded household suggestions with private dashboard away-light notes, shared-budget bedtime/comfort speech, strict room-versus-floor temperature handling, sampled evidence continuity, editable policy and source/forget revalidation. General household assistance remains separate from health coaching consent.
+
+- Household comfort controls and spoken notes now present Fahrenheit while preserving unit-normalized comparisons and existing saved threshold meaning. Fractional conversions are validated without changing thermostat settings.
+
+- NFC action/chore room context now derives from HA tag registry IDs, with bounded refresh, account-generation invalidation, multiple-room associations and grounded reminder/tool presentation. Metadata refresh does not imply presence or completion.
+
+- Added explicitly selected NFC room cues and same-room companion following, with unique/owner-selected screen resolution, short-lived unknown-identity context, existing handoff/deduplication and unchanged home/away semantics.
+
+- NFC routing now distinguishes automatic same-area screen selection from an explicit cross-area fallback, preserving the scan’s room cue and showing area labels beside destination choices.
+
+Private wellbeing context now has a registry-driven HA adapter, owner-only health
+sections, explicit goal controls and supportive movement check-ins. Shared-room
+suppression covers context retrieval, morning coaching and pending proactive
+output. Numeric signal updates use existing private aggregation; metrics are not
+summed across devices. Multi-person identification and broader goal types remain
+open capability gaps. No participant outcomes or measurements are reported here.
+
+Context-feed discovery now curates suggestions per field using registry semantics
+and units, with explicit health-source provenance labels. Saved custom bindings
+are preserved and broad discovery remains an advanced choice outside health.
+This reduces misleading metric choices without treating labels as upstream-app
+verification or person identity evidence.
+
+Review identified and corrected health-session consent gaps, a disabled-source
+privacy fallback and tool-schema/projection drift. Ongoing session gates now
+respect revocation without treating normal daily delivery cooldowns as revoked
+consent. Invented regressions exercise before/during-generation withdrawal and
+configured privacy-source loss; no participant records or outcomes are reported.

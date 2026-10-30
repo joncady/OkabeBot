@@ -1,4 +1,7 @@
-"""Offline opt-in coaching policy. No health inference, delivery or audio analysis."""
+"""Opt-in coaching policy shared by private setup and morning invitations.
+
+No health inference, autonomous delivery or audio analysis.
+"""
 
 from datetime import datetime
 import math
@@ -34,7 +37,7 @@ def valid_settings(value):
 
 
 class Coaching:
-    """A private store-backed policy, to be wired through future authenticated UI.
+    """A private store-backed policy used by owner setup and morning briefing.
 
     Callers must bind subject identity and permissions. Planning never sends a
     notification; record_delivery is called only after an actual delivery ACK.
@@ -90,6 +93,10 @@ class Coaching:
         identity_confirmed=False,
         quiet=True,
     ):
+        from .amadeus_health import others_detected
+
+        if others_detected(self.store):
+            return {"allowed": False, "reason": "others_detected"}
         permission = self._get(subject, SETTINGS)
         if not valid_settings(permission):
             return {"allowed": False, "reason": "not_configured"}

@@ -1710,3 +1710,226 @@ profile (including devices without ThinQ cloud support), which cannot be repaire
 by changing local credentials. Local-only appliances require a separate supported
 local interface; their appearance in an account/device list does not create one. Unknown Ring model
 kinds remain explicitly unclassified rather than being assigned guessed capabilities.
+
+
+## Dashboard/integration reliability checkpoint: source versus installed
+
+The checkpoint adds in-process private disposable-file maintenance under the
+existing authenticated owner application. It does not create a listener, change
+ports or grant capture/source permissions. Policy defaults disabled; eligible
+local files and protection boundaries are described in [private storage](private-storage.md).
+The README topology remains the same hosts, routes and model workers; only the
+controller's administrative responsibilities expand. HA floor/device inventory
+reads use the existing authenticated registry connection, not a new discovery agent.
+
+The dashboard has centered arrangement and progressive disclosure. Trakt source
+options default to the existing 30-day, one-page read with no newly selected lists.
+Larger owner-requested budgets are bounded across the history/list union; partial
+coverage, account generation changes and watched-date provenance are explicit.
+No automatic provider enrollment, account writes or cloud appliance enablement is
+part of this change. Source/tests do not prove provider or physical acceptance.
+
+Focus visual projection adds a high-level Pi `focus` operation with local absolute
+expiry and a small countdown. Controller sync deduplicates by display session and
+timer state, and only addresses a Pi reporting focus support. Existing Pi services
+remain compatible without repeated unsupported RPCs. Compact browser/Mac and TV
+renderers use a coarse media/presentation gate, not additional media titles.
+The Pi code is source-validated; the installed satellite is intentionally unchanged
+in this unattended checkpoint, so its focus badge requires the normal later update.
+No speaker test, volume adjustment, display restart or physical handoff is claimed.
+
+The reviewed Mac controller/dashboard package is installed under the existing
+supervisor, with private module rollback material preserved. Authenticated startup,
+readiness, new dashboard assets, disabled cleanup policy and read-only HA floor/device
+schema checks passed; configured source feeds reconnected. The speech worker stayed
+running. These are service/contract checks, not physical speaker/surface acceptance.
+No account writes, source selections, capture permissions or volume were changed.
+The Pi satellite remains at its previous installed service as described above. Protected-state
+backup/restore drills remain planned in issue #81; broader collection/storage
+consolidation and lifetime-history imports remain issue #18.
+
+
+## Chores and configurable check-in cadence
+
+The chore source changes use the existing Mac controller, private Amadeus SQLite
+preferences and scoped HA tag route. They add owner-only chore management endpoints
+under the existing port, not a new service or capture permission. Plans and latest
+completion/reminder state are private per-profile records; exports/forgetting cover
+them. Existing tag configuration remains separate and missing chore references are
+inert. No provider or hardware state is used to infer completion.
+
+Morning and proactive paths read grounded overdue task state; successful speech
+alone acknowledges a reminder. Source-level privacy/availability gates and the
+shared durable invitation budget apply to general and chore check-ins. Owner
+frequency controls preserve enabled state, destination, session state and budget;
+repository defaults remain conservative. Actual owner cadence choices and chore
+plans are private configuration and must not appear in this inventory.
+
+The Mac package is installed and owner-authenticated checks confirm the chore API,
+configurable cadence readback, controller readiness, speech readiness and existing
+feed/device connections. The controller child alone restarted; the model worker,
+source consent, destination and volume were preserved. No real NFC scan or speaker
+test was performed. Pi/HA tag firmware/automation configuration does not need new
+permissions for the action. See [chore behavior and API](chores.md).
+
+## HA home-device context
+
+The home-device adapter uses the existing Mac HA read connection and private
+Amadeus store; it introduces no service, port or actuation route. Owner selections
+are dashboard editable. HA vendor integration installation is separate from
+source consent. The Mac adapter is installed and an owner-selected garage cover
+returned a valid state through the consented read path. Source collection choices
+remain private and dashboard editable. No physical actuation was performed.
+The Watts Home community component is installed in the private
+HA configuration; account setup and live thermostat reads remain unverified until
+the owner signs in. No vendor credentials or household bindings are in source.
+NextCentury API access is a pending account capability check, not a deployed feed.
+
+## Watts and TP-Link HA onboarding verification
+
+Watts Home account setup is complete: its HA entry is loaded and selected climate,
+room-temperature and floor-temperature entities returned available metadata through
+the home-device feed. Selection remains private and editable in Context feeds.
+Diagnostic entities may have separate capability limits; loaded state does not
+prove every optional vendor sensor works. No setpoint or heating-mode change was tested.
+
+TP-Link Smart Home now has configured legacy Kasa switch entries loaded through
+local discovery. Credential-dependent Kasa switches were subsequently onboarded
+using the owner-saved TP-Link connection; all switches found in that bounded scan
+now have loaded HA entries. Discovery
+used bounded SSDP/mDNS and TP-Link read-only queries on the current LAN. No light
+was toggled, no new light-observation feed was enabled and no new network service
+was exposed. Household addresses, names and scan details stay in ignored state.
+
+## Sonos HA local integration
+
+HA's native Sonos integration is installed and loaded. It exposes the room
+coordinator as a media player; bonded surrounds/subwoofer are not independent
+playback destinations. Read-only diagnostics confirm coordinator availability,
+active event subscriptions without subscription failure, and received event/cache
+entries. This is service-level validation, not an audible playback test.
+
+The Docker container retains the same image, configuration volume, environment,
+restart policy and HA HTTP bindings. It additionally publishes Sonos TCP 1400 on
+the controller's specific LAN address. Private HA Sonos configuration supplies
+manual speaker hosts and the advertised LAN callback address, avoiding Docker
+multicast discovery limitations. A stopped pre-change container is retained
+privately for rollback. Only one HA container is running against the volume.
+
+The optional `OKABEBOT_HA_SONOS_BIND` launcher setting reproduces the callback
+mapping for a new container; it defaults off and rejects unspecified, public or
+loopback addresses. See the Sonos section of [HA setup](home-assistant.md).
+No volume, grouping, playback, Amadeus source consent or existing character
+announcement route was changed.
+
+## Amadeus room-activity source
+
+The source adapter adds selected HA lights, switches and speaker states through
+the existing Mac-to-HA read connection. It shares the private stable-ID store,
+retention and noisy-signal aggregation; there is no new service, port or credential.
+The owner dashboard edits selections and consent. Track titles/URLs and light
+brightness/speaker volume are excluded. Source permission does not authorize
+actuation or infer occupancy/identity.
+
+The additional proactive speech gate defers on selected playing/buffering speakers
+or incomplete/expired/unknown playback evidence. Polling is once a minute and
+freshness is 150 seconds; immediate detection is not promised. Existing attention
+gates and audio destinations remain unchanged. The Mac adapter is installed; an
+owner-authenticated feed read confirmed complete minimized records for explicitly
+selected primary light-switch and Sonos player entities. HA configuration/diagnostic
+switches were excluded from the private selection. No actuation or audible test
+was performed.
+
+## Household nudge planner
+
+An opt-in planner uses the existing Mac controller, HA context feed store and
+per-profile private preferences. It introduces no service, port, new source
+permission or hardware-control route. Away-light candidates are readable private
+Today dashboard notes only. Bedtime and room-comfort candidates use the current
+proactive delivery path, shared budget, attention/home gates and output destination.
+All choices are owner editable in Amadeus setup. Floor readings are never compared
+to room thresholds. Climate readings without units may use HA's fixed config API
+for its temperature unit; no other HA configuration fields are retained.
+
+The Mac package is installed. Owner-authenticated readiness and settings readback
+confirm the planner is available and observing permitted sources; existing
+voice/display and feed connections recovered. Private owner choices remain in
+local state. No physical acceptance, audible test or device-control action was
+performed; volume, destinations, source scope and health preferences were preserved.
+See [household-nudge semantics and privacy](household-nudges.md).
+
+Household comfort presentation uses Fahrenheit in its controls and spoken notes;
+canonical Celsius threshold storage and unit-aware comparison remain internal.
+This changes no thermostat setpoint or device unit setting.
+
+## NFC tag-area inheritance
+
+The controller refreshes HA tag registry area metadata via its existing authenticated
+HA read connection. No new host, port, credential or source-observation permission
+is added. A five-minute in-process metadata refresh maintains a private ten-minute
+connection-generation-scoped cache under the existing tag state directory. Owner
+refresh uses `/tags/refresh-areas`; HA's publish-only scan key cannot invoke it.
+Stable tag IDs associate mapped actions and current chores with HA room/floor IDs.
+The cache stores configuration metadata only, never scan activity or presence.
+Chore due/completion state and saved movement destinations remain independent.
+The Mac package is installed. An owner-authenticated live registry refresh verified
+assigned area metadata on existing mapped tags and the chore room projection.
+Controller, speech, Pi and configured feed readiness recovered. No tag scan, chore
+completion, screen movement, volume change or audible acceptance test was performed.
+
+## Explicit NFC room cues and following
+
+The existing controller/tag ingress can optionally resolve selected tags through
+HA areas and the saved screen room bindings. No new endpoint, service, credential
+or radio scanner is introduced. Each tag remains off until explicitly selected.
+The owner tag configuration controls cue duration and an optional same-room screen
+choice; room ambiguity never selects an arbitrary display.
+
+The current expiring cue is private tag state, scoped to the owner profile revision
+and current metadata/mapping. It is presented as scanner evidence with unknown
+identity, separate from home/away estimates and retained observations. Movement
+uses the existing high-level surface command/handoff, with no new playback, speech
+or volume action. The Mac package is installed and owner-authenticated checks
+confirm the room-cue schema and opt-out preservation on existing mappings.
+Controller, speech, Pi and existing source readiness recovered. No selected tag
+was scanned, no cue was fabricated and no physical move or audio test was sent.
+Room bindings/explicit target selection remain owner setup; isolated tests do not
+establish physical acceptance.
+
+NFC screen resolution now prefers a unique same-area screen, or an explicit
+same-area choice when several exist. With no same-area screen, only an explicitly
+saved approved fallback may be used across areas. Destination labels show HA area
+names from the metadata cache. Room cues still refer to the scanned tag’s area;
+this adds no implicit adjacency, area merge or automatic cross-room fallback.
+
+The installed owner API was checked for destination-area labels and explicit fallback resolution without replaying a scan or requesting a handoff. Physical acceptance of the fallback remains an owner check.
+
+### Private health context and encouragement
+
+The controller's existing HA read connection can collect owner-selected daily
+wellbeing totals through the context-feed registry; no new service, port, cloud
+processor or device transport is introduced. Goals, shared-room overrides and
+source bindings live in private Amadeus state and are editable in owner dashboard
+controls. Movement encouragement reuses proactive/morning coaching delivery and
+its consent, timing and audio routes. Other-person detection is a configurable
+input gate, not an installed identification system; it defaults false until the
+owner binds signals. Source implementation and actual configured collection must
+be verified separately. The existing README topology remains valid.
+
+Installed capability checks confirmed controller startup, existing source feeds,
+speech and Pi connectivity after the health UI/adapter update. Health collection
+and goal-backed support remain disabled by default pending private source/goal
+selection. No health speech or physical device change was used for acceptance.
+
+Owner HA registry previews now include bounded classification/unit hints for
+field-specific feed selectors; no raw sensor values or registry unique IDs are
+added to discovery output. Hosting, ports, routes and source ownership are
+unchanged. Source provenance labels do not attest upstream Health Connect writers.
+
+Health review hardening keeps ongoing conversation consent separate from offer
+cooldowns: stopping/snoozing coaching, disabling goal/source support or revoking
+the source discards pending health context/replies. A configured privacy-sensor
+binding remains fail-closed when its feed is disabled or HA is disconnected. The
+MCP health retrieval schema and reply projection now match the registered feed.
+Hosting, ports, device state and installed configuration are unchanged by this
+source review fix; no live deployment or physical acceptance is claimed here.

@@ -27,11 +27,11 @@ WRITE = ToolAnnotations(
 
 @mcp.tool(annotations=READ)
 def get_companion_locations() -> dict:
-    """List configured companion destinations, their names/aliases and current location."""
+    """List companion destinations/current location and an expiring NFC scanner room cue if present. A cue does not identify a person or establish home/away."""
     from .controller_tools import projection
 
     state = projection("surfaces")["surfaces"]
-    return {
+    result = {
         k: state[k]
         for k in (
             "locations",
@@ -41,6 +41,8 @@ def get_companion_locations() -> dict:
             "phase",
         )
     }
+    result["room_cue"] = state.get("room_cue")
+    return result
 
 
 @mcp.tool(annotations=WRITE)
@@ -156,6 +158,14 @@ def get_recent_notifications(source: str = "", status: str = "", limit: int = 10
 
 
 @mcp.tool(annotations=READ)
+def get_chores(include_upcoming: bool = False) -> dict:
+    """Read explicitly configured chores: due by default, or upcoming too. Does not complete, snooze or change anything; respect private pause/guest state."""
+    from .chores import Chores
+
+    return Chores(state_dir() / "amadeus").context(include_upcoming)
+
+
+@mcp.tool(annotations=READ)
 def get_home_activity(period: Literal["today", "yesterday", "last_24_hours"] = "today") -> dict:
     """Read partial consented household history: door/presence, TV/media and appliance readings.
     Missing observations are not evidence nothing happened; no safety/all-clear claim."""
@@ -175,14 +185,23 @@ def get_trakt_watchlist(kind: Literal["movies", "shows", "all"] = "movies", page
 @mcp.tool(annotations=READ)
 def get_context_feed(
     source: Literal[
-        "tasks", "device_activity", "appliances", "meals", "transit", "watch_history", "calendar"
+        "tasks",
+        "device_activity",
+        "home_devices",
+        "room_activity",
+        "health",
+        "appliances",
+        "meals",
+        "transit",
+        "watch_history",
+        "calendar",
     ],
     query: str = "",
     offset: int = 0,
     limit: int = 20,
     view: Literal["current", "changes", "aggregates"] = "current",
 ) -> dict:
-    """Read connected to-do/shopping lists (source=tasks), transit rail notices, appliances or watch history. Current feeds are not a full history of today. Use blank query for all selected items; page through next_offset."""
+    """Read connected to-do/shopping lists (source=tasks), transit rail notices, home devices (source=home_devices), room light/speaker states (source=room_activity), appliances, consented private wellbeing readings (source=health) or watch history. Current feeds are not a full history of today. Use blank query for all selected items; page through next_offset."""
     from .amadeus_feeds import Feeds
 
     return Feeds(state_dir() / "amadeus").retrieve(

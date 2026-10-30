@@ -22,7 +22,7 @@ from .notifications import Inbox
 from .notification_policy import NotificationPolicy
 from .github_webhook import GitHubWebhook
 from .github_queue import GitHubQueue, AwsQueueClient
-from .focus import FocusTimer
+from .focus import FocusTimer, FocusProjection
 from .sources import Sources
 from .adapters.media import MediaSnapshot, create_media_source, begin_auth
 from .content import ContentContext, ContentPreview, PRESETS
@@ -131,6 +131,7 @@ class Bridge:
 
         self.application = Application(self)
         self.focus = FocusTimer(self.inbox)
+        self.focus_projection = FocusProjection(self.focus, scene.set_focus)
         self.sources = Sources(self.inbox, state_dir(), config["notifications"])
         self.active_notification = None
         self.notification_until = 0
@@ -161,12 +162,28 @@ class Bridge:
         self.resources.callback(self.cast_surfaces.close)
         self.surfaces = Surfaces(scene.rpc, cast_resolver=self.cast_surfaces.get)
         from .tags import Tags
+        from .chores import Chores
+
+        self.chores = Chores(state_dir() / "amadeus")
+        from .tag_areas import TagAreas
+
+        self.tag_areas = TagAreas(state_dir() / "amadeus", self.amadeus_feeds.inventory)
 
         self.tag_source_token = persistent_token(state_dir() / "tags", "ha-source-token")
-        self.tags = Tags(
-            state_dir() / "tags",
+        from .tag_rooms import TagRoomFollow
+
+        self.tag_room_follow = TagRoomFollow(
+            state_dir() / "amadeus",
             lambda: self.surfaces.snapshot()["locations"],
             lambda location: self.application.execute("/surfaces/move", {"location_id": location}),
+        )
+        self.tags = Tags(
+            state_dir() / "tags",
+            self.tag_room_follow.locations,
+            lambda location: self.application.execute("/surfaces/move", {"location_id": location}),
+            chores=self.chores,
+            areas=self.tag_areas.snapshot,
+            room_follow=self.tag_room_follow,
         )
         self.resources.callback(self.surfaces.close)
         from .surface_audio import AudioHub
@@ -213,6 +230,9 @@ class Bridge:
         from .readiness import Readiness
 
         self.readiness = Readiness(state_dir())
+        from .private_storage import PrivateStorage
+
+        self.private_storage = PrivateStorage(state_dir())
         self.status = "Ready — hold the button to talk"
         self.show_activity("idle")
         (self.folder / "control.json").write_text(json.dumps({"url": self.url, "pid": os.getpid()}))
@@ -223,6 +243,7 @@ class Bridge:
         threading.Thread(target=self.poll_sources, daemon=True).start()
         threading.Thread(target=self.poll_screen_power, daemon=True).start()
         threading.Thread(target=self.poll_readiness, daemon=True).start()
+        threading.Thread(target=self.poll_storage, daemon=True).start()
         threading.Thread(target=self.poll_music, daemon=True).start()
         threading.Thread(target=self.poll_music_meter, daemon=True).start()
         threading.Thread(target=self.poll_health, daemon=True).start()
@@ -230,6 +251,7 @@ class Bridge:
         threading.Thread(target=self.camera_greeting.run, daemon=True).start()
         threading.Thread(target=self.amadeus_shadow.run, args=(self.closing,), daemon=True).start()
         threading.Thread(target=self.amadeus_feeds.run, args=(self.closing,), daemon=True).start()
+        threading.Thread(target=self.tag_areas.run, args=(self.closing,), daemon=True).start()
 
     @property
     def url(self):
@@ -260,6 +282,8 @@ class Bridge:
                     if result.get("error"):
                         raise RuntimeError("Device status unavailable")
                     self.device_health[name] = {"available": True, "error": None}
+                    if name == "display" and "focus" in result:
+                        self.focus_projection.sync(result.get("session_id"))
                     if name == "display" and result.get("kind") == "idle":
                         # A reboot clears the Pi canvas even when the desired activity is unchanged.
                         self.face_worker.submit(scene.set_activity, self.face_activity or "idle")
@@ -314,6 +338,23 @@ class Bridge:
             if kind == "error":
                 self.status = str(data.get("message", data))
         print(kind, json.dumps(data)[:500], flush=True)
+
+    def poll_storage(self):
+        while not self.closing.is_set():
+            try:
+                self.private_storage.cleanup(
+                    busy=self.processing
+                    or self.recording
+                    or self.announcing
+                    or bool(self.codex and self.codex.busy)
+                )
+            except Exception:
+                self.private_storage.last_cleanup = {
+                    "state": "unavailable",
+                    "checked_at": time.time(),
+                }
+                # Storage maintenance never interrupts a user turn.
+            self.closing.wait(60)
 
     def poll_readiness(self):
         while not self.closing.is_set():
@@ -698,6 +739,7 @@ class Bridge:
                 # Private capability diagnostics only; never log the spoken text or facts.
                 timing.write("morning", {"generated_framing": generated, "state": "speaking"})
                 # Resolve the current surface speaker; never use global announcement fallback.
+                spoken = briefing.revalidate_chores(spoken)
                 character_tools.speak(spoken, "happy", purpose="reply")
                 timing.write("morning", {"generated_framing": generated, "state": "delivered"})
                 briefing.complete(success=True, coach=coach)
@@ -776,11 +818,7 @@ class Bridge:
                         from .amadeus_onboarding import KEY, SYSTEM
 
                         setup = preference(store, SYSTEM, KEY)
-                        prefs = preference(store, setup["profile"], "context.preferences", {})
-                    opening = self.codex.compose_preference(
-                        "Start one optional conversation about an interest or hobby. I can answer with the button or skip it.",
-                        {"preferences": prefs},
-                    )
+                    opening = self.proactive.opening(offer, self.codex.compose_preference)
                     text = opening.get("reply")
                     if (
                         not isinstance(text, str)
@@ -795,19 +833,31 @@ class Bridge:
                         continue
                     # Consume before speech: uncertain delivery is never replayed.
                     self.pi({"op": "ptt", "enabled": False})
+                    if not self.proactive.revalidate_chore_offer(offer):
+                        self.proactive.end()
+                        continue
                     self.show_activity("speaking")
                     self.notify("assistant", {"text": text, "phase": "final_answer"})
                     try:
                         character_tools.speak(text, "curious", purpose="proactive")
+                        self.proactive.delivered(offer, success=True)
                     except Exception:
                         self.proactive.end()
                         raise
-                    with self.proactive.store() as store:
+                    with self.proactive.store() as store, store.db:
                         from .amadeus_live import STATE
 
+                        store.db.execute("BEGIN IMMEDIATE")
+                        current = preference(store, SYSTEM, KEY, {})
                         trial = preference(store, setup["profile"], STATE, {})
-                        trial["last_reply"] = text
-                        store.remember(setup["profile"], STATE, trial)
+                        if (
+                            current == setup
+                            and not current.get("paused")
+                            and not current.get("guest")
+                            and trial
+                        ):
+                            trial["last_reply"] = text
+                            store.remember(setup["profile"], STATE, trial)
                     timing.write("amadeus-conversation", {"state": "delivered"})
                 finally:
                     self.announcing = False
@@ -962,7 +1012,7 @@ class Bridge:
                 "camera_greeting": dict(self.camera_greeting.state),
                 "amadeus_interruptions": self.proactive.interruptions(),
                 "amadeus_shadow": dict(self.amadeus_shadow.state),
-                "surfaces": self.surfaces.snapshot(),
+                "surfaces": {**self.surfaces.snapshot(), "room_cue": self.tag_room_follow.cue()},
                 "home_assistant_url": get_config()["web"]["home_assistant_url"],
                 "spotify": self.media_source.status(),
                 "media": self.media_source.status(),
@@ -1053,6 +1103,10 @@ def handler(bridge):
             )
 
         def do_GET(self):
+            from .chores_http import handle as handle_chores
+
+            if handle_chores(self, bridge):
+                return
             from .tags_http import handle as handle_tags
 
             if handle_tags(self, bridge):
@@ -1102,6 +1156,11 @@ def handler(bridge):
                 "/style.css",
                 "/app.js",
                 "/tags.js",
+                "/chores.js",
+                "/household-nudges.js",
+                "/health.js",
+                "/storage.js",
+                "/dashboard-navigation.js",
                 "/amadeus-text.js",
                 "/locations.js",
                 "/dashboard-auth.js",
@@ -1132,6 +1191,10 @@ def handler(bridge):
                 self.respond(403, {"error": "Open the control URL printed by the bridge"})
 
         def do_POST(self):
+            from .chores_http import handle as handle_chores
+
+            if handle_chores(self, bridge, post=True):
+                return
             from .tags_http import handle as handle_tags
 
             if handle_tags(self, bridge, post=True):

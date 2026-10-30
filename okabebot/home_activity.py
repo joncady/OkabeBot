@@ -67,19 +67,21 @@ def recap(folder, period="today", clock=time.time):
             payload = json.loads(row["payload"])
             kind = row["kind"]
             if kind == "feed_snapshot":
-                if payload.get("provider") != "appliances":
+                if payload.get("provider") not in ("appliances", "home_devices", "room_activity"):
                     continue
-                cfg = preference(store, SYSTEM, "feed.appliances", {})
+                cfg = preference(store, SYSTEM, "feed." + payload["provider"], {})
                 if not cfg.get("enabled"):
                     continue
                 for item in payload["items"][:3]:
-                    key = ("appliance", item["id"])
+                    key = (payload["provider"], item["id"])
                     if key in seen:
                         continue
                     seen.add(key)
                     observations.append(
                         {
-                            "kind": "appliance",
+                            "kind": "home_device"
+                            if payload["provider"] in ("home_devices", "room_activity")
+                            else "appliance",
                             "text": item["label"] + ": " + item["state"],
                             "observed_at": row["observed_at"],
                         }

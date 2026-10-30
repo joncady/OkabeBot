@@ -51,6 +51,22 @@ class BriefingTests(unittest.TestCase):
         self.voice = dict(enabled=True, name="Mira", coaching=True, quiet_override=False)
         self.briefing.configure(self.voice)
 
+    def test_disabling_bound_privacy_feed_does_not_resume_morning_coaching(self):
+        from okabebot.amadeus_onboarding import SYSTEM
+        from okabebot.amadeus_feeds import default
+        from okabebot.adapters.context import FEEDS
+
+        self.assertIsNotNone(self.briefing.coaching())
+        from contextlib import closing
+
+        with closing(self.morning.store()) as store:
+            store.remember(
+                SYSTEM,
+                "feed.health",
+                dict(default(FEEDS["health"]), others=["binary_sensor.imaginary_guest"]),
+            )
+        self.assertIsNone(self.briefing.coaching())
+
     def test_grounded_cards_and_speech_keep_source_text_out_of_generation(self):
         summary = self.briefing.enrich(
             self.morning.view("test-tv"),

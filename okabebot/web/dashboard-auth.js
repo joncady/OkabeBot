@@ -1,11 +1,13 @@
 'use strict';
 const dashboardAccess=(()=>{
  const key='okabebot-dashboard-access',panel=document.querySelector('#dashboard-auth'),form=document.querySelector('#dashboard-auth-form');
- let token=location.hash.slice(1)||localStorage.getItem(key)||'';
+ const fragment=location.hash.slice(1),section=new Set(['companion-dashboard','locations-dashboard','daily-tools','notification-settings','amadeus-controls','amadeus-feeds','amadeus-morning','amadeus-habits','amadeus-memory']).has(fragment);
+ const invalidFragment=Boolean(fragment)&&!section&&!/^[A-Za-z0-9_-]{32,128}$/.test(fragment);
+ let token=invalidFragment?'':fragment&&!section?fragment:localStorage.getItem(key)||'';
  function remember(){
   if(!token)return;
   localStorage.setItem(key,token);panel.hidden=true;
-  if(location.hash)history.replaceState(null,'',location.pathname+location.search);
+  if(location.hash.slice(1)===token)history.replaceState(null,'',location.pathname+location.search);
  }
  function required(){panel.hidden=false;}
  form.onsubmit=async e=>{
@@ -18,5 +20,6 @@ const dashboardAccess=(()=>{
  };
  document.querySelector('#dashboard-forget').onclick=()=>{localStorage.removeItem(key);token='';required();};
  if(!token)required();
+ if(invalidFragment)document.querySelector('#dashboard-auth-error').textContent='Invalid setup key or unknown dashboard section. Check the link.';
  return {token:()=>token,remember,required};
 })();

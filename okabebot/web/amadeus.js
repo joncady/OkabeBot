@@ -12,6 +12,7 @@ const amadeusUI = (() => {
     editing=false;$('amadeus-review').hidden=true;
     for(const id of ['amadeus-setup','amadeus-controls','amadeus-memory','amadeus-morning','amadeus-habits','amadeus-feeds']) $(id).hidden=true;
     $('conversation-form').reset();$('conversation-destination').replaceChildren();
+    $('health-form').reset();$('health-readings').replaceChildren();$('health-state').textContent='';$('household-form').reset();$('household-preview').textContent='';$('household-state').textContent='';
     $('amadeus-form').reset();$('memory-form').reset();
     $('sources').replaceChildren();$('topics').replaceChildren();$('memory-list').replaceChildren();
     $('morning-voice-form').reset();$('morning-person').textContent='';$('morning-show-status').textContent='';$('morning-test-status').textContent='';$('morning-test-tv').disabled=true;$('morning-preview').textContent='';$('morning-status').textContent='';$('morning-form').reset();$('morning-destination').replaceChildren();
@@ -91,13 +92,18 @@ const amadeusUI = (() => {
       return {element:box,read:()=>checks.filter(i=>i.checked).map(i=>i.value)};
     }
     const rows=document.createElement('div');rows.className='feed-entities';let entries=values.length?[...values]:[''];
+    let showAll=false;
+    const tailored=new Set(['health','device_activity','appliances','meals']);
+    const semantic=tailored.has(feedId)||(feedId==='home_devices'&&field.key==='sensors');
+    const matches=e=>e.id.startsWith((field.domain||'entity')+'.')&&(!semantic||showAll||(e.feed_fields||[]).includes(feedId+'.'+field.key));
+
     const hint=document.createElement('p');hint.className='feed-help';hint.textContent=haInventory.length?'Search discovered entities by name or room. Saving a feed is a separate observation choice.':'Use Refresh rooms and entities to discover choices, or enter an entity ID.';
     let inputs=[];
     const list=document.createElement('datalist');list.id='ha-choice-'+feedId+'-'+field.key;
     const draw=()=>{
       rows.replaceChildren();inputs=[];list.replaceChildren();
-      for(const entity of haInventory.filter(e=>e.id.startsWith((field.domain||'entity')+'.'))){
-        const option=document.createElement('option');option.value=entity.id;option.label=[entity.name,entity.room,entity.provider,entity.available?'':'unavailable'].filter(Boolean).join(' · ');list.append(option);
+      for(const entity of haInventory.filter(matches)){
+        const option=document.createElement('option');option.value=entity.id;option.label=[entity.name,entity.floor,entity.room,entity.health_source,entity.unit,entity.provider,entity.available?'':'unavailable'].filter(Boolean).join(' · ');list.append(option);
       }
       entries.forEach((value,index)=>{
         const row=document.createElement('div');row.className='feed-entity-row';
@@ -108,9 +114,12 @@ const amadeusUI = (() => {
         remove.onclick=()=>{entries=inputs.map(i=>i.value);entries.splice(index,1);draw();};row.append(input,remove);rows.append(row);
       });
     };
+    const advanced=document.createElement('label'),broad=document.createElement('input');broad.type='checkbox';advanced.className='amadeus-option';
+    advanced.append(broad,document.createTextNode('Show all entities in this domain (advanced)'));advanced.hidden=!semantic||feedId==='health';
+    broad.onchange=()=>{showAll=broad.checked;entries=inputs.map(i=>i.value);draw();};
     draw();const add=document.createElement('button');add.type='button';add.textContent='＋ Add entity';
     add.onclick=()=>{entries=inputs.map(i=>i.value);if(entries.length<1000){entries.push('');draw();}};
-    const choices=()=>[...new Set(haInventory.filter(e=>e.id.startsWith((field.domain||'entity')+'.')).map(e=>e.id))];
+    const choices=()=>[...new Set(haInventory.filter(matches).map(e=>e.id))];
     const eligible=choices();
     const all=document.createElement('button');all.type='button';all.textContent='Select all';
     all.onclick=()=>run(async()=>{
@@ -123,14 +132,57 @@ const amadeusUI = (() => {
         entries=selected;draw();note.textContent='Selected '+selected.length+' entities. Save feed to apply; collection has not been enabled.';
       } finally {all.disabled=false;}
     });
+    if(feedId==='health'&&field.key!=='others'){add.hidden=true;all.hidden=true;hint.textContent='Choose one daily-total source for this metric to avoid double counting. Clear removes it.';}
     const clear=document.createElement('button');clear.type='button';clear.textContent='Clear';clear.onclick=()=>{entries=[''];draw();};
-    const note=document.createElement('p');note.className='feed-help';note.textContent=eligible.length?'Select all fills this field only. Save feed applies your choices.':'Refresh rooms and entities to enable Select all.';
+    const note=document.createElement('p');note.className='feed-help';note.textContent=eligible.length?'Suggestions and Select all are tailored to this field. Save feed applies your choices.':'No matching sources loaded. Refresh rooms and entities; saved selections are preserved. Health choices require a compatible metric and unit.';
     const actions=document.createElement('div');actions.className='feed-actions';actions.append(all,clear);
-    box.append(hint,rows,add,actions,note,list);
+    box.append(hint,rows,add,actions,note,list,advanced);
     return {element:box,read:()=>[...new Set(inputs.map(i=>i.value.trim()).filter(Boolean))]};
+  }
+  function feedOption(option, value, onSelection) {
+    const box=document.createElement('fieldset'),title=document.createElement('legend');title.textContent=option.label;box.append(title);
+    if(option.type==='number'){
+      const input=document.createElement('input');input.type='number';input.min=option.min;input.max=option.max;input.required=true;
+      input.value=value??option.default;input.setAttribute('aria-label',option.label);box.append(input);
+      return {element:box,input,read:()=>Number(input.value)};
+    }
+    const selected=new Set(value||option.default||[]),available=new Map();let nextPage=1;
+    const help=document.createElement('p');help.className='feed-help';help.textContent='Only explicitly selected lists are read. Entries are watched with date unknown; collection never assigns a watched date.';
+    const choices=document.createElement('div');choices.className='feed-list-choices';
+    const note=document.createElement('p');note.className='feed-help';
+    function draw(){
+      choices.replaceChildren();
+      for(const id of new Set([...selected,...available.keys()])){
+        const label=document.createElement('label'),check=document.createElement('input');label.className='amadeus-option';check.type='checkbox';check.value=id;check.checked=selected.has(id);
+        const name=available.get(id)?.title||`Saved list ${id} · name not loaded`;
+        check.setAttribute('aria-label',name);
+        check.onchange=()=>{
+          if(check.checked&&selected.size>=19){check.checked=false;note.textContent='Choose at most 19 lists so each can fit within the read budget.';return;}
+          if(check.checked)selected.add(id);else selected.delete(id);
+          onSelection(selected.size);note.textContent='Selection changed. Save feed to apply; no list was read.';
+        };
+        label.append(check,document.createTextNode(name));choices.append(label);
+      }
+    }
+    const load=document.createElement('button');load.type='button';load.textContent='Load my lists';
+    load.onclick=()=>run(async()=>{
+      load.disabled=true;
+      try{
+        const result=await api('trakt-lists',{page:nextPage});
+        if(result.state!=='connected'){note.textContent='List discovery is unavailable. Your saved selections are preserved.';return;}
+        for(const item of result.items||[])available.set(item.id,item);
+        nextPage=result.next_page;draw();
+        note.textContent='Choose the lists containing watched titles with unknown dates. No selection is automatic.';
+        load.textContent=nextPage?'Load more lists':'Refresh my lists';
+        if(!nextPage)nextPage=1;
+      }finally{load.disabled=false;}
+    });
+    draw();box.append(help,choices,load,note);
+    return {element:box,read:()=>[...selected]};
   }
   async function feeds() {
     const value=await api('feeds');$('amadeus-feeds').hidden=false;$('feed-list').replaceChildren();
+    if(!homePreview&&(value.connections||[]).some(c=>c.transport==='ha'&&c.has_token)){const epoch=accessEpoch,token=dashboardAccess.token();try{homePreview=await api('ha-inventory');haInventory=homePreview.entities||[];}catch(error){if(epoch!==accessEpoch||token!==dashboardAccess.token())throw error;/* Preserve saved choices on temporary discovery failure. */}}
     const connections=Object.fromEntries((value.connections||[]).map(c=>[c.transport,c]));
     if(connections.ha) {
       const shared=document.createElement('section');shared.className='feed-card';
@@ -138,13 +190,19 @@ const amadeusUI = (() => {
       const help=document.createElement('p');help.className='feed-help';help.textContent='Used by Tasks, Device activity, Appliances and Meals. Connect the providers in Home Assistant first.';
       const refresh=document.createElement('button');refresh.type='button';refresh.textContent='Refresh rooms and entities';
       refresh.onclick=()=>run(async()=>{const inventory=await api('ha-inventory');haInventory=inventory.entities||[];homePreview=inventory;await feeds();message('Read-only preview refreshed. Discovered devices have not been enabled for observation.');});
-      const rooms=document.createElement('p');rooms.className='feed-help';rooms.textContent=[...new Set(haInventory.map(e=>e.room).filter(Boolean))].join(' · ');
+      const rooms=document.createElement('p');rooms.className='feed-help';rooms.textContent=[...new Set(haInventory.map(e=>[e.floor,e.room].filter(Boolean).join(' / ')).filter(Boolean))].join(' · ');
       shared.append(heading,help,feedConnection(connections.ha),refresh,rooms);
+      if(homePreview?.room_cue){const cue=document.createElement('p');cue.className='feed-help';cue.textContent='Recent NFC room cue · '+[homePreview.room_cue.floor,homePreview.room_cue.room].filter(Boolean).join(' / ')+' · scanner identity unknown';shared.append(cue);}
+      if(homePreview){
+        const review=document.createElement('p');review.className='feed-help';
+        const count=(homePreview.devices||[]).filter(d=>d.needs_review).length;
+        review.textContent=`${count} devices need room review. `+(homePreview.floor_registry_available===false?'This HA version does not expose floor data.':'Room bindings stay separate from screen orientation.');shared.append(review);
+      }
       for(const place of homePreview?.locations||[]){
         const row=document.createElement('label');row.className='feed-entity-row';row.append(document.createTextNode(place.name+(place.needs_review?' · room removed; review':'')));
         const select=document.createElement('select');
         const unassigned=document.createElement('option');unassigned.value='';unassigned.textContent='Unassigned';select.append(unassigned);
-        for(const room of homePreview.rooms||[]){const option=document.createElement('option');option.value=room.id;option.textContent=room.name;select.append(option);}
+        for(const room of homePreview.rooms||[]){const option=document.createElement('option');option.value=room.id;option.textContent=[room.floor_name,room.name].filter(Boolean).join(' / ');select.append(option);}
         select.value=place.area_id||'';select.onchange=()=>run(async()=>{homePreview=await api('ha-inventory',{location_id:place.id,area_id:select.value||null});message('Room binding saved. Display orientation and movement are unchanged.');});
         row.append(select);shared.append(row);
       }$('feed-list').append(shared);
@@ -160,11 +218,18 @@ const amadeusUI = (() => {
       const form=document.createElement('form'),label=document.createElement('label'),enabled=document.createElement('input');enabled.type='checkbox';enabled.checked=feed.config.enabled;
       label.className='amadeus-option';label.append(enabled,document.createTextNode('Allow this feed’s metadata'));form.append(label);
       const inputs={};for(const field of feed.fields){inputs[field.key]=feedSelection(field,feed.config[field.key],feed.id);form.append(inputs[field.key].element);}
+      const options={};
+      const adjustBudget=count=>{const budget=options.page_budget?.input;if(budget){budget.min=count+1;if(Number(budget.value)<count+1)budget.value=count+1;}};
+      for(const option of feed.options||[]){
+        if(!['number','trakt_lists'].includes(option.type))continue;
+        options[option.key]=feedOption(option,feed.config[option.key],adjustBudget);form.append(options[option.key].element);
+      }
+      if(options.watched_lists){adjustBudget(options.watched_lists.read().length);const help=document.createElement('p');help.className='feed-help';help.textContent='The page budget is shared across history and selected lists. It must allow one page per selected source; larger budgets may increase completeness and API usage.';form.append(help);}
       const save=document.createElement('button');save.textContent='Save feed';form.append(save);
       const check=document.createElement('button');check.type='button';check.textContent='Check selected feed';check.disabled=!feed.config.enabled;
       check.onclick=()=>run(async()=>{await api('feed-check',{id:feed.id});await feeds();message('Selected feed checked. See its status and retained context below.');});form.append(check);
       form.onsubmit=event=>{event.preventDefault();run(async()=>{
-        const config={enabled:enabled.checked};for(const [key,input] of Object.entries(inputs))config[key]=input.read();
+        const config={enabled:enabled.checked};for(const [key,input] of Object.entries({...inputs,...options}))config[key]=input.read();
         await api('feeds',{id:feed.id,config});await load();message('Feed saved. Pause and guest mode remain unchanged.');
       });};card.append(form);$('feed-list').append(card);
     }
@@ -221,7 +286,37 @@ const amadeusUI = (() => {
     }
     if(config.destination)$('conversation-destination').value=config.destination;
     $('conversation-enabled').checked=config.enabled===true;
+    $('conversation-max-per-day').value=config.max_per_day??1;
+    $('conversation-min-gap').value=config.min_gap_minutes??120;
     $('conversation-resume').disabled=config.enabled!==true;
+  }
+  const householdFields={
+    enabled:['enabled','checkbox',false],departure_enabled:['departure-enabled','checkbox',true],
+    departure_away_minutes:['departure-away-minutes','number',10],bedtime_enabled:['bedtime-enabled','checkbox',true],
+    bedtime_start:['bedtime-start','time','21:00'],bedtime_end:['bedtime-end','time','23:00'],
+    comfort_enabled:['comfort-enabled','checkbox',true],cold_c:['cold-c','number',18],hot_c:['hot-c','number',27],
+    comfort_hold_minutes:['comfort-hold-minutes','number',15],cooldown_hours:['cooldown-hours','number',12]
+  };
+  async function health() {
+    const value=await api('health');if(!value.settings)return;
+    $('health-enabled').checked=value.settings.enabled===true;
+    $('health-daily-steps').value=value.settings.daily_steps;
+    $('health-nudge-after').value=value.settings.nudge_after;
+    $('health-others-detected').checked=value.settings.others_detected===true;
+    $('health-state').textContent=value.privacy;
+    $('health-readings').replaceChildren();
+    for(const reading of value.readings||[]){if(reading.metric==='others')continue;const item=document.createElement('li');item.textContent=reading.metric.replaceAll('_',' ')+': '+reading.value+' '+reading.unit+' · source updated '+new Date(reading.sample_at*1000).toLocaleString();$('health-readings').append(item);}
+    if(!(value.readings||[]).length){const item=document.createElement('li');item.textContent='No fresh selected health readings. Enable the Health feed and choose sensors.';$('health-readings').append(item);}
+  }
+  async function household() {
+    const value=await api('household-nudges');if(!value.config)return;
+    for(const [key,[id,type,fallback]] of Object.entries(householdFields)){
+      const node=$('household-'+id),setting=value.config[key]??fallback;
+      if(type==='checkbox')node.checked=setting===true;else node.value=(key==='cold_c'||key==='hot_c')?Math.round((setting*9/5+32)*10)/10:setting;
+    }
+    $('household-state').textContent=value.config.enabled?'Household nudges configured. Source consent and attention gates still apply.':'Household nudges off.';
+    if(value.state)$('household-state').textContent+=' '+value.state.replaceAll('_',' ')+'.';
+    $('household-preview').textContent=JSON.stringify(value.preview||[],null,2);
   }
   async function habits() {
     const value=await api('habits');if(!value.config)return;
@@ -259,15 +354,28 @@ const amadeusUI = (() => {
       $('amadeus-pause').textContent=current.paused?'Shadow collection paused':'Pause shadow collection';
       $('amadeus-pause').setAttribute('aria-pressed',String(current.paused));
       $('amadeus-guest').textContent=current.guest?'Guest mode on':'Guest mode off';
-      $('amadeus-guest').setAttribute('aria-pressed',String(current.guest)); await memory(); await morning(); await habits(); await conversation(); await feeds();
+      $('amadeus-guest').setAttribute('aria-pressed',String(current.guest)); await memory(); await morning(); await habits(); await conversation(); await household(); await health(); await feeds();
     }
-    if(!current){$('amadeus-habits').hidden=true;$('habits-preview').textContent='';$('habits-routines').replaceChildren();}
+    if(!current){$('health-form').reset();$('health-readings').replaceChildren();$('health-state').textContent='';$('household-form').reset();$('household-preview').textContent='';$('household-state').textContent='';$('amadeus-habits').hidden=true;$('habits-preview').textContent='';$('habits-routines').replaceChildren();}
     message(value.collection_active ? 'Metadata collection enabled · routine predictions stay in shadow; morning speech and conversations have separate controls.' : 'Metadata collection paused · proactive conversations are paused too.');
   }
   async function run(action) { try { await action(); } catch(error) { message(error.message); } }
   $('feeds-refresh').onclick=()=>run(feeds);
   $('conversation-resume').onclick=()=>run(async()=>{await api('conversation-resume',{});message('Reply resumed. Use the usual push-to-talk button; the invitation was not replayed.');});
-  $('conversation-form').onsubmit=event=>{event.preventDefault();run(async()=>{await api('conversation',{enabled:$('conversation-enabled').checked,destination:$('conversation-destination').value});await conversation();message('Conversation choice saved.');});};
+  $('conversation-form').onsubmit=event=>{event.preventDefault();run(async()=>{await api('conversation',{enabled:$('conversation-enabled').checked,destination:$('conversation-destination').value,max_per_day:Number($('conversation-max-per-day').value),min_gap_minutes:Number($('conversation-min-gap').value)});await conversation();message('Conversation choice saved.');});};
+  $('health-form').onsubmit=event=>{event.preventDefault();run(async()=>{
+    await api('health',{enabled:$('health-enabled').checked,daily_steps:Number($('health-daily-steps').value),nudge_after:Number($('health-nudge-after').value),others_detected:$('health-others-detected').checked});await health();message('Private health choices saved. Observation and coaching consent remain separate.');
+  });};
+  $('household-form').onsubmit=event=>{event.preventDefault();run(async()=>{
+    const config={};
+    for(const [key,[id,type]] of Object.entries(householdFields)){
+      const node=$('household-'+id);let value=type==='checkbox'?node.checked:type==='number'?Number(node.value):node.value;
+      if(key==='cold_c'||key==='hot_c')value=Math.round((value-32)*5/9*10000)/10000;
+      config[key]=value;
+    }
+    await api('household-nudges',config);await household(); await health();message('Household choices saved. No device-control permission was changed.');
+  });};
+  $('household-refresh').onclick=()=>run(household);
   $('habits-refresh').onclick=()=>run(habits);
   $('habits-enabled').onchange=()=>run(async()=>{await api('habits',{enabled:$('habits-enabled').checked});await habits();});
   $('morning-test-tv').onclick=()=>run(async()=>{

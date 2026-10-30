@@ -12,8 +12,11 @@
         <div class="eyebrow">AI HARDWARE LAB</div>
         <h1>Your little lab.</h1>
       </div>
-      <a id="home-assistant-portal" target="_blank" rel="noopener noreferrer" hidden>Home Assistant ↗</a><a href="/amadeus/">Amadeus setup</a><button id="dev-toggle" class="small" aria-pressed="false">Dev</button>
+      <a id="home-assistant-portal" target="_blank" rel="noopener noreferrer" hidden>Home Assistant ↗</a><button id="dev-toggle" class="small" aria-pressed="false">Dev</button>
     </header>
+    <nav class="dashboard-nav" aria-label="Lab sections">
+      <a href="#companion-dashboard">Companion</a><a href="#locations-dashboard">Locations</a><a href="#daily-tools">Today</a><a href="#notification-settings">Settings</a><a href="/amadeus/">Amadeus setup</a>
+    </nav>
     <main>
       <details class="panel readiness" id="readiness-panel">
         <summary><span id="readiness-icon" aria-hidden="true">◌</span> <span id="readiness-summary" role="status">Checking services…</span></summary>
@@ -26,7 +29,8 @@
         <form id="dashboard-auth-form"><input id="dashboard-access" type="password" autocomplete="off" aria-label="Authorized setup link or access key" required><button>Connect</button></form>
         <p id="dashboard-auth-error" role="status"></p>
       </section>
-      <section class="hero panel">
+      <div class="dashboard-grid overview-grid">
+<section class="hero panel" id="companion-dashboard">
         <div class="live">
           <span class="dot"></span
           ><span id="status" role="status">Connecting…</span>
@@ -47,6 +51,7 @@
         </div>
         <p class="hint">Hold the Pi button, speak, then release.</p>
         <button id="presence-follow" type="button" hidden>Enable Watch following</button>
+        <details class="subpanel"><summary>Attention &amp; screen following</summary>
         <details><summary>Mac screen following</summary>
         <form id="mac-screen-form"><label><input id="mac-screen-enabled" type="checkbox"> Move to Mac when its screen wakes</label>
         <label>Mac destination<select id="mac-screen-destination"></select></label>
@@ -57,15 +62,14 @@
         <p id="presence-health" class="hint" role="status"></p>
         <label><input id="amadeus-respect-dnd" type="checkbox" checked> Respect phone Do Not Disturb</label>
         <p class="hint">Controls Amadeus proactive conversations only. Quiet hours, focus and media protections always apply. Does not change your phone settings.</p>
+        </details>
         <p id="system-health" class="hint" role="status"></p>
       </section>
-      <section class="characters">
+      <section class="characters panel" id="character-dashboard">
         <div class="section-title">
           <h2>Choose your companion</h2>
           <span class="muted">Same lab. New personality.</span>
         </div>
-        <label>Character flavor<select id="character-tone"><option value="plain">Plain</option><option value="subtle" selected>Subtle</option><option value="playful">Playful</option></select></label>
-        <label><input id="natural-tool-replies" type="checkbox" checked> Natural tool replies</label><p class="hint">Adds a short local model pass to summarize tool results. Turn off for faster, fixed acknowledgements.</p>
         <div class="character-grid">
           <button
             class="character-card"
@@ -93,29 +97,50 @@
           </button>
           <button class="character-card" data-profile="sonic" aria-pressed="false"><img src="/sonic.png" alt="" /><strong>Sonic</strong><span>Ready for the next adventure</span></button>
         </div>
-      </section>
-      <section class="panel" aria-label="Companion location">
+      <details class="subpanel"><summary>Personality &amp; replies</summary>        <label>Character flavor<select id="character-tone"><option value="plain">Plain</option><option value="subtle" selected>Subtle</option><option value="playful">Playful</option></select></label>
+        <label><input id="natural-tool-replies" type="checkbox" checked> Natural tool replies</label><p class="hint">Adds a short local model pass to summarize tool results. Turn off for faster, fixed acknowledgements.</p>
+</details></section></div>
+
+      <section class="panel" id="locations-dashboard" aria-label="Companion location">
         <h2>Locations</h2><p id="surface-status">Finding companion…</p>
         <div class="controls"><button id="surface-tv" class="primary">Move companion</button><button id="surface-home">Return companion</button><button id="surface-preview" class="small">Preview TV dashboard</button></div>
         <p><a id="surface-preview-link" target="_blank" rel="noopener" hidden>Open TV dashboard preview ↗</a></p>
-        <p class="muted">Open <a href="/companion/" target="_blank" rel="noopener">this stable screen link</a> on a phone to discover it. Approve it below. Arrange screens to match their positions around you. Drag a screen into an empty grid cell, or select it and place it left, right, above or below another screen.</p>
+        <p class="muted">Drag screens into empty spaces to match your room. Or select a screen and place it beside another. Wide layouts can be scrolled. Open <a href="/companion/" target="_blank" rel="noopener">the stable screen link</a> to register a phone; approve it in Screen settings.</p>
         <div id="location-map" aria-label="Screen arrangement; top is above, left is left"></div><div id="location-arrangement" class="arrangement-controls"></div>
-        <p class="muted">Choose a Room or Companion view and one set for the selected character. A set belongs to only one location; unassign it before assigning it elsewhere. Set up scene world reserves a home set for every character in one step. Keep home assigned so the character can always return.</p>
+        <details class="subpanel"><summary>Screen settings &amp; pairing</summary>
+<p class="muted">Choose a Room or Companion view and one set for the selected character. A set belongs to only one location; unassign it before assigning it elsewhere. Set up scene world reserves a home set for every character in one step. Keep home assigned so the character can always return.</p>
         <div id="location-list"></div><p id="location-error" role="status"></p>
-      </section>
-      <section id="nfc-tags" class="panel" hidden>
-<h2>NFC tags</h2><p>Tap a tag to call the companion to its mapped screen. First write the tag using Home Assistant’s Android app → Settings → Tags. No credentials are written to the sticker.</p>
-<button id="tag-register" type="button">＋ Scan to register</button><button id="tag-map-last" type="button" hidden>Map last scanned tag</button><p id="tag-learn-status" role="status"></p>
+      </details>
+</section>
+      <details id="nfc-tags" class="panel" hidden>
+<summary>NFC tags</summary><p>Tap a tag to call the companion or mark a recurring chore done. First write the tag using Home Assistant’s Android app → Settings → Tags. No credentials are written to the sticker.</p>
+<button id="tag-refresh-areas" type="button">Refresh HA tag rooms</button><button id="tag-register" type="button">＋ Scan to register</button><button id="tag-map-last" type="button" hidden>Map last scanned tag</button><p id="tag-learn-status" role="status"></p>
 <form id="tag-form" class="tag-form">
 <label>Scanned tag<input id="tag-id" readonly required placeholder="Scan a tag to fill this automatically"></label>
-<label>Name<input id="tag-name" required maxlength="80" placeholder="Living room companion"></label>
-<label>Action<select disabled><option>Call companion</option></select></label>
-<label>Destination<select id="tag-location" required></select></label>
+<label>Tag label<input id="tag-name" required maxlength="80" placeholder="Living room companion"></label>
+<label>Action<select id="tag-action"><option value="call_companion">Call companion</option><option value="chore_reminder">Chore reminder</option><option value="room_checkin">Check in to this room &amp; call companion</option></select></label>
+<div id="tag-room-settings" hidden>
+<label id="tag-room-follow-label"><input id="tag-room-follow" type="checkbox"> Also use this chore scan as a room cue and call the companion here</label>
+<label>Room cue lifetime (minutes)<input id="tag-room-minutes" type="number" min="1" max="30" value="10"></label>
+<label>Room screen / fallback override<select id="tag-room-location"><option value="">Automatic · only when one screen is assigned</option></select></label>
+<p>Uses the tag’s HA area and the screen room bindings in Amadeus setup. A scan may wake/cast to a TV and replace its current app. No home/away inference or continuous tracking; the scanner’s identity is unknown. Automatic routing prefers a screen in the tag’s area. If that area has no screen, you may explicitly choose a fallback in another area. If multiple screens share the area, choose one of them.</p>
+</div><p id="tag-room-cue" role="status"></p>
+<label id="tag-destination">Destination<select id="tag-location" required></select></label>
+<div id="tag-chore-settings" hidden>
+<label>Chore<select id="tag-chore-select"><option value="">Create a chore</option></select></label>
+<label>Chore name<input id="tag-chore-title" maxlength="120" placeholder="Defaults to tag label"></label>
+<label>Remind after<input id="tag-chore-delay" type="number" min="1" max="52" value="2"><select id="tag-chore-unit" aria-label="Chore delay unit"><option value="days">days</option><option value="weeks" selected>weeks</option></select></label>
+<label>Repeat when overdue (days)<input id="tag-chore-repeat" type="number" min="1" max="30" value="1"></label>
+<label><input id="tag-chore-reminders" type="checkbox" checked> Chore reminders enabled</label>
+<p class="hint">Each scan marks this chore done and starts its next delay. Overdue reminders respect your Amadeus boundaries. Turning off the tag does not pause the chore.</p>
+</div>
 <label><input id="tag-enabled" type="checkbox" checked> Enabled</label><button id="tag-save" disabled>Save mapping</button>
 </form><p id="tag-status" role="status"></p><p id="tag-last-scan" class="muted"></p><div id="tag-mappings"></div>
 <a id="tag-ha-link" hidden target="_blank" rel="noopener noreferrer">Register/write tags in Home Assistant</a>
-</section>
-      <section class="panel"><h2>Time to focus</h2><p id="focus-status" role="status">Choose a session. I’ll remind you to take a break.</p><div class="focus-actions"><button data-focus="5">5 min</button><button data-focus="25">25 min</button><button data-focus="50">50 min</button><button id="focus-cancel" hidden>Cancel timer</button></div></section>
+</details>
+      <section id="daily-tools" class="daily-tools"><h2>Today</h2><div class="dashboard-grid">
+<section class="panel household-notes" id="household-notes-panel" hidden><h2>Household notes</h2><div id="household-notes-list"></div><a href="/amadeus/#amadeus-controls">Edit household nudges</a></section>
+<section class="panel"><h2>Time to focus</h2><p id="focus-status" role="status">Choose a session. I’ll remind you to take a break.</p><div class="focus-actions"><button data-focus="5">5 min</button><button data-focus="25">25 min</button><button data-focus="50">50 min</button><button id="focus-cancel" hidden>Cancel timer</button></div></section>
       <section class="panel"><h2>Reminders</h2>
         <form id="reminder-form" class="preference-form">
           <label>Remind me to <input id="reminder-text" maxlength="500" required /></label>
@@ -123,13 +148,27 @@
           <button type="submit">Set reminder</button>
         </form><button id="reminders-refresh">Refresh reminders</button><div id="reminders-list"></div>
       </section>
-      <section class="panel"><h2>Your day</h2><p id="agenda-next" role="status">Waiting for calendar…</p><div id="agenda-events"></div><button id="agenda-show">Show agenda on Pi</button></section>
+      <details class="panel" id="chores-panel"><summary>Chores</summary>
+<p class="hint">A scan or Mark done starts the next interval. Due chores stay available to morning summaries and quiet proactive reminders until completed, paused or snoozed.</p>
+<details class="subpanel"><summary>Add or edit a chore</summary>
+<form id="chore-form" class="preference-form">
+<input id="chore-id" type="hidden">
+<label>Chore<input id="chore-title" maxlength="120" required placeholder="Change towels"></label>
+<label>Remind after<input id="chore-delay" type="number" min="1" max="52" value="2" required><select id="chore-unit" aria-label="Reminder interval unit"><option value="days">days</option><option value="weeks" selected>weeks</option></select></label>
+<label>Repeat when overdue (days)<input id="chore-repeat" type="number" min="1" max="30" value="1" required></label>
+<label><input id="chore-enabled" type="checkbox" checked> Reminders enabled</label>
+<button id="chore-save">Save chore</button><button id="chore-new" type="button">New chore</button>
+</form></details>
+<button id="chores-refresh" type="button">Refresh chores</button><p id="chores-status" role="status"></p><div id="chores-list"></div>
+</details>
+<section class="panel"><h2>Your day</h2><p id="agenda-next" role="status">Waiting for calendar…</p><div id="agenda-events"></div><button id="agenda-show">Show agenda on Pi</button></section>
       <section class="panel music-panel">
         <div class="music-copy"><h2>Music in the lab</h2><p id="spotify-status" class="muted" role="status">Connect from a browser on the controller computer; then use any tablet to view playback.</p></div>
         <span class="muted">Music mic reacts locally; push-to-talk stays separate.</span>
         <button id="music-mic" aria-pressed="true">Music mic: on</button>
         <button id="spotify-connect">Connect Spotify</button>
-      </section>
+      </section></div></section>
+
       <section class="panel inbox">
         <div class="section-title">
           <h2>On your radar</h2>
@@ -142,8 +181,8 @@
         <div id="source-errors" role="status"></div>
       </section>
       <div id="error" role="alert"></div>
-      <section class="panel notification-settings">
-        <h2>Notification preferences</h2>
+      <details class="panel notification-settings" id="notification-settings">
+        <summary>Notification preferences</summary>
         <p id="notification-policy-status" class="muted" role="status"></p>
         <div class="focus-actions"><button data-snooze="15">Snooze 15 min</button><button data-snooze="60">Snooze 1 hour</button><button data-snooze="0">Resume notifications</button></div>
         <p class="hint">Snooze holds new cards until it ends. Expired reminders are skipped.</p>
@@ -172,17 +211,20 @@
           <label>Priority <select id="sender-priority"><option value="default">Provider default</option><option>low</option><option>normal</option><option>important</option><option>urgent</option></select></label>
           <button type="submit">Save sender rule</button>
         </form><div id="sender-rules" role="status"></div>
-      </section>
+      </details>
       <div id="approvals"></div>
+      <details class="panel" id="health-panel" hidden><summary>Health · private wellbeing</summary><div id="health-summary"></div><a href="/amadeus/#amadeus-health">Edit goals, privacy and health sources ↗</a></details>
       <section id="developer" hidden>
         <div class="panel">
           <h2>Amadeus text lab</h2>
+<p class="hint">Silent chat. Approved tool actions may affect devices.</p><details class="subpanel"><summary>Conversation settings &amp; memory policy</summary>
           <p class="muted">Text chat with the selected character and the existing approved tools. Replies stay silent; requested tool actions may affect devices. Clear preferences can be saved automatically; uncertain ones ask first. This owner-only session is separate from voice. Recent turns are held in private session context; the private session expires after ten minutes.</p>
           <label><input id="amadeus-auto-accept" type="checkbox" checked> Auto-save clear preferences (text and voice)</label>
           <label>Minimum confidence <input id="amadeus-confidence" type="number" min="0.9" max="1" step="0.01" value="0.9"></label>
           <p class="muted">Evidence score, not a probability. Temporary, uncertain or sensitive statements still require confirmation.</p>
           <label>This dashboard is at <select id="amadeus-chat-location"><option value="">This browser (automatic)</option></select></label>
           <p id="amadeus-chat-location-status" class="muted"></p>
+</details>
           <div id="amadeus-text-messages" role="log" aria-live="polite"></div>
           <form id="amadeus-text-form">
             <label>Message <textarea id="amadeus-text-input" maxlength="1000" rows="3" required placeholder="Tell me about yourself, or share something you enjoy…"></textarea></label>
@@ -197,8 +239,8 @@
           </form>
           <a href="/amadeus/">Review or forget saved preferences ↗</a>
         </div>
-        <div class="panel">
-          <h2>Developer controls</h2>
+        <details class="panel">
+          <summary>Device, voice &amp; integration controls</summary>
           <label><input id="amadeus-shadow-enabled" type="checkbox"> Amadeus shadow trial (private log only)</label>
           <p id="amadeus-shadow-status" class="muted" role="status"></p>
           <label><input id="camera-greeting-enabled" type="checkbox"> Wave on approach</label>
@@ -273,14 +315,15 @@
           <button id="test-notification">Test calendar card</button>
           <div id="timings" class="muted"></div><details><summary>Recent request timings</summary><div id="timing-history"></div></details>
           <div id="thread"></div>
-        </div>
-        <div class="panel">
-          <h2>Transcription &amp; conversation</h2>
+        </details>
+        <details class="panel" id="private-storage-panel"><summary>Private storage</summary><div id="private-storage-controls"></div></details>
+<details class="panel">
+          <summary>Transcription &amp; conversation</summary>
           <div id="messages">Waiting for your first message.</div>
-        </div>
+        </details>
       </section>
     <button id="dashboard-forget" class="small">Forget browser access</button></main>
     <footer>OKABEBOT <span>Make room for a little curiosity.</span></footer>
-    <script src="/dashboard-auth.js"></script><script src="/locations.js"></script><script src="/app.js"></script><script src="/amadeus-text.js"></script><script src="/tags.js"></script>
+    <script src="/dashboard-auth.js"></script><script src="/dashboard-navigation.js"></script><script src="/locations.js"></script><script src="/app.js"></script><script src="/amadeus-text.js"></script><script src="/chores.js"></script><script src="/household-nudges.js"></script><script src="/health.js"></script><script src="/tags.js"></script><script src="/storage.js"></script>
   </body>
 </html>

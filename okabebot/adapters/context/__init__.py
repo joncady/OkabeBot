@@ -53,6 +53,58 @@ FEEDS = {
             "Enable selected Companion app sensors; use binary sensors only. No app names, GPS or keystrokes.",
         ),
         Feed(
+            "health",
+            "Health · selected daily wellbeing signals",
+            "ha",
+            (
+                ("daily_steps", "Daily steps (one daily-reset source)", "sensor"),
+                ("sleep_minutes", "Sleep duration in minutes (one source)", "sensor"),
+                ("active_minutes", "Daily active minutes (one source)", "sensor"),
+                ("others", "Other people detected (optional binary sensors)", "binary_sensor"),
+            ),
+            ("id", "metric", "value", "unit", "sample_at"),
+            "Private, opt-in readings only. Choose daily-reset totals, not steps since reboot. No heart rate, weight, diagnosis or sleep-confidence inference. Others detected suppresses health discussion; unknown bound occupancy also suppresses it. Goals and coaching are separate choices.",
+            interval=300,
+            freshness=900,
+        ),
+        Feed(
+            "room_activity",
+            "Room activity · lights, switches and speakers",
+            "ha",
+            (
+                ("lights", "Light entities", "light"),
+                ("switches", "Light-switch entities", "switch"),
+                ("players", "Speaker / media player entities", "media_player"),
+            ),
+            ("id", "label", "state", "category"),
+            "Read selected device states only; no track titles, brightness, volume or commands. Activity is not proof of occupancy or identity. Selected playing/unknown speaker states defer proactive check-ins.",
+            interval=60,
+            freshness=150,
+            household=True,
+        ),
+        Feed(
+            "home_devices",
+            "Home devices · garage doors and thermostats",
+            "ha",
+            (
+                ("covers", "Door / cover entities", "cover"),
+                ("climates", "Thermostat entities", "climate"),
+                ("sensors", "Related status / temperature sensors", "sensor"),
+            ),
+            (
+                "id",
+                "label",
+                "state",
+                "unit",
+                "category",
+                "current_temperature",
+                "target_temperature",
+                "action",
+            ),
+            "Select existing HA devices for read-only state context. Door state does not identify a person or trigger arrival. No open/close or heating commands.",
+            household=True,
+        ),
+        Feed(
             "appliances",
             "LG ThinQ · appliance status",
             "ha",
@@ -85,11 +137,21 @@ FEEDS = {
         ),
         Feed(
             "watch_history",
-            "Trakt · confirmed watch history",
+            "Trakt · history and selected watched lists",
             "trakt",
             (),
-            ("id", "title", "type", "watched_at", "show"),
-            "Save a Trakt client ID and access token here (or in private .env). Read-only recent history; no streaming passwords.",
+            (
+                "id",
+                "title",
+                "type",
+                "watched_at",
+                "show",
+                "watch_state",
+                "provenance",
+                "list_id",
+                "trakt_id",
+            ),
+            "Read a configured recent-history window and explicitly selected owned lists marked watched with unknown dates. List membership never supplies a watched date or streaming entitlement.",
             interval=1800,
             freshness=7200,
         ),
@@ -97,8 +159,58 @@ FEEDS = {
 }
 
 
+TRAKT_DEFAULTS = {"history_days": 30, "page_budget": 1, "watched_lists": []}
+TRAKT_OPTIONS = (
+    {
+        "key": "history_days",
+        "label": "History window (days)",
+        "type": "number",
+        "min": 1,
+        "max": 365,
+        "default": 30,
+    },
+    {
+        "key": "page_budget",
+        "label": "Maximum pages per polling cycle",
+        "type": "number",
+        "min": 1,
+        "max": 20,
+        "default": 1,
+    },
+    {
+        "key": "watched_lists",
+        "label": "Watched — date unknown lists",
+        "type": "trakt_lists",
+        "default": [],
+    },
+)
+
+
 def validate_config(feed, value):
-    if not isinstance(value, dict) or set(value) != {"enabled", *(f[0] for f in feed.fields)}:
+    if feed.id == "watch_history" and isinstance(value, dict):
+        if set(value) - {"enabled", *TRAKT_DEFAULTS}:
+            raise ValueError("Use declared Trakt collection settings")
+        value = {**TRAKT_DEFAULTS, "watched_lists": [], **value}
+        if type(value["history_days"]) is not int or not 1 <= value["history_days"] <= 365:
+            raise ValueError("Choose a history window from 1 to 365 days")
+        if type(value["page_budget"]) is not int or not 1 <= value["page_budget"] <= 20:
+            raise ValueError("Choose a page budget from 1 to 20")
+        lists = value["watched_lists"]
+        if (
+            not isinstance(lists, list)
+            or len(lists) > 19
+            or any(
+                not isinstance(v, str) or not re.fullmatch(r"[1-9][0-9]{0,18}", v) for v in lists
+            )
+            or len(set(lists)) != len(lists)
+        ):
+            raise ValueError("Choose up to 19 distinct owned Trakt list IDs")
+        if value["page_budget"] < 1 + len(lists):
+            raise ValueError("Page budget must allow one page for history and each selected list")
+        expected = {"enabled", *TRAKT_DEFAULTS}
+    else:
+        expected = {"enabled", *(f[0] for f in feed.fields)}
+    if not isinstance(value, dict) or set(value) != expected:
         raise ValueError("Use declared feed configuration")
     if type(value["enabled"]) is not bool:
         raise ValueError("Choose enabled or disabled")
@@ -119,6 +231,10 @@ def validate_config(feed, value):
                 raise ValueError("Choose a supported rail line")
             if domain not in ("text", "line") and not entry.startswith(domain + "."):
                 raise ValueError("Wrong Home Assistant entity domain")
+    if feed.id == "health" and any(
+        len(value[k]) > 1 for k in ("daily_steps", "sleep_minutes", "active_minutes")
+    ):
+        raise ValueError("Choose one source per health metric to avoid double counting")
     if value["enabled"] and feed.transport == "ha" and not any(value[f[0]] for f in feed.fields):
         raise ValueError("Select at least one entity")
     return value

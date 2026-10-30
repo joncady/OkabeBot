@@ -6,11 +6,27 @@ The local [conversation tool loop](docs/conversation-agent.md) offers registered
 capabilities to both chat and voice without keyword-based read eligibility, then
 validates bounded tool calls and composes replies from returned evidence. Movie
 recommendations can read the connected Trakt want-to-watch list on demand without
-enabling scheduled watch-history collection.
+enabling scheduled watch-history collection. Scheduled history has owner-editable
+window/page budgets and explicitly selected date-unknown watched lists; coverage
+never implies account lifetime, a guessed watch date or streaming entitlement.
 
 Backlog scope lives in [repository issues](https://github.com/joncady/OkabeBot/issues),
 organized on the [roadmap Kanban board](https://github.com/users/joncady/projects/4).
 See [roadmap maintenance](docs/roadmap.md) for status and checkpoint rules.
+
+The owner dashboard groups **Companion**, **Locations**, **Today** and **Settings**
+with compact, bookmarkable sections. Pairing, policy, transcripts and advanced
+Amadeus setup stay behind disclosures; pause/guest controls remain visible.
+The screen-arrangement grid centers relative destinations and scrolls unusually
+wide layouts without shrinking touch targets. HA room mapping includes available
+floor metadata and explicit unassigned-device review; discovery never grants consent.
+Optional [private disposable-file budgets](docs/private-storage.md) default off.
+[Recurring chores](docs/chores.md) can be completed by an NFC tag or dashboard
+button, with configurable recurrence and quiet repeat reminders in morning and
+proactive flows. Check-in frequency is owner-editable without weakening attention
+or privacy gates; raw recordings and passive completion inference are not added.
+
+
 
 **Amadeus** is the new local memory and proactive-assistance trial. Its
 [specification and conditional 14-day timeline](docs/amadeus.md) and
@@ -102,6 +118,9 @@ flowchart TB
         App -->|"Private Unix socket"| Speech
         App -->|"Characters without Qwen references"| SystemVoice["macOS system voice fallback"]
         ThinQ["LG ThinQ cloud: registered appliance integration"] --> HA
+        Watts["Watts Home cloud: selected thermostat context"] --> HA
+        Sonos["Sonos room players and bonded speakers"] <-->|"Local API and LAN callback: 1400"| HA
+        Kasa["TP-Link Kasa: configured local switches"] <-->|"Local authenticated protocol where required"| HA
         Forecast["Weather forecast service: configured"] --> HA
         HA["Home Assistant Container: 8123"] -->|"Scoped notifications, Alexa schedules and arrivals"| App
         App -->|"Bounded state and shared controls"| HAFacade["Companion MQTT facade: LaunchAgent"]
@@ -796,3 +815,31 @@ signals use owner-configurable interval aggregates. Conversations retrieve conte
 through bounded tools rather than preloading feed contents. See
 [storage, logging and retrieval](docs/amadeus-storage.md) for implemented paths,
 retention/export boundaries and recording-policy follow-ups.
+
+Selected HA garage covers, thermostats and related sensors can supply read-only Amadeus context through **Context feeds → Home devices**. Device state does not identify occupants or trigger arrival. See [context feeds](docs/amadeus-feeds.md).
+
+**Context feeds → Room activity** adds selected HA light, switch and speaker states to private Amadeus context. Selected active or uncertain speakers defer proactive check-ins; no device actuation or occupancy inference is enabled.
+
+Optional [household nudges](docs/household-nudges.md) combine consented light, garage and room-temperature evidence. Away-light notes stay on the private dashboard; bedtime/comfort speech shares existing proactive attention and budget gates. Defaults stay off; no device controls or occupancy inference are enabled.
+
+Household comfort controls and spoken notes display Fahrenheit while normalizing source units internally for comparison.
+
+NFC actions and linked chores inherit room/floor metadata from HA tag entities by stable tag ID. Refresh tag rooms in the dashboard; existing action destinations and recurrence remain separate.
+
+Selected NFC tags can also provide an expiring room cue and call the companion to a screen bound to that HA room. This is per-tag opt-in, never home/away or identity evidence; see [NFC chores and room cues](docs/chores.md).
+
+NFC routing prefers screens in the tag’s HA area. When that area has no screen, an owner-selected fallback may be in another area; destination choices show their assigned area. The scan’s room cue stays unchanged.
+
+Optional private health context is available through the HA feed registry and
+owner dashboard. User-chosen movement goals can contribute gentle check-ins or
+positive acknowledgments, subject to existing coaching consent and attention
+limits. Shared-room suppression has a manual override and optional sensor inputs;
+it does not identify people. See [health feed setup](docs/amadeus-feeds.md#health-private-wellbeing-totals).
+
+Context-feed pickers use field-specific semantic suggestions and unit checks;
+health-source labels distinguish Health Connect from direct wearable readings.
+Discovery and collection consent remain separate.
+
+Health conversations recheck collection, goal and coaching consent throughout a
+session, including after reply generation. Configured shared-room privacy inputs
+stay suppressed when their feed is disabled or disconnected.

@@ -13,7 +13,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from okabebot.amadeus import Store
-from okabebot.amadeus_onboarding import SYSTEM
+from okabebot.amadeus_onboarding import SYSTEM, KEY
 from okabebot.bridge import handler
 
 
@@ -61,13 +61,54 @@ class AmadeusHttpTests(unittest.TestCase):
         ) as r:
             return json.load(r)
 
+    def test_health_owner_only_and_strict_configuration(self):
+        from okabebot.amadeus_health import DEFAULTS
+
+        self.request("/amadeus/api/settings", SETUP)
+        value = self.request("/amadeus/api/health")
+        self.assertEqual(value["settings"], DEFAULTS)
+        self.assertFalse(value["others_detected"])
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/health", token="publish-only")
+        self.assertEqual(caught.exception.code, 403)
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/health", dict(DEFAULTS, daily_steps=-1))
+        self.assertEqual(caught.exception.code, 400)
+        saved = self.request("/amadeus/api/health", dict(DEFAULTS, others_detected=True))
+        self.assertTrue(saved["others_detected"])
+        self.assertEqual(saved["readings"], [])
+
+    def test_household_nudges_owner_validation_and_default_off(self):
+        from okabebot.household_nudges import DEFAULTS
+
+        self.request("/amadeus/api/settings", SETUP)
+        value = self.request("/amadeus/api/household-nudges")
+        self.assertEqual(DEFAULTS, value["config"])
+        self.assertEqual([], value["preview"])
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/household-nudges", token="publish-only")
+        self.assertEqual(403, caught.exception.code)
+        with self.assertRaises(HTTPError) as caught:
+            self.request(
+                "/amadeus/api/household-nudges",
+                {**DEFAULTS, "enabled": True},
+                extra={"Origin": "http://wrong.example"},
+            )
+        self.assertEqual(403, caught.exception.code)
+        saved = self.request("/amadeus/api/household-nudges", {**DEFAULTS, "enabled": True})
+        self.assertTrue(saved["config"]["enabled"])
+        self.assertEqual([], saved["preview"])
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/household-nudges", {**DEFAULTS, "cold_c": 29})
+        self.assertEqual(400, caught.exception.code)
+
     def test_context_feeds_are_owner_only_and_credentials_write_only(self):
         from okabebot.amadeus_feeds import Feeds
 
         self.bridge.amadeus_feeds = Feeds(self.folder / "amadeus")
         self.request("/amadeus/api/settings", SETUP)
         initial = self.request("/amadeus/api/feeds")
-        self.assertEqual(len(initial["feeds"]), 6)
+        self.assertEqual(len(initial["feeds"]), 9)
         self.assertFalse(initial["delivery_enabled"])
         self.request(
             "/amadeus/api/feed-connection",
@@ -469,6 +510,69 @@ class AmadeusHttpTests(unittest.TestCase):
 
 
 class LiveConversationHttpTests(AmadeusHttpTests):
+    def test_frequency_is_owner_editable_without_resetting_private_state(self):
+        from okabebot.amadeus_live import ProactiveConversation, BUDGET, STATE, CONFIG
+        from okabebot.amadeus_habits import preference
+
+        self.bridge.proactive = ProactiveConversation(self.folder / "amadeus")
+        self.bridge.surfaces.snapshot.return_value = {
+            "locations": [
+                {"id": "fictional-desk", "name": "Desk", "adapter": "pi", "approved": True}
+            ]
+        }
+        self.request("/amadeus/api/settings", dict(SETUP, sources=["door_presence"]))
+        initial = self.request(
+            "/amadeus/api/conversation", {"enabled": True, "destination": "fictional-desk"}
+        )
+        self.assertEqual(1, initial["config"]["max_per_day"])
+        with self.bridge.proactive.store() as store:
+            profile = preference(store, SYSTEM, KEY)["profile"]
+            store.remember(profile, STATE, {"private": "existing armed state"})
+            store.remember(profile, "conversation.preferences", {"enabled": False, "speech": False})
+            budget = preference(store, profile, BUDGET)
+            activated = preference(store, profile, CONFIG)["activated_at"]
+        result = self.request(
+            "/amadeus/api/conversation",
+            {
+                "enabled": True,
+                "destination": "fictional-desk",
+                "max_per_day": 3,
+                "min_gap_minutes": 120,
+            },
+        )
+        self.assertEqual(3, result["config"]["max_per_day"])
+        with self.bridge.proactive.store() as store:
+            self.assertEqual({"private": "existing armed state"}, preference(store, profile, STATE))
+            self.assertEqual(
+                {"enabled": False, "speech": False},
+                preference(store, profile, "conversation.preferences"),
+            )
+            self.assertEqual(budget, preference(store, profile, BUDGET))
+            self.assertEqual(activated, preference(store, profile, CONFIG)["activated_at"])
+        with self.assertRaises(HTTPError) as error:
+            self.request(
+                "/amadeus/api/conversation",
+                {
+                    "enabled": True,
+                    "destination": "fictional-desk",
+                    "max_per_day": 0,
+                    "min_gap_minutes": 120,
+                },
+            )
+        self.assertEqual(400, error.exception.code)
+        with self.assertRaises(HTTPError) as error:
+            self.request(
+                "/amadeus/api/conversation",
+                {
+                    "enabled": True,
+                    "destination": "fictional-desk",
+                    "max_per_day": 3,
+                    "min_gap_minutes": 120,
+                },
+                token="publisher",
+            )
+        self.assertEqual(403, error.exception.code)
+
     def test_live_setup_is_owner_only_and_attention_cannot_read_or_enable_it(self):
         from okabebot.amadeus_live import ProactiveConversation
 

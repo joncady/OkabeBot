@@ -1,5 +1,6 @@
 """Bounded HTTP readers and pure provider normalizers; no device actions."""
 
+from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 import hashlib
 import json
@@ -28,7 +29,13 @@ class NoRedirect(HTTPRedirectHandler):
         raise ValueError("Provider redirects are not permitted")
 
 
-def request(url, headers=None, data=None):
+@dataclass(frozen=True)
+class ProviderPage:
+    body: object
+    headers: dict
+
+
+def request_page(url, headers=None, data=None):
     parts = urlsplit(url)
     if (
         parts.scheme not in ("http", "https")
@@ -42,9 +49,18 @@ def request(url, headers=None, data=None):
     )
     with build_opener(NoRedirect()).open(req, timeout=10) as response:
         raw = response.read(2_000_001)
+        pagination = {
+            str(k).lower(): v
+            for k, v in response.headers.items()
+            if str(k).lower().startswith("x-pagination-")
+        }
     if len(raw) > 2_000_000:
         raise ValueError("Provider response too large")
-    return json.loads(raw)
+    return ProviderPage(json.loads(raw), pagination)
+
+
+def request(url, headers=None, data=None):
+    return request_page(url, headers, data).body
 
 
 class HomeAssistant:
@@ -117,6 +133,105 @@ class HomeAssistant:
                             "state": state if state in ("on", "off") else "unknown",
                         }
                     )
+        elif feed.id == "health":
+            import math
+
+            units = {
+                "daily_steps": {"steps", "step"},
+                "sleep_minutes": {"min", "minutes"},
+                "active_minutes": {"min", "minutes"},
+            }
+            for metric, _, _ in feed.fields:
+                for entity in cfg[metric]:
+                    value = self.call("states/" + quote(entity, safe=""))
+                    sample = stamp(value["last_updated"])
+                    if metric == "others":
+                        state = value.get("state")
+                        items.append(
+                            {
+                                "id": identity(entity),
+                                "metric": metric,
+                                "value": state if state in ("on", "off") else "unknown",
+                                "unit": "presence",
+                                "sample_at": now,
+                            }
+                        )
+                        continue
+                    unit = value.get("attributes", {}).get("unit_of_measurement")
+                    try:
+                        number = float(value["state"])
+                    except (ValueError, TypeError):
+                        continue
+                    if (
+                        unit not in units[metric]
+                        or not math.isfinite(number)
+                        or not 0 <= number <= (200000 if metric == "daily_steps" else 1440)
+                        or sample > now
+                        or now - sample > 86400
+                    ):
+                        continue
+                    items.append(
+                        {
+                            "id": identity(entity),
+                            "metric": metric,
+                            "value": str(number),
+                            "unit": "steps" if metric == "daily_steps" else "min",
+                            "sample_at": sample,
+                        }
+                    )
+        elif feed.id == "room_activity":
+            for field, _, category in feed.fields:
+                for entity in cfg[field]:
+                    value = self.call("states/" + quote(entity, safe=""))
+                    items.append(
+                        {
+                            "id": identity(entity),
+                            "label": clean(
+                                value.get("attributes", {}).get("friendly_name", "Room device")
+                            ),
+                            "state": clean(value["state"]),
+                            "category": category,
+                        }
+                    )
+        elif feed.id == "home_devices":
+            temperature_unit = None
+            for field, category in (
+                ("covers", "cover"),
+                ("climates", "climate"),
+                ("sensors", "sensor"),
+            ):
+                for entity in cfg[field]:
+                    value = self.call("states/" + quote(entity, safe=""))
+                    attrs = value.get("attributes", {})
+                    item = {
+                        "id": identity(entity),
+                        "label": clean(attrs.get("friendly_name", "Home device")),
+                        "state": clean(value["state"]),
+                        "category": category,
+                    }
+                    for key, attribute in (
+                        ("unit", "unit_of_measurement"),
+                        ("current_temperature", "current_temperature"),
+                        ("target_temperature", "temperature"),
+                        ("action", "hvac_action"),
+                    ):
+                        if attrs.get(attribute) is not None:
+                            text = clean(str(attrs[attribute]))
+                            if text:
+                                item[key] = text
+                    if category == "climate":
+                        if attrs.get("temperature_unit"):
+                            item["unit"] = clean(attrs["temperature_unit"])
+                        elif item.get("current_temperature") is not None:
+                            if temperature_unit is None:
+                                temperature_unit = (
+                                    self.call("config")
+                                    .get("unit_system", {})
+                                    .get("temperature", "")
+                                )
+                            if temperature_unit:
+                                item["unit"] = clean(temperature_unit)
+                    items.append(item)
         else:
             for entity in cfg["entities"]:
                 value = self.call("states/" + quote(entity, safe=""))
@@ -213,34 +328,14 @@ def trakt(value, now):
     return items, False
 
 
-def fetch(feed, cfg, now, connection=None):
+def fetch(feed, cfg, now, connection=None, *, allowed=lambda: True):
     connection = connection or {}
     if feed.transport == "ha":
         return HomeAssistant(connection=connection).read_feed(feed, cfg, now)
     if feed.transport == "sound_transit":
         return transit(request(SOUND_TRANSIT_URL), cfg, now)
     if feed.transport == "trakt":
-        client = connection.get("client_id") or env_value("AMADEUS_TRAKT_CLIENT_ID")
-        token = connection.get("token") or env_value("AMADEUS_TRAKT_ACCESS_TOKEN")
-        if not client or not token:
-            raise ValueError("Trakt authorization required")
-        query = urlencode(
-            {
-                "limit": 100,
-                "page": 1,
-                "start_at": datetime.fromtimestamp(now - 30 * 86400, timezone.utc).isoformat(),
-            }
-        )
-        return trakt(
-            request(
-                "https://api.trakt.tv/sync/history?" + query,
-                {
-                    "Authorization": "Bearer " + token,
-                    "trakt-api-key": client,
-                    "trakt-api-version": "2",
-                    "User-Agent": "OkabeBot/0.1.0",
-                },
-            ),
-            now,
-        )
+        from ...trakt_history import collect
+
+        return collect(cfg, now, connection, allowed=allowed)
     raise ValueError("Unknown feed transport")

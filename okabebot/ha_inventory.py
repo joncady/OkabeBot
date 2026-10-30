@@ -1,26 +1,35 @@
 """Explicit, read-only HA registry preview. No device actions or observation consent."""
 
 import asyncio
+from .feed_choices import hints
 from urllib.parse import urlsplit, urlunsplit
 
 
 def normalize(values):
-    areas, devices, entities, states = values
+    if len(values) not in (4, 5):
+        raise ValueError("Use supported HA registry responses")
+    areas, devices, entities, states = values[:4]
+    floors = {
+        f["floor_id"]: {"id": f["floor_id"], "name": str(f.get("name", ""))[:200]}
+        for f in (values[4] if len(values) == 5 else [])
+    }
     rooms = {
         a["area_id"]: {
             "id": a["area_id"],
             "name": str(a.get("name", ""))[:200],
             "floor_id": a.get("floor_id"),
+            "floor_name": floors.get(a.get("floor_id"), {}).get("name", ""),
         }
         for a in areas
     }
     device_map = {d["id"]: d for d in devices}
     state_map = {s["entity_id"]: s for s in states}
+    entity_map = {e["entity_id"]: e for e in entities}
     result = []
-    for entity in entities:
+    tags = []
+    for identity, entity in entity_map.items():
         if entity.get("disabled_by"):
             continue
-        identity = entity["entity_id"]
         device = device_map.get(entity.get("device_id"), {})
         area = entity.get("area_id") or device.get("area_id")
         state = state_map.get(identity, {})
@@ -35,12 +44,51 @@ def normalize(values):
                 )[:200],
                 "area_id": area,
                 "room": rooms.get(area, {}).get("name", ""),
+                "floor_id": rooms.get(area, {}).get("floor_id"),
+                "floor": rooms.get(area, {}).get("floor_name", ""),
+                "needs_review": area not in rooms,
                 "device_id": entity.get("device_id"),
                 "provider": str(entity.get("platform", ""))[:80],
                 "available": bool(state) and state.get("state") not in ("unknown", "unavailable"),
+                **hints(identity, entity, state, device),
             }
         )
-    return {"rooms": list(rooms.values()), "entities": result, "read_only": True}
+    for entity in result:
+        raw = entity_map[entity["id"]]
+        key = raw.get("unique_id")
+        if raw.get("platform") == "tag" and isinstance(key, str) and 1 <= len(key) <= 128:
+            tags.append(
+                {
+                    "tag_id": key,
+                    "entity_id": entity["id"],
+                    **{k: entity.get(k) for k in ("area_id", "room", "floor_id", "floor")},
+                }
+            )
+    for tag in tags:
+        if tag.get("area_id") not in rooms:
+            tag.update(area_id=None, room="", floor_id=None, floor="")
+    inventory_devices = []
+    for identity, device in device_map.items():
+        area = device.get("area_id")
+        inventory_devices.append(
+            {
+                "id": identity,
+                "name": str(device.get("name_by_user") or device.get("name") or identity)[:200],
+                "area_id": area,
+                "room": rooms.get(area, {}).get("name", ""),
+                "needs_review": area not in rooms,
+                "entity_ids": [e["id"] for e in result if e["device_id"] == identity],
+            }
+        )
+    return {
+        "floors": list(floors.values()),
+        "floor_registry_available": len(values) == 5,
+        "rooms": list(rooms.values()),
+        "devices": inventory_devices,
+        "entities": result,
+        "tags": tags,
+        "read_only": True,
+    }
 
 
 async def collect(connection):
@@ -88,6 +136,13 @@ async def collect(connection):
                 ):
                     raise ValueError("HA registry access unavailable")
                 values.append(response["result"])
+            # Floor support is additive: older HA releases may not expose it.
+            await ws.send_json({"id": 5, "type": "config/floor_registry/list"})
+            response = await ws.receive_json()
+            if response.get("id") != 5:
+                raise ValueError("Unexpected HA floor response")
+            if response.get("success") and isinstance(response.get("result"), list):
+                values.append(response["result"])
             return normalize(values)
 
 
@@ -110,8 +165,11 @@ class HomeMap:
         with self.feeds.store() as store:
             bindings = preference(store, SYSTEM, self.KEY, {})
         areas = {room["id"] for room in inventory["rooms"]}
+        from .tag_rooms import room_cue
+
         return {
             **inventory,
+            "room_cue": room_cue(self.feeds.folder, self.feeds.clock),
             "locations": [
                 {
                     "id": p["id"],

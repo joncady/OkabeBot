@@ -104,6 +104,18 @@ The dashboard offers 5-, 25-, and 50-minute sessions and Cancel. Starting anothe
 
 Authenticated POST `/focus/start` accepts `{"minutes":25}` (integer 1–180); `/focus/cancel` accepts `{}`. The publish-only notification credential cannot control timers. A timer already claimed for delivery cannot be recalled by Cancel.
 
+### Silent focus presentation
+
+A running timer has a small pixel hourglass/countdown and calmer idle pose across
+Pi, TV and compact browser/Mac renderers. Countdown expiry is local and does not
+wait for a queued completion notification or change its audio policy. Presentation
+yields to speech/listening/thinking, notifications, media, deployments and travel.
+Pi synchronization deduplicates by timer/display session, refreshes after a display
+restart, and uses the high-level `scene.set_focus` operation. Controllers skip
+projection to older Pi services lacking focus support; installing new controller
+code alone does not upgrade a satellite. Physical readability and priority checks
+remain part of the independent output-acceptance issue #56.
+
 ## Codex completion alerts
 
 Use the [Codex notify adapter](codex-notifications.md) for session-name cards and a short local completion chime. It preserves an existing hook and sends no prompt or response text. The optional `audio` field accepts `default`, `silent`, or `chime`; the latter two suppress TTS at every priority.

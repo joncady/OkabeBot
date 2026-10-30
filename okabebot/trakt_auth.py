@@ -4,6 +4,7 @@ import threading
 import time
 import os
 import fcntl
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.error import HTTPError
@@ -57,7 +58,7 @@ class TraktAuth:
             data,
         )
 
-    def save(self, old, new):
+    def save(self, old, new, *, rebind=False):
         with self.feeds.store() as store, store.db:
             store.db.execute("BEGIN IMMEDIATE")
             if preference(store, SYSTEM, "feed_connection.trakt", {}) != old:
@@ -66,6 +67,24 @@ class TraktAuth:
                 "INSERT OR REPLACE INTO preferences VALUES (?,?,?,?)",
                 (SYSTEM, "feed_connection.trakt", encode(new), self.feeds.clock()),
             )
+            if rebind:
+                store.db.execute(
+                    "INSERT OR REPLACE INTO preferences VALUES (?,?,?,?)",
+                    (
+                        SYSTEM,
+                        "feed_connection_revision.trakt",
+                        encode(uuid.uuid4().hex),
+                        self.feeds.clock(),
+                    ),
+                )
+                from .context_records import clear
+
+                clear(store.db, source="watch_history")
+                store.db.execute(
+                    "DELETE FROM events WHERE source='watch_history' AND kind='feed_snapshot'"
+                )
+                self.feeds.health.pop("watch_history", None)
+                self.feeds.next_poll.pop("watch_history", None)
 
     def tokens(self, value, credentials):
         access, refresh = value["access_token"], value["refresh_token"]
@@ -158,7 +177,7 @@ class TraktAuth:
                     raise ValueError("Private setup changed; authorize again")
             new = self.tokens(value, pending["credentials"])
             self.pending = None
-            self.save(pending["old"], new)
+            self.save(pending["old"], new, rebind=True)
             self.feeds.next_poll.pop("watch_history", None)
             return {"state": "authorized_enable_feed_to_collect"}
 

@@ -8,7 +8,13 @@ from urllib.parse import urlsplit
 import uuid
 import time
 
-from .adapters.context import FEEDS, validate_config, validate_snapshot
+from .adapters.context import (
+    FEEDS,
+    validate_config,
+    validate_snapshot,
+    TRAKT_DEFAULTS,
+    TRAKT_OPTIONS,
+)
 from .adapters.context.providers import fetch
 from .amadeus import Store, encode
 from .amadeus_habits import preference
@@ -20,12 +26,21 @@ PREFIX = "feed."
 
 def default(feed):
     return dict(
+        **({**TRAKT_DEFAULTS, "watched_lists": []} if feed.id == "watch_history" else {}),
         enabled=False,
         **{
             f[0]: ["1", "2"] if feed.id == "transit" and f[0] == "routes" else []
             for f in feed.fields
         },
     )
+
+
+def coverage_scope(feed, cfg):
+    if feed.id != "watch_history":
+        return {}
+    return {
+        "scope": f"Trakt collection covers the configured {cfg['history_days']}-day history window plus explicitly selected watched-date-unknown lists. Completeness is limited to that scope, not lifetime history, episode completion, tastes or streaming availability. Retained changes may contain earlier observations; list membership supplies no watched date."
+    }
 
 
 def permitted(setup, feed):
@@ -58,6 +73,11 @@ def context(store, *, limit=12, include_items=True, full=False):
         cfg = {**default(feed), **preference(store, SYSTEM, PREFIX + feed.id, {})}
         if not cfg["enabled"]:
             continue
+        if feed.id == "health":
+            from .amadeus_health import others_detected
+
+            if others_detected(store):
+                continue
         value = json.loads(row["payload"])
         if value["valid_until_at"] <= now:
             continue
@@ -90,6 +110,7 @@ def context(store, *, limit=12, include_items=True, full=False):
             result.append(
                 {
                     "source": feed.id,
+                    **coverage_scope(feed, cfg),
                     "complete": value["complete"] == "yes",
                     "retrieval_tool": "get_context_feed",
                     "checked_at": row["observed_at"],
@@ -100,6 +121,7 @@ def context(store, *, limit=12, include_items=True, full=False):
         result.append(
             {
                 "source": feed.id,
+                **coverage_scope(feed, cfg),
                 "complete": value["complete"] == "yes",
                 "items": [
                     item
@@ -144,6 +166,7 @@ class Feeds:
                         label=feed.label,
                         transport=feed.transport,
                         instructions=feed.instructions,
+                        options=list(TRAKT_OPTIONS) if feed.id == "watch_history" else [],
                         fields=[
                             {"key": k, "label": label, "domain": domain}
                             for k, label, domain in feed.fields
@@ -231,7 +254,12 @@ class Feeds:
             cfg = {**default(feed), **preference(store, SYSTEM, PREFIX + source, {})}
             if not cfg["enabled"] or not permitted(setup, feed):
                 return {"items": [], "state": "paused_or_not_consented", "next_offset": None}
-            return read_records(
+            if source == "health":
+                from .amadeus_health import others_detected
+
+                if others_detected(store):
+                    return {"items": [], "state": "shared_room_suppressed", "next_offset": None}
+            result = read_records(
                 store,
                 source,
                 "unknown" if feed.household else setup["profile"],
@@ -240,6 +268,7 @@ class Feeds:
                 limit=limit,
                 view=view,
             )
+            return {**result, **coverage_scope(feed, cfg)}
 
     def inventory(self):
         from .ha_inventory import preview
@@ -260,6 +289,11 @@ class Feeds:
                 raise ValueError("Save private setup first")
             previous_cfg = {**default(feed), **preference(store, SYSTEM, PREFIX + feed.id, {})}
             removed = any(set(previous_cfg[key]) - set(cfg[key]) for key, _, _ in feed.fields)
+            if feed.id == "watch_history":
+                removed = (
+                    bool(set(previous_cfg["watched_lists"]) - set(cfg["watched_lists"]))
+                    or cfg["history_days"] < previous_cfg["history_days"]
+                )
             # UI explicitly labels enabling as consent for this feed. Do not resume
             # global pause/guest mode, change health permissions or other sources.
             if cfg["enabled"] and feed.id not in setup["sources"]:
@@ -317,6 +351,15 @@ class Feeds:
                 store.db.execute(
                     "DELETE FROM preferences WHERE subject=? AND key=?",
                     (SYSTEM, "feed_connection." + name),
+                )
+                store.db.execute(
+                    "INSERT OR REPLACE INTO preferences VALUES (?,?,?,?)",
+                    (
+                        SYSTEM,
+                        "feed_connection_revision." + name,
+                        encode(uuid.uuid4().hex),
+                        self.clock(),
+                    ),
                 )
                 for feed in FEEDS.values():
                     if feed.transport != name:
@@ -379,6 +422,16 @@ class Feeds:
                 "INSERT OR REPLACE INTO preferences VALUES (?,?,?,?)",
                 (SYSTEM, "feed_connection." + name, encode(cfg), self.clock()),
             )
+            if cfg != old:
+                store.db.execute(
+                    "INSERT OR REPLACE INTO preferences VALUES (?,?,?,?)",
+                    (
+                        SYSTEM,
+                        "feed_connection_revision." + name,
+                        encode(uuid.uuid4().hex),
+                        self.clock(),
+                    ),
+                )
             for feed in FEEDS.values():
                 if feed.transport == name and cfg != old:
                     store.db.execute(
@@ -404,6 +457,17 @@ class Feeds:
         self.tick(only=feed.id)
         return self.snapshot()
 
+    def _read_allowed(self, feed, setup, cfg, connection, revision, connection_revision):
+        with self.store() as store:
+            return (
+                preference(store, SYSTEM, KEY, {}) == setup
+                and {**default(feed), **preference(store, SYSTEM, PREFIX + feed.id, {})} == cfg
+                and preference(store, SYSTEM, "feed_revision." + feed.id) == revision
+                and preference(store, SYSTEM, "feed_connection_revision." + feed.transport)
+                == connection_revision
+                and preference(store, SYSTEM, "feed_connection." + feed.transport, {}) == connection
+            )
+
     def tick(self, *, only=None):
         if not self.lock.acquire(blocking=False):
             return
@@ -419,6 +483,9 @@ class Feeds:
                     cfg = {**default(feed), **preference(store, SYSTEM, PREFIX + feed.id, {})}
                     revision = preference(store, SYSTEM, "feed_revision." + feed.id)
                     connection = preference(store, SYSTEM, "feed_connection." + feed.transport, {})
+                    connection_revision = preference(
+                        store, SYSTEM, "feed_connection_revision." + feed.transport
+                    )
                 if not cfg["enabled"] or not permitted(setup, feed):
                     continue  # No network reads without current consent.
                 self.next_poll[feed.id] = now + feed.interval
@@ -428,7 +495,15 @@ class Feeds:
                     items, complete = (
                         self.reader(feed, cfg, now)
                         if self.reader
-                        else fetch(feed, cfg, now, connection)
+                        else fetch(
+                            feed,
+                            cfg,
+                            now,
+                            connection,
+                            allowed=lambda: self._read_allowed(
+                                feed, setup, cfg, connection, revision, connection_revision
+                            ),
+                        )
                     )
                     if not isinstance(items, list) or type(complete) is not bool:
                         raise ValueError("Invalid adapter result")
@@ -462,6 +537,10 @@ class Feeds:
                             or {**default(feed), **preference(store, SYSTEM, PREFIX + feed.id, {})}
                             != cfg
                             or preference(store, SYSTEM, "feed_revision." + feed.id) != revision
+                            or preference(
+                                store, SYSTEM, "feed_connection_revision." + feed.transport
+                            )
+                            != connection_revision
                             or preference(store, SYSTEM, "feed_connection." + feed.transport, {})
                             != connection
                         ):
@@ -477,7 +556,8 @@ class Feeds:
                             full_items,
                             complete=source_complete,
                             valid_until=now + feed.freshness,
-                            noisy=feed.id in ("device_activity", "appliances"),
+                            noisy=feed.id
+                            in ("device_activity", "appliances", "room_activity", "health"),
                             window_seconds=60
                             * preference(
                                 store, SYSTEM, "feed.storage_policy", {"signal_window_minutes": 15}
@@ -499,7 +579,12 @@ class Feeds:
                     self.health[feed.id] = {
                         "state": "connected" if source_complete else "connected_partial"
                     }
-                except Exception:
+                except Exception as exc:
+                    from .trakt_history import CollectionCancelled
+
+                    if isinstance(exc, CollectionCancelled):
+                        self.health[feed.id] = {"state": "context_changed"}
+                        continue
                     # Exception text can include tokens, URLs or provider bodies.
                     self.health[feed.id] = {"state": "unavailable_check_setup"}
                     if feed.transport == "ha":
@@ -515,3 +600,22 @@ class Feeds:
             except Exception:
                 pass  # Keep provider failures isolated from the controller.
             stop.wait(15)
+
+
+def room_media_busy(store):
+    """Additional fail-closed speech gate for consented selected room players."""
+    setup = preference(store, SYSTEM, KEY, {})
+    cfg = preference(store, SYSTEM, PREFIX + "room_activity", {})
+    if (
+        not permitted(setup, FEEDS["room_activity"])
+        or not cfg.get("enabled")
+        or not cfg.get("players")
+    ):
+        return False
+    snapshot = next((v for v in context(store, full=True) if v["source"] == "room_activity"), None)
+    if not snapshot or snapshot["complete"] is not True:
+        return True
+    players = [v for v in snapshot["items"] if v.get("category") == "media_player"]
+    return len(players) != len(cfg["players"]) or any(
+        p["state"] not in ("off", "standby", "idle", "paused") for p in players
+    )

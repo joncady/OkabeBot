@@ -18,3 +18,15 @@ test('real dashboard loads authentication before app and includes its controls',
  for(const id of ['dashboard-auth','dashboard-auth-form','dashboard-access','dashboard-auth-error','dashboard-forget'])assert.ok(html.includes('id="'+id+'"'));
  assert.ok(html.indexOf('src="/dashboard-auth.js"')<html.indexOf('src="/app.js"'));
 });
+
+test('section fragments never replace saved owner access or disappear on refresh',()=>{
+ const s=auth('#amadeus-feeds','b'.repeat(43));assert.equal(s.access.token(),'b'.repeat(43));
+ s.access.remember();assert.equal(s.changes.length,0);assert.equal(s.storage.get('okabebot-dashboard-access'),'b'.repeat(43));
+ const fresh=auth('#amadeus-feeds');assert.equal(fresh.access.token(),'');assert.equal(fresh.nodes['#dashboard-auth'].hidden,false);
+});
+
+test('an invalid setup fragment is reported instead of silently falling back to saved access',()=>{
+ const s=auth('#not-a-valid-setup-key','b'.repeat(43));assert.equal(s.access.token(),'');
+ assert.equal(s.nodes['#dashboard-auth'].hidden,false);assert.match(s.nodes['#dashboard-auth-error'].textContent,/Invalid setup key/);
+ assert.equal(s.storage.get('okabebot-dashboard-access'),'b'.repeat(43));
+});

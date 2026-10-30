@@ -33,6 +33,12 @@ class TagsTests(unittest.TestCase):
             "observed_at": self.now,
         }
 
+    def test_owner_destinations_keep_area_labels(self):
+        self.locations[0].update(area_id="studio", area_name="Studio", floor_name="Upper")
+        item = self.tags.snapshot()["locations"][0]
+        self.assertEqual(item["area_name"], "Studio")
+        self.assertEqual(item["floor_name"], "Upper")
+
     def test_learn_never_executes_even_for_an_existing_mapping(self):
         self.tags.save(self.mapping)
         self.tags.learn()
@@ -107,5 +113,6 @@ class TagsTests(unittest.TestCase):
         self.assertEqual(request("/tags/source", "wrong"), 403)
         self.assertEqual(request("/tags/source", "é"), 403)
         self.assertEqual(request("/tags/save", "x" * 40), 403)
+        self.assertEqual(request("/tags/refresh-areas", "x" * 40), 403)
         self.assertEqual(request("/tags/source", "x" * 40), 200)
         self.call.assert_not_called()

@@ -26,6 +26,7 @@ import travel
 from gesture_policy import wave_allowed
 from device_config import load
 from display_power import keep_awake, Power
+import focus_visual
 import math
 
 ROOT = Path(__file__).resolve().parent
@@ -68,6 +69,11 @@ class Display:
         self.notification = None
         self.notification_until = 0
         self.card_photo = None
+        self.focus = focus_visual.Focus()
+        self.focus_item = None
+        self.focus_photo = None
+        self.focus_key = None
+        self.focus_shown = False
         self.deploying = False
         self.music = {}
         self.music_scroll_since = time.monotonic()
@@ -267,7 +273,7 @@ class Display:
         if data["activity"] == "speaking" and elapsed >= len(data["envelope"]) / 20:
             data["activity"] = "idle"
             self.state["activity"] = "idle"
-        return dict(
+        args = dict(
             gesture="wave" if now < getattr(self, "wave_until", 0) else "idle",
             idle_seconds=max(0, now - self.idle_since),
             emotion=data["emotion"],
@@ -279,6 +285,19 @@ class Display:
             environment=data.get("environment", "legacy"),
             palette=data["palette"],
         )
+        focus = getattr(self, "focus", None)
+        if focus is not None:
+            active = focus.status()["active"]
+            allowed = focus_visual.visible(
+                active,
+                self.character,
+                self.motion.phase,
+                self.notification,
+                self.music,
+                self.deploying,
+            )
+            args = focus.quiet_args(args, blocked=not allowed)
+        return args
 
     def draw_scene(self, shapes, sx, sy):
         # Retain Tk items so static crest pixels do not get deleted/redrawn.
@@ -375,6 +394,50 @@ class Display:
         if self.scene_rebuilt:
             for item in self.sport_items:
                 self.canvas.tag_raise(item)
+
+    def draw_focus(self, sx, sy):
+        focus = getattr(self, "focus", None)
+        if focus is None:
+            return
+        status = focus.status()
+        show = focus_visual.visible(
+            status["active"],
+            self.character,
+            self.motion.phase,
+            self.notification,
+            self.music,
+            self.deploying,
+        )
+        if not show:
+            if self.focus_item is not None and self.focus_shown:
+                self.canvas.itemconfigure(self.focus_item, state="hidden")
+            self.focus_shown = False
+            return
+        key = (status["remaining_seconds"], sx, sy)
+        if key != self.focus_key:
+            image = focus_visual.badge(status["remaining_seconds"])
+            image = image.resize(
+                (max(1, round(image.width * sx)), max(1, round(image.height * sy))), Image.NEAREST
+            )
+            buf = io.BytesIO()
+            image.save(buf, format="PNG")
+            photo = tk.PhotoImage(data=base64.b64encode(buf.getvalue()).decode("ascii"))
+            if self.focus_item is None:
+                self.focus_item = self.canvas.create_image(0, 0, anchor="nw")
+            self.canvas.itemconfigure(self.focus_item, image=photo)
+            self.focus_photo = photo
+            self.focus_key = key
+            self.canvas.coords(
+                self.focus_item,
+                round(focus_visual.BADGE_POSITION[0] * sx),
+                round(focus_visual.BADGE_POSITION[1] * sy),
+            )
+        needs_raise = self.scene_rebuilt or not self.focus_shown
+        if not self.focus_shown:
+            self.canvas.itemconfigure(self.focus_item, state="normal")
+            self.focus_shown = True
+        if needs_raise:
+            self.canvas.tag_raise(self.focus_item)
 
     def draw_media(self, now, sx, sy):
         if self.media_panel is None:
@@ -513,6 +576,8 @@ class Display:
             phase, dx, dy = self.motion.sample(started)
             travelling = phase != "home"
             if travelling:
+                if getattr(self, "focus", None) is not None:
+                    self.draw_focus(sx, sy)
                 if self.media_panel:
                     self.media_panel.place_forget()
                     self.media_shown = False
@@ -565,6 +630,8 @@ class Display:
                 sy,
             )
             self.draw_content_assets(started, sx, sy)
+            if getattr(self, "focus", None) is not None:
+                self.draw_focus(sx, sy)
             if self.notification and self.card_photo:
                 if self.media_panel:
                     self.media_panel.place_forget()
@@ -616,6 +683,7 @@ class Display:
             self.state,
             session_id=self.session_id,
             screen_power=self.power.tick(),
+            focus=self.focus.status(),
             render_metrics={
                 "fps": round(1 / self.frame_period, 1) if self.frame_period else 0,
                 "work_ms": round(self.frame_work * 1000, 1),
@@ -638,7 +706,9 @@ class Display:
                 data, reply = self.queue.get_nowait()
                 try:
                     op = data["op"]
-                    if op == "screen_power":
+                    if op == "focus":
+                        result = self.focus.command(data)
+                    elif op == "screen_power":
                         result = self.power.command(data)
                     elif op == "display":
                         result = self.apply(data)
@@ -719,12 +789,22 @@ class Display:
                             self.png = buf.getvalue()
                         elif self.character:
                             buf = io.BytesIO()
-                            scene.render(
+                            image = scene.render(
                                 notification=self.notification,
                                 deploying=self.deploying,
                                 music=self.music,
                                 **self.face_args(),
-                            ).save(buf, format="PNG")
+                            )
+                            focus = self.focus.status()
+                            show = focus_visual.visible(
+                                focus["active"],
+                                self.character,
+                                self.motion.phase,
+                                self.notification,
+                                self.music,
+                                self.deploying,
+                            )
+                            focus_visual.overlay(image, focus, show).save(buf, format="PNG")
                             self.png = buf.getvalue()
                         result = {"png_base64": base64.b64encode(self.png).decode("ascii")}
                     else:
@@ -781,6 +861,7 @@ def main():
                     "clear",
                     "status",
                     "screen_power",
+                    "focus",
                     "preview",
                     "character",
                     "gesture",
