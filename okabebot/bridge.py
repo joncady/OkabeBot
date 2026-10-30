@@ -170,12 +170,20 @@ class Bridge:
         self.tag_areas = TagAreas(state_dir() / "amadeus", self.amadeus_feeds.inventory)
 
         self.tag_source_token = persistent_token(state_dir() / "tags", "ha-source-token")
+        from .tag_rooms import TagRoomFollow
+
+        self.tag_room_follow = TagRoomFollow(
+            state_dir() / "amadeus",
+            lambda: self.surfaces.snapshot()["locations"],
+            lambda location: self.application.execute("/surfaces/move", {"location_id": location}),
+        )
         self.tags = Tags(
             state_dir() / "tags",
-            lambda: self.surfaces.snapshot()["locations"],
+            self.tag_room_follow.locations,
             lambda location: self.application.execute("/surfaces/move", {"location_id": location}),
             chores=self.chores,
             areas=self.tag_areas.snapshot,
+            room_follow=self.tag_room_follow,
         )
         self.resources.callback(self.surfaces.close)
         from .surface_audio import AudioHub
@@ -1004,7 +1012,7 @@ class Bridge:
                 "camera_greeting": dict(self.camera_greeting.state),
                 "amadeus_interruptions": self.proactive.interruptions(),
                 "amadeus_shadow": dict(self.amadeus_shadow.state),
-                "surfaces": self.surfaces.snapshot(),
+                "surfaces": {**self.surfaces.snapshot(), "room_cue": self.tag_room_follow.cue()},
                 "home_assistant_url": get_config()["web"]["home_assistant_url"],
                 "spotify": self.media_source.status(),
                 "media": self.media_source.status(),

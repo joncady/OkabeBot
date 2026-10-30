@@ -13,6 +13,7 @@ SYSTEM = (
     "Accepted requests are not confirmed playback or arrival. Never give an all-clear. "
     "For household state snapshots, describe ONLY what devices reported: no person, action, cause or sequence. "
     "Example: 'The connected records show the TV off and the door closed; presence was unclear.' "
+    "An NFC room cue locates a recent scan, not an identified person; a companion destination does not locate the user. "
     "Never turn that into 'someone watched then switched off the TV' or infer who came or left. "
     "Mention actual alerts if present; otherwise explain you only have state readings. Never say no alerts triggered just because none are listed. "
     "Don't read out timestamps unless asked when. Return only the spoken reply."
@@ -175,6 +176,11 @@ def facts(name, result, reference):
         for key in ("music", "tv"):
             if isinstance(result.get(key), dict):
                 value[key] = project(result[key])
+    if name == "get_companion_locations" and isinstance(result.get("room_cue"), dict):
+        cue = result["room_cue"]
+        value["room_cue"] = {
+            k: cue.get(k) for k in ("room", "floor", "evidence", "identity", "expires_at")
+        }
     while len(json.dumps(value).encode()) > 4000:
         lists = [k for k, v in value.items() if isinstance(v, list) and v]
         if not lists:

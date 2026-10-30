@@ -825,3 +825,5 @@ Optional [household nudges](docs/household-nudges.md) combine consented light, g
 Household comfort controls and spoken notes display Fahrenheit while normalizing source units internally for comparison.
 
 NFC actions and linked chores inherit room/floor metadata from HA tag entities by stable tag ID. Refresh tag rooms in the dashboard; existing action destinations and recurrence remain separate.
+
+Selected NFC tags can also provide an expiring room cue and call the companion to a screen bound to that HA room. This is per-tag opt-in, never home/away or identity evidence; see [NFC chores and room cues](docs/chores.md).

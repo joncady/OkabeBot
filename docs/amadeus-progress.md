@@ -499,3 +499,5 @@ collectors/recording budgets and full provider pagination remain separate work.
 - Household comfort controls and spoken notes now present Fahrenheit while preserving unit-normalized comparisons and existing saved threshold meaning. Fractional conversions are validated without changing thermostat settings.
 
 - NFC action/chore room context now derives from HA tag registry IDs, with bounded refresh, account-generation invalidation, multiple-room associations and grounded reminder/tool presentation. Metadata refresh does not imply presence or completion.
+
+- Added explicitly selected NFC room cues and same-room companion following, with unique/owner-selected screen resolution, short-lived unknown-identity context, existing handoff/deduplication and unchanged home/away semantics.

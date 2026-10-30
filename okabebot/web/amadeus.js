@@ -182,6 +182,7 @@ const amadeusUI = (() => {
       refresh.onclick=()=>run(async()=>{const inventory=await api('ha-inventory');haInventory=inventory.entities||[];homePreview=inventory;await feeds();message('Read-only preview refreshed. Discovered devices have not been enabled for observation.');});
       const rooms=document.createElement('p');rooms.className='feed-help';rooms.textContent=[...new Set(haInventory.map(e=>[e.floor,e.room].filter(Boolean).join(' / ')).filter(Boolean))].join(' · ');
       shared.append(heading,help,feedConnection(connections.ha),refresh,rooms);
+      if(homePreview?.room_cue){const cue=document.createElement('p');cue.className='feed-help';cue.textContent='Recent NFC room cue · '+[homePreview.room_cue.floor,homePreview.room_cue.room].filter(Boolean).join(' / ')+' · scanner identity unknown';shared.append(cue);}
       if(homePreview){
         const review=document.createElement('p');review.className='feed-help';
         const count=(homePreview.devices||[]).filter(d=>d.needs_review).length;

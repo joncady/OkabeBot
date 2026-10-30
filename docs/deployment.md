@@ -1876,3 +1876,22 @@ The Mac package is installed. An owner-authenticated live registry refresh verif
 assigned area metadata on existing mapped tags and the chore room projection.
 Controller, speech, Pi and configured feed readiness recovered. No tag scan, chore
 completion, screen movement, volume change or audible acceptance test was performed.
+
+## Explicit NFC room cues and following
+
+The existing controller/tag ingress can optionally resolve selected tags through
+HA areas and the saved screen room bindings. No new endpoint, service, credential
+or radio scanner is introduced. Each tag remains off until explicitly selected.
+The owner tag configuration controls cue duration and an optional same-room screen
+choice; room ambiguity never selects an arbitrary display.
+
+The current expiring cue is private tag state, scoped to the owner profile revision
+and current metadata/mapping. It is presented as scanner evidence with unknown
+identity, separate from home/away estimates and retained observations. Movement
+uses the existing high-level surface command/handoff, with no new playback, speech
+or volume action. The Mac package is installed and owner-authenticated checks
+confirm the room-cue schema and opt-out preservation on existing mappings.
+Controller, speech, Pi and existing source readiness recovered. No selected tag
+was scanned, no cue was fabricated and no physical move or audio test was sent.
+Room bindings/explicit target selection remain owner setup; isolated tests do not
+establish physical acceptance.

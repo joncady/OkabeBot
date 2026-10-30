@@ -27,11 +27,11 @@ WRITE = ToolAnnotations(
 
 @mcp.tool(annotations=READ)
 def get_companion_locations() -> dict:
-    """List configured companion destinations, their names/aliases and current location."""
+    """List companion destinations/current location and an expiring NFC scanner room cue if present. A cue does not identify a person or establish home/away."""
     from .controller_tools import projection
 
     state = projection("surfaces")["surfaces"]
-    return {
+    result = {
         k: state[k]
         for k in (
             "locations",
@@ -41,6 +41,8 @@ def get_companion_locations() -> dict:
             "phase",
         )
     }
+    result["room_cue"] = state.get("room_cue")
+    return result
 
 
 @mcp.tool(annotations=WRITE)

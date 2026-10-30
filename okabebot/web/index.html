@@ -118,7 +118,13 @@
 <form id="tag-form" class="tag-form">
 <label>Scanned tag<input id="tag-id" readonly required placeholder="Scan a tag to fill this automatically"></label>
 <label>Tag label<input id="tag-name" required maxlength="80" placeholder="Living room companion"></label>
-<label>Action<select id="tag-action"><option value="call_companion">Call companion</option><option value="chore_reminder">Chore reminder</option></select></label>
+<label>Action<select id="tag-action"><option value="call_companion">Call companion</option><option value="chore_reminder">Chore reminder</option><option value="room_checkin">Check in to this room &amp; call companion</option></select></label>
+<div id="tag-room-settings" hidden>
+<label id="tag-room-follow-label"><input id="tag-room-follow" type="checkbox"> Also use this chore scan as a room cue and call the companion here</label>
+<label>Room cue lifetime (minutes)<input id="tag-room-minutes" type="number" min="1" max="30" value="10"></label>
+<label>Screen in this room<select id="tag-room-location"><option value="">Automatic · only when one screen is assigned</option></select></label>
+<p>Uses the tag’s HA area and the screen room bindings in Amadeus setup. A scan may wake/cast to a TV and replace its current app. No home/away inference or continuous tracking; the scanner’s identity is unknown. If multiple screens share a room, choose one here.</p>
+</div><p id="tag-room-cue" role="status"></p>
 <label id="tag-destination">Destination<select id="tag-location" required></select></label>
 <div id="tag-chore-settings" hidden>
 <label>Chore<select id="tag-chore-select"><option value="">Create a chore</option></select></label>

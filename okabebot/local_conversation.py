@@ -98,6 +98,12 @@ def shortlist(text, available):
     if locations.movement_request(text) and "move_companion" in available:
         return ["move_companion"]
     if re.search(
+        r"\b(where am i|(?:which|what) room am i in|(?:last|recent) nfc (?:scan|room))\b",
+        text,
+        re.I,
+    ):
+        return ["get_companion_locations"] if "get_companion_locations" in available else []
+    if re.search(
         r"\b(where|which|what)\b.*\b(locations?|destinations?|screens?|you.*go|you.*are|are you)\b",
         text,
         re.I,
@@ -404,6 +410,14 @@ def acknowledgement(name, result):
                 else "My current screen is not confirmed. "
             )
         )
+        cue = result.get("room_cue")
+        if isinstance(cue, dict) and cue.get("room"):
+            position = (
+                "A recent NFC scan was in "
+                + str(cue["room"])[:100]
+                + "; the scanner's identity is unknown. "
+                + position
+            )
         return position + (
             "Available screens: " + ", ".join(names) + "."
             if names

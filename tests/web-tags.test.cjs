@@ -87,3 +87,16 @@ test('inherited HA room labels render literally and refresh is owner initiated',
  await f.nodes['tag-refresh-areas'].onclick();
  assert.equal(f.calls.filter(c=>c.path==='/tags/refresh-areas').length,1);
 });
+test('room check-in is explicitly saved without a fixed destination or synthetic scan',async()=>{
+ const f=await fixture();await f.nodes['tag-register'].onclick();f.nodes['tag-id'].value='selected-tag';f.nodes['tag-name'].value='Room cue';f.nodes['tag-action'].value='room_checkin';f.nodes['tag-room-minutes'].value='5';f.nodes['tag-room-location'].value='';
+ f.nodes['tag-action'].onchange();assert.equal(f.nodes['tag-destination'].hidden,true);
+ await f.nodes['tag-form'].onsubmit({preventDefault(){}});
+ const saved=JSON.parse(f.calls.find(c=>c.path==='/tags/save').opts.body);
+ assert.equal(saved.action,'room_checkin');assert.equal(saved.room_follow,true);assert.equal(saved.room_minutes,5);assert.equal('location_id' in saved,false);
+ assert.equal(f.calls.filter(c=>['/tags/source','/tags/test'].includes(c.path)).length,0);
+});
+test('existing fixed-destination mappings do not opt into room following',async()=>{
+ const f=await fixture();await f.nodes['tag-register'].onclick();f.nodes['tag-id'].value='old-tag';f.nodes['tag-name'].value='Old action';f.nodes['tag-action'].value='call_companion';f.nodes['tag-location'].value='desk';
+ await f.nodes['tag-form'].onsubmit({preventDefault(){}});
+ assert.equal('room_follow' in JSON.parse(f.calls.find(c=>c.path==='/tags/save').opts.body),false);
+});

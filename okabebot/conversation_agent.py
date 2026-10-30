@@ -14,6 +14,7 @@ ROUTING = (
     "titles based only on a small taste profile. Do not claim streaming availability without evidence. "
     "To-do/shopping lists use get_context_feed with source=tasks, not list_reminders, "
     "which reads only companion-created scheduled reminders. Transit uses source=transit. "
+    "User room questions use get_companion_locations and its expiring NFC room_cue. A companion screen location is not the user location; missing cues mean unknown. "
     "Light, switch and speaker state readings use get_context_feed with source=room_activity. "
     "Garage/door and thermostat readings use get_context_feed with source=home_devices; "
     "these readings do not prove who is home and do not authorize physical controls. "

@@ -105,3 +105,35 @@ The cache and tag mapping remain private configuration outside the Amadeus memor
 store, like existing NFC mappings. They are not new participant observation history;
 whole-store forgetting removes chores and the HA connection, making this cache inert.
 No real tag scan or device action is required to refresh room metadata.
+
+## Selected NFC room check-ins
+
+Room-following is **off for existing tags**. In the NFC panel either choose
+**Check in to this room & call companion**, or enable **Also use this chore scan
+as a room cue** on an individual chore tag. Saving or testing a mapping does not
+simulate a scan. Chore completion through the ordinary dashboard also does not
+claim room presence. Only an accepted real HA scan runs this combined behavior.
+
+Assign the tag entity to an HA Area, then bind approved screens to that area in
+**Amadeus setup → Context feeds → screen room bindings**. Automatic routing works
+only with one approved screen in the room. If several screens share the area,
+choose one on the tag; a moved/unapproved/mismatched screen is not used as fallback.
+Missing/unassigned/stale tag metadata or unavailable browser surfaces never cause
+a guessed cross-room move. TVs may wake and replace their current app; the UI
+explains this before enabling the action. Ordinary fixed-destination tag actions
+remain unchanged.
+
+A real selected scan supplies an expiring **scanner room cue**, ten minutes by
+default and editable from one to thirty minutes. It is exposed to the owner NFC
+panel, room preview and companion-location tool as `explicit_nfc_scan`, with
+identity unknown. It never writes a home/away estimate, identifies a person, arms
+a return greeting or starts continuous tracking. Cues are current private state,
+not retained scan history. Private setup revisions (including pause/guest/profile changes), disabling/removing
+the tag, expired/rebound HA metadata and expiry invalidate the cue.
+
+A valid cue can exist even if no room screen is configured or movement fails.
+Chore tags complete first, then make at most one movement request. Existing
+freshness, durable deduplication and consume-before-action semantics prevent
+automatic replay after uncertain failure. The normal surface handoff owns travel,
+readiness, audio routing and its existing manual-follow hold. Cue expiry does not
+force a return movement or extend that hold. No speech or volume change is added.

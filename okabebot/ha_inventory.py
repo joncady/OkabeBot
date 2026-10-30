@@ -163,8 +163,11 @@ class HomeMap:
         with self.feeds.store() as store:
             bindings = preference(store, SYSTEM, self.KEY, {})
         areas = {room["id"] for room in inventory["rooms"]}
+        from .tag_rooms import room_cue
+
         return {
             **inventory,
+            "room_cue": room_cue(self.feeds.folder, self.feeds.clock),
             "locations": [
                 {
                     "id": p["id"],

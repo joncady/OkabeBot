@@ -14,9 +14,12 @@ def tag_id(value):
 
 
 class Tags:
-    def __init__(self, folder, locations, call, clock=time.time, chores=None, areas=None):
+    def __init__(
+        self, folder, locations, call, clock=time.time, chores=None, areas=None, room_follow=None
+    ):
         self.folder, self.locations, self.call, self.clock = Path(folder), locations, call, clock
         self.chores = chores
+        self.room_follow = room_follow
         self.areas = areas or (lambda: {"state": "not_connected", "tags": {}})
         self.lock = threading.RLock()
         self.learn_until = 0
@@ -42,14 +45,16 @@ class Tags:
                 )
             return {
                 "mappings": mappings,
+                "tag_areas": areas.get("tags", {}),
                 "locations": [
-                    {"id": p["id"], "name": p["name"]}
+                    {"id": p["id"], "name": p["name"], "area_id": p.get("area_id")}
                     for p in self.locations()
                     if p.get("approved")
                 ],
                 "learning": self.clock() < self.learn_until,
                 "learned": self.learned if self.clock() < self.learn_until else None,
                 "last_scan": state.get("last_scan"),
+                "room_cue": self.room_follow.cue() if self.room_follow else None,
             }
 
     def learn(self):
@@ -62,11 +67,42 @@ class Tags:
             raise ValueError("Choose a tag action")
         action = data.get("action", "call_companion")
         expected = {"tag_id", "name", "enabled"} | (
-            {"chore_id"} if action == "chore_reminder" else {"location_id"}
+            {"chore_id"}
+            if action == "chore_reminder"
+            else set()
+            if action == "room_checkin"
+            else {"location_id"}
         )
-        if action not in ("call_companion", "chore_reminder") or set(data) - {"action"} != expected:
+        optional = {"action", "room_follow", "room_minutes", "room_location_id"}
+        if (
+            action not in ("call_companion", "chore_reminder", "room_checkin")
+            or set(data) - optional != expected
+        ):
             raise ValueError("Choose the fields for this tag action")
+        follow = data.get("room_follow", action == "room_checkin")
+        if type(follow) is not bool or (action == "call_companion" and follow):
+            raise ValueError("Use the room check-in action or enable room following on a chore")
+        if action == "room_checkin" and not follow:
+            raise ValueError("Room check-in requires room following")
+        if (
+            type(data.get("room_minutes", 10)) is not int
+            or not 1 <= data.get("room_minutes", 10) <= 30
+        ):
+            raise ValueError("Choose a room cue lifetime of 1–30 minutes")
+        preferred = data.get("room_location_id", "")
+        if not isinstance(preferred, str) or len(preferred) > 100:
+            raise ValueError("Choose a room destination")
+        if preferred and preferred not in {p["id"] for p in self.locations() if p.get("approved")}:
+            raise ValueError("Choose an approved room destination")
         key = tag_id(data["tag_id"])
+        if (
+            follow
+            and preferred
+            and self.room_follow
+            and self.room_follow.plan(key, data)["status"]
+            not in ("ready", "room_screen_unavailable")
+        ):
+            raise ValueError("Choose a screen assigned to this tag's HA room")
         if not isinstance(data["name"], str) or not 1 <= len(data["name"].strip()) <= 80:
             raise ValueError("Use a name of 1–80 characters")
         if type(data["enabled"]) is not bool:
@@ -74,9 +110,10 @@ class Tags:
         if action == "call_companion":
             if data["location_id"] not in {p["id"] for p in self.locations() if p.get("approved")}:
                 raise ValueError("Choose an approved destination")
-        elif self.chores is None or data["chore_id"] not in {
-            v["id"] for v in self.chores.snapshot()["items"]
-        }:
+        elif action == "chore_reminder" and (
+            self.chores is None
+            or data["chore_id"] not in {v["id"] for v in self.chores.snapshot()["items"]}
+        ):
             raise ValueError("Choose a configured chore")
         with self.lock:
             mappings = read(self.folder / "mappings.json", {})
@@ -95,20 +132,37 @@ class Tags:
             write(self.folder / "mappings.json", mappings)
             return self.snapshot()
 
-    def dispatch(self, key, request_id=None):
+    def dispatch(self, key, request_id=None, scanned=False):
         mapping = read(self.folder / "mappings.json", {}).get(tag_id(key))
         if not mapping or not mapping["enabled"]:
             return {"status": "unmapped_or_disabled"}
+        follow = mapping.get("room_follow", mapping.get("action") == "room_checkin")
+        if follow and not scanned:
+            return {"status": "real_scan_required"}
+        if mapping.get("action") == "room_checkin":
+            return (
+                self.room_follow.scan(key, mapping)
+                if self.room_follow
+                else {"status": "room_follow_unavailable"}
+            )
         if mapping.get("action") == "chore_reminder":
             if self.chores is None:
                 return {"status": "chore_unavailable"}
             try:
                 value = self.chores.complete(mapping["chore_id"], request_id=request_id)["item"]
-                return {
+                result = {
                     "status": "chore_completed",
                     "chore_id": value["id"],
                     "due_at": value["due_at"],
                 }
+                if follow:
+                    room = (
+                        self.room_follow.scan(key, mapping)
+                        if self.room_follow
+                        else {"status": "room_follow_unavailable"}
+                    )
+                    result["room_status"] = room["status"]
+                return result
             except (ValueError, KeyError, TypeError):
                 return {"status": "chore_unavailable"}
         if mapping["location_id"] not in {p["id"] for p in self.locations() if p.get("approved")}:
@@ -155,7 +209,8 @@ class Tags:
             }
             write(self.folder / "state.json", state)
             if result is None:
-                result = self.dispatch(key, request_id=event)
+                result = self.dispatch(key, request_id=event, scanned=True)
             state["last_scan"]["status"] = result["status"]
+            state["last_scan"]["room_status"] = result.get("room_status")
             write(self.folder / "state.json", state)
             return result
