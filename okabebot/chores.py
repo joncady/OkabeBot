@@ -20,6 +20,19 @@ def identity(value):
     return value
 
 
+def chore_label(item):
+    """Bounded literal chore/room phrase for grounded reminder slots."""
+    title = " ".join(re.sub(r"[<>{}]", " ", item["title"]).split()) or "a household chore"
+    rooms = item.get("rooms", [])
+    if len(rooms) == 1:
+        room = " ".join(re.sub(r"[<>{}]", " ", rooms[0]["room"]).split())
+        if room:
+            return title[:22] + " in " + room[:19]
+    if len(rooms) > 1:
+        return title[:30] + " across rooms"
+    return title[:45]
+
+
 class Chores:
     def __init__(self, folder, clock=time.time):
         self.folder, self.clock = Path(folder), clock
@@ -45,28 +58,32 @@ class Chores:
     def item(self, store, profile, chore_id):
         return preference(store, profile, PREFIX + identity(chore_id), {})
 
-    def public(self, value):
+    def public(self, value, store=None):
         value = {k: v for k, v in value.items() if k not in ("completion_ids", "last_delivery_id")}
         value["overdue"] = bool(
             value["enabled"]
             and value["due_at"] <= self.clock()
             and value.get("snoozed_until", 0) <= self.clock()
         )
+        if store is not None:
+            from .tag_areas import chore_rooms
+
+            value["rooms"] = chore_rooms(store, self.folder, value["id"])
         return value
 
     def snapshot(self):
         with self.store() as store:
             setup = self.setup(store)
             items = self.values(store, setup["profile"]) if setup.get("profile") else []
-        return {
-            "items": [
-                self.public(v)
-                for v in sorted(items, key=lambda v: (not v["enabled"], v["due_at"], v["id"]))
-            ],
-            "setup_required": not bool(setup.get("profile")),
-            "paused": bool(setup.get("paused")),
-            "guest": bool(setup.get("guest")),
-        }
+            return {
+                "items": [
+                    self.public(v, store)
+                    for v in sorted(items, key=lambda v: (not v["enabled"], v["due_at"], v["id"]))
+                ],
+                "setup_required": not bool(setup.get("profile")),
+                "paused": bool(setup.get("paused")),
+                "guest": bool(setup.get("guest")),
+            }
 
     def response(self, item):
         value = self.snapshot()
@@ -211,7 +228,7 @@ class Chores:
             )
         ]
         return [
-            self.public(v)
+            self.public(v, store)
             for v in sorted(
                 items, key=lambda v: (v.get("last_reminded_at") or 0, v["due_at"], v["id"])
             )[:limit]
@@ -230,6 +247,7 @@ class Chores:
                 if include_upcoming
                 else self.due_from_store(store, limit=MAX_CHORES)
             )
+            values = [self.public(value, store) for value in values]
         items = [
             {
                 key: value.get(key)
@@ -242,6 +260,7 @@ class Chores:
                     "repeat_days",
                     "enabled",
                     "snoozed_until",
+                    "rooms",
                 )
             }
             for value in values

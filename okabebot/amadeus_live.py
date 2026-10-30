@@ -358,7 +358,8 @@ class ProactiveConversation:
             "destination": cfg.get("destination"),
             "day": day,
             "chores": [
-                {key: item[key] for key in ("id", "title", "due_at", "revision")} for item in due
+                {key: item[key] for key in ("id", "title", "due_at", "revision", "rooms")}
+                for item in due
             ],
         }
 
@@ -379,10 +380,9 @@ class ProactiveConversation:
 
     @staticmethod
     def chore_text(items):
-        titles = [
-            " ".join(re.sub(r"[<>{}]", " ", item["title"]).split())[:45] or "a household chore"
-            for item in items[:3]
-        ]
+        from .chores import chore_label
+
+        titles = [chore_label(item) for item in items[:3]]
         return "these chores are ready when you have a moment: " + ", ".join(titles)
 
     def opening(self, offer, composer):
@@ -486,7 +486,10 @@ class ProactiveConversation:
             }
             valid = bool(offer.get("chores")) and all(
                 item["id"] in eligible
-                and all(eligible[item["id"]][key] == item[key] for key in ("due_at", "revision"))
+                and all(
+                    eligible[item["id"]][key] == item[key]
+                    for key in ("due_at", "revision", "rooms")
+                )
                 for item in offer["chores"]
             )
             return (

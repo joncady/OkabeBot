@@ -31,7 +31,7 @@ const choresUI=(()=>{
   if(!state.items.length){const empty=document.createElement('p');empty.textContent='No chores yet. Add one here or choose Chore reminder when mapping a tag.';$('chores-list').append(empty);}
   for(const item of state.items){
    const row=document.createElement('article');row.className='tag-card chore-card';const title=document.createElement('h3');title.textContent=item.title;
-   const detail=document.createElement('p');detail.textContent=describe(item)+` · every ${item.interval_days} days`;row.append(title,detail);
+   const detail=document.createElement('p');detail.textContent=describe(item)+` · every ${item.interval_days} days`+(item.rooms?.length?' · Room: '+item.rooms.map(r=>[r.floor,r.room].filter(Boolean).join(' / ')).join(', '):'');row.append(title,detail);
    function button(label,fn){const node=document.createElement('button');node.type='button';node.textContent=label;node.onclick=()=>{if(node.disabled)return;node.disabled=true;return run(async()=>{try{await fn();}finally{node.disabled=false;}});};row.append(node);}
    button('Mark done',()=>mutate('/chores/complete',{id:item.id}));button('Edit',async()=>edit(item));
    button(item.enabled?'Pause reminders':'Resume reminders',()=>mutate('/chores/save',{id:item.id,title:item.title,interval_days:item.interval_days,repeat_days:item.repeat_days,enabled:!item.enabled}));

@@ -79,3 +79,11 @@ test('editing a chore tag keeps ID and cadence, renders titles literally and for
  assert.equal(f.nodes['tag-chore-select'].value,item.id);assert.equal(f.nodes['tag-chore-delay'].value,3);assert.equal(f.nodes['tag-chore-unit'].value,'weeks');assert.equal(f.nodes['tag-chore-reminders'].checked,false);
  f.nodes['dashboard-forget'].onclick();assert.equal(f.nodes['tag-chore-title'].value,'');assert.equal(f.nodes['tag-chore-select'].children.length,0);
 });
+test('inherited HA room labels render literally and refresh is owner initiated',async()=>{
+ const f=await fixture({mappings:[{tag_id:'tag-a',name:'Towel chore',action:'call_companion',location_id:'desk',enabled:true,area_status:'assigned',ha_area:{area_id:'bath',room:'<bathroom>',floor:'Upper'}}]});
+ const card=f.nodes['tag-mappings'].children[0];
+ assert.ok(card.children.some(n=>n.textContent==='Room · Upper / <bathroom> · from Home Assistant'));
+ assert.equal(f.calls.filter(c=>c.path==='/tags/refresh-areas').length,0);
+ await f.nodes['tag-refresh-areas'].onclick();
+ assert.equal(f.calls.filter(c=>c.path==='/tags/refresh-areas').length,1);
+});

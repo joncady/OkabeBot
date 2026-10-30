@@ -1861,3 +1861,18 @@ See [household-nudge semantics and privacy](household-nudges.md).
 Household comfort presentation uses Fahrenheit in its controls and spoken notes;
 canonical Celsius threshold storage and unit-aware comparison remain internal.
 This changes no thermostat setpoint or device unit setting.
+
+## NFC tag-area inheritance
+
+The controller refreshes HA tag registry area metadata via its existing authenticated
+HA read connection. No new host, port, credential or source-observation permission
+is added. A five-minute in-process metadata refresh maintains a private ten-minute
+connection-generation-scoped cache under the existing tag state directory. Owner
+refresh uses `/tags/refresh-areas`; HA's publish-only scan key cannot invoke it.
+Stable tag IDs associate mapped actions and current chores with HA room/floor IDs.
+The cache stores configuration metadata only, never scan activity or presence.
+Chore due/completion state and saved movement destinations remain independent.
+The Mac package is installed. An owner-authenticated live registry refresh verified
+assigned area metadata on existing mapped tags and the chore room projection.
+Controller, speech, Pi and configured feed readiness recovered. No tag scan, chore
+completion, screen movement, volume change or audible acceptance test was performed.

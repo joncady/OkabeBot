@@ -14,9 +14,10 @@ def tag_id(value):
 
 
 class Tags:
-    def __init__(self, folder, locations, call, clock=time.time, chores=None):
+    def __init__(self, folder, locations, call, clock=time.time, chores=None, areas=None):
         self.folder, self.locations, self.call, self.clock = Path(folder), locations, call, clock
         self.chores = chores
+        self.areas = areas or (lambda: {"state": "not_connected", "tags": {}})
         self.lock = threading.RLock()
         self.learn_until = 0
         self.learned = None
@@ -24,8 +25,23 @@ class Tags:
     def snapshot(self):
         with self.lock:
             state = read(self.folder / "state.json", {})
+            areas = self.areas()
+            mappings = []
+            for mapping in read(self.folder / "mappings.json", {}).values():
+                area = areas.get("tags", {}).get(mapping["tag_id"])
+                mappings.append(
+                    {
+                        **mapping,
+                        "ha_area": area,
+                        "area_status": ("assigned" if area.get("area_id") else "unassigned")
+                        if area is not None
+                        else "missing"
+                        if areas["state"] == "ready"
+                        else areas["state"],
+                    }
+                )
             return {
-                "mappings": list(read(self.folder / "mappings.json", {}).values()),
+                "mappings": mappings,
                 "locations": [
                     {"id": p["id"], "name": p["name"]}
                     for p in self.locations()

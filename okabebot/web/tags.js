@@ -45,6 +45,7 @@ const tagsUI=(()=>{
    const title=document.createElement('h3');title.textContent=mapping.name;
    const detail=document.createElement('p');const place=destinations.find(p=>p.id===mapping.location_id),chore=chores.find(c=>c.id===mapping.chore_id),isChore=mapping.action==='chore_reminder';
    detail.textContent=(isChore?('Chore reminder → '+(chore?.title||'Chore unavailable')+(chore?` · ${chore.interval_days} days after completion`+(chore.enabled?(chore.overdue?' · Due':chore.due_at?' · Due '+new Date(chore.due_at*1000).toLocaleDateString():''):' · Reminders paused'):'')):('Call companion → '+(place?.name||'Destination unavailable')))+(mapping.enabled?'':' · Tag disabled');row.append(title,detail);
+   const room=document.createElement('p');room.textContent=mapping.ha_area?.area_id?'Room · '+[mapping.ha_area.floor,mapping.ha_area.room].filter(Boolean).join(' / ')+' · from Home Assistant':mapping.area_status==='unassigned'?'Room unassigned · set the tag entity’s Area in Home Assistant':mapping.area_status==='missing'?'Tag entity not found in Home Assistant':'HA room metadata unavailable · refresh rooms';row.append(room);
    const actions=[['Edit',async()=>edit(mapping)]];
    if(isChore&&chore)actions.push(['Mark done',async()=>{await request('/chores/complete',{id:mapping.chore_id});await load();if(typeof choresUI!=='undefined')await choresUI.load();$('tag-status').textContent='Chore marked done; next reminder scheduled.';}]);
    else if(!isChore)actions.push(['Test',async()=>{const r=await request('/tags/test',{tag_id:mapping.tag_id});$('tag-status').textContent=r.status.replaceAll('_',' ');}]);
@@ -55,6 +56,7 @@ const tagsUI=(()=>{
  }
  async function run(fn){try{await fn();}catch(error){$('tag-status').textContent=error.message;}}
  async function load(){try{if(!dashboardAccess.token()){clear();return;}const value=await request('/tags');if(!Array.isArray(value.chores)){try{const result=await request('/chores');setChores(result.items||[]);}catch{setChores([]);}}paint(value);}catch{clear();}}
+ $('tag-refresh-areas').onclick=()=>run(async()=>{const value=await request('/tags/refresh-areas',{});paint(value);$('tag-status').textContent=value.area_refresh==='ready'?'HA tag rooms refreshed.':'Unable to refresh tag rooms; check the HA connection.';});
  $('tag-action').onchange=actionFields;$('tag-chore-unit').onchange=actionFields;$('tag-chore-select').onchange=()=>{const item=chores.find(c=>c.id===$('tag-chore-select').value);if(item)choreFields(item);else resetChore();};
  $('tag-register').onclick=()=>run(async()=>{lastLearned='';$('tag-id').value='';$('tag-name').value='';$('tag-save').disabled=true;$('tag-action').value='call_companion';resetChore();actionFields();paint(await request('/tags/learn',{}));});
  $('tag-map-last').onclick=()=>{if(unmappedTag)edit({tag_id:unmappedTag,name:'',location_id:$('tag-location').value,enabled:true});};

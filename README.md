@@ -823,3 +823,5 @@ Selected HA garage covers, thermostats and related sensors can supply read-only 
 Optional [household nudges](docs/household-nudges.md) combine consented light, garage and room-temperature evidence. Away-light notes stay on the private dashboard; bedtime/comfort speech shares existing proactive attention and budget gates. Defaults stay off; no device controls or occupancy inference are enabled.
 
 Household comfort controls and spoken notes display Fahrenheit while normalizing source units internally for comparison.
+
+NFC actions and linked chores inherit room/floor metadata from HA tag entities by stable tag ID. Refresh tag rooms in the dashboard; existing action destinations and recurrence remain separate.

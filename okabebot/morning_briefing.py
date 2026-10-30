@@ -2,6 +2,7 @@
 
 import json
 import re
+from .chores import chore_label
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -205,7 +206,8 @@ class Briefing:
             store.close()
         chores = self._chores()
         current = permitted and all(
-            chores.still_due(item["id"], item["due_at"], item["revision"])
+            (fresh := chores.still_due(item["id"], item["due_at"], item["revision"]))
+            and fresh.get("rooms", []) == item.get("rooms", [])
             for item in self._spoken_chore_scope
         )
         if current:
@@ -260,7 +262,7 @@ class Briefing:
                     "kind": "chores",
                     "title": "Around the house",
                     "body": "Ready when you have a moment: "
-                    + ", ".join(item["title"] for item in due),
+                    + ", ".join(chore_label(item) for item in due),
                     "important": False,
                 }
             )
@@ -334,14 +336,13 @@ class Briefing:
         self._spoken_chore_slot = None
         due = self._chores().due(remind_only=True, limit=3)
         if due:
-            self._spoken_chore_refs = [{k: due[0][k] for k in ("id", "due_at", "revision")}]
-            self._spoken_chore_scope = [
-                {k: item[k] for k in ("id", "due_at", "revision")} for item in due
+            self._spoken_chore_refs = [
+                {k: due[0][k] for k in ("id", "due_at", "revision", "rooms")}
             ]
-            title = (
-                " ".join(re.sub(r"[<>{}]", " ", due[0]["title"]).split())[:45]
-                or "a household chore"
-            )
+            self._spoken_chore_scope = [
+                {k: item[k] for k in ("id", "due_at", "revision", "rooms")} for item in due
+            ]
+            title = chore_label(due[0])
             self._spoken_chore_slot = "one household reminder is " + title
             if len(due) > 1:
                 self._spoken_chore_slot += ", with more chores listed on the dashboard"

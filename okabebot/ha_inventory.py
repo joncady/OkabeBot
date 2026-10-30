@@ -25,6 +25,7 @@ def normalize(values):
     state_map = {s["entity_id"]: s for s in states}
     entity_map = {e["entity_id"]: e for e in entities}
     result = []
+    tags = []
     for identity, entity in entity_map.items():
         if entity.get("disabled_by"):
             continue
@@ -50,6 +51,20 @@ def normalize(values):
                 "available": bool(state) and state.get("state") not in ("unknown", "unavailable"),
             }
         )
+    for entity in result:
+        raw = entity_map[entity["id"]]
+        key = raw.get("unique_id")
+        if raw.get("platform") == "tag" and isinstance(key, str) and 1 <= len(key) <= 128:
+            tags.append(
+                {
+                    "tag_id": key,
+                    "entity_id": entity["id"],
+                    **{k: entity.get(k) for k in ("area_id", "room", "floor_id", "floor")},
+                }
+            )
+    for tag in tags:
+        if tag.get("area_id") not in rooms:
+            tag.update(area_id=None, room="", floor_id=None, floor="")
     inventory_devices = []
     for identity, device in device_map.items():
         area = device.get("area_id")
@@ -69,6 +84,7 @@ def normalize(values):
         "rooms": list(rooms.values()),
         "devices": inventory_devices,
         "entities": result,
+        "tags": tags,
         "read_only": True,
     }
 

@@ -79,3 +79,29 @@ An NFC mapping uses `action: "chore_reminder"` and opaque `chore_id`, with the u
 change mappings. Duplicate event IDs, bounce scans and completion retries do not
 postpone the due date twice. All configuration and task contents remain private;
 public code/tests use invented tasks and accelerated clocks only.
+
+## Inherited tag rooms
+
+Map the NFC tag as usual and assign its `tag.*` entity an Area in Home Assistant.
+The controller joins that entity's stable `unique_id` to the mapped scan tag ID,
+never a friendly name or slug. Room/floor names are read-only HA metadata, not
+duplicate manually edited chore settings. Renames and moves appear after refresh;
+unassigned, removed or ambiguous tag entities contribute no guessed room.
+
+The NFC panel offers **Refresh HA tag rooms**; the controller also refreshes every
+five minutes. Cache validity is ten minutes, tied to the saved HA connection
+generation. Disconnect/forget/rebind invalidates old account metadata immediately.
+A failed refresh can retain last verified metadata only within that validity; it
+does not establish a newly verified room. Registry reads use the existing private
+HA connection and do not collect scans, infer presence or authorize more actions.
+
+A chore linked to several tag areas retains their unique room associations. Removing
+a tag mapping removes its association without deleting or completing the chore.
+Owner cards and the consent-checked chore tool expose room/floor context; reminder
+slots include a bounded room phrase and revalidate it before speech. Existing
+completion dates, recurrence, delivery policy and action destination are unchanged.
+
+The cache and tag mapping remain private configuration outside the Amadeus memory
+store, like existing NFC mappings. They are not new participant observation history;
+whole-store forgetting removes chores and the HA connection, making this cache inert.
+No real tag scan or device action is required to refresh room metadata.

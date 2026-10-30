@@ -107,5 +107,6 @@ class TagsTests(unittest.TestCase):
         self.assertEqual(request("/tags/source", "wrong"), 403)
         self.assertEqual(request("/tags/source", "é"), 403)
         self.assertEqual(request("/tags/save", "x" * 40), 403)
+        self.assertEqual(request("/tags/refresh-areas", "x" * 40), 403)
         self.assertEqual(request("/tags/source", "x" * 40), 200)
         self.call.assert_not_called()

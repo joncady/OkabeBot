@@ -497,3 +497,5 @@ collectors/recording budgets and full provider pagination remain separate work.
 - Added optional grounded household suggestions with private dashboard away-light notes, shared-budget bedtime/comfort speech, strict room-versus-floor temperature handling, sampled evidence continuity, editable policy and source/forget revalidation. General household assistance remains separate from health coaching consent.
 
 - Household comfort controls and spoken notes now present Fahrenheit while preserving unit-normalized comparisons and existing saved threshold meaning. Fractional conversions are validated without changing thermostat settings.
+
+- NFC action/chore room context now derives from HA tag registry IDs, with bounded refresh, account-generation invalidation, multiple-room associations and grounded reminder/tool presentation. Metadata refresh does not imply presence or completion.

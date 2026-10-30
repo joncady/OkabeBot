@@ -165,6 +165,9 @@ class Bridge:
         from .chores import Chores
 
         self.chores = Chores(state_dir() / "amadeus")
+        from .tag_areas import TagAreas
+
+        self.tag_areas = TagAreas(state_dir() / "amadeus", self.amadeus_feeds.inventory)
 
         self.tag_source_token = persistent_token(state_dir() / "tags", "ha-source-token")
         self.tags = Tags(
@@ -172,6 +175,7 @@ class Bridge:
             lambda: self.surfaces.snapshot()["locations"],
             lambda location: self.application.execute("/surfaces/move", {"location_id": location}),
             chores=self.chores,
+            areas=self.tag_areas.snapshot,
         )
         self.resources.callback(self.surfaces.close)
         from .surface_audio import AudioHub
@@ -239,6 +243,7 @@ class Bridge:
         threading.Thread(target=self.camera_greeting.run, daemon=True).start()
         threading.Thread(target=self.amadeus_shadow.run, args=(self.closing,), daemon=True).start()
         threading.Thread(target=self.amadeus_feeds.run, args=(self.closing,), daemon=True).start()
+        threading.Thread(target=self.tag_areas.run, args=(self.closing,), daemon=True).start()
 
     @property
     def url(self):

@@ -24,7 +24,17 @@ def facts(name, result, reference):
     value = {"tool": name, "grounded_reference": reference[:900]}
     if not isinstance(result, dict) or result.get("error"):
         return value
-    if name == "get_context_feed":
+    if name == "get_chores":
+        value["scope"] = result.get("scope")
+        value["state"] = result.get("state")
+        value["chores"] = [
+            {
+                **{k: item.get(k) for k in ("title", "due_at", "last_done_at", "enabled")},
+                "rooms": [{k: r.get(k) for k in ("room", "floor")} for r in item.get("rooms", [])],
+            }
+            for item in result.get("items", [])[:8]
+        ]
+    elif name == "get_context_feed":
         value["scope"] = result.get("scope")
         value["source"] = result.get("queried_source")
         value["state"] = result.get("state")

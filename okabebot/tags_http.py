@@ -10,6 +10,7 @@ def handle(handler, bridge, post=False):
     if path not in (
         "/tags",
         "/tags/learn",
+        "/tags/refresh-areas",
         "/tags/save",
         "/tags/remove",
         "/tags/test",
@@ -58,6 +59,9 @@ def handle(handler, bridge, post=False):
             from .config import get_config
 
             result["home_assistant_url"] = get_config()["web"]["home_assistant_url"]
+        elif path == "/tags/refresh-areas" and not data:
+            status = bridge.tag_areas.refresh()
+            result = {**bridge.tags.snapshot(), "area_refresh": status["state"]}
         elif path == "/tags/learn" and not data:
             result = bridge.tags.learn()
         elif path == "/tags/save":
