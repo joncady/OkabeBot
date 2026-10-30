@@ -1765,7 +1765,9 @@ frequency controls preserve enabled state, destination, session state and budget
 repository defaults remain conservative. Actual owner cadence choices and chore
 plans are private configuration and must not appear in this inventory.
 
-These additions are source-validated separately from live installation. A later
-verification note/PR records whether the Mac package was updated; no real NFC scan
-or speaker test is implied. Pi/HA tag firmware/automation configuration does not
-need new permissions for the action. See [chore behavior and API](chores.md).
+The Mac package is installed and owner-authenticated checks confirm the chore API,
+configurable cadence readback, controller readiness, speech readiness and existing
+feed/device connections. The controller child alone restarted; the model worker,
+source consent, destination and volume were preserved. No real NFC scan or speaker
+test was performed. Pi/HA tag firmware/automation configuration does not need new
+permissions for the action. See [chore behavior and API](chores.md).
