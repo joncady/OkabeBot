@@ -451,3 +451,8 @@ input,textarea,select { max-width:100%; }
 #tag-chore-settings .hint { grid-column:1 / -1; margin:0; }
 .chore-card label { display:inline-flex; flex-direction:column; gap:6px; margin:8px; }
 .chore-card input[type=number] { width:80px; min-height:44px; box-sizing:border-box; }
+
+.household-notes { border:2px solid var(--border,#465166); }
+.household-notes h2 { margin-bottom:10px; }
+.household-notes p { margin:8px 0; line-height:1.5; }
+.household-notes a { font-size:13px; }

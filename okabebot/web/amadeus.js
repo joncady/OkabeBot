@@ -12,6 +12,7 @@ const amadeusUI = (() => {
     editing=false;$('amadeus-review').hidden=true;
     for(const id of ['amadeus-setup','amadeus-controls','amadeus-memory','amadeus-morning','amadeus-habits','amadeus-feeds']) $(id).hidden=true;
     $('conversation-form').reset();$('conversation-destination').replaceChildren();
+    $('household-form').reset();$('household-preview').textContent='';$('household-state').textContent='';
     $('amadeus-form').reset();$('memory-form').reset();
     $('sources').replaceChildren();$('topics').replaceChildren();$('memory-list').replaceChildren();
     $('morning-voice-form').reset();$('morning-person').textContent='';$('morning-show-status').textContent='';$('morning-test-status').textContent='';$('morning-test-tv').disabled=true;$('morning-preview').textContent='';$('morning-status').textContent='';$('morning-form').reset();$('morning-destination').replaceChildren();
@@ -278,6 +279,23 @@ const amadeusUI = (() => {
     $('conversation-min-gap').value=config.min_gap_minutes??120;
     $('conversation-resume').disabled=config.enabled!==true;
   }
+  const householdFields={
+    enabled:['enabled','checkbox',false],departure_enabled:['departure-enabled','checkbox',true],
+    departure_away_minutes:['departure-away-minutes','number',10],bedtime_enabled:['bedtime-enabled','checkbox',true],
+    bedtime_start:['bedtime-start','time','21:00'],bedtime_end:['bedtime-end','time','23:00'],
+    comfort_enabled:['comfort-enabled','checkbox',true],cold_c:['cold-c','number',18],hot_c:['hot-c','number',27],
+    comfort_hold_minutes:['comfort-hold-minutes','number',15],cooldown_hours:['cooldown-hours','number',12]
+  };
+  async function household() {
+    const value=await api('household-nudges');if(!value.config)return;
+    for(const [key,[id,type,fallback]] of Object.entries(householdFields)){
+      const node=$('household-'+id),setting=value.config[key]??fallback;
+      if(type==='checkbox')node.checked=setting===true;else node.value=setting;
+    }
+    $('household-state').textContent=value.config.enabled?'Household nudges configured. Source consent and attention gates still apply.':'Household nudges off.';
+    if(value.state)$('household-state').textContent+=' '+value.state.replaceAll('_',' ')+'.';
+    $('household-preview').textContent=JSON.stringify(value.preview||[],null,2);
+  }
   async function habits() {
     const value=await api('habits');if(!value.config)return;
     $('amadeus-habits').hidden=false;$('habits-enabled').checked=value.config.enabled;
@@ -314,15 +332,23 @@ const amadeusUI = (() => {
       $('amadeus-pause').textContent=current.paused?'Shadow collection paused':'Pause shadow collection';
       $('amadeus-pause').setAttribute('aria-pressed',String(current.paused));
       $('amadeus-guest').textContent=current.guest?'Guest mode on':'Guest mode off';
-      $('amadeus-guest').setAttribute('aria-pressed',String(current.guest)); await memory(); await morning(); await habits(); await conversation(); await feeds();
+      $('amadeus-guest').setAttribute('aria-pressed',String(current.guest)); await memory(); await morning(); await habits(); await conversation(); await household(); await feeds();
     }
-    if(!current){$('amadeus-habits').hidden=true;$('habits-preview').textContent='';$('habits-routines').replaceChildren();}
+    if(!current){$('household-form').reset();$('household-preview').textContent='';$('household-state').textContent='';$('amadeus-habits').hidden=true;$('habits-preview').textContent='';$('habits-routines').replaceChildren();}
     message(value.collection_active ? 'Metadata collection enabled · routine predictions stay in shadow; morning speech and conversations have separate controls.' : 'Metadata collection paused · proactive conversations are paused too.');
   }
   async function run(action) { try { await action(); } catch(error) { message(error.message); } }
   $('feeds-refresh').onclick=()=>run(feeds);
   $('conversation-resume').onclick=()=>run(async()=>{await api('conversation-resume',{});message('Reply resumed. Use the usual push-to-talk button; the invitation was not replayed.');});
   $('conversation-form').onsubmit=event=>{event.preventDefault();run(async()=>{await api('conversation',{enabled:$('conversation-enabled').checked,destination:$('conversation-destination').value,max_per_day:Number($('conversation-max-per-day').value),min_gap_minutes:Number($('conversation-min-gap').value)});await conversation();message('Conversation choice saved.');});};
+  $('household-form').onsubmit=event=>{event.preventDefault();run(async()=>{
+    const config={};
+    for(const [key,[id,type]] of Object.entries(householdFields)){
+      const node=$('household-'+id);config[key]=type==='checkbox'?node.checked:type==='number'?Number(node.value):node.value;
+    }
+    await api('household-nudges',config);await household();message('Household choices saved. No device-control permission was changed.');
+  });};
+  $('household-refresh').onclick=()=>run(household);
   $('habits-refresh').onclick=()=>run(habits);
   $('habits-enabled').onchange=()=>run(async()=>{await api('habits',{enabled:$('habits-enabled').checked});await habits();});
   $('morning-test-tv').onclick=()=>run(async()=>{

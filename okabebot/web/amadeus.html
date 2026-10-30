@@ -39,6 +39,22 @@
 <p class="hint">These are upper limits, not scheduled interruptions. Quiet or unavailable days may have fewer check-ins.</p>
 <button>Save conversation choice</button><button type="button" id="conversation-resume">Resume reply</button></form>
 </details>
+<details id="household-nudges" class="subpanel"><summary>Household nudges</summary>
+<p>Read-only reminders from your selected <a href="#amadeus-feeds">Room activity and Home devices sources</a>. These never switch lights, close doors or change heating. Device activity does not identify anyone or prove occupancy. Household reminders are separate from optional health-habit coaching.</p>
+<form id="household-form"><label class="amadeus-option"><input id="household-enabled" type="checkbox"> Allow household nudges</label>
+<fieldset><legend>Lights after departure</legend><label class="amadeus-option"><input id="household-departure-enabled" type="checkbox" checked> Offer a lights check after fresh away-estimate evidence</label>
+<label>Wait after away evidence (minutes)<input id="household-departure-away-minutes" type="number" min="1" max="120" value="10" required></label></fieldset>
+<fieldset><legend>Evening check</legend><label class="amadeus-option"><input id="household-bedtime-enabled" type="checkbox" checked> Offer an evening lights, garage and playback check</label>
+<div class="amadeus-grid"><label>Window begins (local)<input id="household-bedtime-start" type="time" value="21:00" required></label><label>Window ends (local)<input id="household-bedtime-end" type="time" value="23:00" required></label></div>
+<p class="hint">A chosen evening window is not a prediction of bedtime. Quiet hours still apply.</p></fieldset>
+<fieldset><legend>Room comfort</legend><label class="amadeus-option"><input id="household-comfort-enabled" type="checkbox" checked> Offer a comfort check from selected temperature readings</label>
+<div class="amadeus-grid"><label>Cold threshold (°C)<input id="household-cold-c" type="number" min="5" max="25" value="18" required></label><label>Warm threshold (°C)<input id="household-hot-c" type="number" min="20" max="40" value="27" required></label><label>Reading holds for (minutes)<input id="household-comfort-hold-minutes" type="number" min="1" max="120" value="15" required></label></div>
+<p class="hint">General comfort suggestions, not medical advice. A floor sensor is not room-air temperature.</p></fieldset>
+<label>Minimum time before repeating a reminder (hours)<input id="household-cooldown-hours" type="number" min="1" max="72" value="12" required></label>
+<p class="hint">Quiet hours, focus, media, presence, pause and guest controls still apply. Spoken reminders share the proactive daily limit and spacing; enabling this does not grant device-control permission.</p>
+<button>Save household choices</button><button type="button" id="household-refresh">Refresh preview</button></form>
+<p id="household-state" role="status"></p><details><summary>Private candidate preview</summary><pre id="household-preview"></pre></details>
+</details>
 <details class="subpanel"><summary>Privacy &amp; consent details</summary><p>Only permitted metadata is observed. Pause and guest mode stop new observations and proactive conversations. Routine predictions stay in shadow. Optional conversations and morning speech have separate controls.</p></details>
 <details class="subpanel"><summary>Habit support controls</summary><div class="controls"><button id="coaching-later">Snooze coaching</button><button id="coaching-stop">Stop coaching</button><button id="coaching-resume">Resume chosen topics</button></div>
 <p id="coaching-state"></p></details></section>

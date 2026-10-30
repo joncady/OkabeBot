@@ -44,7 +44,12 @@ class HomeDeviceTests(unittest.TestCase):
 
         projected = facts("get_context_feed", {"items": [{"value": items[1]}]}, "")
         self.assertEqual("20", projected["records"][0]["current_temperature"])
-        self.assertTrue(all("/api/states/" in url and data is None for url, data in calls))
+        self.assertTrue(
+            all(
+                ("/api/states/" in url or url.endswith("/api/config")) and data is None
+                for url, data in calls
+            )
+        )
         from okabebot.home_activity import recap
 
         result = recap(self.path, clock=lambda: self.now + 1)
@@ -52,6 +57,32 @@ class HomeDeviceTests(unittest.TestCase):
         self.owner.control({"paused": True})
         self.assertEqual([], self.current())
         self.assertEqual([], recap(self.path, clock=lambda: self.now + 1)["observations"])
+
+    def test_climate_units_use_only_ha_temperature_configuration_when_missing(self):
+        calls = []
+
+        def read(url, headers, data):
+            calls.append(url)
+            if url.endswith("/api/config"):
+                return {"unit_system": {"temperature": "°F"}, "latitude": 123, "longitude": 456}
+            return {
+                "state": "heat",
+                "attributes": {"friendly_name": "Invented thermostat", "current_temperature": 60},
+            }
+
+        provider = HomeAssistant(
+            read=read, connection={"url": "http://example.test", "token": "invented"}
+        )
+        cfg = {
+            **default(FEEDS["home_devices"]),
+            "enabled": True,
+            "climates": ["climate.one", "climate.two"],
+        }
+        items, complete = provider.read_feed(FEEDS["home_devices"], cfg, self.now)
+        self.assertTrue(complete)
+        self.assertEqual(["°F", "°F"], [v["unit"] for v in items])
+        self.assertEqual(1, sum(url.endswith("/api/config") for url in calls))
+        self.assertNotIn("latitude", str(items))
 
     def test_home_device_configuration_domains_and_snapshot(self):
         feed = FEEDS["home_devices"]

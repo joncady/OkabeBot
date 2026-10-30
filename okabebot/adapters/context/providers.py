@@ -148,6 +148,7 @@ class HomeAssistant:
                         }
                     )
         elif feed.id == "home_devices":
+            temperature_unit = None
             for field, category in (
                 ("covers", "cover"),
                 ("climates", "climate"),
@@ -172,8 +173,18 @@ class HomeAssistant:
                             text = clean(str(attrs[attribute]))
                             if text:
                                 item[key] = text
-                    if category == "climate" and attrs.get("temperature_unit"):
-                        item["unit"] = clean(attrs["temperature_unit"])
+                    if category == "climate":
+                        if attrs.get("temperature_unit"):
+                            item["unit"] = clean(attrs["temperature_unit"])
+                        elif item.get("current_temperature") is not None:
+                            if temperature_unit is None:
+                                temperature_unit = (
+                                    self.call("config")
+                                    .get("unit_system", {})
+                                    .get("temperature", "")
+                                )
+                            if temperature_unit:
+                                item["unit"] = clean(temperature_unit)
                     items.append(item)
         else:
             for entity in cfg["entities"]:

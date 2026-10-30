@@ -61,6 +61,30 @@ class AmadeusHttpTests(unittest.TestCase):
         ) as r:
             return json.load(r)
 
+    def test_household_nudges_owner_validation_and_default_off(self):
+        from okabebot.household_nudges import DEFAULTS
+
+        self.request("/amadeus/api/settings", SETUP)
+        value = self.request("/amadeus/api/household-nudges")
+        self.assertEqual(DEFAULTS, value["config"])
+        self.assertEqual([], value["preview"])
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/household-nudges", token="publish-only")
+        self.assertEqual(403, caught.exception.code)
+        with self.assertRaises(HTTPError) as caught:
+            self.request(
+                "/amadeus/api/household-nudges",
+                {**DEFAULTS, "enabled": True},
+                extra={"Origin": "http://wrong.example"},
+            )
+        self.assertEqual(403, caught.exception.code)
+        saved = self.request("/amadeus/api/household-nudges", {**DEFAULTS, "enabled": True})
+        self.assertTrue(saved["config"]["enabled"])
+        self.assertEqual([], saved["preview"])
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/household-nudges", {**DEFAULTS, "cold_c": 29})
+        self.assertEqual(400, caught.exception.code)
+
     def test_context_feeds_are_owner_only_and_credentials_write_only(self):
         from okabebot.amadeus_feeds import Feeds
 

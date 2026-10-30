@@ -148,6 +148,13 @@ def handle(handler, bridge, *, post=False):
             result = (
                 bridge.amadeus_feeds.configure(data) if post else bridge.amadeus_feeds.snapshot()
             )
+        elif path == "/amadeus/api/household-nudges":
+            from .household_nudges import HouseholdNudges, configure
+
+            if post:
+                configure(service.store, data)
+            provider = getattr(getattr(bridge, "proactive", None), "presence_provider", None)
+            result = HouseholdNudges(service.store, provider() if provider else {}).snapshot()
         elif path == "/amadeus/api/conversation-resume" and post:
             if data != {}:
                 raise ValueError("Resume only the existing reply context")

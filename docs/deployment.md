@@ -1839,3 +1839,21 @@ owner-authenticated feed read confirmed complete minimized records for explicitl
 selected primary light-switch and Sonos player entities. HA configuration/diagnostic
 switches were excluded from the private selection. No actuation or audible test
 was performed.
+
+## Household nudge planner
+
+An opt-in planner uses the existing Mac controller, HA context feed store and
+per-profile private preferences. It introduces no service, port, new source
+permission or hardware-control route. Away-light candidates are readable private
+Today dashboard notes only. Bedtime and room-comfort candidates use the current
+proactive delivery path, shared budget, attention/home gates and output destination.
+All choices are owner editable in Amadeus setup. Floor readings are never compared
+to room thresholds. Climate readings without units may use HA's fixed config API
+for its temperature unit; no other HA configuration fields are retained.
+
+The Mac package is installed. Owner-authenticated readiness and settings readback
+confirm the planner is available and observing permitted sources; existing
+voice/display and feed connections recovered. Private owner choices remain in
+local state. No physical acceptance, audible test or device-control action was
+performed; volume, destinations, source scope and health preferences were preserved.
+See [household-nudge semantics and privacy](household-nudges.md).

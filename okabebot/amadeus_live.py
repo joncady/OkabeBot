@@ -362,6 +362,21 @@ class ProactiveConversation:
             ],
         }
 
+    def _household_offer(self, store, profile, cfg, state, day, *, update=False):
+        from .household_nudges import HouseholdNudges
+
+        home = self.presence_provider() if self.presence_provider else {}
+        item = HouseholdNudges(store, home).offer(update=update)
+        if item is None or state.get("session_until", 0) > self.clock():
+            return None
+        return dict(
+            kind="household",
+            profile=profile,
+            destination=cfg.get("destination"),
+            day=day,
+            household=item,
+        )
+
     @staticmethod
     def chore_text(items):
         titles = [
@@ -372,6 +387,35 @@ class ProactiveConversation:
 
     def opening(self, offer, composer):
         """Generate framing only. Chore titles remain local, untrusted data slots."""
+        if offer.get("kind") == "household":
+            fragment = offer["household"]["text"]
+            template = "A household note: {household}"
+            try:
+                result = composer(
+                    "Frame one optional household note in character. Use the exact placeholder {household} once. Do not invent facts, people, actions, urgency or health advice; no memory proposal. Keep the framing brief and non-judgmental.",
+                    {
+                        "preferences": {},
+                        "capabilities": ["Framing only; no actions or memory writes"],
+                    },
+                )
+                value = result.get("reply") if isinstance(result, dict) else None
+                if (
+                    not isinstance(value, str)
+                    or result.get("memory") is not None
+                    or value.count("{household}") != 1
+                    or any(c in value.replace("{household}", "") for c in "{}<>")
+                    or len(value.replace("{household}", fragment)) > 300
+                    or re.search(
+                        r"\b(lazy|shame|failure|you never|must do|should have)\b", value, re.I
+                    )
+                ):
+                    raise ValueError("Invalid household framing")
+                template = value
+            except InterruptedError:
+                raise
+            except Exception:
+                pass
+            return {"reply": template.replace("{household}", fragment), "memory": None}
         if offer.get("kind") != "chores":
             with self.store() as s:
                 setup = preference(s, SYSTEM, KEY, {})
@@ -409,6 +453,19 @@ class ProactiveConversation:
 
     def revalidate_chore_offer(self, offer):
         """Last factual/privacy gate after capture shutdown, before actual output."""
+        if offer.get("kind") == "household":
+            with self.store() as s:
+                setup = preference(s, SYSTEM, KEY, {})
+                profile = setup.get("profile", SYSTEM)
+                cfg = preference(s, profile, CONFIG, {})
+                state = preference(s, profile, self.state_key, {})
+                # A claimed household session is active; ignore it for factual revalidation.
+                state = {**state, "session_until": 0}
+                return bool(
+                    profile == offer.get("profile")
+                    and self.permitted(setup, cfg)
+                    and self._household_offer(s, profile, cfg, state, self._day(setup)) == offer
+                )
         if offer.get("kind") != "chores":
             return True
         with self.store() as s:
@@ -440,6 +497,24 @@ class ProactiveConversation:
 
     def delivered(self, offer, *, success):
         """Acknowledge only actual speech; failed attempts retain future reminders."""
+        if offer.get("kind") == "household" and success:
+            from .household_nudges import HouseholdNudges
+
+            with self.store() as s, s.db:
+                s.db.execute("BEGIN IMMEDIATE")
+                setup = preference(s, SYSTEM, KEY, {})
+                profile = setup.get("profile", SYSTEM)
+                trial = preference(s, profile, self.state_key, {})
+                if (
+                    profile == offer.get("profile")
+                    and trial.get("invitation_kind") == "household"
+                    and trial.get("session_until", 0) > self.clock()
+                    and trial.get("consumed") is True
+                    and trial.get("day") == offer.get("day")
+                ):
+                    home = self.presence_provider() if self.presence_provider else {}
+                    HouseholdNudges(s, home).delivered(offer["household"])
+            return
         if offer.get("kind") != "chores" or not success:
             return
         with self.store() as s:
@@ -547,6 +622,11 @@ class ProactiveConversation:
                 if self.permitted(setup, cfg)
                 else None
             )
+            household_offer = (
+                self._household_offer(s, profile, cfg, state, day, update=True)
+                if self.permitted(setup, cfg)
+                else None
+            )
             door_ready = bool(
                 state
                 and state.get("consumed") is False
@@ -559,7 +639,7 @@ class ProactiveConversation:
                 presence_blocked
                 or not self.permitted(setup, cfg)
                 or not self._budget_allowed(cfg, budget)
-                or not (chore_offer or door_ready or checkin_offer)
+                or not (chore_offer or household_offer or door_ready or checkin_offer)
                 or destination != cfg.get("destination")
                 or busy
                 or calendar_busy
@@ -585,10 +665,14 @@ class ProactiveConversation:
                 self.clear_since = now
             if now - self.clear_since < 120:
                 return None
-            return chore_offer or (
-                dict(destination=cfg["destination"], day=state["day"])
-                if door_ready
-                else checkin_offer
+            return (
+                chore_offer
+                or household_offer
+                or (
+                    dict(destination=cfg["destination"], day=state["day"])
+                    if door_ready
+                    else checkin_offer
+                )
             )
 
     def claim(self, offer):
@@ -604,7 +688,10 @@ class ProactiveConversation:
             if not self.permitted(setup, cfg) or not self._budget_allowed(cfg, budget):
                 return False
             kind = offer.get("kind")
-            if kind == "chores":
+            if kind == "household":
+                if self._household_offer(store, profile, cfg, state, day) != offer:
+                    return False
+            elif kind == "chores":
                 if self._chore_offer(store, profile, cfg, state, day) != offer:
                     return False
             elif kind == "checkin":
@@ -621,7 +708,7 @@ class ProactiveConversation:
             ):
                 return False
             now = self.clock()
-            if kind in ("chores", "checkin"):
+            if kind in ("chores", "checkin", "household"):
                 state.update(
                     day=day, expires_at=now + 600, history=[], last_reply="", last_tools=[]
                 )
@@ -762,7 +849,7 @@ class ProactiveConversation:
             ):
                 raise ValueError("Invalid spoken reply")
             memory = result["memory"]
-            if context.get("invitation_kind") == "chores":
+            if context.get("invitation_kind") in ("chores", "household"):
                 # Accepting/declining a reminder is neither task completion nor a
                 # statement of taste. Chore sessions never harvest preferences.
                 memory = None

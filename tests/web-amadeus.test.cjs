@@ -1,5 +1,5 @@
 const test=require('node:test'), assert=require('node:assert/strict'), fs=require('node:fs'), vm=require('node:vm');
-async function fixture(withInventory=false,withTrakt=false,conversationConfig={}){
+async function fixture(withInventory=false,withTrakt=false,conversationConfig={},householdConfig={}){
  const nodes={},requests=[];let denied=false,token='synthetic-owner',hold=false,release;
  function node(){return {hidden:false,children:[],value:'',checked:false,textContent:'',
   append(...items){this.children.push(...items);},replaceChildren(...items){this.children=items;},
@@ -17,8 +17,8 @@ async function fixture(withInventory=false,withTrakt=false,conversationConfig={}
   quiet_start:'22:00',quiet_end:'08:00',coaching_choice:'not_now',coaching_mode:'establish',paused:true,guest:false};
  const context={document,Intl,Date,JSON,URL,Blob,setTimeout,
   dashboardAccess:{token:()=>token,remember(){},required(){get('dashboard-auth').hidden=false;}},
-  fetch:async(url,options)=>{requests.push({url,options});if(url.endsWith('conversation')&&options.method==='POST')conversationConfig=JSON.parse(options.body);if(hold)await new Promise(resolve=>release=resolve);return{status:denied?403:200,ok:!denied,
-   json:async()=>url.endsWith('conversation')?{config:{enabled:false,destination:'screen-a',...conversationConfig},destinations:[{id:'screen-a',name:'Synthetic desk'}]}:url.endsWith('trakt-lists')?{state:'connected',items:[{id:'7',title:'Invented watched list'},{id:'8',title:'Another invented list'}],page:1,next_page:null}:url.endsWith('feeds')?{feeds:[withTrakt?{id:'watch_history',label:'Watch history',instructions:'Read only',status:'disabled',fields:[],options:[{key:'history_days',label:'History window (days)',type:'number',min:1,max:365,default:30},{key:'page_budget',label:'Maximum requests per polling cycle',type:'number',min:1,max:20,default:1},{key:'watched_lists',label:'Watched lists',type:'trakt_lists',default:[]}],config:{enabled:false,history_days:30,page_budget:2,watched_lists:['7']}}:{id:'tasks',label:'<img src=x>',instructions:'Read only',status:'disabled',fields:[{key:'entities',label:'To-do lists',domain:'todo'}],config:{enabled:false,entities:[]}}],context:[],connections:withInventory?[{transport:'ha',url:'http://ha.invalid',has_token:true}]:[]}:url.endsWith('ha-inventory')?{rooms:[{id:'study',name:'Study'}],entities:[{id:'todo.invented',name:'Invented list',room:'Study',available:true}],locations:[{id:'screen-a',name:'Desk',area_id:null}]}:url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
+  fetch:async(url,options)=>{requests.push({url,options});if(url.endsWith('conversation')&&options.method==='POST')conversationConfig=JSON.parse(options.body);if(url.endsWith('household-nudges')&&options.method==='POST')householdConfig=JSON.parse(options.body);if(hold)await new Promise(resolve=>release=resolve);return{status:denied?403:200,ok:!denied,
+   json:async()=>url.endsWith('household-nudges')?{config:{enabled:false,...householdConfig},preview:[{text:'<img src=x onerror=alert(1)>'}],state:'source_check_needed'}:url.endsWith('conversation')?{config:{enabled:false,destination:'screen-a',...conversationConfig},destinations:[{id:'screen-a',name:'Synthetic desk'}]}:url.endsWith('trakt-lists')?{state:'connected',items:[{id:'7',title:'Invented watched list'},{id:'8',title:'Another invented list'}],page:1,next_page:null}:url.endsWith('feeds')?{feeds:[withTrakt?{id:'watch_history',label:'Watch history',instructions:'Read only',status:'disabled',fields:[],options:[{key:'history_days',label:'History window (days)',type:'number',min:1,max:365,default:30},{key:'page_budget',label:'Maximum requests per polling cycle',type:'number',min:1,max:20,default:1},{key:'watched_lists',label:'Watched lists',type:'trakt_lists',default:[]}],config:{enabled:false,history_days:30,page_budget:2,watched_lists:['7']}}:{id:'tasks',label:'<img src=x>',instructions:'Read only',status:'disabled',fields:[{key:'entities',label:'To-do lists',domain:'todo'}],config:{enabled:false,entities:[]}}],context:[],connections:withInventory?[{transport:'ha',url:'http://ha.invalid',has_token:true}]:[]}:url.endsWith('ha-inventory')?{rooms:[{id:'study',name:'Study'}],entities:[{id:'todo.invented',name:'Invented list',room:'Study',available:true}],locations:[{id:'screen-a',name:'Desk',area_id:null}]}:url.endsWith('habits')?{config:{enabled:false},preview:{state:'disabled',routines:[],proposals:[]}}:url.endsWith('settings')?{settings:setup,sources:{},coaching_topics:{}}:
    {events:[],preferences:[{key:'user.test',value:'<img src=x onerror=alert(1)>'}]}};}};
  vm.createContext(context);
  vm.runInContext(fs.readFileSync('okabebot/web/amadeus.js','utf8')+'\nglobalThis.ui=amadeusUI;',context);
@@ -140,4 +140,58 @@ test('configured proactive cadence is shown and private form resets on owner log
  assert.equal(f.nodes['conversation-max-per-day'].value,5);assert.equal(f.nodes['conversation-min-gap'].value,240);
  f.nodes['dashboard-forget'].onclick();assert.equal(f.nodes['amadeus-controls'].hidden,true);
  assert.equal(f.nodes['conversation-destination'].children.length,0);
+});
+
+
+test('household controls use typed complete configuration without changing device or coaching permissions',async()=>{
+ const f=await fixture();
+ assert.equal(f.nodes['household-enabled'].checked,false);
+ assert.equal(f.nodes['household-departure-away-minutes'].value,10);
+ assert.equal(f.nodes['household-comfort-hold-minutes'].value,15);
+ f.nodes['household-enabled'].checked=true;
+ f.nodes['household-departure-enabled'].checked=false;
+ f.nodes['household-departure-away-minutes'].value='25';
+ f.nodes['household-bedtime-start'].value='20:30';
+ f.nodes['household-bedtime-end'].value='23:30';
+ f.nodes['household-cold-c'].value='17';
+ f.nodes['household-hot-c'].value='28';
+ f.nodes['household-cooldown-hours'].value='24';
+ f.nodes['household-form'].onsubmit({preventDefault(){}});
+ await new Promise(resolve=>setImmediate(resolve));
+ const posts=f.requests.filter(r=>r.options.method==='POST');
+ assert.equal(posts.length,1);
+ assert.ok(posts[0].url.endsWith('household-nudges'));
+ assert.deepEqual(JSON.parse(posts[0].options.body),{
+  enabled:true,departure_enabled:false,departure_away_minutes:25,bedtime_enabled:true,
+  bedtime_start:'20:30',bedtime_end:'23:30',comfort_enabled:true,cold_c:17,hot_c:28,
+  comfort_hold_minutes:15,cooldown_hours:24
+ });
+ assert.equal(posts[0].options.headers['X-Hardware-Token'],'synthetic-owner');
+ assert.equal(f.nodes['household-departure-away-minutes'].value,25);
+ assert.equal(f.nodes['household-cooldown-hours'].value,24);
+});
+
+test('household preview is literal private content and explicit refresh never saves',async()=>{
+ const f=await fixture(false,false,{}, {enabled:true,bedtime_enabled:false,comfort_enabled:false});
+ assert.equal(f.nodes['household-enabled'].checked,true);
+ assert.equal(f.nodes['household-bedtime-enabled'].checked,false);
+ assert.equal(f.nodes['household-comfort-enabled'].checked,false);
+ assert.match(f.nodes['household-preview'].textContent,/<img src=x/);
+ await f.nodes['household-refresh'].onclick();
+ assert.ok(!f.requests.some(r=>r.options.method==='POST'));
+ f.nodes['dashboard-forget'].onclick();
+ assert.equal(f.nodes['household-preview'].textContent,'');
+ assert.equal(f.nodes['household-state'].textContent,'');
+ assert.equal(f.nodes['amadeus-controls'].hidden,true);
+});
+
+test('household HTML exposes bounded thresholds and retains attention/identity caveats',()=>{
+ const html=fs.readFileSync('okabebot/web/amadeus.html','utf8');
+ assert.match(html,/household-departure-away-minutes[^>]+min="1"[^>]+max="120"/);
+ assert.match(html,/household-cold-c[^>]+min="5"[^>]+max="25"/);
+ assert.match(html,/household-hot-c[^>]+min="20"[^>]+max="40"/);
+ assert.match(html,/household-cooldown-hours[^>]+min="1"[^>]+max="72"/);
+ assert.match(html,/Device activity does not identify anyone or prove occupancy/);
+ assert.match(html,/separate from optional health-habit coaching/);
+ assert.match(html,/Spoken reminders share the proactive daily limit/);
 });

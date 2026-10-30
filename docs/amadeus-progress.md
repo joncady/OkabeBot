@@ -493,3 +493,5 @@ collectors/recording budgets and full provider pagination remain separate work.
 - Added owner-selected read-only home-device context for HA covers, thermostats and related sensors, with explicit observation scope and household recap support. Device state is not treated as identity or arrival evidence. Vendor account authorization remains separate.
 
 - Added minimized room-activity context with editable HA light/switch/speaker selection, existing aggregation/privacy controls, grounded household recap retrieval and a conservative speaker-availability gate for proactive invitations. Activity is not occupancy evidence.
+
+- Added optional grounded household suggestions with private dashboard away-light notes, shared-budget bedtime/comfort speech, strict room-versus-floor temperature handling, sampled evidence continuity, editable policy and source/forget revalidation. General household assistance remains separate from health coaching consent.
