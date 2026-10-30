@@ -329,9 +329,11 @@ unexpired events and preferences for the configured profile plus its setup and
 unattributed household observations, shown separately from personal memory.
 Downloaded exports are personal records: keep them local/private and outside Git.
 Known export filenames are ignored and blocked by publication/release guards.
-Whole-store forgetting removes setup, draft, consent, explicit preferences and
-observations, but cannot erase downloaded copies or external backups. Integration
-credentials and entity bindings remain; capture is blocked until new setup consent.
+Whole-store forgetting removes setup, draft, consent, explicit preferences,
+observations, compact context projections, saved feed credentials and the private
+text-feedback sidecar. It cannot erase downloaded copies or external backups.
+External environment credentials and file-based integration/entity bindings remain;
+capture is blocked until new setup consent.
 
 Shorter retention immediately deletes affected observations; longer retention does
 not extend existing event deadlines or restore deleted data. Requests prune expiry;

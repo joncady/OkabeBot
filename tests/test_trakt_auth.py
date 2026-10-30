@@ -105,3 +105,38 @@ class AuthTests(unittest.TestCase):
             auth.refresh(connection)
             self.assertEqual(len(calls), 3)
             owner.close()
+
+    def test_external_refresh_lock_blocks_rotation_without_poisoning_connection(self):
+        from unittest.mock import Mock, patch
+        from okabebot.trakt_auth import refresh_lock
+
+        with tempfile.TemporaryDirectory() as folder:
+            owner = Onboarding(folder)
+            self.addCleanup(owner.close)
+            owner.save(SETUP)
+            feeds = Feeds(folder, clock=lambda: 2000000000)
+            connection = {
+                "client_id": "invented",
+                "token": "old",
+                "refresh_token": "once",
+                "expires_at": 0,
+            }
+            owner.store.remember(SYSTEM, "feed_connection.trakt", connection)
+            read = Mock(
+                return_value={"access_token": "new", "refresh_token": "next", "expires_in": 600}
+            )
+            auth = TraktAuth(feeds, read)
+            # An independently opened lock stands in for a standalone MCP process.
+            with refresh_lock(folder):
+                with patch(
+                    "okabebot.trakt_auth.refresh_lock",
+                    side_effect=lambda path: refresh_lock(path, timeout=0),
+                ):
+                    with self.assertRaises(ValueError):
+                        auth.refresh(connection)
+                read.assert_not_called()
+                self.assertEqual(
+                    preference(owner.store, SYSTEM, "feed_connection.trakt"), connection
+                )
+            self.assertEqual(auth.refresh(connection)["token"], "new")
+            read.assert_called_once()

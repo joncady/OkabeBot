@@ -305,7 +305,9 @@ def export(store, subject):
             continue
         result[table] = []
         for row in store.db.execute(
-            "SELECT * FROM " + table + " WHERE subject IN (?,'unknown') AND expires_at>?",
+            "SELECT * FROM "
+            + table
+            + " WHERE subject IN (?,'unknown','household') AND expires_at>?",
             (subject, store.clock()),
         ):
             value = dict(row)

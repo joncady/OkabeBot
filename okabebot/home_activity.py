@@ -110,37 +110,35 @@ def recap(folder, period="today", clock=time.time):
                     detail += ": " + payload["title"]
             observations.append({"kind": kind, "text": detail, "observed_at": row["observed_at"]})
         inbox = Path(folder).parent / "notifications.sqlite3"
-        if inbox.exists():
+        # Inbox delivery permission is not Amadeus history consent. Only
+        # explicitly attributable source aliases can supplement this recap.
+        notice_sources = []
+        if "door_presence" in setup.get("sources", []):
+            notice_sources.extend(["ring", "door"])
+        appliance_cfg = preference(store, SYSTEM, "feed.appliances", {})
+        if "appliances" in setup.get("sources", []) and appliance_cfg.get("enabled"):
+            notice_sources.append("thinq")
+        if inbox.exists() and notice_sources:
             with closing(
                 sqlite3.connect(inbox.resolve().as_uri() + "?mode=ro", uri=True, timeout=3)
             ) as db:
                 notices = db.execute(
                     "SELECT payload,created FROM notifications WHERE created>=? AND created<? "
-                    "AND json_extract(payload, '$.source') IN "
-                    "('ring','home-assistant','home_assistant','homeassistant','thinq','home','door','alexa') "
-                    "ORDER BY created DESC LIMIT 30",
-                    (start, end),
+                    "AND json_extract(payload, '$.source') IN ("
+                    + ",".join("?" for _ in notice_sources)
+                    + ") ORDER BY created DESC LIMIT 30",
+                    (start, end, *notice_sources),
                 ).fetchall()
             alerts = []
             for raw, created in notices:
                 notice = json.loads(raw)
-                if notice.get("source") in (
-                    "ring",
-                    "home-assistant",
-                    "home_assistant",
-                    "homeassistant",
-                    "thinq",
-                    "home",
-                    "door",
-                    "alexa",
-                ):
-                    alerts.append(
-                        {
-                            "kind": "notification",
-                            "text": str(notice.get("title", "Household alert"))[:100],
-                            "observed_at": created,
-                        }
-                    )
+                alerts.append(
+                    {
+                        "kind": "notification",
+                        "text": str(notice.get("title", "Household alert"))[:100],
+                        "observed_at": created,
+                    }
+                )
             observations = alerts[:3] + observations
         # Event history takes precedence over routine last-state readings.
         observations.sort(

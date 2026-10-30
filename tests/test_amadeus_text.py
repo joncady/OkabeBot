@@ -152,3 +152,17 @@ class TextTests(unittest.TestCase):
         tool.assert_called_once()
         self.generate.assert_called_once()
         self.assertEqual(result["pending"]["field"], "hobbies")
+
+    def test_owner_export_and_forget_include_private_feedback_sidecar(self):
+        from okabebot.amadeus_onboarding import Onboarding
+
+        self.chat.send("I enjoy pottery", self.generate)
+        self.chat.feedback({"rating": "unhelpful", "note": "Invented review note"})
+        owner = Onboarding(self.tmp.name)
+        self.addCleanup(owner.close)
+        self.assertEqual(owner.export()["text_feedback"][0]["note"], "Invented review note")
+        owner.forget({"confirm": "forget_amadeus"})
+        self.assertFalse((Path(self.tmp.name) / "text-feedback.json").exists())
+        with self.assertRaises(ValueError):
+            self.chat.feedback({"rating": "useful"})
+        self.assertFalse((Path(self.tmp.name) / "text-feedback.json").exists())

@@ -1,6 +1,7 @@
 # Current deployment and configuration
 
-Last verified: **2026-10-26**. This is the maintained inventory of the existing
+Base hosting inventory verified: **2026-10-26**; later sections distinguish
+subsequent source changes and installed checks. This is the maintained inventory of the existing
 installation, not the defaults for a new user. The [README diagram](../README.md#current-deployment-map)
 shows the connections. Keep both documents in sync when roles or hosting change.
 Private IPs, credentials, account IDs and token-bearing URLs belong in local
@@ -37,8 +38,9 @@ Door, presence, media and interaction observations remain unattributed household
 context; they do not prove personal arrival, attendance, viewing or preference.
 Calendar snapshots have completeness markers. Habit learning, semantic recall,
 voice/MCP memory tools and learned proactive/health nudge delivery remain pending.
-Whole-store forgetting removes data and consent, but not integration credentials,
-downloaded exports or backups. Private trial outcomes and setup choices stay local.
+Whole-store forgetting removes data, consent and SQLite-stored feed credentials;
+external environment/file-based integration credentials, downloaded exports and
+backups remain. Private trial outcomes and setup choices stay local.
 
 Privacy/source checkpoint A must precede live collection. Subsequent trial gates
 cover shadow prediction, quiet cards, media/pantry trials and final acceptance.
@@ -1629,3 +1631,16 @@ Installed follow-up verification: matching controller/worker modules were loaded
 while idle with private rollback backups, and an authenticated silent dashboard
 recommendation request invoked the Trakt watchlist tool. This does not enable
 scheduled watch-history collection or validate streaming-service availability.
+
+
+## Local pre-review privacy and credential fixes
+
+Source-only review fixes include `household` records in owner memory/export,
+include/delete the private feedback sidecar, and require source consent before
+inbox alerts supplement a household recap. Trakt refresh coordination now uses a
+bounded private file lock in addition to the controller's thread lock, preventing
+concurrent controller/standalone MCP token rotation. This adds a credential-free
+lock file under the existing private Amadeus directory, not a process, port or new
+credential owner. README topology remains unchanged. These review fixes are
+prepared for merge; no live services or physical hardware were changed during
+the local review.

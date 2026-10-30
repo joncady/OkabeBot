@@ -435,3 +435,16 @@ collectors/recording budgets and full provider pagination remain separate work.
   apply; no background history collection or provider write is enabled.
 - Limited: list membership is not viewing history or streaming availability.
   Unknown viewing dates and provider provenance must remain explicitly unknown.
+
+
+## Pre-review privacy and credential boundaries
+
+- Improved: owner memory/export includes both household subject labels; private
+  text feedback is exported and forgotten with the configured store. Feedback
+  writes serialize with forgetting and require setup to prevent re-creation.
+- Improved: household recap inbox supplements require the corresponding source
+  consent; generic publisher labels do not imply permission for history access.
+- Improved: bounded file locking serializes Trakt token refresh across local
+  controller/MCP processes, supplementing thread-level coordination.
+- Validation: invented export, forget, revoked-source and independent-lock tests.
+  Review fixes are source changes, not new physical acceptance or personal trials.

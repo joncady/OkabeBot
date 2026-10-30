@@ -75,6 +75,9 @@ def validate(value):
 
 class Onboarding:
     def __init__(self, folder):
+        from pathlib import Path
+
+        self.folder = Path(folder)
         self.store = Store(folder)
 
     def close(self):
@@ -215,7 +218,14 @@ class Onboarding:
     def memory(self):
         return dict(
             self.store.recall(self.subject()),
-            household_events=self.store.recall("unknown")["events"],
+            household_events=[
+                dict(row, payload=json.loads(row["payload"]))
+                for row in self.store.db.execute(
+                    "SELECT * FROM events WHERE subject IN ('unknown','household') AND expires_at>? "
+                    "ORDER BY observed_at DESC,id LIMIT 20",
+                    (self.store.clock(),),
+                )
+            ],
         )
 
     def export(self):
@@ -229,10 +239,15 @@ class Onboarding:
         ).fetchall()
         result["events"] = [dict(row, payload=json.loads(row["payload"])) for row in rows]
         rows = self.store.db.execute(
-            "SELECT * FROM events WHERE subject='unknown' AND expires_at>? ORDER BY observed_at,id",
+            "SELECT * FROM events WHERE subject IN ('unknown','household') AND expires_at>? ORDER BY observed_at,id",
             (self.store.clock(),),
         ).fetchall()
         result["household_events"] = [dict(row, payload=json.loads(row["payload"])) for row in rows]
+        from .presence_control import read
+
+        result["text_feedback"] = read(self.folder / "text-feedback.json", {}).get("items", [])[
+            -100:
+        ]
         return dict(
             result, setup=self.settings(), export_scope="profile_and_unattributed_household"
         )
@@ -270,6 +285,8 @@ class Onboarding:
                 clear(self.store.db)
                 self.store.db.execute("DELETE FROM events")
                 self.store.db.execute("DELETE FROM preferences")
+                # Feedback contains private conversation excerpts, not integration settings.
+                (self.folder / "text-feedback.json").unlink(missing_ok=True)
                 if self.store.db.execute(
                     "SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_decisions'"
                 ).fetchone():

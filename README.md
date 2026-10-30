@@ -20,10 +20,11 @@ on the controller's dashboard origin to choose private permissions, optional
 coaching topics, quiet hours and retention, or edit/export/forget explicit memory.
 Consent-gated shadow metadata collection is available for calendar, media,
 companion interactions and allowlisted Home Assistant states. It starts paused;
-habit inference, proactive suggestions and grocery actions remain disabled. Alexa conversational
-parity is paused while this work proceeds; its accepted scene/demo remains separate.
-Optional supportive habit coaching has an opt-in/feedback policy and private
-onboarding controls; live delivery remains pending. Personal trial results remain
+shadow learning and bounded proactive conversation/morning flows are separate opt-ins,
+while grocery actions remain planned. Alexa conversational parity is paused while
+this work proceeds; its accepted scene/demo remains separate. Optional supportive
+habit coaching has an opt-in/feedback policy and private onboarding controls;
+broader goal-driven coaching remains follow-up work. Personal trial results remain
 private. The [public progress log](docs/amadeus-progress.md) describes only general
 capability improvements, limitations and regressions.
 
@@ -31,8 +32,9 @@ An initial [local shadow routine learner and accelerated replay](docs/amadeus-si
 can preview explainable cue windows from prior observed days. A separate context
 preview uses coarse availability, busy calendar intervals and saved entertainment
 preferences to propose quiet, actionable cards. Owner-only previews default off;
-general notification/action delivery is not enabled.
-This repository capability is separate from the installed deployment map below.
+these shadow previews do not publish notifications or perform actions. Separately
+configured morning and door-armed conversation flows have their own delivery gates.
+Repository capability is separate from the installed deployment map below.
 
 An opt-in [morning summary](docs/morning.md) can prepare weather/calendar cards
 on the first screen-on near an alarm and optionally present them on a configured

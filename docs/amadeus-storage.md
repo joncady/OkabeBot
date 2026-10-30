@@ -100,3 +100,13 @@ example; this change does not claim complete provider pagination.
 5. Add historical period filters and snapshot-consistent cursors where needed.
 
 No participant results or household inventories belong in this document or tests.
+
+
+Owner memory/export includes both unattributed subject labels (`unknown` and
+`household`), including retained media, interaction and Ring records. The private
+text-feedback sidecar is included in export and removed by whole-store forgetting.
+Its writes serialize with forgetting and require configured setup. External
+backups, downloaded exports and integration-owned notification storage remain
+separate boundaries. Recaps may read explicitly attributable inbox aliases only
+when their Amadeus source is consented; generic publisher labels do not grant
+history access.

@@ -347,6 +347,28 @@ class AmadeusHttpTests(unittest.TestCase):
         self.request("/amadeus/api/forget", {"confirm": "forget_amadeus"})
         self.assertIsNone(self.request("/amadeus/api/settings")["settings"])
 
+    def test_household_subject_and_unknown_events_are_in_owner_memory_and_export(self):
+        self.request("/amadeus/api/settings", SETUP)
+        from contextlib import closing
+
+        with closing(Store(self.folder / "amadeus", sources=["interaction"])) as store:
+            for subject in ("household", "unknown"):
+                store.observe(
+                    source="interaction",
+                    external_id="invented-" + subject,
+                    subject=subject,
+                    kind="interaction",
+                    payload={"action": "question_submitted", "surface": "invented"},
+                )
+        memory = self.request("/amadeus/api/memory")
+        exported = self.request("/amadeus/api/export")
+        self.assertEqual(
+            {r["subject"] for r in memory["household_events"]}, {"unknown", "household"}
+        )
+        self.assertEqual(
+            {r["subject"] for r in exported["household_events"]}, {"unknown", "household"}
+        )
+
     def test_validation_cannot_mutate_or_change_subject_or_privileged_preferences(self):
         self.request("/amadeus/api/settings", SETUP)
         for path, data in [

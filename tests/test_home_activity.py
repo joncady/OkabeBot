@@ -148,3 +148,24 @@ class ActivityTests(unittest.TestCase):
         self.assertEqual(counts[("User", "delivery", "user-confirmed")], 1)
         self.assertNotIn(("Ring", "delivery", "sensor"), counts)
         self.assertEqual(result["coverage"], "partial")
+
+    def test_inbox_alerts_require_their_amadeus_source_consent(self):
+        import sqlite3
+
+        inbox = self.path.parent / "notifications.sqlite3"
+        with sqlite3.connect(inbox) as db:
+            db.execute("CREATE TABLE notifications (payload TEXT, created REAL)")
+            for source in ("ring", "thinq", "home-assistant"):
+                db.execute(
+                    "INSERT INTO notifications VALUES (?,?)",
+                    (
+                        json.dumps({"source": source, "title": "Invented " + source + " alert"}),
+                        self.now - 30,
+                    ),
+                )
+        initial = recap(self.path, clock=lambda: self.now)
+        self.assertIn("Invented ring alert", json.dumps(initial))
+        self.assertNotIn("Invented thinq alert", json.dumps(initial))
+        self.assertNotIn("Invented home-assistant alert", json.dumps(initial))
+        self.owner.save(dict(SETUP, sources=[]))
+        self.assertEqual(recap(self.path, clock=lambda: self.now)["observations"], [])

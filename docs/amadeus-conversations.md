@@ -88,8 +88,10 @@ Amadeus storage, with a ten-minute session window and six-turn limit. Expiration
 checked on the next request. Useful/Needs work and an optional note are saved only
 in ignored private state (`amadeus/text-feedback.json`, last 100 entries). Feedback
 is manual review material, not automatic model training. Do not commit or export it
-to public issues, PRs or progress logs. The text routes use existing dashboard owner
-authentication and do not expose hardware tools or play speech.
+to public issues, PRs or progress logs. Owner-only private export includes this
+feedback; whole-store forgetting deletes it, and feedback cannot be recreated until
+setup exists again. The text routes use dashboard owner authentication and shared
+validated tools; they do not play speech.
 
 
 ### Confidence-based memory policy

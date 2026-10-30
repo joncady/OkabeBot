@@ -113,17 +113,24 @@ class TextConversation(ProactiveConversation):
         note = data.get("note", "")
         if not isinstance(note, str) or len(note) > 1000:
             raise ValueError("Keep feedback under 1000 characters")
-        with self.lock:
+        with self.lock, self.store() as s, s.db:
+            s.db.execute("BEGIN IMMEDIATE")
+            setup = preference(s, SYSTEM, KEY, {})
+            if not setup.get("profile"):
+                raise ValueError("Save private setup before leaving feedback")
+            context = preference(s, setup["profile"], self.state_key, {})
             path = self.folder / "text-feedback.json"
             rows = read(path, {}).get("items", [])
-            context = self.context() or {}
             rows.append(
                 dict(
                     at=self.clock(),
                     rating=data["rating"],
                     note=note,
-                    context=context.get("history", [])[-2:],
+                    context=context.get("history", [])[-2:]
+                    if context.get("session_until", 0) > self.clock()
+                    else [],
                 )
             )
+            # Serialize this sidecar write with whole-store forgetting through SQLite.
             write(path, {"items": rows[-100:]})
         return {"saved": True}

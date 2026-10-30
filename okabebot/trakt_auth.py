@@ -1,12 +1,36 @@
 """Owner-initiated device authorization; private credentials and bounded polling."""
 
 import threading
+import time
+import os
+import fcntl
+from contextlib import contextmanager
 from pathlib import Path
 from urllib.error import HTTPError
 from .adapters.context.providers import request
 from .amadeus import encode
 from .amadeus_habits import preference
 from .amadeus_onboarding import SYSTEM, KEY
+
+
+@contextmanager
+def refresh_lock(folder, timeout=12):
+    """Serialize single-use refresh across controller and standalone MCP processes."""
+    path = Path(folder) / "trakt-refresh.lock"
+    fd = os.open(path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise ValueError("Trakt token refresh is busy; try again later") from None
+                time.sleep(0.05)
+        yield
+    finally:
+        os.close(fd)
 
 
 class TraktAuth:
@@ -146,7 +170,7 @@ class TraktAuth:
             or connection.get("expires_at", 0) > self.feeds.clock() + 120
         ):
             return connection
-        with self.lock:
+        with self.lock, refresh_lock(self.feeds.folder):
             with self.feeds.store() as store:
                 current = preference(store, SYSTEM, "feed_connection.trakt", {})
             if current != connection:
