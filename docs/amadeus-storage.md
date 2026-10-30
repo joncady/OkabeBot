@@ -48,7 +48,9 @@ signal buckets. All use the owner's existing retention horizon. Reducing retenti
 shortens expiry; revocation/disconnection clears the relevant projection. Repeated
 saves and added bindings preserve history; removing bindings conservatively clears
 the source projection. Widening a selection invalidates its completeness marker
-until the next successful fetch.
+until the next successful fetch. Saving an unchanged connection also preserves
+records and private OAuth refresh metadata; changing the connection still clears
+the affected source projection.
 Pause prevents new collection and tool access. Whole-store and subject forgetting,
 private exports and scheduled pruning include the new tables. External exports,
 backups and HA's own recorder remain separate ownership/retention boundaries.
@@ -66,7 +68,10 @@ is follow-up work. Never silently delete distinct private recordings as deduplic
 observed changes and signal aggregates. Literal search and paging keep reads
 bounded (20 by default, up to 50); results report stale/partial coverage and a next
 page. Offset paging reads current state and is not a frozen historical snapshot.
-Source and subject consent are checked for every call. Source text is untrusted.
+Source and subject consent are checked for every call. Expired completeness
+markers are ignored even before pruning. Source coverage is reported separately
+from a shortened UI preview: a complete large source is not a partial fetch merely
+because the preview is small. Source text is untrusted.
 
 Ordinary preference/conversation prompts receive feed availability metadata, not
 all source items. The local tool shortlist includes targeted source retrieval for

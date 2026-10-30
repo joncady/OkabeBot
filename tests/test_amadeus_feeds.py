@@ -103,6 +103,54 @@ class FeedTests(unittest.TestCase):
         self.feeds.tick()
         self.assertEqual(self.current(), [])
 
+    def test_unchanged_connection_save_preserves_records_but_rebind_clears(self):
+        connection = {"transport": "ha", "url": "http://example.test", "token": "invented"}
+        self.feeds.connect(connection)
+        self.enable(entities=["todo.invented"])
+        self.feeds.tick()
+        before = self.owner.export()["context_changes"]
+        self.feeds.connect({**connection, "token": ""})
+        self.assertEqual(self.owner.export()["context_changes"], before)
+        self.assertEqual(len(self.feeds.retrieve("tasks")["items"]), 1)
+        self.assertEqual(len(self.current()), 1)
+        self.feeds.connect({**connection, "url": "http://other.example.test"})
+        self.assertEqual(self.feeds.retrieve("tasks")["items"], [])
+        self.assertEqual(self.owner.export()["context_changes"], [])
+
+    def test_unchanged_trakt_save_preserves_private_refresh_metadata(self):
+        connection = {
+            "client_id": "invented-app",
+            "token": "invented-access",
+            "refresh_token": "invented-refresh",
+            "expires_at": self.now + 3600,
+        }
+        from okabebot.amadeus_onboarding import SYSTEM
+
+        self.owner.store.db.execute(
+            "INSERT OR REPLACE INTO preferences VALUES (?,?,?,?)",
+            (SYSTEM, "feed_connection.trakt", json.dumps(connection), self.now),
+        )
+        self.owner.store.db.commit()
+        self.feeds.connect({"transport": "trakt", "client_id": "invented-app", "token": ""})
+        from okabebot.amadeus_habits import preference
+
+        self.assertEqual(
+            preference(self.owner.store, SYSTEM, "feed_connection.trakt", {}), connection
+        )
+        self.assertNotIn("invented-refresh", json.dumps(self.feeds.snapshot()))
+
+    def test_large_complete_source_is_not_reported_as_partial_preview(self):
+        self.enable(entities=["todo.invented"])
+        self.items = [{"id": str(i), "title": "Invented task"} for i in range(80)]
+        self.feeds.tick()
+        self.assertFalse(self.current()[0]["complete"])
+        with self.feeds.store() as store:
+            metadata = context(store, include_items=False)[0]
+        self.assertTrue(metadata["complete"])
+        self.assertEqual(metadata["items"], [])
+        status = next(f for f in self.feeds.snapshot()["feeds"] if f["id"] == "tasks")
+        self.assertEqual(status["status"], "connected")
+
     def test_credentials_are_write_only_and_not_exported(self):
         result = self.feeds.connect(
             {"transport": "ha", "url": "http://example.test:8123", "token": "invented-secret"}

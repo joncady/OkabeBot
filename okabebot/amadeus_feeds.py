@@ -79,6 +79,14 @@ def context(store, *, limit=12, include_items=True, full=False):
             ).fetchone()
             value["complete"] = "yes" if status and status[0] and len(records) <= 10000 else "no"
         if not include_items:
+            if store.db.execute(
+                "SELECT 1 FROM sqlite_master WHERE name='context_feed_status'"
+            ).fetchone():
+                status = store.db.execute(
+                    "SELECT complete FROM context_feed_status WHERE source=? AND subject=? AND expires_at>?",
+                    (feed.id, "unknown" if feed.household else setup["profile"], now),
+                ).fetchone()
+                value["complete"] = "yes" if status and status[0] else "no"
             result.append(
                 {
                     "source": feed.id,
@@ -360,12 +368,19 @@ class Feeds:
             cfg["token"] = cfg["token"] or old.get("token", "")
             if not cfg["token"]:
                 raise ValueError("Supply a private token")
+            if (
+                name == "trakt"
+                and cfg["client_id"] == old.get("client_id")
+                and cfg["token"] == old.get("token")
+            ):
+                # Saving visible settings must not discard private OAuth refresh metadata.
+                cfg = {**old, **cfg}
             store.db.execute(
                 "INSERT OR REPLACE INTO preferences VALUES (?,?,?,?)",
                 (SYSTEM, "feed_connection." + name, encode(cfg), self.clock()),
             )
             for feed in FEEDS.values():
-                if feed.transport == name:
+                if feed.transport == name and cfg != old:
                     store.db.execute(
                         "DELETE FROM events WHERE source=? AND kind='feed_snapshot'", (feed.id,)
                     )
@@ -482,9 +497,7 @@ class Feeds:
                             payload=payload,
                         )
                     self.health[feed.id] = {
-                        "state": "connected"
-                        if payload["complete"] == "yes"
-                        else "connected_partial"
+                        "state": "connected" if source_complete else "connected_partial"
                     }
                 except Exception:
                     # Exception text can include tokens, URLs or provider bodies.

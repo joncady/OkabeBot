@@ -1,10 +1,13 @@
 # Amadeus trial checklist
 
-Specification: [amadeus.md](amadeus.md). Owner: OkabeBot controller. Status as of
-2026-10-27: private setup, shadow source hooks and retention installed; no proactive output.
-The [GitHub roadmap](https://github.com/users/joncady/projects/4) contains
-Amadeus A0–A8 work packages; this checklist owns detailed
-acceptance and makes partial completion explicit.
+Specification: [amadeus.md](amadeus.md). Owner: OkabeBot controller.
+[Repository issues](https://github.com/joncady/OkabeBot/issues) own backlog status;
+the [roadmap board](https://github.com/users/joncady/projects/4) organizes those
+issues, including Amadeus A0–A8 work packages. This document contains detailed
+acceptance criteria, including historical unchecked items that require
+reconciliation with implemented code. It is not an installed-status report;
+use [deployment inventory](deployment.md) and the
+[capability log](amadeus-progress.md). See [roadmap maintenance](roadmap.md).
 
 ## Priority order for the next cycle
 

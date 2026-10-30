@@ -1589,3 +1589,11 @@ transcript or camera collection was enabled. Broader recording budgets, remainin
 heartbeat collectors and resumable transport pagination remain tracked in #18.
 Rollback should restore matching code and database backup together; older code
 alone does not manage the new projections' forgetting/retention lifecycle.
+
+
+Checkpoint reliability source changes preserve unchanged connection state and
+separate authoritative feed coverage from a bounded preview, with read-time expiry
+guards. These changes do not move hosting, listeners, model workers, credentials
+or device responsibilities; the README topology remains accurate. This checkpoint
+is prepared for PR review and has not been installed as part of the reliability
+audit. The earlier installed context-store verification above remains distinct.

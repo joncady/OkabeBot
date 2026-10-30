@@ -271,7 +271,8 @@ def query(store, source, subject, *, text="", offset=0, limit=20, view="current"
         (source, subject, store.clock(), text, text, limit + 1, offset),
     ).fetchall()
     status = store.db.execute(
-        "SELECT * FROM context_feed_status WHERE source=? AND subject=?", (source, subject)
+        "SELECT * FROM context_feed_status WHERE source=? AND subject=? AND expires_at>?",
+        (source, subject, store.clock()),
     ).fetchone()
     return {
         "source_snapshot_complete": bool(status["complete"]) if status else False,

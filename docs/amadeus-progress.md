@@ -399,3 +399,16 @@ read-only source tools provide paged current/change/aggregate views. Synthetic
 regressions cover large collections, duplicate reports, partial omissions, calendar
 rescheduling, stale readings and meaningful discrete signal changes. Remaining
 collectors/recording budgets and full provider pagination remain separate work.
+
+
+## Context-store checkpoint reliability
+
+- Improved: unchanged connection saves preserve retained records and private OAuth
+  refresh metadata; actual connection changes retain the clearing boundary.
+- Improved: feed health and tool availability distinguish full source coverage
+  from bounded UI previews. Expired coverage markers are ignored before pruning.
+- Validation: synthetic save/rebind, large-source and expiry regressions cover
+  these boundaries. No new observation consent or device behavior is enabled.
+- Remaining: resumable provider pagination, recording budgets and broader collector
+  compaction remain separate backlog issues. Roadmap scope now uses repository
+  issues with a project status view.

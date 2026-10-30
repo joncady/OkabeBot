@@ -148,3 +148,12 @@ class RecordsTests(unittest.TestCase):
         result = query(self.store, "tasks", "invented", view="aggregates")
         self.assertEqual(len(result["items"]), 2)
         self.assertEqual({r["value"]["unit"] for r in result["items"]}, {"°C", "°F"})
+
+    def test_expired_completeness_marker_is_not_returned_before_pruning(self):
+        self.store.retention = 60
+        self.put([])
+        self.assertTrue(query(self.store, "tasks", "invented")["source_snapshot_complete"])
+        self.now += 61
+        result = query(self.store, "tasks", "invented")
+        self.assertFalse(result["source_snapshot_complete"])
+        self.assertIsNone(result["checked_at"])

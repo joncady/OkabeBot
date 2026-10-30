@@ -2,6 +2,10 @@
 
 A push-to-talk companion with a talking pixel character and shared dashboard/MCP tools for real hardware. Hold a button, speak, and release. The current deployment runs speech recognition, Qwen conversation and Qwen speech locally on a Mac; Codex remains an optional backend and the repository default for fresh configurations. The companion can answer aloud, change expressions, show pictures, use a camera, and press a SwitchBot.
 
+Backlog scope lives in [repository issues](https://github.com/joncady/OkabeBot/issues),
+organized on the [roadmap Kanban board](https://github.com/users/joncady/projects/4).
+See [roadmap maintenance](docs/roadmap.md) for status and checkpoint rules.
+
 **Amadeus** is the new local memory and proactive-assistance trial. Its
 [specification and conditional 14-day timeline](docs/amadeus.md) and
 [implementation checklist](docs/amadeus-todo.md) separate planned capabilities
