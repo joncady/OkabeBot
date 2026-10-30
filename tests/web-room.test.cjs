@@ -109,3 +109,16 @@ test('blocked sound permission never blocks visual readiness or receiver heartbe
  assert.ok(b.calls.some(c=>c.path==='/surfaces/heartbeat'));
  assert.equal(b.nodes['#enable-sound'].hidden,false);
 });
+
+test('weather sprites cover conditions with authored pixels and time-based precipitation',()=>{
+ const {weatherSprite}=require('../okabebot/web/lab-room.js');
+ const frames=[];
+ const c=new Proxy({fillRect(...xy){frames.push([this.fillStyle,...xy]);}},{get:(o,k)=>o[k]||(()=>{})});
+ for(const condition of ['sunny','clear-night','partlycloudy','cloudy','fog','hail','lightning','lightning-rainy','pouring','rainy','snowy','snowy-rainy','windy','windy-variant','exceptional']){
+  frames.length=0;assert.equal(weatherSprite(c,condition,0,0,0),condition);assert.ok(frames.length>=5);
+  assert.ok(frames.every(row=>row.slice(1).every(Number.isInteger)));
+ }
+ frames.length=0;weatherSprite(c,'rainy',0,0,0);const a=JSON.stringify(frames);
+ frames.length=0;weatherSprite(c,'rainy',0,0,250);assert.notEqual(JSON.stringify(frames),a);
+ assert.equal(weatherSprite(c,'untrusted-not-a-condition',0,0,0),'exceptional');
+});

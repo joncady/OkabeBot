@@ -522,3 +522,11 @@ privacy fallback and tool-schema/projection drift. Ongoing session gates now
 respect revocation without treating normal daily delivery cooldowns as revoked
 consent. Invented regressions exercise before/during-generation withdrawal and
 configured privacy-source loss; no participant records or outcomes are reported.
+
+Morning reporting now selects bounded actionable highlights from existing fresh
+context rather than depending on weather/calendar alone. A full stable-item view
+avoids missing relevant items beyond a preview page; optional source sections and
+speech remain separate from collection consent. Weather gains animated local
+pixel sprites and readable temperature/gear cues. Forecast coverage remains an
+explicit gap. Synthetic regressions and invented visual fixtures contain no
+participant report, schedule, measurements or outcomes.

@@ -52,7 +52,7 @@ def permitted(setup, feed):
     )
 
 
-def context(store, *, limit=12, include_items=True, full=False):
+def context(store, *, limit=12, include_items=True, full=False, sources=None):
     """Latest fresh consented snapshots only; empty snapshots clear prior values."""
     setup = preference(store, SYSTEM, KEY, {})
     if not setup.get("profile") or setup.get("paused") or setup.get("guest"):
@@ -64,6 +64,8 @@ def context(store, *, limit=12, include_items=True, full=False):
         (now, now, setup["profile"]),
     )
     for row in rows:
+        if sources is not None and row["source"] not in sources:
+            continue
         if row["source"] in found:
             continue
         found.add(row["source"])

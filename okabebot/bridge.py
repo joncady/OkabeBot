@@ -739,7 +739,7 @@ class Bridge:
                 # Private capability diagnostics only; never log the spoken text or facts.
                 timing.write("morning", {"generated_framing": generated, "state": "speaking"})
                 # Resolve the current surface speaker; never use global announcement fallback.
-                spoken = briefing.revalidate_chores(spoken)
+                spoken = briefing.revalidate_digest(briefing.revalidate_chores(spoken))
                 character_tools.speak(spoken, "happy", purpose="reply")
                 timing.write("morning", {"generated_framing": generated, "state": "delivered"})
                 briefing.complete(success=True, coach=coach)

@@ -85,6 +85,9 @@
 <p>Speaks from the destination TV or its linked audio output. Adjust its voice gain in Locations. Coaching stop/snooze and source consent still apply. No health or mood inference.</p>
 <button>Save spoken briefing</button></form>
 </details><button id="morning-show" type="button">Show today’s briefing · speak once if enabled</button><p id="morning-show-status" role="status"></p>
+<details><summary>Morning report sections</summary><form id="morning-digest-form">
+<p>Uses fresh, already-consented feeds. No new collection. Tasks include due/overdue items; meals use today's plan; transit covers your selected lines. Partial feeds never imply complete coverage.</p>
+<label class="amadeus-option"><input id="morning-digest-tasks" type="checkbox" checked> Due tasks</label><label class="amadeus-option"><input id="morning-digest-transit" type="checkbox" checked> Rail alerts</label><label class="amadeus-option"><input id="morning-digest-meals" type="checkbox" checked> Today's meal plan</label><label class="amadeus-option"><input id="morning-digest-spoken_highlight" type="checkbox" checked> Include one useful highlight in the short spoken briefing</label><button>Save report sections</button></form></details>
 <details><summary>Private card preview</summary><pre id="morning-preview"></pre></details></details>
 <details id="amadeus-feeds" class="panel" hidden><summary>Context feeds</summary><p>Each feed is read-only. Enabling explicitly permits its metadata; global pause, guest mode and retention still apply. Credentials stay in the controller’s private storage. No feed speaks or controls devices.</p><button id="feeds-refresh" type="button">Refresh connection status</button><div id="feed-list"></div><details><summary>Current private source context</summary><pre id="feed-context"></pre></details></details>
 <details id="amadeus-habits" class="panel" hidden><summary>Routine previews</summary>

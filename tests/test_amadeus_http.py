@@ -61,6 +61,21 @@ class AmadeusHttpTests(unittest.TestCase):
         ) as r:
             return json.load(r)
 
+    def test_morning_digest_owner_settings_do_not_enable_collection(self):
+        from okabebot.morning_digest import DEFAULTS
+
+        self.request("/amadeus/api/settings", SETUP)
+        initial = self.request("/amadeus/api/morning-digest")
+        self.assertEqual(initial, {"config": DEFAULTS, "cards": []})
+        changed = self.request("/amadeus/api/morning-digest", dict(DEFAULTS, transit=False))
+        self.assertFalse(changed["config"]["transit"])
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/morning-digest", token="publish-only")
+        self.assertEqual(caught.exception.code, 403)
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/amadeus/api/morning-digest", dict(DEFAULTS, tasks="yes"))
+        self.assertEqual(caught.exception.code, 400)
+
     def test_health_owner_only_and_strict_configuration(self):
         from okabebot.amadeus_health import DEFAULTS
 

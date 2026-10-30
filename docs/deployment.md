@@ -1933,3 +1933,14 @@ binding remains fail-closed when its feed is disabled or HA is disconnected. The
 MCP health retrieval schema and reply projection now match the registered feed.
 Hosting, ports, device state and installed configuration are unchanged by this
 source review fix; no live deployment or physical acceptance is claimed here.
+
+### Morning digest and weather presentation refresh
+
+The Mac controller's morning adapter can read fresh selected task, transit and
+meal-plan context through the existing private stable-item store. Owner section
+settings use `morning.digest`; no new collector, network route, port, credential
+or HA transport is added. One optional spoken highlight is revalidated before the
+existing destination audio route. Weather sprites are authored canvas pixels in
+the existing TV lab renderer, with no downloaded assets or external requests.
+README topology nodes/edges remain unchanged. Source checks and synthetic visual
+preview are distinct from installed-state and physical wake/audio acceptance.

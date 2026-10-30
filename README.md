@@ -843,3 +843,9 @@ Discovery and collection consent remain separate.
 Health conversations recheck collection, goal and coaching consent throughout a
 session, including after reply generation. Configured shared-room privacy inputs
 stay suppressed when their feed is disabled or disconnected.
+
+The morning report can add fresh selected rail notices, due/overdue tasks and
+that day's selected meal-plan entries to weather/calendar/status cards. Section
+choices and one bounded spoken highlight are editable separately from collection
+consent. TV weather uses local animated pixel sprites; current conditions are not
+a forecast. See [morning setup](docs/amadeus-feeds.md#morning-report-sections).

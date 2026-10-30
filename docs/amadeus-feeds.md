@@ -268,3 +268,30 @@ explicitly removed or valid clear readings return. Health sessions also end on
 coaching stop/snooze/topic removal, goal support disablement or source revocation,
 including changes during reply generation. Normal delivery cooldowns do not end
 an already-consented conversation.
+
+### Morning report sections
+
+In **Morning → Morning report sections**, choose due tasks, selected-line transit
+notices, today's meal plan and one short spoken highlight. These choices reuse
+fresh, already-enabled context feeds; they never authorize collection or create
+new provider connections. The stable-item view is read for the selected sources,
+so an item beyond the small compatibility-preview page can still appear. Due
+and overdue tasks must be incomplete and have a valid date. Undated/future tasks
+and shopping entries are not described as today's due work or meal plan.
+
+Cards favor weather and actionable notices. A connected calendar with no more
+timed events does not imply the day is free; its empty-state sentence is omitted
+from speech when a useful context highlight is available. At most two cards per
+added source are selected, duplicate titles/dates are suppressed and partial
+coverage is retained explicitly. Task titles and transit text remain untrusted
+local slots, not model instructions. The optional spoken highlight is removed
+before output if source facts, profile, consent or section choices changed.
+Existing short speech limits, quiet hours, coaching privacy and no-replay rules
+remain in force. Full detail stays on screen when the speech budget is tight.
+
+Weather cards render local canvas pixel sprites for the supported HA condition
+categories, including animated rain/snow and an unknown-condition fallback.
+Temperature units follow morning settings. Jacket/umbrella cues are conditional
+on going out and the current reading; no forecast, hourly precipitation, severe
+weather warning or all-day temperature claim is inferred. Additional forecast
+inputs remain a separate source follow-up.

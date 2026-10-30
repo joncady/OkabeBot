@@ -242,6 +242,14 @@ def handle(handler, bridge, *, post=False):
                 delay_minutes=data.get("delay_minutes", 1440),
             )
             result = {"state": "recorded"}
+        elif path == "/amadeus/api/morning-digest":
+            from .morning_digest import Digest
+
+            digest = Digest(service.store)
+            result = {
+                "config": digest.configure(data) if post else digest.settings(),
+                "cards": digest.cards(),
+            }
         elif path == "/amadeus/api/morning-voice" and post:
             from .morning_briefing import Briefing
 
