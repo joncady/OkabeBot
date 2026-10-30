@@ -133,6 +133,34 @@ class HomeAssistant:
                             "state": state if state in ("on", "off") else "unknown",
                         }
                     )
+        elif feed.id == "home_devices":
+            for field, category in (
+                ("covers", "cover"),
+                ("climates", "climate"),
+                ("sensors", "sensor"),
+            ):
+                for entity in cfg[field]:
+                    value = self.call("states/" + quote(entity, safe=""))
+                    attrs = value.get("attributes", {})
+                    item = {
+                        "id": identity(entity),
+                        "label": clean(attrs.get("friendly_name", "Home device")),
+                        "state": clean(value["state"]),
+                        "category": category,
+                    }
+                    for key, attribute in (
+                        ("unit", "unit_of_measurement"),
+                        ("current_temperature", "current_temperature"),
+                        ("target_temperature", "temperature"),
+                        ("action", "hvac_action"),
+                    ):
+                        if attrs.get(attribute) is not None:
+                            text = clean(str(attrs[attribute]))
+                            if text:
+                                item[key] = text
+                    if category == "climate" and attrs.get("temperature_unit"):
+                        item["unit"] = clean(attrs["temperature_unit"])
+                    items.append(item)
         else:
             for entity in cfg["entities"]:
                 value = self.call("states/" + quote(entity, safe=""))

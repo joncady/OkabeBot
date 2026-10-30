@@ -53,6 +53,28 @@ FEEDS = {
             "Enable selected Companion app sensors; use binary sensors only. No app names, GPS or keystrokes.",
         ),
         Feed(
+            "home_devices",
+            "Home devices · garage doors and thermostats",
+            "ha",
+            (
+                ("covers", "Door / cover entities", "cover"),
+                ("climates", "Thermostat entities", "climate"),
+                ("sensors", "Related status / temperature sensors", "sensor"),
+            ),
+            (
+                "id",
+                "label",
+                "state",
+                "unit",
+                "category",
+                "current_temperature",
+                "target_temperature",
+                "action",
+            ),
+            "Select existing HA devices for read-only state context. Door state does not identify a person or trigger arrival. No open/close or heating commands.",
+            household=True,
+        ),
+        Feed(
             "appliances",
             "LG ThinQ · appliance status",
             "ha",

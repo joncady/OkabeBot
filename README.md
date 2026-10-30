@@ -812,3 +812,5 @@ signals use owner-configurable interval aggregates. Conversations retrieve conte
 through bounded tools rather than preloading feed contents. See
 [storage, logging and retrieval](docs/amadeus-storage.md) for implemented paths,
 retention/export boundaries and recording-policy follow-ups.
+
+Selected HA garage covers, thermostats and related sensors can supply read-only Amadeus context through **Context feeds → Home devices**. Device state does not identify occupants or trigger arrival. See [context feeds](docs/amadeus-feeds.md).

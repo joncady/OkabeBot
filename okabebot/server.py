@@ -183,14 +183,21 @@ def get_trakt_watchlist(kind: Literal["movies", "shows", "all"] = "movies", page
 @mcp.tool(annotations=READ)
 def get_context_feed(
     source: Literal[
-        "tasks", "device_activity", "appliances", "meals", "transit", "watch_history", "calendar"
+        "tasks",
+        "device_activity",
+        "home_devices",
+        "appliances",
+        "meals",
+        "transit",
+        "watch_history",
+        "calendar",
     ],
     query: str = "",
     offset: int = 0,
     limit: int = 20,
     view: Literal["current", "changes", "aggregates"] = "current",
 ) -> dict:
-    """Read connected to-do/shopping lists (source=tasks), transit rail notices, appliances or watch history. Current feeds are not a full history of today. Use blank query for all selected items; page through next_offset."""
+    """Read connected to-do/shopping lists (source=tasks), transit rail notices, home devices (source=home_devices), appliances or watch history. Current feeds are not a full history of today. Use blank query for all selected items; page through next_offset."""
     from .amadeus_feeds import Feeds
 
     return Feeds(state_dir() / "amadeus").retrieve(

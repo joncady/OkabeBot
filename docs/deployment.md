@@ -1771,3 +1771,16 @@ feed/device connections. The controller child alone restarted; the model worker,
 source consent, destination and volume were preserved. No real NFC scan or speaker
 test was performed. Pi/HA tag firmware/automation configuration does not need new
 permissions for the action. See [chore behavior and API](chores.md).
+
+## HA home-device context
+
+The home-device adapter uses the existing Mac HA read connection and private
+Amadeus store; it introduces no service, port or actuation route. Owner selections
+are dashboard editable. HA vendor integration installation is separate from
+source consent. The Mac adapter is installed and an owner-selected garage cover
+returned a valid state through the consented read path. Source collection choices
+remain private and dashboard editable. No physical actuation was performed.
+The Watts Home community component is installed in the private
+HA configuration; account setup and live thermostat reads remain unverified until
+the owner signs in. No vendor credentials or household bindings are in source.
+NextCentury API access is a pending account capability check, not a deployed feed.

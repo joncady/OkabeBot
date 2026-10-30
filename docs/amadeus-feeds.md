@@ -14,6 +14,7 @@ private choices prevents both network reads and use of its retained context.
 | --- | --- | --- |
 | Tasks | Add Google Tasks or Local To-do in HA; select `todo.*` entities | Item title, hashed UID, status and optional due date. No descriptions. Google Tasks remains accessible through Google's mobile app away from HA. |
 | Device activity | Enable selected phone/Mac Companion binary sensors; bind charging, focus, device-lock and optional display-awake entities | Coarse on/off/unknown; no app usage, keystrokes, GPS or sleep inference. Existing attention gates remain authoritative. |
+| Home devices | Add the vendor integration in HA; select `cover.*`, `climate.*` and related `sensor.*` entities | Read-only door state, thermostat mode/current/target temperature and selected sensor state. No device commands, person identity or arrival inference. |
 | Appliances | Add LG ThinQ to HA; select cycle/status/error `sensor.*` entities | Friendly device label and state. Cloud upstream; no appliance commands. Alexa's ThinQ skill alone does not create HA entities. |
 | Meals | Self-host Mealie, add its HA integration, select meal-plan calendars and shopping lists | Next two days of planned meals and shopping item states. Not a pantry, purchase history, nutrition or ingredient-stock inference. |
 | Transit | Enable Sound Transit; select `1`, `2`, `T`, `N`, `S`, or leave blank for all rail | Current active service-alert headlines, effect, routes and known end time. Default selection is 1/2 Line; no driving/traffic provider. Agency-wide alerts remain relevant. |
@@ -174,3 +175,22 @@ network reads and before persistence. Refresh rotates credentials without changi
 account generation; owner rebind/revoke changes generation and cancels stale reads.
 Narrowing collection scope clears excluded source context. Large/lifetime imports,
 resumable cursors and historical snapshot consistency remain issue #18.
+
+## Garage and Watts thermostats
+
+**Home devices** is a separate owner-selected HA context feed. Its controls choose
+cover, climate and related sensor entities independently. Source consent, pause,
+guest mode, retention and stable-ID retrieval match the other feeds. Household
+recaps can use retained state; observations never establish who operated a door
+or whether someone arrived. No automatic garage or thermostat actuation is added.
+
+Aladdin Connect exposes a garage cover through HA. Watts Home (Tekmar) 564 can use
+the community `bhamiltoncx/ha-watts-home` integration: install its custom component
+in HA, restart HA, then add **Watts Home (Tekmar)** and enter credentials privately.
+The upstream integration supports controls, but Amadeus reads selected metadata
+only. Vendor cloud access and HA configuration remain separate from observation
+consent. Watts account credentials belong in HA, never this repository.
+
+NextCentury gateways have a cloud API for usage and alerts. API documentation
+requires an Admin/Developer account in its web portal; an NCSS login alone does
+not establish access. No NextCentury collector is implemented or enabled here.

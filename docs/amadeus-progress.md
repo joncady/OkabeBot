@@ -489,3 +489,5 @@ collectors/recording budgets and full provider pagination remain separate work.
   successful reminder delivery.
 - Limited: latest task state is not a lifetime activity history or identity proof;
   conversational agreement does not complete tasks or grant preference consent.
+
+- Added owner-selected read-only home-device context for HA covers, thermostats and related sensors, with explicit observation scope and household recap support. Device state is not treated as identity or arrival evidence. Vendor account authorization remains separate.
