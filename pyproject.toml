@@ -34,7 +34,7 @@ okabebot-doctor = "okabebot.doctor:main"
 include = ["okabebot*"]
 
 [tool.setuptools.package-data]
-okabebot = ["assets/*", "web/*"]
+okabebot = ["assets/*", "web/*", "prompts/*.md", "characters/*/*.json", "characters/*/*.md", "characters/*/*.png"]
 
 [tool.ruff]
 line-length = 100

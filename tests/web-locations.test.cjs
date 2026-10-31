@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const catalog=require('../okabebot/assets/scene-sets.json');
+const catalog=require('../scripts/character-catalog.cjs').scenes;
 function dashboard(enabled){
  const calls=[],nodes={},events={};
  function element(tag){return{tag,children:[],style:{},dataset:{},classList:{toggle(){}},append(...children){this.children.push(...children);},replaceChildren(){this.children=[];},setAttribute(key,value){this[key]=value;}};}

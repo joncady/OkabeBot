@@ -74,7 +74,7 @@ test('Sonic avatar keeps sprite colors and a full quill/ear crop instead of huma
  const {Room}=require('../okabebot/web/lab-room.js'),rectangles=[],images=[];
  const target={fillRect(...xy){rectangles.push({color:this.fillStyle,xy});},drawImage(...args){images.push(args);}};
  const c=new Proxy(target,{get:(object,key)=>object[key]||(()=>{})});
- const room=new Room();room.portraits=Array(6).fill({});
+ const room=new Room();room.avatarSpec=require('../okabebot/characters/sonic/avatar.json');room.portraits=Array(6).fill({});
  room.avatar(c,[8,4],false,1000,{character:{style:'sonic'},presenter:{}});
  const colors=new Set(rectangles.map(r=>r.color));
  for(const color of ['#1765d1','#edc59c','#f5f4ed','#d93836'])assert.ok(colors.has(color));
@@ -128,4 +128,25 @@ test('TV expression follows local buffer and playback clock instead of early ser
  screen.frame(150);assert.equal(screen.renders.at(-1).state.presenter.activity,'thinking');
  audioState.buffering=false;audioState.presenter={activity:'speaking',start_at:123,envelope:[.2,.4]};
  screen.frame(200);assert.deepEqual(screen.renders.at(-1).state.presenter,audioState.presenter);
+});
+
+test('notification presentation survives fresh polls, withdraws private text and resets on disconnect',()=>{
+ const {Room}=require('../okabebot/web/lab-room.js'),room=new Room();
+ const item={source:'calendar',title:'Synthetic appointment',body:'Invented details'};
+ assert.equal(room.presentation({notification:item},1000).notification_progress,0);
+ const half=room.presentation({notification:{...item}},1250);assert.equal(half.notification_progress,.5);
+ assert.equal(room.presentation(half,1250),half); // Shared compact/avatar path samples once.
+ assert.equal(room.presentation({notification:item},1500).notification_progress,1);
+ const withdrawn=room.presentation({},1550);assert.equal(withdrawn.notification.body,'');
+ assert.ok(room.presentation({},1700).notification_progress<1);
+ assert.equal(room.presentation({},1900).notification,null);
+ room.presentation({notification:item},2000);room.clearPresentation();
+ assert.equal(room.presentation({},2001).notification,null);
+});
+test('reduced-motion notifications settle on the same frame without changing input',()=>{
+ const {Room}=require('../okabebot/web/lab-room.js'),room=new Room();
+ const state={notification:{title:'Synthetic'},motion:{reduced_motion:true}};
+ assert.equal(room.presentation(state,1000).notification_progress,1);
+ assert.equal(state.notification_progress,undefined);
+ assert.equal(room.presentation({motion:{reduced_motion:true}},1100).notification,null);
 });

@@ -8,11 +8,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PIL import Image, ImageDraw
 from okabebot.content import PRESETS, plan
+from okabebot.scene_sets import CATALOG
 from pi import scene
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--output", default=".local/content-reactions.png")
-parser.add_argument("--character", default="kurisu", choices=["kurisu", "okabe", "sonic", "pip"])
+parser.add_argument("--character", default="kurisu", choices=tuple(CATALOG["characters"]))
 args = parser.parse_args()
 cols = 5
 sheet = Image.new("RGB", (cols * 240, ((len(PRESETS) + cols - 1) // cols) * 180), "#101e25")

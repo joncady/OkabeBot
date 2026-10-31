@@ -9,26 +9,22 @@ import tempfile
 
 
 def main():
+    from okabebot.scene_sets import CATALOG, validate_selection
+    from okabebot.characters import get
+
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--character", choices=("okabe", "kurisu", "pip", "sonic"), default="okabe")
+    parser.add_argument("--character", choices=tuple(CATALOG["characters"]), default="okabe")
     parser.add_argument("--output", type=Path, default=Path(".local/alexa-skill/visuals"))
     parser.add_argument(
         "--set", dest="scene_set", help="One of the selected character's scene sets"
     )
     args = parser.parse_args()
-    from pi import pip_face
-    from okabebot.scene_sets import CATALOG, validate_selection
 
     selected = args.scene_set or CATALOG["characters"][args.character][0]
     validate_selection(args.character, selected)
 
-    assets = {
-        "frames": [
-            pip_face.shapes(style=args.character, emotion="neutral", mouth=m, phase=p)
-            for p in (1, 0)
-            for m in (0, 0.5, 1)
-        ]
-    }
+    assets = get(args.character).assets()
+
     with tempfile.TemporaryDirectory() as folder:
         source = Path(folder) / "assets.json"
         source.write_text(json.dumps(assets))

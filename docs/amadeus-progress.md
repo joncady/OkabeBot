@@ -714,3 +714,31 @@ separate from sensor truth and inference quality.
   explained separately rather than using an ambiguous action label.
 - Capability: the Android pilot's alert-to-private-inbox path has physical acceptance;
   this does not complete widget, background lifecycle or every source-policy check.
+
+## Expressive preparation foundation
+
+- Improved: readable runtime prompt templates, a shared pixel-motion vocabulary,
+  leased work presentation and private revisioned local draft review.
+- Improved: worker expiry, owner-setup changes, pause/guest visibility and temporary
+  draft retention have explicit behavior without exposing draft contents to displays.
+- Limited: grocery-provider handoff and proactive job generation are not connected;
+  retaining a draft does not approve an external transaction.
+- Next: grounded grocery-list adapter, separate content-bound handoff approval and
+  physical motion acceptance before installation.
+
+## Character-owned presentation interfaces
+
+- Improved: one directory owns a character's art, prompts, motion, avatar geometry,
+  voice defaults and scene choices through the common Character interface.
+- Improved: reference human rigs use anchored paper/keyboard interactions and
+  task-directed gaze; display work intent still carries no private draft contents.
+- Limited: advanced work poses for other character rigs and dynamic APL equivalents
+  remain separate backfill, rather than implied parity.
+
+## Ambient notification continuity
+
+- Improved: independent facial clocks, eased card presentation and attached
+  notification arm anchors, with explicit withdrawal and reduced-motion behavior.
+- Improved: notification-source controls explain the distinction from context feeds.
+- Planned: evidence-based pantry intake and uncertainty-aware stock, followed by
+  separately approved grocery handoff; see the declarative pantry design.

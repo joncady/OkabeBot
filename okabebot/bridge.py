@@ -1,6 +1,7 @@
 """Local push-to-talk control page, Whisper transcription, and Codex bridge."""
 
 from .profiles import current_character, select_profile, selection, personality
+from .characters import registry as character_registry
 
 from contextlib import ExitStack
 import argparse
@@ -164,6 +165,10 @@ class Bridge:
         from .mobile import Mobile
 
         self.mobile = Mobile(state_dir() / "mobile", self.surfaces.registry)
+        from .preparations import Preparations
+
+        self.preparations = Preparations(state_dir() / "amadeus")
+        self.preparation_wake = threading.Event()
         from .tags import Tags
         from .chores import Chores
 
@@ -256,6 +261,7 @@ class Bridge:
         threading.Thread(target=self.amadeus_feeds.run, args=(self.closing,), daemon=True).start()
         threading.Thread(target=self.tag_areas.run, args=(self.closing,), daemon=True).start()
         threading.Thread(target=self.mobile.run, args=(self.closing,), daemon=True).start()
+        threading.Thread(target=self.poll_preparations, daemon=True).start()
 
     @property
     def url(self):
@@ -374,6 +380,25 @@ class Bridge:
         while not self.closing.is_set():
             self.screen_power.tick()
             self.closing.wait(5)
+
+    def sync_preparations(self):
+        self.preparation_wake.set()
+
+    def poll_preparations(self):
+        previous, renew_at = None, 0
+        while not self.closing.is_set():
+            try:
+                self.preparations.prune()
+                work = self.preparations.presentation()
+                motion = self.preparations.motion_settings()
+                signature = (bool(work), work.get("stage"), str(motion))
+                if work or signature != previous or time.monotonic() >= renew_at:
+                    scene.set_work(work, motion)
+                    previous, renew_at = signature, time.monotonic() + 30
+            except Exception:
+                pass  # Device-local expiry clears old work; never invent progress.
+            self.preparation_wake.wait(5)
+            self.preparation_wake.clear()
 
     def show_activity(self, activity):
         if self.face_activity == activity:
@@ -1042,6 +1067,10 @@ class Bridge:
                     dict(self.amadeus_feeds.health),
                     dict(self.github_queue.health) if self.github_queue else None,
                 ),
+                "characters": [
+                    {"id": key, "name": value.definition["name"], "portrait": "/" + key + ".png"}
+                    for key, value in character_registry().items()
+                ],
                 "presence": presence_status(state_dir()),
                 "screen_power": self.screen_power.snapshot(),
                 "runtime_policy": runtime_policy.settings(state_dir()),
@@ -1057,6 +1086,10 @@ class Bridge:
                 "music": dict(self.media_state.music),
                 "tv": dict(self.media_state.video),
                 "content_parse": dict(self.content_parse),
+                "work": self.preparations.presentation() if hasattr(self, "preparations") else {},
+                "motion": self.preparations.motion_settings()
+                if hasattr(self, "preparations")
+                else {},
                 "content_preview": self.content_preview.music() is not None,
                 "music_mic": self.music_mic,
                 "music_meter": dict(self.music_meter),
@@ -1204,19 +1237,15 @@ def handler(bridge):
                 "/storage.js",
                 "/dashboard-navigation.js",
                 "/amadeus-text.js",
+                "/preparations.js",
                 "/locations.js",
                 "/dashboard-auth.js",
             ):
                 kind = "text/css" if self.path.endswith(".css") else "application/javascript"
                 self.respond(200, (Path(__file__).parent / "web" / self.path[1:]).read_text(), kind)
-            elif self.path in (
-                "/okabe.png",
-                "/kurisu.png",
-                "/pip.png",
-                "/sonic.png",
-                "/github.png",
-                "/calendar.png",
-            ):
+            elif self.path.endswith(".png") and self.path[1:-4] in character_registry():
+                self.respond(200, character_registry()[self.path[1:-4]].portrait(), "image/png")
+            elif self.path in ("/github.png", "/calendar.png"):
                 self.respond(
                     200, (Path(__file__).parent / "web" / self.path[1:]).read_bytes(), "image/png"
                 )
@@ -1227,6 +1256,11 @@ def handler(bridge):
                 )
             elif self.path == "/content/presets" and self.authorized():
                 self.respond(200, PRESETS)
+            elif self.path in ("/preparations", "/presentation/motion") and self.authorized():
+                try:
+                    self.respond(200, bridge.application.execute(self.path, None))
+                except (ValueError, PermissionError):
+                    self.respond(400, {"error": "Private preparation setup unavailable"})
             elif self.path == "/state" and self.authorized():
                 self.respond(200, bridge.snapshot())
             else:

@@ -38,7 +38,8 @@ async function poll(generation=pollGeneration){if(stopped||generation!==pollGene
  document.querySelector('#return').disabled=!owned;mic.disabled=mobileWorking||s.phase!=='tv'||!navigator.mediaDevices?.getUserMedia;
  if(!navigator.mediaDevices?.getUserMedia)ui.notice('Phone microphone needs trusted HTTPS. The Mac app uses localhost.','capability');
  }catch(e){if(stopped||generation!==pollGeneration)return;summon.disabled=true;state=null;visible=false;registered=false;setStatus(e.message);ui.notice(e.message,'connection',true);ui.update(null,false);}finally{if(!stopped&&generation===pollGeneration)pollTimer=setTimeout(()=>poll(generation),1000);}}
-function draw(now){ctx.clearRect(0,0,320,320);if(!native){ctx.fillStyle='#101b27';ctx.fillRect(0,0,320,320);}if(!state||now-lastSeen>5000||!room.portraits.length)return;
+function draw(now){ctx.clearRect(0,0,320,320);if(!native){ctx.fillStyle='#101b27';ctx.fillRect(0,0,320,320);}if(!state||now-lastSeen>5000||!room.portraits.length){room.clearPresentation?.();return;}
+ const displayState=room.presentation?.(state,now)||state;
  const phase=state.phase,key=state.transition_id+phase;let x=0,y=0,opacity=1,walking=false;
  visible=phase==='tv'||phase==='entering_tv'||phase==='leaving_tv';
  if(phase==='entering_tv'||phase==='leaving_tv'){
@@ -48,10 +49,10 @@ function draw(now){ctx.clearRect(0,0,320,320);if(!native){ctx.fillStyle='#101b27
   walking=p<1;opacity=phase==='entering_tv'?Math.min(1,p*6):Math.min(1,(1-p)*6);
   if(p===1&&!motion.acked){motion.acked=true;request('/surfaces/ack',{kind:phase==='entering_tv'?'entered':'departed',transition_id:state.transition_id}).catch(()=>{motion.acked=false;});}
  }else motion=null;
- if(visible){const presented={...state,presenter:capture?.node?{activity:'listening'}:nativeVoice||speaker.presenter()||((mobileWorking||speaker.buffering?.())?{activity:'thinking'}:null)||state.presenter};if(state.environment?.presentation==='room'){
+ if(visible){const presented={...displayState,presenter:capture?.node?{activity:'listening'}:nativeVoice||speaker.presenter()||((mobileWorking||speaker.buffering?.())?{activity:'thinking'}:null)||state.presenter};if(state.environment?.presentation==='room'){
   ctx.save();ctx.translate(0,60);ctx.scale(1/3,1/3);room.render(ctx,{state:presented,now,visible:true,position:[8+x*3/56+y*3/28,4-x*3/56+y*3/28],walking,opacity,focus:null});ctx.restore();
- }else{room.idleEnvironment?.(ctx,now,state,opacity);const p=LabRoom.iso(8,4);ctx.save();ctx.translate(160+x,278+y);ctx.scale(2.6,2.6);ctx.translate(-p[0],-p[1]);room.avatar(ctx,[8,4],walking,now,presented,opacity);ctx.restore();LabRoom.focusBadge?.(ctx,presented,now,walking);}}
- if(visible)CompanionUI.notification(ctx,state.notification);
+ }else{presented._compactNotification=true;room.idleEnvironment?.(ctx,now,state,opacity);const p=LabRoom.iso(8,4);ctx.save();ctx.translate(160+x,278+y);ctx.scale(2.6,2.6);ctx.translate(-p[0],-p[1]);room.avatar(ctx,[8,4],walking,now,presented,opacity);ctx.restore();LabRoom.focusBadge?.(ctx,presented,now,walking);}}
+ if(visible&&state.environment?.presentation!=='room')CompanionUI.notification(ctx,displayState.notification,displayState.notification_progress??1);
 }
 function frame(now){try{draw(now);}catch(e){state=null;visible=false;setStatus('Character renderer reconnecting…');}finally{requestAnimationFrame(frame);}}requestAnimationFrame(frame);
 document.querySelector('#name-form').onsubmit=e=>{e.preventDefault();name=document.querySelector('#screen-name').value.trim();localStorage.setItem('companion-name',name);registered=false;notice.textContent='Rename approved screens from the dashboard.';};

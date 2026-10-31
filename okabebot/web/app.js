@@ -120,10 +120,6 @@ document.querySelector("#dev-toggle").onclick = () => {
     .querySelector("#dev-toggle")
     .setAttribute("aria-pressed", String(!panel.hidden));
 };
-document.querySelectorAll(".character-card").forEach((button) => {
-  button.onclick = () =>
-    action("/character", { profile: button.dataset.profile });
-});
 document.querySelector("#test-notification").onclick = () =>
   action("/notifications", {
     source: "calendar",
@@ -386,9 +382,14 @@ async function refresh() {
     document.querySelector('#content-parse').textContent = slots.format
       ? `Auto parse: ${slots.format} · ${slots.sport || 'no sport'}${slots.league ? ' · ' + slots.league : ''} · ${(slots.participants || []).map(t => t.name).join(' vs ') || 'teams unset'} (${parsed.source})`
       : 'Auto parse: no confident sports match yet.';
-    const profile = ["okabe", "kurisu", "pip", "sonic"].includes(s.style)
-      ? s.style
-      : "okabe";
+    const choices=s.characters||[],grid=document.querySelector('.character-grid');
+    if(choices.length&&grid.dataset.characters!==choices.map(c=>c.id).join(',')){
+      grid.replaceChildren();grid.dataset.characters=choices.map(c=>c.id).join(',');
+      for(const choice of choices){const button=el('button',null,'character-card');button.dataset.profile=choice.id;
+        const portrait=document.createElement('img');portrait.src=choice.portrait;portrait.alt='';button.append(portrait,el('strong',choice.name));
+        button.onclick=()=>action('/character',{profile:choice.id});grid.append(button);}
+    }
+    const profile = choices.some(c=>c.id===s.style)?s.style:(s.style||'okabe');
     document.querySelector("#companion").src = "/" + profile + ".png";
     document.querySelector("#companion-name").textContent = s.character;
     document.querySelectorAll(".character-card").forEach((b) => {

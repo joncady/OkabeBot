@@ -44,9 +44,9 @@ class Treatments:
     def _snapshot(self, saved):
         if not isinstance(saved, dict):
             raise ValueError("Invalid saved treatment; restore the production default")
-        candidate = json.loads(
-            (Path(__file__).parent / "assets/prompt-treatments.json").read_text()
-        )["native_candidate"]
+        from .prompts import prompt
+
+        candidate = {field: prompt("candidate-" + field) for field in FIELDS}
         base = defaults()
         presets = {
             "default": base,

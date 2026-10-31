@@ -2,8 +2,8 @@
 (function(root){
 'use strict';
 class CompanionUI {
- static notification(c,n){
-  if(!n)return;
+ static notification(c,n,progress=1){
+  if(!n||progress<=0)return;
   const glyphs={
    github:['01110','11011','11111','01110','01010'],
    calendar:['01010','11111','10001','10101','11111'],
@@ -12,7 +12,7 @@ class CompanionUI {
    default:['11111','10001','10101','10001','11111']
   };
   const fit=(text,width)=>{let value=String(text||'').replace(/\s+/g,' ').trim();if(c.measureText(value).width<=width)return value;while(value&&c.measureText(value+'…').width>width)value=value.slice(0,-1);return value+'…';};
-  c.save();c.fillStyle='#0b1721';c.fillRect(8,260,304,58);c.strokeStyle='#78b8ad';c.lineWidth=2;c.strokeRect(9,261,302,56);
+  c.save();if(progress<1){c.translate(160,230+30*progress);c.scale(.4+.6*progress,.4+.6*progress);c.translate(-160,-260);c.globalAlpha*=progress;}c.fillStyle='#0b1721';c.fillRect(8,260,304,58);c.strokeStyle='#78b8ad';c.lineWidth=2;c.strokeRect(9,261,302,56);
   c.fillStyle=n.priority==='urgent'?'#f0a07d':'#78b8ad';
   const glyph=glyphs[n.source]||glyphs.default;glyph.forEach((row,y)=>[...row].forEach((v,x)=>{if(v==='1')c.fillRect(17+x*3,273+y*3,3,3);}));
   const count=Array.isArray(n.member_ids)?n.member_ids.length:1;

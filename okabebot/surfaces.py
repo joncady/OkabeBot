@@ -760,6 +760,11 @@ class Surfaces:
                     "palette": profile.get("palette", {}),
                 }
             )
+            from .motion import catalog
+
+            from .characters import get
+
+            result = dict(result, motion_catalog=catalog(), avatar=get(profile["style"]).avatar())
             self.assets[key] = result
             if len(self.assets) > 10:
                 self.assets.pop(next(iter(self.assets)))
@@ -818,6 +823,8 @@ class Surfaces:
                 if k in ("name", "style", "palette", "intensity")
             },
             profile=state.get("profile"),
+            work=state.get("work", {}),
+            motion=state.get("motion", {}),
             agenda=state.get("agenda", {}),
             focus=surface_focus(state),
             notification=state.get("active_notification"),

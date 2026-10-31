@@ -70,33 +70,7 @@
           <h2>Choose your companion</h2>
           <span class="muted">Same lab. New personality.</span>
         </div>
-        <div class="character-grid">
-          <button
-            class="character-card"
-            data-profile="okabe"
-            aria-pressed="false"
-          >
-            <img src="/okabe.png" alt="" /><strong>Okabe</strong
-            ><span>The curious scientist</span>
-          </button>
-          <button
-            class="character-card"
-            data-profile="kurisu"
-            aria-pressed="false"
-          >
-            <img src="/kurisu.png" alt="" /><strong>Kurisu</strong
-            ><span>A little healthy skepticism</span>
-          </button>
-          <button
-            class="character-card"
-            data-profile="pip"
-            aria-pressed="false"
-          >
-            <img src="/pip.png" alt="" /><strong>Pip</strong
-            ><span>Your friendly robot</span>
-          </button>
-          <button class="character-card" data-profile="sonic" aria-pressed="false"><img src="/sonic.png" alt="" /><strong>Sonic</strong><span>Ready for the next adventure</span></button>
-        </div>
+        <div class="character-grid" aria-live="polite"></div>
       <details class="subpanel"><summary>Personality &amp; replies</summary>        <label>Character flavor<select id="character-tone"><option value="plain">Plain</option><option value="subtle" selected>Subtle</option><option value="playful">Playful</option></select></label>
         <label><input id="natural-tool-replies" type="checkbox" checked> Natural tool replies</label><p class="hint">Adds a short local model pass to summarize tool results. Turn off for faster, fixed acknowledgements.</p>
 </details></section></div>
@@ -196,11 +170,11 @@
         <p class="hint">Quiet hours keep cards visible and silence all notification audio, including urgent alerts. Your button replies are unaffected.</p>
         <form id="source-rule-form" class="preference-form">
           <label>Source <select id="notification-source"><option>github</option><option>calendar</option><option>codex</option><option>system</option><option>reminder</option><option>arrival</option></select></label>
-          <label><input id="source-enabled" type="checkbox" checked /> Show cards</label>
+          <label><input id="source-enabled" type="checkbox" checked /> Enable this notification source</label>
           <label>Audio <select id="source-audio"><option value="default">Priority default</option><option value="silent">Silent</option><option value="chime">Chime</option><option value="speech">Read aloud</option></select></label>
           <button type="submit">Save source</button>
         </form>
-        <p class="hint">Explicitly silent events stay silent. Source changes apply to future deliveries.</p>
+        <p class="hint">Off suppresses new cards and sounds from this source. Amadeus context collection has separate source settings. Explicitly silent events stay silent.</p>
         <h3>Sender rules</h3>
         <p class="hint">Match the exact source and sender ID shown on a notification. Priority changes apply to new events; quiet hours and explicit silence still win.</p>
         <form id="sender-rule-form" class="preference-form">
@@ -254,6 +228,12 @@
           </form>
           <a href="/amadeus/">Review or forget saved preferences ↗</a>
         </div>
+        <details class="panel" id="preparation-panel"><summary>Prepared work &amp; character motion</summary>
+          <p id="preparation-status" role="status"></p>
+          <form id="motion-form" class="preference-form"><label><input id="motion-enabled" type="checkbox" checked>Ambient character animations</label><label><input id="motion-reduced" type="checkbox">Reduced motion</label><button>Save motion settings</button></form>
+          <details><summary>Prepare a local shopping-list draft</summary><form id="preparation-form" class="preference-form"><label>Items, one per line (up to 15)<textarea id="preparation-items" rows="5" maxlength="1600" required></textarea></label><button>Prepare draft</button></form></details>
+          <button id="preparation-refresh" type="button">Refresh drafts</button><div id="preparation-list"></div>
+        </details>
         <details class="panel">
           <summary>Device, voice &amp; integration controls</summary>
           <label><input id="amadeus-shadow-enabled" type="checkbox"> Amadeus shadow trial (private log only)</label>
@@ -340,5 +320,5 @@
     <button id="dashboard-forget" class="small">Forget browser access</button></main>
     <footer>OKABEBOT <span>Make room for a little curiosity.</span></footer>
     <script src="/dashboard-auth.js"></script><script src="/dashboard-navigation.js"></script><script src="/locations.js"></script><script src="/app.js"></script><script src="/amadeus-text.js"></script><script src="/chores.js"></script><script src="/household-nudges.js"></script><script src="/health.js"></script><script src="/tags.js"></script><script src="/storage.js"></script>
-  </body>
+  <script src="/preparations.js"></script></body>
 </html>

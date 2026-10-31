@@ -8,12 +8,13 @@ from PIL import Image, ImageDraw, ImageFont
 
 try:
     from . import pip_face, reactions, layout
-    from . import scene_sets
+    from . import scene_sets, animation
 except ImportError:
     import layout
     import pip_face
     import reactions
     import scene_sets
+    import animation
 
 
 @lru_cache(maxsize=1)
@@ -42,7 +43,8 @@ def icon(source, size=32):
     # never fetched on the Pi's render loop. Unknown/missing assets use pixel icons.
     from pathlib import Path
 
-    if str(source).isalnum():
+    source = str(source or "system")
+    if source.isalnum():
         path = Path(__file__).resolve().parent / "assets/app-logos" / (source + ".png")
         try:
             with Image.open(str(path)) as logo:
@@ -141,31 +143,59 @@ def shapes(
     **character,
 ):
     selected_set = character.pop("environment", "legacy")
+    actor = pip_face.get(character.get("style", "okabe"))
+    rig = actor.definition["rig"]
+    notice_progress = min(1, max(0, character.pop("notification_progress", 1)))
+    facial_seconds = character.pop("facial_seconds", character.get("phase", idle_seconds))
+    work = character.pop("work", {}) or {}
+    motion_options = character.pop("motion_options", {}) or {}
     if character.get("activity", "idle") == "thinking" or (
         deploying and character.get("activity", "idle") == "idle"
     ):
         character.update(activity="thinking", emotion="curious", mouth=0)
-        if character.get("style", "okabe") == "kurisu":
+        if actor.supports("emphasis"):
             character["show_emphasis"] = False
     video = (music or {}).get("video") or {}
     watching = reactions.active(music, notification, character.get("activity", "idle"), deploying)
     reaction = video.get("reaction") or {}
-    idle_frame = idle_seconds % 48
-    idle_action = (
-        gesture == "idle"
-        and idle_seconds >= 35
-        and 35 <= idle_frame < 43
-        and not notification
-        and not watching
-        and not deploying
-        and not (music and music.get("is_playing"))
-        and character.get("activity", "idle") == "idle"
+    moving = animation.sample(
+        animation.catalog(),
+        character.get("style", "okabe"),
+        work.get("elapsed_seconds", idle_seconds),
+        character.get("activity", "idle"),
+        blocked=bool(
+            notification
+            or watching
+            or deploying
+            or gesture != "idle"
+            or music
+            and music.get("is_playing")
+            or motion_options.get("quiet")
+        ),
+        stage=work.get("stage", ""),
+        face_seconds=facial_seconds,
+        reduced=motion_options.get("reduced_motion", False)
+        or not motion_options.get("enabled", True),
     )
-    if idle_action and character.get("style", "okabe") in ("okabe", "kurisu"):
-        character["mouth"] = max(0, math.sin(idle_frame * 8)) * 0.25
-        character["pose"] = "phone"
-    if character.get("style") == "sonic":
-        character["arms"] = not (notification or gesture == "present" or idle_action)
+    if work and "pose_elapsed" in motion_options:
+        moving["pose_weight"] *= min(1, max(0, motion_options["pose_elapsed"] / 0.5))
+    character["motion"] = moving
+    idle_action = moving["clip"] != "rest"
+    idle_frame = idle_seconds % 48
+    if (
+        moving["pose"] in ("phone", "read", "write", "review", "stretch", "computer")
+        and rig == "human"
+    ):
+        character["pose"] = moving["pose"]
+        if moving["pose"] == "phone":
+            character["mouth"] = max(0, math.sin(idle_seconds * 8)) * 0.25
+    if rig == "hedgehog":
+        character["arms"] = not (
+            (notification or gesture == "present")
+            and notice_progress > 0
+            or idle_action
+            and moving["pose"] == "phone"
+        )
     if (
         music
         and music.get("is_playing")
@@ -176,7 +206,7 @@ def shapes(
     ):
         character["emotion"] = music.get("expression", "neutral")
     if (
-        character.get("style") == "kurisu"
+        actor.supports("emphasis")
         and music
         and music.get("is_playing")
         and not notification
@@ -185,19 +215,46 @@ def shapes(
         character["show_emphasis"] = False
     if watching:
         character["emotion"] = reactions.EMOTIONS.get(reaction.get("reaction"), "neutral")
-        if character.get("style") == "kurisu":
+        if actor.supports("emphasis"):
             character["show_emphasis"] = False
     waving = gesture == "wave" and not notification and character.get("activity", "idle") == "idle"
     if waving:
         character["emotion"] = "happy"
-        if character.get("style", "okabe") in ("okabe", "kurisu", "pip"):
+        if rig != "hedgehog":
             character["pose"] = "wave"
-        elif character.get("style") == "sonic":
+        elif rig == "hedgehog":
             character["arms"] = False
+    presenting = (notification or gesture == "present") and notice_progress > 0
+    presentation = actor.presentation()
+    if presenting and presentation.get("replace_arms"):
+        character["arms"] = False
+    if presenting and character.get("activity", "idle") == "idle":
+        moving["gaze_y"] = math.sin(math.pi * notice_progress)
+        moving["head_y"] = math.sin(math.pi * notice_progress) * 2
     original = pip_face.shapes(**character)
     if character.get("activity") == "thinking":
         original.extend(thought_bubble(character.get("phase", 0)))
-    if waving and character.get("style") == "sonic":
+    dy = (
+        0
+        if actor.supports("workbench") and moving["pose"] in ("read", "write", "computer", "review")
+        else round(moving["body_y"])
+    )
+    if dy:
+        original = [original[0]] + [
+            (kind, tuple(v + (dy if i % 2 else 0) for i, v in enumerate(coords)), fill, width)
+            for kind, coords, fill, width in original[1:]
+        ]
+    if moving["pose"] in ("read", "write", "review", "scan") and rig != "human":
+        # A robot scan panel / Sonic checklist sits at shoulder height, not over media.
+        original.extend(
+            [
+                ("rectangle", (312, 130, 352, 174), "#546b69", 1),
+                ("rectangle", (316, 134, 348, 170), "#e8dbb2", 1),
+            ]
+        )
+        for row in range(3):
+            original.append(("rectangle", (320, 140 + row * 9, 342, 143 + row * 9), "#8e9e87", 1))
+    if waving and rig == "hedgehog":
         wag = round(math.sin(character.get("phase", 0) * 8) * 8)
         original.extend(
             [
@@ -267,9 +324,8 @@ def shapes(
                     ),
                 ]
             )
-    if idle_action:
-        style = character.get("style", "okabe")
-        if style == "sonic":
+    if idle_action and moving["pose"] == "phone":
+        if rig == "hedgehog":
             original.extend(
                 [
                     ("rectangle", (192, 216, 207, 259), "#edc59c", 1),
@@ -285,10 +341,15 @@ def shapes(
                     ("ellipse", (315 + wag, 145, 327 + wag, 157), "#f5f4ed", 1),
                 ]
             )
-    if not notification and gesture != "present":
+    if not presenting:
         return original
-    sonic = character.get("style") == "sonic"
-    scale, offset_x, offset_y = (0.9, 24, -20) if sonic else (0.68, 77, 0)
+    p = notice_progress
+    scale = 1 + (presentation["scale"] - 1) * p
+    offset_x, offset_y = [v * p for v in presentation["offset"]]
+
+    def transform(point):
+        return (point[0] * scale + offset_x, point[1] * scale + offset_y)
+
     out = [original[0]]
     for kind, coords, fill, width in original[1:]:
         out.append(
@@ -301,23 +362,58 @@ def shapes(
                 max(1, width * scale),
             )
         )
-    # Keep shoulders attached to the torso. Bend at the elbow rather than
-    # compressing the old arm polygons when the notification edge moves upward.
-    sleeve = {"okabe": "#e6e2d8", "kurisu": "#a88b72", "pip": "#accdc1"}.get(
-        character.get("style"), "#edc59c"
-    )
-    if sonic:
-        left = (210, 165, 218, 177, 195, 186, 173, 191, 163, 183, 190, 175)
-    else:
-        left = (174, 164, 183, 176, 163, 185, 143, 191, 133, 181, 155, 173)
-    out.append(("polygon", left, sleeve, 1))
-    right = tuple(480 - v if i % 2 == 0 else v for i, v in enumerate(left))
-    out.append(("polygon", right, sleeve, 1))
+    sleeve = actor.avatar()["palette"]["sleeve"]
+
+    def segment(start, end, half):
+        dx, dy = end[0] - start[0], end[1] - start[1]
+        length = max(1, math.hypot(dx, dy))
+        nx, ny = -dy / length * half, dx / length * half
+        out.append(
+            (
+                "polygon",
+                (
+                    start[0] + nx,
+                    start[1] + ny,
+                    start[0] - nx,
+                    start[1] - ny,
+                    end[0] - nx,
+                    end[1] - ny,
+                    end[0] + nx,
+                    end[1] + ny,
+                ),
+                sleeve,
+                1,
+            )
+        )
+
+    for side in (0, 1):
+        shoulder = transform(presentation["shoulders"][side])
+        rest_elbow = transform(presentation["elbows"][side])
+        target_elbow = (159 if side == 0 else 321, 178)
+        target_hand = (presentation["grips"][side] + 10, 191 + (1 - p) * 140)
+        elbow = tuple(a + (b - a) * p for a, b in zip(rest_elbow, target_elbow))
+        # Palms belong to the moving card; sleeves must meet that exact anchor.
+        hand = target_hand
+        segment(shoulder, elbow, 16 * scale)
+        segment(elbow, hand, 11 * scale)
+        out.append(
+            (
+                "rectangle",
+                (
+                    elbow[0] - 8 * scale,
+                    elbow[1] - 8 * scale,
+                    elbow[0] + 8 * scale,
+                    elbow[1] + 8 * scale,
+                ),
+                sleeve,
+                1,
+            )
+        )
     return out
 
 
 def grip_positions(style):
-    return (163, 297) if style == "sonic" else (133, 327)
+    return tuple(pip_face.get(style or "okabe").presentation()["grips"])
 
 
 def card(notification, font_path=None, style=None):
@@ -358,9 +454,24 @@ def card(notification, font_path=None, style=None):
     for row, line in enumerate((first, fit(" ".join(words), body_font, 420))):
         d.text((27, 262 + row * 24), line, font=body_font, fill="#c7d5d8")
     for x in grip_positions(style):
-        d.rectangle((x, 183, x + 20, 200), fill="#f8f6e9" if style == "sonic" else "#ecc3a3")
-        d.line((x + 7, 191, x + 7, 197), fill="#939994" if style == "sonic" else "#aa7e69")
-        d.line((x + 13, 191, x + 13, 197), fill="#939994" if style == "sonic" else "#aa7e69")
+        d.rectangle(
+            (x, 183, x + 20, 200),
+            fill="#f8f6e9"
+            if pip_face.get(style or "okabe").definition["rig"] == "hedgehog"
+            else "#ecc3a3",
+        )
+        d.line(
+            (x + 7, 191, x + 7, 197),
+            fill="#939994"
+            if pip_face.get(style or "okabe").definition["rig"] == "hedgehog"
+            else "#aa7e69",
+        )
+        d.line(
+            (x + 13, 191, x + 13, 197),
+            fill="#939994"
+            if pip_face.get(style or "okabe").definition["rig"] == "hedgehog"
+            else "#aa7e69",
+        )
     return image
 
 
@@ -466,5 +577,6 @@ def render(
         if notification
         else music_card(music, character.get("phase", 0), font_path)
     )
-    image.paste(overlay, (0, 0), overlay)
+    shift = round((1 - character.get("notification_progress", 1)) * 140) if notification else 0
+    image.paste(overlay, (0, shift), overlay)
     return image

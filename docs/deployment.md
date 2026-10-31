@@ -2312,3 +2312,55 @@ changing server assets. Existing inbox entries persist under normal retention an
 are not evidence of duplicate sends. Widget and broader lifecycle coverage remain
 open. No notification bodies, participant records or device identifiers are recorded
 in this public inventory; hosting and README topology are unchanged.
+
+## Expressive work foundation — source checkpoint
+
+Readable prompt Markdown is bundled with the controller package. Directory-owned character definitions assemble the motion catalog served through
+existing surface assets. `scripts/package-pi.py` copies the same character package
+beside satellite Python files. There are no new ports or hosting roles;
+the README deployment topology was reviewed and remains unchanged. Deploying this
+source requires coordinating controller/web assets and the complete Pi bundle.
+
+The controller's private Amadeus preference store owns temporary preparation drafts
+and motion settings. An isolated renewer sends content-free work stages over the
+existing display RPC; device-local expiry prevents stuck work after disconnects.
+Owner-only dashboard draft routes are not added to the mobile proxy allowlist.
+No retailer adapter, proactive preparation schedule or new collection is enabled.
+The controller preparation/UI changes remain source-only; the scoped Pi display
+installation is recorded below. No full-controller promotion or physical acceptance
+is claimed by this checkpoint. Alexa dynamic work animation remains planned.
+
+## Directory-owned character display update (2026-10-31)
+
+The companion Pi's display subset is now installed: character interfaces and owned
+art/motion files, compatibility face facades, scene composition, leased work state
+and the display service's required focus helper. Python 3.7 import/render preflight
+passed on the satellite; its display service and RPC recovered, and automatic
+status reported no animation error after restoring the selected character. A local
+rollback copy of the prior display files remains on the Pi. The voice service was
+not restarted or replaced, and no audio/volume configuration was changed.
+
+This is a scoped Pi display installation. The controller's new dynamic character
+chooser, registry-backed portrait routes and private preparation dashboard remain
+source changes in the PR; the existing installed controller and model workers were
+not replaced. Advanced browser/desktop workbench rendering is also source-only.
+The Pi can show the new golden work poses through its leased work interface and
+idle catalog. Grocery adapters/proactive preparation jobs remain planned. Physical
+elbow/gaze/pacing acceptance is separate from automatic service/render checks.
+
+README topology reviewed: existing display RPC, hosting roles and ports are unchanged.
+
+## Notification continuity — source update
+
+The source Pi renderer and web/compact surfaces now share entrance/exit semantics
+while facial clocks remain independent. Source enablement already controls future
+notification delivery and sound; its dashboard explanation is clearer. Persistent
+media presentation remains separate. These changes add no host, port, collection
+source or model worker. Pantry receipt/camera/provider work is a design only.
+The README topology was reviewed and is unchanged. The scoped Pi display revision is installed: satellite import/render preflight,
+service recovery and status checks passed with no reported animation error. A
+silent synthetic card was accepted through display RPC. The voice service was
+unchanged; no audio or volume settings were altered. Physical entrance/exit pacing
+still needs visual acceptance. Web/compact transition changes remain source-only,
+as does the clearer dashboard label; existing source-disable controls are available
+in the installed dashboard.

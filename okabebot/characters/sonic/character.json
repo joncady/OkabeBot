@@ -1,0 +1,26 @@
+{
+  "id": "sonic",
+  "name": "Sonic",
+  "order": 0,
+  "subtle_style": "Relaxed, friendly and concise.",
+  "rig": "hedgehog",
+  "scenes": {
+    "green-hill": {
+      "name": "Green Hill"
+    },
+    "star-light": {
+      "name": "Star Light"
+    },
+    "mac-desk": {
+      "name": "Desktop Nook"
+    },
+    "pocket-nook": {
+      "name": "Pocket Nook"
+    }
+  },
+  "default_scene": "green-hill",
+  "capabilities": [
+    "wave",
+    "phone"
+  ]
+}

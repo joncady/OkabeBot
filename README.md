@@ -907,3 +907,34 @@ installation/acceptance remains distinct in the deployment inventory.
 Selected HA home sensors support room-assigned temperature lookup without renaming
 entities; see [room-aware feed setup](docs/amadeus-feeds.md#room-assigned-home-sensor-questions)
 and the [labelled regression slice](evals/room-temperature.jsonl).
+
+## Expressive work checkpoint (source)
+
+[Shared idle/work motion](docs/character-animation.md) adds sparse character-specific
+activities and content-free leased work intent across the Pi and web room renderers.
+The Dev panel can prepare/review a private local shopping list and adjust ambient or
+reduced motion. This foundation does not connect a grocery provider, proactive job
+scheduler or external checkout. [Runtime prompts](docs/prompt-authoring.md) now live
+in readable bundled Markdown files. Controller preparation/UI changes remain
+source-only; the installed Pi display subset is described below. The Current
+deployment map, hosting roles and ports remain unchanged. Satellite
+installation now uses the [complete Pi bundle](docs/devices.md#install-the-services).
+
+Character implementations now live under `okabebot/characters/<id>/`, each implementing
+[the shared Character interface](docs/character-animation.md#character-directory-contract)
+and owning its prompts, public art, motion, avatar, voice defaults and scene choices.
+Okabe/Kurisu are the reference workbench rigs: paper/pencil work, foreground monitor,
+two-handed typing and task-directed gaze. Advanced Sonic/Pip poses remain planned.
+Use the [character creation skill](.agents/skills/okabebot-character/SKILL.md) for additions.
+
+The companion Pi's scoped display bundle is installed and its service/render checks
+passed. Controller/browser registry UI changes remain source-only in this checkpoint;
+model workers, audio settings, hosting roles and the deployment map are unchanged.
+See the [deployment inventory](docs/deployment.md#directory-owned-character-display-update-2026-10-31)
+for the exact installed boundary and remaining physical acceptance.
+
+Notification presentation now has its own eased clock, independent of blinking and
+speech, with character-owned arm anchors and reduced-motion behavior. Dashboard
+notification preferences can disable event sources without disabling Amadeus feeds.
+The next grocery phase is scoped in the [pantry design](docs/pantry.md); receipt,
+camera inventory and retailer handoff are planned, not collecting data.

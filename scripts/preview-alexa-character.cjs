@@ -4,10 +4,10 @@ const fs=require('node:fs'),path=require('node:path'),{createCanvas}=require('@n
 global.document={createElement:()=>createCanvas(480,320)};
 const {Room,iso}=require('../okabebot/web/lab-room.js');
 const [assetsFile,output,style='okabe',set='pixel-lab']=process.argv.slice(2);
-if(!assetsFile||!output||!['okabe','kurisu','pip','sonic'].includes(style))throw Error('Use assets.json output-directory [character]');
+if(!assetsFile||!output||!require('./character-catalog.cjs').scenes.characters[style])throw Error('Use assets.json output-directory [character]');
 fs.mkdirSync(output,{recursive:true});
 const room=new Room();room.setAssets(JSON.parse(fs.readFileSync(assetsFile,'utf8')),style);
-const catalog=JSON.parse(fs.readFileSync(path.join(__dirname,'../okabebot/assets/scene-sets.json'),'utf8'));
+const catalog=require('./character-catalog.cjs').scenes;
 const original=room.avatar;
 let actorClock=null;
 room.avatar=function(c,position,...args){if(actorClock!==null)args[1]=actorClock;const p=iso(...position);c.save();c.translate(...p);c.scale(1.5,1.5);c.translate(-p[0],-p[1]);original.call(this,c,position,...args);c.restore();};

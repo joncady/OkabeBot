@@ -1,9 +1,14 @@
 """Scene identity belongs to a physical location; presentation is only its view."""
 
-import json
-from pathlib import Path
+from .characters import registry, get
 
-CATALOG = json.loads((Path(__file__).parent / "assets/scene-sets.json").read_text())
+CATALOG = {
+    "presentations": {"room": "Room", "companion": "Companion"},
+    "characters": {key: list(value.scenes()) for key, value in registry().items()},
+    "sets": {
+        key: value for character in registry().values() for key, value in character.scenes().items()
+    },
+}
 
 
 def validate_selection(character, selected):
@@ -16,7 +21,7 @@ def validate_selection(character, selected):
 def environment(place, character, enabled=True):
     selected = place.get("scene_selections", {}).get(character)
     if not enabled:
-        selected = "green-hill" if character == "sonic" else "pixel-lab"
+        selected = get(character).definition["default_scene"]
     return {
         "set": selected,
         "name": CATALOG["sets"].get(selected, {}).get("name", "Unassigned"),
