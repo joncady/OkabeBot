@@ -56,7 +56,8 @@ shorter than 30 seconds. A stale worker or changed owner setup blocks publicatio
 Decisions require the current revision; finished drafts cannot be edited in place.
 Pause/guest mode hides private preparations. The controller publishes only kind,
 stage, elapsed time and an eight-second renewable display lease; the Pi expires
-that intent using its own monotonic clock. Titles, groceries, account identity and
+that intent using its own monotonic clock. Active intent renews every five seconds;
+idle settings are reasserted at most every 30 seconds to recover after a Pi restart. Titles, groceries, account identity and
 provider intent are not sent as work animation data.
 
 The dashboard offers a local list draft as an end-to-end foundation. It immediately

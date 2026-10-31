@@ -384,16 +384,16 @@ class Bridge:
         self.preparation_wake.set()
 
     def poll_preparations(self):
-        previous = None
+        previous, renew_at = None, 0
         while not self.closing.is_set():
             try:
                 self.preparations.prune()
                 work = self.preparations.presentation()
                 motion = self.preparations.motion_settings()
                 signature = (bool(work), work.get("stage"), str(motion))
-                if work or signature != previous:
+                if work or signature != previous or time.monotonic() >= renew_at:
                     scene.set_work(work, motion)
-                    previous = signature
+                    previous, renew_at = signature, time.monotonic() + 30
             except Exception:
                 pass  # Device-local expiry clears old work; never invent progress.
             self.preparation_wake.wait(5)

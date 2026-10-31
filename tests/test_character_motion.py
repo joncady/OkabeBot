@@ -65,6 +65,33 @@ class MotionTests(unittest.TestCase):
                         (480, 320),
                     )
 
+    def test_idle_settings_are_periodically_renewed_after_satellite_restart(self):
+        import threading
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        from okabebot.bridge import Bridge
+
+        now = [0]
+        bridge = Bridge.__new__(Bridge)
+        bridge.closing = threading.Event()
+
+        def tick(seconds):
+            now[0] += seconds
+            if now[0] >= 35:
+                bridge.closing.set()
+
+        bridge.preparation_wake = SimpleNamespace(wait=tick, clear=lambda: None)
+        bridge.preparations = Mock()
+        bridge.preparations.presentation.return_value = {}
+        bridge.preparations.motion_settings.return_value = dict(enabled=False, reduced_motion=True)
+        with (
+            patch("okabebot.bridge.time.monotonic", side_effect=lambda: now[0]),
+            patch("okabebot.bridge.scene.set_work") as send,
+        ):
+            bridge.poll_preparations()
+        self.assertEqual(send.call_count, 2)
+        self.assertEqual(send.call_args.args, ({}, dict(enabled=False, reduced_motion=True)))
+
     def test_work_expires_locally_and_rejects_content_or_nonfinite_time(self):
         now = [100]
         state = WorkState(clock=lambda: now[0])
