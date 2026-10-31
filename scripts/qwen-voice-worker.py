@@ -66,8 +66,11 @@ def speaker_text(text):
 def speaker_generate(model, text, options):
     """Never publish a clause that stopped at the generation limit instead of EOS."""
     for clause in speaker_text(text).splitlines():
-        limit = max(75, min(250, len(clause.split()) * 15))
+        base_limit = max(75, min(375, max(len(clause.split()) * 15, len(clause) * 3)))
         for attempt in range(2):
+            # Dates, acronyms and numbers can expand far beyond whitespace words.
+            # A larger ceiling does not delay EOS; only retry an unpublished clause.
+            limit = min(450, math.ceil(base_limit * (1.5 if attempt else 1)))
             settings = dict(options)
             if attempt:
                 settings["temperature"] = max(0.7, settings.get("temperature", 0.7))

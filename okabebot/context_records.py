@@ -223,6 +223,12 @@ def ingest(
 
 def query(store, source, subject, *, text="", offset=0, limit=20, view="current"):
     ensure(store.db)
+    # Literal keywords can match separate room/label fields. Never SQL patterns.
+    terms = list(dict.fromkeys(text.split()))
+
+    def match(field):
+        return "".join(" AND instr(lower(" + field + "),lower(?))>0" for _ in terms)
+
     if view != "current":
         if view not in ("changes", "aggregates"):
             raise ValueError("Choose current, changes or aggregates")
@@ -232,12 +238,12 @@ def query(store, source, subject, *, text="", offset=0, limit=20, view="current"
         rows = store.db.execute(
             "SELECT * FROM "
             + table
-            + " WHERE source=? AND subject=? AND expires_at>? AND (?='' OR instr(lower("
-            + field
-            + "),lower(?))>0) ORDER BY "
+            + " WHERE source=? AND subject=? AND expires_at>?"
+            + match(field)
+            + " ORDER BY "
             + stamp
             + " DESC,rowid DESC LIMIT ? OFFSET ?",
-            (source, subject, store.clock(), text, text, limit + 1, offset),
+            (source, subject, store.clock(), *terms, limit + 1, offset),
         ).fetchall()
         items = []
         for row in rows[:limit]:
@@ -265,12 +271,12 @@ def query(store, source, subject, *, text="", offset=0, limit=20, view="current"
             "next_offset": offset + limit if len(rows) > limit else None,
             "scope": "Retained observations only, not a complete activity history. Aggregates are observed samples, not time-weighted averages.",
         }
-    # instr provides literal matching; user text cannot change SQL or act as wildcard syntax.
     rows = store.db.execute(
         """SELECT * FROM context_records WHERE source=? AND subject=?
-        AND expires_at>? AND (?='' OR instr(lower(payload),lower(?))>0)
-        ORDER BY changed_at DESC,item_id LIMIT ? OFFSET ?""",
-        (source, subject, store.clock(), text, text, limit + 1, offset),
+        AND expires_at>?"""
+        + match("payload")
+        + " ORDER BY changed_at DESC,item_id LIMIT ? OFFSET ?",
+        (source, subject, store.clock(), *terms, limit + 1, offset),
     ).fetchall()
     status = store.db.execute(
         "SELECT * FROM context_feed_status WHERE source=? AND subject=? AND expires_at>?",

@@ -400,3 +400,55 @@ source and presentation defaults remain off; private owner configuration can
 activate them. Routine inference, coaching and general proactive delivery gates
 remain separate. The rule's private human checkpoint is a real eligible morning;
 configuration refinements must not publish personal observations or outcomes.
+
+
+## Preference freshness for proactive openers
+
+Optional interest/hobby openers exclude recently learned preference fields for a
+configurable cooldown (default 24 hours, 0–168 hours in the private conversation
+settings). The private store retains only per-field timestamps alongside existing
+preferences. Older profiles conservatively use the last-memory category timestamp
+when per-field metadata is missing; they do not mark all old preferences as new.
+
+This is a filter on unsolicited opener context, not forgetting or a restriction on
+user-initiated recall. Direct conversation still has the saved preferences. If
+filtering leaves no useful known context, the opener is skipped without spending
+an invitation. Household, chore and separately consented health delivery retain
+their existing gates. Forgetting preferences also removes the freshness metadata.
+This first pass tracks fields/categories, not semantic similarity of every topic.
+
+## Optional conversation controls and explanations
+
+The private conversation settings include a local-time chat window. Equal start
+and end times allow any otherwise eligible time; overnight windows are supported.
+This window restricts optional interest/check-in invitations, not alerts or
+separately configured chore/health rules. Quiet hours, focus, media, consent and
+frequency gates still apply. A window is permission to consider an invitation,
+not evidence that the person is free.
+
+After acknowledged delivery, a bounded private journal records a suggestion ID,
+category, timestamp and explicit feedback—never a copy of its spoken text.
+Android's Chat and Inbox views can show **Why**, **Good timing**, **Too soon** and
+**Not interested** for the current receipt. Timing rejection pauses optional
+invitations; topic rejection suppresses that category for the configured topic
+cooldown. Reversing feedback removes only suppression created by that receipt.
+Feedback does not silently rewrite tastes. No delivery acknowledgment means no
+new feedback receipt. Guest mode, pause, revocation and health privacy checks
+also apply to explanations. Preference deletion removes these records.
+
+`get_proactive_explanation` retrieves the recorded selection reason rather than
+asking the model to invent a motive. `get_watch_recommendations` reads connected
+want-to-watch entries with optional kind, genre and duration constraints. It
+excludes known watched titles from permitted cached history, including date-unknown
+lists, and reports partial coverage. Missing metadata is not guessed; streaming
+availability and guaranteed-unwatched claims require separate evidence.
+
+Spoken proactive replies retain bounded conversation history across read-tool
+lookups. Preference confirmation and explicit conversation endings are handled
+before tool routing. Expired or privacy-invalid sessions are not reopened as
+ordinary conversation by that handoff.
+
+The local conversational catalog exposes the higher-level recommendation tool
+instead of the overlapping raw Trakt list tool when both are registered. The raw
+MCP API remains available to other clients. This avoids asking the language model
+to select between two tools that both appear to answer a recommendation request.

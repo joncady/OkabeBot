@@ -166,6 +166,16 @@ def get_chores(include_upcoming: bool = False) -> dict:
 
 
 @mcp.tool(annotations=READ)
+def get_presence_history(
+    period: Literal["today", "this_morning", "yesterday", "last_24_hours"] = "today",
+) -> dict:
+    """Read selected HA person transitions and zone counts, including reported-away intervals. Use for when I left/came home or whether I went away. Reports are not proof of physical departure. No coordinates or device actions."""
+    from .presence_history import timeline
+
+    return timeline(state_dir() / "amadeus", period)
+
+
+@mcp.tool(annotations=READ)
 def get_home_activity(period: Literal["today", "yesterday", "last_24_hours"] = "today") -> dict:
     """Read partial consented household history: door/presence, TV/media and appliance readings.
     Missing observations are not evidence nothing happened; no safety/all-clear claim."""
@@ -175,8 +185,44 @@ def get_home_activity(period: Literal["today", "yesterday", "last_24_hours"] = "
 
 
 @mcp.tool(annotations=READ)
+def get_proactive_explanation() -> dict:
+    """Read the reason for the latest actually delivered Amadeus suggestion. No invented motives, no action or preference change."""
+    from .amadeus_suggestions import Suggestions
+
+    try:
+        return Suggestions(state_dir() / "amadeus").explanation()
+    except PermissionError:
+        return {"available": False, "state": "private_conversation_unavailable"}
+
+
+@mcp.tool(annotations=READ)
+def get_personal_recommendation_context(
+    topic: Literal["activities", "food", "goals", "all"] = "activities",
+) -> dict:
+    """Read explicit saved interests/food tastes/goals for requested personalized ideas. Not needed for casual anecdotes or generic advice. No inventory, health readings or writes."""
+    from .personal_recommendations import recommendation_context
+
+    return recommendation_context(state_dir() / "amadeus", topic)
+
+
+@mcp.tool(annotations=READ)
+def get_watch_recommendations(
+    kind: Literal["movies", "shows", "all"] = "movies",
+    page: int = 1,
+    genre: str = "",
+    max_minutes: int | None = None,
+) -> dict:
+    """Recommend saved movies/shows using genre/runtime constraints, known watched exclusions and metadata-based reasons. Availability is not checked; no writes."""
+    from .watch_recommendations import recommendations
+
+    return recommendations(
+        state_dir() / "amadeus", kind=kind, page=page, genre=genre, max_minutes=max_minutes
+    )
+
+
+@mcp.tool(annotations=READ)
 def get_trakt_watchlist(kind: Literal["movies", "shows", "all"] = "movies", page: int = 1) -> dict:
-    """Read saved want-to-watch titles from connected Trakt for grounded movie/show recommendations. This is an on-demand read, not watched-history collection or streaming availability."""
+    """List raw saved Trakt want-to-watch entries. Use get_watch_recommendations for recommendations, genre/runtime filtering and known watched exclusions. No writes."""
     from .trakt_library import watchlist
 
     return watchlist(state_dir() / "amadeus", page=page, kind=kind)
@@ -185,6 +231,7 @@ def get_trakt_watchlist(kind: Literal["movies", "shows", "all"] = "movies", page
 @mcp.tool(annotations=READ)
 def get_context_feed(
     source: Literal[
+        "presence_history",
         "tasks",
         "device_activity",
         "home_devices",
@@ -201,7 +248,7 @@ def get_context_feed(
     limit: int = 20,
     view: Literal["current", "changes", "aggregates"] = "current",
 ) -> dict:
-    """Read connected to-do/shopping lists (source=tasks), transit rail notices, home devices (source=home_devices), room light/speaker states (source=room_activity), appliances, consented private wellbeing readings (source=health) or watch history. Current feeds are not a full history of today. Use blank query for all selected items; page through next_offset."""
+    """Read connected to-do/shopping lists (source=tasks), transit rail notices, home temperatures/thermostats/doors (source=home_devices), room light/speaker states (source=room_activity), appliances, consented private wellbeing readings (source=health) or watch history. Query can combine room and measurement keywords. Current feeds are not a full history of today. Use blank query for all selected items; page through next_offset."""
     from .amadeus_feeds import Feeds
 
     return Feeds(state_dir() / "amadeus").retrieve(
@@ -236,34 +283,39 @@ def dismiss_notification(notification_id: str) -> dict:
 @mcp.tool(annotations=WRITE)
 def set_notification_source(
     source: str,
-    enabled: bool = True,
-    audio: Literal["default", "silent", "chime", "speech"] = "default",
+    enabled: bool | None = None,
+    audio: Literal["default", "silent", "chime", "speech"] | None = None,
 ) -> dict:
-    """Set a source's notification delivery/audio rule, preserving other source rules."""
+    """Patch a notification source. Supply only explicitly requested fields; omitted enabled/audio stay unchanged. Sender-specific requests use set_sender_notification_rule instead."""
     from .controller_tools import request
 
-    return request(
-        "/notifications/preferences", {"sources": {source: {"enabled": enabled, "audio": audio}}}
-    )
+    changes = {k: v for k, v in {"enabled": enabled, "audio": audio}.items() if v is not None}
+    if not changes:
+        raise ValueError("Specify a delivery or audio change")
+    return request("/notifications/preferences", {"sources": {source: changes}})
 
 
 @mcp.tool(annotations=WRITE)
 def set_sender_notification_rule(
     source: str,
     sender_id: str,
-    enabled: bool = True,
-    audio: Literal["default", "silent", "chime", "speech"] = "default",
-    priority: Literal["default", "low", "normal", "important", "urgent"] = "default",
+    enabled: bool | None = None,
+    audio: Literal["default", "silent", "chime", "speech"] | None = None,
+    priority: Literal["default", "low", "normal", "important", "urgent"] | None = None,
 ) -> dict:
-    """Set an exact source/sender identity rule. IDs are literal and case-sensitive,
+    """Patch an exact source/sender identity rule, preserving omitted delivery fields. IDs are literal and case-sensitive,
     not regexes; inspect recent notifications for sender_id. Source disabling,
     quiet hours, explicit silent/chime remain authoritative. Priority affects new events."""
     from .controller_tools import request
 
-    return request(
-        "/notifications/senders",
-        dict(source=source, sender_id=sender_id, enabled=enabled, audio=audio, priority=priority),
-    )
+    changes = {
+        k: v
+        for k, v in {"enabled": enabled, "audio": audio, "priority": priority}.items()
+        if v is not None
+    }
+    if not changes:
+        raise ValueError("Specify a sender delivery, audio or priority change")
+    return request("/notifications/senders", dict(source=source, sender_id=sender_id, **changes))
 
 
 @mcp.tool(annotations=READ)

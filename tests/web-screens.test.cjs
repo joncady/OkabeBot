@@ -1,15 +1,15 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 async function screen({approved=true,broken=false,microphone=false,denied=false,audioFailure=false,native=false,complete=false,insecureAudio=false}={}){
- let stops=0;
+ let stops=0,audio;
  const calls=[],nodes={},events={};let raf;
  const context2d=new Proxy({},{get:()=>()=>{}});
- const node=id=>nodes[id]||=( {attrs:{},hidden:false,textContent:'',disabled:id==='#mic',value:'',classList:{toggle(){}},getContext:()=>context2d,setAttribute(k,v){this.attrs[k]=v;},querySelector:()=>node('#state-use'),addEventListener(){},setPointerCapture(){}} );
+ const node=id=>nodes[id]||=( {attrs:{},hidden:false,textContent:'',disabled:id==='#mic',value:'',classList:{toggle(){}},getContext:()=>context2d,dataset:{},setAttribute(k,v){this.attrs[k]=v;},querySelector:()=>node('#state-use'),addEventListener(){},setPointerCapture(){}} );
  const storage=new Map(complete?[['companion-setup-complete','1']]:[]);const nativeMessages=[];
  const state={phase:audioFailure?'tv':'preparing',transition_id:'test',duration_seconds:1,tv_side:'left',character:{style:'kurisu'},server_time:1000};
- const context={BrowserAudio:class{async enable(){}async restart(){}setVolume(){}poll(){}presenter(){return null;}suspend(){}stop(){}close(){}},console,Float32Array,Uint8Array,ArrayBuffer,DataView,Date,Math,Error,Promise,localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},crypto:{getRandomValues:a=>a.fill(1),randomUUID:()=> 'test-unique-id'},location:{search:native?'?native=1':''},performance:{now:()=>1000},navigator:microphone?{mediaDevices:{getUserMedia:async()=>{if(denied)throw Error('Permission denied');return{getTracks:()=>[{stop(){stops++;}}]};}}}:{},AudioContext:class{constructor(){throw Error('Audio initialization failed');}},LabRoom:{iso:()=>[0,0],Room:class{constructor(){this.portraits=[1];}setAssets(){if(broken)throw Error('bad artwork');}avatar(){}}},document:{querySelector:node,body:{classList:{toggle(){}}}},window:{...(native?{webkit:{messageHandlers:{companion:{postMessage:message=>nativeMessages.push(message)}}}}:{}),addEventListener:(name,fn)=>events[name]=fn},requestAnimationFrame:fn=>{raf=fn;},setTimeout(){},clearTimeout(){},fetch:async(path,options)=>{calls.push({path,headers:options.headers});return{ok:true,json:async()=>path==='/surfaces/register'?{approved,name:'Phone'}:path==='/surfaces/state'?state:{frames:[[]]}};}};
+ const context={BrowserAudio:class{constructor(request,callback){audio=this;this.status=callback;this.enabled=false;}async enable(){this.enabled=true;}async restart(){this.enabled=true;}setVolume(){}poll(){}presenter(){return null;}suspend(){}stop(){}close(){}},console,Float32Array,Uint8Array,ArrayBuffer,DataView,Date,Math,Error,Promise,localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},crypto:{getRandomValues:a=>a.fill(1),randomUUID:()=> 'test-unique-id'},location:{search:native?'?native=1':''},performance:{now:()=>1000},navigator:microphone?{mediaDevices:{getUserMedia:async()=>{if(denied)throw Error('Permission denied');return{getTracks:()=>[{stop(){stops++;}}]};}}}:{},AudioContext:class{constructor(){throw Error('Audio initialization failed');}},LabRoom:{iso:()=>[0,0],Room:class{constructor(){this.portraits=[1];}setAssets(){if(broken)throw Error('bad artwork');}avatar(){}}},document:{querySelector:node,body:{classList:{toggle(){}}}},window:{...(native?{webkit:{messageHandlers:{companion:{postMessage:message=>nativeMessages.push(message)}}}}:{}),addEventListener:(name,fn)=>events[name]=fn},requestAnimationFrame:fn=>{raf=fn;},setTimeout(){},clearTimeout(){},fetch:async(path,options)=>{calls.push({path,headers:options.headers});return{ok:true,json:async()=>path==='/surfaces/register'?{approved,name:'Phone'}:path==='/surfaces/state'?state:{frames:[[]]}};}};
  if(insecureAudio){delete context.crypto.randomUUID;vm.runInNewContext(fs.readFileSync('okabebot/web/browser-audio.js','utf8'),context);context.BrowserAudio=context.window.BrowserAudio;}
  vm.runInNewContext(fs.readFileSync('okabebot/web/companion-ui.js','utf8'),context);context.CompanionUI=context.window.CompanionUI;
- vm.runInNewContext(fs.readFileSync('okabebot/web/companion.js','utf8'),context);await new Promise(setImmediate);return{calls,nodes,events,raf,storage,nativeMessages,stops:()=>stops};
+ vm.runInNewContext(fs.readFileSync('okabebot/web/companion.js','utf8'),context);await new Promise(setImmediate);return{calls,nodes,events,raf,storage,nativeMessages,audio,poll:()=>context.poll(),stops:()=>stops};
 }
 test('unapproved screen discovers itself but never reads scene or sends readiness',async()=>{
  const s=await screen({approved:false});assert.deepEqual(s.calls.map(c=>c.path),['/surfaces/register']);assert.match(s.nodes['#status'].textContent,/Approve/);assert.ok(s.nodes['#mic'].disabled);
@@ -27,7 +27,7 @@ test('mobile hold blocks text selection and tap mode avoids hold gesture',async(
  const s=await screen({approved:false});let prevented=0;const e={preventDefault(){prevented++;},pointerId:1};
  s.nodes['#mic'].oncontextmenu(e);s.nodes['#mic'].onselectstart(e);s.nodes['#mic'].onpointerdown(e);assert.ok(prevented>=3);
  s.nodes['#mic-mode'].onclick();assert.equal(s.nodes['#mic'].attrs['aria-label'],'Tap to talk');
- s.nodes['#mic'].onpointerup(e);assert.ok(prevented>=4);
+ s.nodes['#mic'].onpointerup(e);s.nodes['#mic'].onclick(e);assert.ok(prevented>=4);
 });
 test('call companion button summons this screen without supplying another destination',async()=>{
  const s=await screen();await s.nodes['#summon'].onclick();
@@ -85,4 +85,28 @@ test('native display signals use paired identity and ordinary browsers do not pu
  mac.events['companion-display']({detail});phone.events['companion-display']({detail});await new Promise(setImmediate);
  assert.ok(mac.calls.some(c=>c.path==='/surfaces/display-signal'));
  assert.ok(!phone.calls.some(c=>c.path==='/surfaces/display-signal'));
+});
+
+test('native reply waits for actual completion and exposes player failure',async()=>{
+ const source=fs.readFileSync('okabebot/web/companion.js','utf8');
+ const code=source.slice(source.indexOf('function playNativeReply'),source.indexOf('mic.oncontextmenu='));
+ const listeners=new Map();let invoked=0;
+ const context={Promise,Date,Error,Math,nativeVoice:null,speaker:{volume:.4},setStatus(){},setTimeout:()=>1,clearTimeout(){},window:{addEventListener:(k,f)=>listeners.set(k,f),removeEventListener:k=>listeners.delete(k),AmadeusAndroid:{playReply:(wav,gain)=>{assert.equal(gain,.4);invoked++;}}}};
+ vm.runInNewContext(code,context);
+ const pending=context.playNativeReply({wav_base64:'invented',seconds:1,levels:[.3]});
+ let complete=false;pending.then(()=>complete=true);listeners.get('companion-audio')({detail:'started'});await Promise.resolve();assert.equal(complete,false);
+ listeners.get('companion-audio')({detail:'completed'});await pending;assert.equal(complete,true);assert.equal(listeners.size,0);
+ const failed=context.playNativeReply({wav_base64:'invented',seconds:1,levels:[]});listeners.get('companion-audio')({detail:'failed'});await assert.rejects(failed,/playback failed/);assert.equal(invoked,2);
+});
+
+test('successful state polling preserves playback failure until sound is recovered',async()=>{
+ const s=await screen();
+ s.audio.enabled=false;s.audio.status('Reply playback failed: canceled; no automatic replay.');
+ await s.poll();
+ assert.match(s.nodes['#notice'].textContent,/playback failed/);
+ assert.match(s.nodes['#settings-notice'].textContent,/playback failed/);
+ await s.nodes['#speaker-enable'].onclick();await s.poll();
+ assert.doesNotMatch(s.nodes['#notice'].textContent,/playback failed/);
+ assert.doesNotMatch(s.nodes['#settings-notice'].textContent,/playback failed/);
+ assert.notEqual(s.nodes['#state-icon'].attrs['data-state'],'error');
 });

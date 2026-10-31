@@ -159,6 +159,9 @@ credentials. Add adapters through that contract, and verify background visibilit
 semantics instead of assuming every browser behaves like a TV receiver.
 
 
+See [shared incremental speech](streaming-audio.md) for format, buffering,
+backpressure, cancellation and platform capability rules.
+
 Reply audio is a separate location capability (`audio_target`), resolved once at
 speech start. `AudioHub` relays bounded PCM to an enabled paired device session;
 `BrowserStream` implements the existing stream start/chunk/end/abort contract.
@@ -202,3 +205,20 @@ services. Never follow upstream redirect URLs with credentials.
 
 See [context feed setup](amadeus-feeds.md) for current sources, provider limits,
 private credential setup and adding a new source.
+
+The local conversational catalog can expose a canonical higher-level capability
+instead of overlapping raw provider tools. Watchlist conversation uses
+`get_watch_recommendations` when registered; the raw `get_trakt_watchlist` MCP API
+remains available to other clients and is the conversational fallback when the
+higher-level tool is absent. This selection happens at schema registration, not
+by matching user phrases. Keep raw provider operations distinct from user-facing
+capabilities when extending the catalog.
+
+New conversational capabilities should add cases to both prompt-evaluation splits
+before selection is frozen: expected tool/arguments, preceding dialogue when
+needed, success/unavailable results, permission boundaries and a nearby non-tool
+contrast. Keep returned source envelopes faithful to their adapter contract;
+fixtures may be partial but must not silently substitute unrelated fields.
+`get_personal_recommendation_context` is a read-only higher-level capability for
+requested profile-based ideas. It returns explicit preferences and missing-signal
+limits, not purchases, health readings, inferred tastes or an instruction to act.

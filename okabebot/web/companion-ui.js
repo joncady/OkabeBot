@@ -22,10 +22,10 @@ class CompanionUI {
   c.restore();
  }
  constructor(speaker){
-  this.speaker=speaker;this.error='';this.approved=false;this.sound=false;this.microphone=false;this.skipped=localStorage.getItem('companion-mic-skipped')==='1';this.complete=localStorage.getItem('companion-setup-complete')==='1';this.open=!this.complete;
+  this.speaker=speaker;this.error='';this.errors=new Map();this.info='';this.approved=false;this.sound=false;this.microphone=false;this.skipped=localStorage.getItem('companion-mic-skipped')==='1';this.complete=localStorage.getItem('companion-setup-complete')==='1';this.open=!this.complete;
   window.addEventListener('companion-permissions',event=>{
    if(!window.webkit?.messageHandlers?.companion)return;
-   this.microphone=event.detail?.microphone==='granted';this.render();
+   this.microphone=event.detail?.microphone==='granted';if(this.microphone&&this.sound)this.clearError('setup');this.render();
   });
   this.node=id=>document.querySelector('#'+id);
   this.node('settings').onclick=()=>this.settings(true);
@@ -53,7 +53,7 @@ class CompanionUI {
  }
  connected(approved){this.approved=approved;if(!approved)this.open=true;this.render();}
  async enable(wantMicrophone=true){
-  this.error='';this.node('setup-error').textContent='';this.node('setup-enable').disabled=true;
+  this.node('setup-enable').disabled=true;
   try{
    if(!this.approved)throw Error('Approve this screen in the dashboard first.');
    await this.speaker.enable();this.sound=true;
@@ -63,13 +63,15 @@ class CompanionUI {
     stream.getTracks().forEach(track=>track.stop()); // Setup never records or submits audio.
     this.microphone=true;this.skipped=false;localStorage.removeItem('companion-mic-skipped');localStorage.setItem('companion-mic-confirmed','1');
    }
-  }catch(e){this.node('setup-error').textContent=e.message;this.indicator('error',e.message);}
+   this.clearError('setup');this.clearError('audio');
+  }catch(e){this.notice(e.message,'setup',true);}
   this.render();
  }
  async restore(){
   // Stored preferences are hints, never proof of current browser/OS permission.
   if(!this.complete)return;
   try{await this.speaker.enable();this.sound=true;}catch{} // Autoplay may need a fresh gesture.
+  if(window.AmadeusAndroid){this.microphone=window.AmadeusAndroid.microphoneGranted();this.render();return;}
   if(window.webkit?.messageHandlers?.companion){
    // Read-only OS status. Never open the mic simply to restore the setup UI.
    window.webkit.messageHandlers.companion.postMessage('permissions');this.render();return;
@@ -77,9 +79,19 @@ class CompanionUI {
   try{const p=await navigator.permissions.query({name:'microphone'});this.microphone=p.state==='granted';p.onchange=()=>{this.microphone=p.state==='granted';this.render();};}catch{}
   this.render();
  }
- notice(message){
+ clearError(scope){this.errors.delete(scope);this.renderNotices();}
+ renderNotices(){
+  this.error=[...this.errors.values()].pop()||'';
+  const message=this.error||this.info;
   this.node('notice').textContent=message;this.node('settings-notice').textContent=message;
-  this.error=/disconnect|fail|unavailable|denied|permission|reconnect/i.test(message)?message:'';if(this.error)this.indicator('error',message);
+  this.node('setup-error').textContent=this.errors.get('setup')||'';
+  this.node('notice').className=this.error?'surface-error':'sr-only';
+ }
+ notice(message,scope='general',failure=false){
+  const error=failure||/disconnect|fail|unavailable|denied|permission|reconnect|rejected|approve|expired|no clear speech|not replayed|canceled|assign a unique/i.test(message);
+  if(error){this.errors.delete(scope);this.errors.set(scope,message);this.info='';}
+  else{this.errors.delete(scope);this.info=message;}
+  this.renderNotices();if(this.error)this.indicator('error',this.error);
  }
  indicator(state,label){
   const icons={ready:'check',moving:'link',thinking:'clock',listening:'mic',speaking:'sound',offline:'link',error:'warn',setup:'settings'};

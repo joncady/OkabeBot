@@ -27,7 +27,9 @@ class Surfaces:
     DURATION = 1.4
     RECEIVER_LEASE = 6
 
-    def __init__(self, rpc, cast_getter=lambda: None, start=True, cast_resolver=None):
+    def __init__(
+        self, rpc, cast_getter=lambda: None, start=True, cast_resolver=None, ownership_path=None
+    ):
         from .config import get_config
 
         self.settings = get_config()["surfaces"]
@@ -55,11 +57,21 @@ class Surfaces:
         self.assets = {}
         self.receiver_session = None
         self.receiver_active = False
+        self.launch_pending = False
         self.return_command_sent = False
         self.next_retry = 0
         self.retry_delay = 1
         self.tv_requests = {}
         self.stop = threading.Event()
+        from .surface_ownership import Ownership
+        from .config import state_dir
+
+        self.ownership = Ownership(
+            ownership_path or (state_dir() / "cast-ownership.json" if start else None)
+        )
+        if self.ownership.sessions or self.ownership.invalid:
+            self.phase = "reconciling"
+            self.error = "Reconciling saved Cast sessions before returning to the companion display"
         if start:
             threading.Thread(target=self._run, daemon=True).start()
 
@@ -168,6 +180,8 @@ class Surfaces:
     def move(self, location_id, base):
         from .locations import configured
 
+        if self.phase == "reconciling":
+            raise ValueError("Wait for saved Cast ownership to finish reconciling")
         place = next((p for p in configured() if p["id"] == location_id), None)
         if place is None:
             raise ValueError("Unknown destination; list companion locations first")
@@ -180,7 +194,7 @@ class Surfaces:
             if target == "pi":
                 self.pending_move = None
                 return dict(self.return_home(), accepted=True)
-            if place["adapter"] in ("browser", "mac", "alexa"):
+            if place["adapter"] in ("browser", "mac", "alexa", "android"):
                 if not any(
                     p["id"] == location_id and p.get("available") for p in self.registry.list()
                 ):
@@ -326,7 +340,12 @@ class Surfaces:
         from .config import get_config
 
         config = get_config()
-        if address == config["spotify"]["cast_host"]:
+        hosts = {config["spotify"]["cast_host"]} | {
+            p["cast_host"]
+            for p in self.settings["locations"]
+            if p.get("adapter") == "cast" and p.get("cast_host")
+        }
+        if address in hosts:
             names = {
                 "/tv/": "page",
                 "/tv.js": "script",
@@ -371,6 +390,7 @@ class Surfaces:
                 raise ValueError("Return the companion to Pi before starting another handoff")
             self.receiver_session = None
             self.receiver_active = False
+            self.launch_pending = bool(launch)
             self.next_retry, self.retry_delay = 0, 1
             self.identifier, self.token = uuid.uuid4().hex, secrets.token_urlsafe(32)
             self.phase, self.started, self.ready, self.error = (
@@ -407,6 +427,7 @@ class Surfaces:
 
             from pychromecast.config import APP_DASHCAST
 
+            prior_session = cast.status.session_id
             if cast.status.app_id == APP_DASHCAST:
                 # A forced LAUNCH can reuse a navigated-away receiver session.
                 # Stop that app once so its JS can accept the new dashboard URL.
@@ -428,15 +449,26 @@ class Surfaces:
             from pychromecast.config import APP_DASHCAST
 
             while time.monotonic() < deadline:
-                if cast.status.app_id == APP_DASHCAST:
+                if (
+                    cast.status.app_id == APP_DASHCAST
+                    and cast.status.session_id
+                    and cast.status.session_id != prior_session
+                ):
                     with self.lock:
                         if direct is not None:
                             if self.direct is direct:
                                 direct.target_session = cast.status.session_id
+                                self.ownership.remember(direct.target_id, direct.target_session)
                         elif self.token == generation:
                             self.receiver_session = cast.status.session_id
+                            self.ownership.remember(
+                                location_id or self.active_id, self.receiver_session
+                            )
+                            self.launch_pending = False
                     break
                 self.stop.wait(0.1)
+            else:
+                raise ValueError("Cast launch did not confirm a new owned session")
         except Exception as exc:
             with self.lock:
                 if direct is not None:
@@ -451,7 +483,7 @@ class Surfaces:
         with self.lock:
             if self.direct:
                 return self.direct.heartbeat(token)
-            self.last_seen, self.ready = time.monotonic(), True
+            self.last_seen, self.ready = time.monotonic(), not self.launch_pending
             item = self.registered(token)
             if item:
                 self.registry.heartbeat(token)
@@ -459,8 +491,10 @@ class Surfaces:
             if cast and not item:
                 from pychromecast.config import APP_DASHCAST
 
-                if cast.status.app_id == APP_DASHCAST:
-                    self.receiver_session = cast.status.session_id
+                if (
+                    cast.status.app_id == APP_DASHCAST
+                    and cast.status.session_id == self.receiver_session
+                ):
                     self.receiver_active |= getattr(cast.status, "is_active_input", None) is True
         return self.snapshot()
 
@@ -480,6 +514,8 @@ class Surfaces:
         return self.snapshot()
 
     def return_home(self):
+        if self.phase == "reconciling":
+            raise ValueError("Saved Cast ownership is still reconciling")
         self.ensure_scene(next(p["id"] for p in self.settings["locations"] if p["adapter"] == "pi"))
         with self.lock:
             if self.direct:
@@ -514,8 +550,13 @@ class Surfaces:
             return
         from pychromecast.config import APP_DASHCAST
 
-        if cast and cast.status.app_id == APP_DASHCAST and cast.status.session_id == session:
+        if session and cast.status.app_id == APP_DASHCAST and cast.status.session_id == session:
             cast.quit_app()
+        if session:
+            # Quit acknowledgement or a replaced app makes this receipt obsolete.
+            # On restart reconciliation, retain it until status confirms retirement.
+            if self.phase != "reconciling":
+                self.ownership.forget(location_id, session)
 
     def _command(self, phase):
         return {
@@ -577,6 +618,10 @@ class Surfaces:
 
     def _recover(self, message):
         with self.lock:
+            if self.phase == "reconciling":
+                self.error = "Cast ownership reconciliation is waiting for device status"
+                self.next_retry = time.monotonic() + 3
+                return
             if self.direct:
                 self._quit_receiver(self.direct.target_id, self.direct.target_session)
                 self.direct = None
@@ -594,9 +639,42 @@ class Surfaces:
             self.next_retry = now + self.retry_delay
             self.retry_delay = min(5, self.retry_delay * 2)
 
+    def _reconcile_restart(self, now):
+        from pychromecast.config import APP_DASHCAST
+
+        # Keep the small display hidden while an old owned receiver may be visible.
+        # This does not touch presence-follow settings or owner volume preferences.
+        self.rpc(self._command("away"))
+        if self.ownership.invalid:
+            self.error = "Saved Cast ownership is unreadable; recovery needs review"
+            self.next_retry = now + 3
+            return
+        configured = {p["id"] for p in self.settings["locations"] if p["adapter"] == "cast"}
+        for location, session in list(self.ownership.sessions.items()):
+            if location not in configured:
+                # Removed destinations cannot be safely contacted. Keep recovery explicit.
+                self.error = "Saved Cast destination is no longer configured; recovery needs review"
+                continue
+            cast = self.cast_for(location)
+            if cast is None or cast.status is None:
+                self.error = "Waiting for Cast status to reconcile a saved receiver"
+                continue
+            if cast.status.app_id == APP_DASHCAST and cast.status.session_id == session:
+                cast.quit_app()
+            else:
+                # Different app/session is never stopped, even if it is DashCast.
+                self.ownership.forget(location, session)
+        self.next_retry = now + 3
+        if not self.ownership.sessions:
+            self._start_return(now)
+
     def tick(self, now=None):
         now = time.monotonic() if now is None else now
         with self.lock:
+            if self.phase == "reconciling":
+                if now >= self.next_retry:
+                    self._reconcile_restart(now)
+                return
             if self.direct:
                 self.direct.tick(now)
                 return

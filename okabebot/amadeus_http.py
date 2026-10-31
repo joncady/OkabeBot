@@ -174,7 +174,16 @@ def handle(handler, bridge, *, post=False):
                 if (
                     not isinstance(data, dict)
                     or not {"enabled", "destination"} <= set(data)
-                    or set(data) - {"enabled", "destination", "max_per_day", "min_gap_minutes"}
+                    or set(data)
+                    - {
+                        "enabled",
+                        "destination",
+                        "max_per_day",
+                        "min_gap_minutes",
+                        "topic_cooldown_hours",
+                        "chat_window_start",
+                        "chat_window_end",
+                    }
                 ):
                     raise ValueError("Choose enabled, destination and bounded frequency")
                 places = bridge.surfaces.snapshot()["locations"]
@@ -242,6 +251,14 @@ def handle(handler, bridge, *, post=False):
                 delay_minutes=data.get("delay_minutes", 1440),
             )
             result = {"state": "recorded"}
+        elif path == "/amadeus/api/morning-digest":
+            from .morning_digest import Digest
+
+            digest = Digest(service.store)
+            result = {
+                "config": digest.configure(data) if post else digest.settings(),
+                "cards": digest.cards(),
+            }
         elif path == "/amadeus/api/morning-voice" and post:
             from .morning_briefing import Briefing
 

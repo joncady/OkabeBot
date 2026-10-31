@@ -86,7 +86,12 @@ def discovery(prefix, identity, name, area):
         yield "homeassistant/" + kind + "/" + identity + "/" + key + "/config", config
 
 
-def room_discovery(prefix, identity, name, area):
+def room_discovery(prefix, identity, name, area, fields=None):
+    selected = (
+        set(fields)
+        if fields is not None
+        else {"distance_mm", "temperature_c", "humidity_percent", "tilt_closed", "nearby"}
+    )
     device = {
         "identifiers": [identity],
         "name": name,
@@ -125,11 +130,19 @@ def room_discovery(prefix, identity, name, area):
         ),
         (
             "binary_sensor",
+            "button_pressed",
+            "Grove button",
+            {"payload_on": True, "payload_off": False},
+        ),
+        (
+            "binary_sensor",
             "nearby",
             "Ultrasonic proximity",
             {"device_class": "occupancy", "payload_on": True, "payload_off": False},
         ),
     ]:
+        if key not in selected:
+            continue
         yield (
             "homeassistant/" + kind + "/" + identity + "/" + key + "/config",
             {

@@ -10,6 +10,8 @@ import subprocess
 import threading
 import time
 import uuid
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 from jsonschema import Draft202012Validator
 from .config import get_config
@@ -23,9 +25,13 @@ READ_TOOLS = {
     "get_calendar_agenda",
     "get_focus_session",
     "get_home_activity",
+    "get_presence_history",
     "get_chores",
     "get_context_feed",
     "get_trakt_watchlist",
+    "get_watch_recommendations",
+    "get_proactive_explanation",
+    "get_personal_recommendation_context",
     "get_recent_notifications",
     "list_reminders",
     "list_spotify_devices",
@@ -93,9 +99,22 @@ def household_request(text):
 
 
 def shortlist(text, available):
+    from .turn_resolution import operational_text
+
+    raw_text, text = text, operational_text(text)
+    if re.search(
+        r"\b(?:when|what time) did I (?:leave|return|arrive)|\bdid I\b.*\b(?:away|not home)\b|\bpresence history\b",
+        text,
+        re.I,
+    ):
+        return ["get_presence_history"] if "get_presence_history" in available else []
     if household_request(text):
         return ["get_home_activity"] if "get_home_activity" in available else []
-    if locations.movement_request(text) and "move_companion" in available:
+    if (
+        re.search(locations.MOVE_VERB, text, re.I)
+        and locations.movement_request(raw_text)
+        and "move_companion" in available
+    ):
         return ["move_companion"]
     if re.search(
         r"\b(where am i|(?:which|what) room am i in|(?:last|recent) nfc (?:scan|room))\b",
@@ -117,11 +136,11 @@ def shortlist(text, available):
     # Explicit verbs narrow the domain, but never add a tool absent from that domain.
     choices = (
         ("control_spotify", r"\b(play|resume|pause|stop|skip|next|previous)\b"),
-        ("control_focus_session", r"\b(start|begin|set|cancel|stop|end)\b"),
+        ("control_focus_session", r"\b(start|begin|set|cancel|stop|end|give)\b"),
         ("set_speaker_volume", r"\b(set|turn|lower|raise|reduce|increase|mute|unmute)\b"),
         ("press_bot", r"\b(press|wave)\b"),
         ("speak_on_echo", r"\b(say|speak|tell|announce)\b"),
-        ("snooze_notifications", r"\bsnooze\b"),
+        ("snooze_notifications", r"\b(snooze|hold|pause|resume|let)\b"),
         ("create_reminder", r"\bremind\b"),
         ("cancel_reminder", r"\b(cancel|delete)\b"),
         ("show_calendar_agenda", r"\bshow\b"),
@@ -151,6 +170,9 @@ def preference_device_request(text, specs):
 
 
 def preflight(text):
+    from .turn_resolution import operational_text
+
+    text = operational_text(text)
     if re.search(locations.MOVE_VERB, text, re.I) and (
         re.search(NEGATED, text, re.I) or re.search(HYPOTHETICAL, text, re.I)
     ):
@@ -193,11 +215,14 @@ def validate_call(text, call, specs, policy, request_id, resolved_device_id=""):
     except Exception:
         raise ValueError("I need more precise details for that command.") from None
     if name not in READ_TOOLS:
+        from .turn_resolution import assert_action_request, operational_text
+
+        assert_action_request(text, name)
         if not policy["auto_approve_hardware"] or name not in policy["allowed_tools"]:
             raise ValueError("That action is not enabled in the local tool approval configuration.")
         if (
             not re.search(TARGETS[name], text, re.I)
-            or re.search(r"\b(don['’]t|do not|never)\b", text, re.I)
+            or re.search(r"\b(don['’]t|do not|never)\b", operational_text(text), re.I)
             or re.match(r"\s*(what|why|how|explain|describe)\b", text, re.I)
         ):
             raise ValueError("Which device or action do you mean? Please name it explicitly.")
@@ -225,15 +250,22 @@ def validate_call(text, call, specs, policy, request_id, resolved_device_id=""):
                 raise ValueError("Please state the Spotify action explicitly.")
         if name == "control_focus_session":
             pattern = (
-                r"\b(cancel|stop|end)\b" if args["action"] == "cancel" else r"\b(start|begin|set)\b"
+                r"\b(cancel|stop|end)\b"
+                if args["action"] == "cancel"
+                else r"\b(start|begin|set|give)\b"
             )
             if not re.search(pattern, text, re.I):
                 raise ValueError("Please state the timer action explicitly.")
+        if name == "snooze_notifications":
+            from .turn_resolution import notification_pause
+
+            pause = notification_pause(text)
+            if pause:
+                args = pause["arguments"]
         if name in ("set_notification_source", "set_sender_notification_rule"):
-            if args["source"].casefold() not in text.casefold():
-                raise ValueError("Please name the notification source explicitly.")
-            if name == "set_sender_notification_rule" and args["sender_id"] not in text:
-                raise ValueError("Please give the exact sender identity shown in your inbox.")
+            from .turn_resolution import notification_arguments
+
+            args = notification_arguments(text, name, args)
         if name == "set_speaker_volume":
             if not re.search(
                 r"\b(set|turn|lower|raise|reduce|increase|mute|unmute|make)\b", text, re.I
@@ -324,12 +356,46 @@ def parse_tool_call(output):
 def acknowledgement(name, result):
     if isinstance(result, dict) and result.get("error"):
         return "The request failed. Please check the dashboard before trying again."
+    if name == "get_presence_history":
+        if not result.get("available"):
+            return "Selected presence history isn't available. Check its connection and private source selections."
+        changes = [r for r in result.get("transitions", []) if r.get("observation") == "change"]
+        people = [
+            r for r in changes if r.get("source_type") == "person" and r.get("state") == "away"
+        ]
+        if people:
+            return (
+                "The selected person reported away at "
+                + people[0]["at"]
+                + ". That's a presence report, not proof of departure."
+            )
+        return "I don't have a reported person departure in this window. Zone counts and missing reports can't establish when you left."
+    if name == "get_personal_recommendation_context":
+        if result.get("state"):
+            return "Your private recommendation context isn't available right now."
+        preferences = result.get("preferences", {})
+        if not preferences:
+            return "I don't have saved preferences for that yet. What would you like an idea for?"
+        values = [v for rows in preferences.values() for v in rows]
+        return (
+            "Your saved preferences include "
+            + ", ".join(values)[:250]
+            + ". I haven't checked your time, energy or supplies."
+        )
     if name == "move_companion":
         return (
             ("I'm already at " if result.get("already_there") else "Heading to ")
             + result["destination_name"]
             + "."
         )
+    if name == "get_proactive_explanation":
+        return result.get("suggestion", {}).get(
+            "reason", "I don't have a delivery receipt explaining that suggestion."
+        )
+    if name == "get_watch_recommendations":
+        from .watch_recommendations import fallback
+
+        return fallback(result)
     if name == "get_trakt_watchlist":
         if result.get("state"):
             return "I couldn't read your Trakt watchlist. Check its connection and private setup."
@@ -360,6 +426,8 @@ def acknowledgement(name, result):
             for i in items
         ]
         if not titles:
+            if result.get("queried_source") == "home_devices":
+                return "I couldn't find a matching reading in the home sensors Amadeus follows. The sensor may not be selected, assigned to that room, or reporting."
             return "No matching records were returned from the selected feed. This is not a complete history of today."
         details = ", ".join(" ".join(t.split())[:80] for t in titles[:3])
         more = (
@@ -469,20 +537,9 @@ def acknowledgement(name, result):
             else "No media title is currently available."
         )
     if name == "get_calendar_agenda":
-        if not result.get("available"):
-            return "Calendar data is unavailable or stale."
-        events = result.get("events", [])
-        window = result.get("start_date", result.get("date", "requested dates")) + (
-            " to " + result["end_date"] + " (end exclusive)" if result.get("end_date") else ""
-        )
-        coverage = "Configured calendar feed, " + window + ". "
-        if not result.get("start_date"):
-            coverage += "Upcoming timed events only; excludes all-day and already-started events. "
-        return coverage + (
-            ("; ".join(str(e["start"]) + " " + e["title"] for e in events[:3]))[:350]
-            if events
-            else "No events in this view; other calendars are not included."
-        )
+        from .tool_reply import calendar_reference
+
+        return calendar_reference(result)
     if name == "get_focus_session":
         return "A focus timer is active." if result.get("active") else "No focus timer is active."
     if name in ("list_spotify_devices", "list_echo_speakers"):
@@ -508,11 +565,22 @@ def acknowledgement(name, result):
 class LocalConversation:
     label = "Local model"
 
-    def __init__(self, folder, notify, completed, executor=None, settings=None):
+    def __init__(
+        self,
+        folder,
+        notify,
+        completed,
+        executor=None,
+        settings=None,
+        clock=None,
+        named_targets=None,
+    ):
         from . import server
 
         self.notify, self.completed = notify, completed
         self.executor = executor
+        self.clock = clock
+        self.named_targets = copy.deepcopy(named_targets)
         self.lock = threading.RLock()
         self.approvals = {}
         self.busy = False
@@ -530,11 +598,16 @@ class LocalConversation:
             t.name: {
                 "name": t.name,
                 "description": t.description.split("\n")[0][:160],
-                "parameters": t.inputSchema,
+                "parameters": copy.deepcopy(t.inputSchema),
             }
             for t in asyncio.run(tools())
             if t.name in allowed
         }
+        # Conversational callers get one canonical watchlist capability. Keep the
+        # raw MCP API available to other clients without asking the model to choose
+        # between overlapping listing and recommendation descriptions.
+        if "get_watch_recommendations" in self.specs:
+            self.specs.pop("get_trakt_watchlist", None)
         self.refresh_locations()
         worker_specs = copy.deepcopy(self.specs)
         for name in ("press_bot", "create_reminder"):
@@ -574,14 +647,20 @@ class LocalConversation:
                 {
                     "model": self.settings["model"],
                     "tools": [{"type": "function", "function": s} for s in worker_specs.values()],
+                    "evaluation": self.settings.get("evaluation", {}),
                 }
             )
             + "\n"
         )
         self.process.stdin.flush()
         try:
-            if not self._read(120).get("ready"):
+            self.worker_info = self._read(120)
+            if not self.worker_info.get("ready"):
                 raise RuntimeError("Local worker not ready")
+            if self.settings.get("evaluation", {}).get("enabled") and not self.worker_info.get(
+                "evaluation_enabled"
+            ):
+                raise RuntimeError("Worker does not support isolated prompt evaluation")
         except Exception:
             self.close()
             raise
@@ -632,7 +711,7 @@ class LocalConversation:
             self.cancelled.clear()
         threading.Thread(target=self._turn, args=(text,), daemon=True).start()
 
-    def compose_preference(self, text, context):
+    def compose_preference(self, text, context, *, prompt_overrides=None):
         """Tool-free conversational trial; output remains an untrusted memory proposal."""
         with self.lock:
             if self.busy or self.closed or self.process.poll() is not None:
@@ -651,7 +730,10 @@ class LocalConversation:
                         "previous_question": context.get("last_reply", ""),
                         "history": context.get("history", []),
                         "capabilities": context.get("capabilities", []),
+                        "task_state": context.get("task_state", {}),
                         "tool_names": [],
+                        "reference_date": self.reference_date(),
+                        **self.prompt_payload(prompt_overrides),
                     }
                 )
                 + "\n"
@@ -829,8 +911,21 @@ class LocalConversation:
             )
         )
 
-    def text_turn(self, text, *, history=None):
+    @staticmethod
+    def prompt_payload(prompts):
+        if prompts is None:
+            return {}
+        from .prompt_treatments import validate_prompts
+
+        return {"prompt_scope": "owner_text_lab", "prompt_overrides": validate_prompts(prompts)}
+
+    def text_turn(
+        self, text, *, history=None, read_only=False, prompt_overrides=None, task_state=None
+    ):
         """Run the same validated tools silently, without voice callbacks or transcript events."""
+        if prompt_overrides is not None:
+            self.prompt_payload(prompt_overrides)
+            read_only = True
         with self.lock:
             if self.busy or self.closed or self.process.poll() is not None:
                 raise ValueError("Local model busy or unavailable; no action was retried")
@@ -844,6 +939,9 @@ class LocalConversation:
             completed=lambda answer, status: answers.append(answer),
             history=history or [],
             conversation_probe=True,
+            read_only=read_only,
+            prompt_overrides=prompt_overrides,
+            task_state=task_state,
         )
         if not answers:
             raise ValueError("Tool outcome uncertain. Check device state before retrying")
@@ -851,6 +949,7 @@ class LocalConversation:
             "reply": answers[-1],
             "conversation": getattr(self, "last_conversational", False),
             "tools": [data["tool"] for kind, data in events if kind == "local_tool"],
+            "calls": copy.deepcopy(getattr(self, "last_call_receipts", [])),
             "reply_composition": next(
                 (data for kind, data in reversed(events) if kind == "local_tool_reply"), None
             ),
@@ -887,10 +986,31 @@ class LocalConversation:
             pass
         return reference, False
 
-    def agent_request(self, text, *, history=None, evidence=None, timeout=45):
+    def reference_date(self):
+        clock = getattr(self, "clock", None)
+        if not clock:
+            return None
+        zone = get_config()["notifications"]["agenda_timezone"]
+        at = datetime.fromtimestamp(clock(), timezone.utc)
+        return at.astimezone(None if zone == "local" else ZoneInfo(zone)).date().isoformat()
+
+    def agent_request(
+        self,
+        text,
+        *,
+        history=None,
+        evidence=None,
+        timeout=45,
+        allowed_tools=None,
+        protocol_repair=False,
+        prompt_overrides=None,
+        task_state=None,
+    ):
         """Native typed tool selection; no lexical eligibility gate for read tools."""
         task = "agent_step" if evidence is not None else "agent_route"
         names = sorted(self.specs if evidence is None else READ_TOOLS & self.specs.keys())
+        if allowed_tools is not None:
+            names = sorted(set(names) & set(allowed_tools))
         prompt = text[:2000]
         if evidence is not None:
             prompt = json.dumps({"question": text[:2000], "evidence": evidence})
@@ -898,14 +1018,24 @@ class LocalConversation:
             json.dumps(
                 {
                     "task": task,
+                    "reference_date": self.reference_date(),
                     "text": prompt,
                     "persona": current_character()["persona"],
                     "history": (history or [])[-4:],
+                    "task_state": task_state or {},
                     "tool_names": names,
-                    "location_tool": {
-                        "type": "function",
-                        "function": self.specs.get("move_companion"),
-                    },
+                    "protocol_repair": protocol_repair,
+                    **self.prompt_payload(prompt_overrides),
+                    **(
+                        {
+                            "location_tool": {
+                                "type": "function",
+                                "function": self.specs["move_companion"],
+                            }
+                        }
+                        if "move_companion" in names
+                        else {}
+                    ),
                 }
             )
             + "\n"
@@ -913,16 +1043,45 @@ class LocalConversation:
         self.process.stdin.flush()
         return self._read(timeout)
 
-    def _turn(self, text, notify=None, completed=None, *, history=None, conversation_probe=False):
+    def _turn(
+        self,
+        text,
+        notify=None,
+        completed=None,
+        *,
+        history=None,
+        conversation_probe=False,
+        read_only=False,
+        prompt_overrides=None,
+        task_state=None,
+    ):
         from . import server
 
         notify = notify or self.notify
         completed = completed or self.completed
 
+        specs = {k: v for k, v in self.specs.items() if not read_only or k in READ_TOOLS}
+        from .conversation_state import normalize_state, resolve_read_followup, update_task_state
+        from .turn_resolution import calendar_window, notification_intent
+
+        self.last_call_receipts = []
+
+        def agent_request(*args, **kwargs):
+            if read_only:
+                kwargs["allowed_tools"] = READ_TOOLS
+            if prompt_overrides is not None:
+                kwargs["prompt_overrides"] = prompt_overrides
+            kwargs["task_state"] = active_task
+            return self.agent_request(*args, **kwargs)
+
         voice_history = history is None
         character_key = current_character()["style"]
+        now = (getattr(self, "clock", None) or time.time)()
         if voice_history:
-            history = getattr(self, "agent_history", {}).get(character_key, [])
+            fresh = 0 <= now - getattr(self, "agent_task_times", {}).get(character_key, 0) <= 600
+            history = getattr(self, "agent_history", {}).get(character_key, []) if fresh else []
+            task_state = getattr(self, "agent_tasks", {}).get(character_key, {}) if fresh else {}
+        active_task = normalize_state(task_state)
         status = "completed"
         records = []
         action_started = False
@@ -935,6 +1094,19 @@ class LocalConversation:
                 if not self.cancelled.is_set():
                     completed(clarification, status)
                 return
+            if read_only:
+                from .turn_resolution import assert_action_request, ResolutionError
+
+                for candidate in shortlist(text, self.specs):
+                    if candidate in READ_TOOLS:
+                        continue
+                    try:
+                        assert_action_request(text, candidate)
+                    except ResolutionError:
+                        continue
+                    raise ValueError(
+                        "This conversation supports read-only lookups; no device action was run."
+                    )
             from .conversation_agent import (
                 MAX_CALLS,
                 MAX_SECONDS,
@@ -945,8 +1117,48 @@ class LocalConversation:
 
             self.last_conversational = False
             deadline = time.monotonic() + MAX_SECONDS
-            candidates = shortlist(text, self.specs)
-            if household_request(text) and "get_home_activity" in self.specs:
+            candidates = shortlist(text, specs)
+            resolved = resolve_read_followup(text, active_task)
+            if resolved and resolved.get("requires_resolution"):
+                window = calendar_window(
+                    text,
+                    now=now,
+                    timezone=get_config()["notifications"]["agenda_timezone"],
+                    task=active_task,
+                )
+                resolved = {"name": resolved["name"], "arguments": window} if window else None
+            notification = notification_intent(text)
+            if notification and notification["name"] in specs:
+                resolved = notification
+            if resolved and resolved["name"] in specs:
+                result = {
+                    "text": "",
+                    "selection_s": 0,
+                    "tool_call": {"name": resolved["name"], "arguments": resolved["arguments"]},
+                }
+            elif candidates == ["show_calendar_agenda"] and re.match(
+                r"\s*(?:(?:can|could|would|will)\s+you\s+)?(?:please\s+)?(?:show|display)\b",
+                text,
+                re.I,
+            ):
+                zone = get_config()["notifications"]["agenda_timezone"]
+                requested = calendar_window(text, now=now, timezone=zone)
+                day = "today"
+                if requested:
+                    choices = {
+                        d: calendar_window(d, now=now, timezone=zone) for d in ("today", "tomorrow")
+                    }
+                    day = next((d for d, window in choices.items() if window == requested), None)
+                    if day is None:
+                        raise ValueError(
+                            "I can display today's or tomorrow's agenda. Which should I show?"
+                        )
+                result = {
+                    "text": "",
+                    "selection_s": 0,
+                    "tool_call": {"name": "show_calendar_agenda", "arguments": {"day": day}},
+                }
+            elif household_request(text) and "get_home_activity" in specs:
                 period = (
                     "yesterday"
                     if re.search(r"\byesterday\b", text, re.I)
@@ -970,7 +1182,33 @@ class LocalConversation:
                     "tool_call": {"name": "get_companion_locations", "arguments": {}},
                 }
             else:
-                result = self.agent_request(text, history=history)
+                result = agent_request(text, history=history)
+                # One bounded protocol repair, without trusting or replaying the
+                # malformed answer as evidence or changing the user's authority.
+                if not result.get("error"):
+                    routed = False
+                    raw = result.get("text", "").strip()
+                    try:
+                        parsed = parse_tool_call(raw)
+                        value = json.loads(raw) if raw.startswith("{") else None
+                        routed = (
+                            result.get("tool_call") is not None
+                            or parsed is not None
+                            or conversational(raw)
+                            or isinstance(value, dict)
+                            and set(value) == {"clarify"}
+                            and isinstance(value["clarify"], str)
+                            and bool(value["clarify"].strip())
+                        )
+                    except ValueError:
+                        pass
+                    if not routed and not self.cancelled.is_set() and time.monotonic() < deadline:
+                        result = agent_request(
+                            text,
+                            history=history,
+                            protocol_repair=True,
+                            timeout=max(1, min(45, deadline - time.monotonic())),
+                        )
             records, context, seen_calls = [], [], set()
             validation_repairs = 0
             for step in range(MAX_CALLS + 1):
@@ -1001,6 +1239,10 @@ class LocalConversation:
                 output = result["text"].strip()
                 call = result["tool_call"] if "tool_call" in result else parse_tool_call(output)
                 if call is not None:
+                    if read_only and call.get("name") not in specs:
+                        raise ValueError(
+                            "This conversation supports read-only lookups; no device action was run."
+                        )
                     if records and call.get("name") not in READ_TOOLS:
                         raise ValueError(
                             "I won't perform an additional action from a tool result. Please ask separately."
@@ -1014,10 +1256,11 @@ class LocalConversation:
                         break
                     seen_calls.add(signature)
                     if call.get("name") == "get_calendar_agenda":
-                        from .agenda import conversation_range
-
-                        window = conversation_range(
-                            text, timezone=get_config()["notifications"]["agenda_timezone"]
+                        window = calendar_window(
+                            text,
+                            now=self.clock() if getattr(self, "clock", None) else None,
+                            timezone=get_config()["notifications"]["agenda_timezone"],
+                            task=active_task,
                         )
                         if window:
                             call = {"name": "get_calendar_agenda", "arguments": window}
@@ -1028,6 +1271,29 @@ class LocalConversation:
                                 "Which date range should I check? Please give start and end dates."
                             )
                     resolved_device_id = ""
+                    if call.get("name") == "speak_on_echo":
+                        from .turn_resolution import resolve_named_speaker
+
+                        registry = getattr(self, "named_targets", None)
+                        if registry is None:
+                            if getattr(self, "executor", None):
+                                raise ValueError(
+                                    "Synthetic speech requires a fixture speaker registry"
+                                )
+                            from .echo import speakers
+
+                            names = list(speakers())
+                        else:
+                            names = registry.get("echo_speakers", [])
+                        call = {
+                            "name": "speak_on_echo",
+                            "arguments": {
+                                **call.get("arguments", {}),
+                                "speaker": resolve_named_speaker(
+                                    text, call.get("arguments", {}).get("speaker"), names
+                                ),
+                            },
+                        }
                     if call.get("name") == "control_spotify" and re.search(
                         r"\b(?:on|to) (?:my |the )?phone\b", text, re.I
                     ):
@@ -1059,24 +1325,24 @@ class LocalConversation:
                         name, args = validate_call(
                             text,
                             call,
-                            self.specs,
+                            specs,
                             self.policy,
                             "local-" + uuid.uuid4().hex,
                             resolved_device_id,
                         )
                     except ValueError:
                         tool = call.get("name")
-                        if tool not in READ_TOOLS or tool not in self.specs or validation_repairs:
+                        if tool not in READ_TOOLS or tool not in specs or validation_repairs:
                             raise
                         validation_repairs += 1
                         context.append(
                             {
                                 "tool": tool,
                                 "error": "No tool executed: invalid arguments. Use the exact schema; do not invent date/filter fields.",
-                                "parameters": self.specs[tool]["parameters"],
+                                "parameters": specs[tool]["parameters"],
                             }
                         )
-                        result = self.agent_request(
+                        result = agent_request(
                             text,
                             history=history,
                             evidence=context,
@@ -1088,6 +1354,13 @@ class LocalConversation:
                     notify("local_tool", {"tool": name, "selection_s": result["selection_s"]})
                     tool_started = time.monotonic()
                     action_started = name not in READ_TOOLS
+                    receipt = {
+                        "name": name,
+                        "arguments": copy.deepcopy(args),
+                        "success": False,
+                        "primary": not self.last_call_receipts,
+                    }
+                    self.last_call_receipts.append(receipt)
                     try:
                         actual = (
                             self.executor(name, args)
@@ -1101,6 +1374,17 @@ class LocalConversation:
                             "error": "unavailable",
                             "summary": "I couldn't read that source; its state is unknown.",
                         }
+                    receipt["success"] = (
+                        not (
+                            isinstance(actual, dict)
+                            and (
+                                actual.get("error")
+                                or actual.get("available") is False
+                                or actual.get("accepted") is False
+                            )
+                        )
+                        and not self.cancelled.is_set()
+                    )
                     notify(
                         "local_execution",
                         {"tool": name, "duration_s": round(time.monotonic() - tool_started, 3)},
@@ -1121,7 +1405,7 @@ class LocalConversation:
                     if len(records) >= MAX_CALLS or time.monotonic() >= deadline:
                         output = " ".join(r[3] for r in records)[:500]
                         break
-                    result = self.agent_request(
+                    result = agent_request(
                         text,
                         history=history,
                         evidence=context,
@@ -1141,6 +1425,8 @@ class LocalConversation:
                                             "text": text[:2000],
                                             "persona": current_character()["persona"],
                                             "tool_names": [],
+                                            "history": history,
+                                            "task_state": active_task,
                                         }
                                     )
                                     + "\n"
@@ -1181,6 +1467,12 @@ class LocalConversation:
             if dangling_promise(output):
                 output = "I couldn't finish checking that source. No lookup is pending."
             if voice_history and not self.cancelled.is_set():
+                self.agent_tasks = {
+                    character_key: update_task_state(
+                        active_task, user_text=text, calls=self.last_call_receipts, reply=output
+                    )
+                }
+                self.agent_task_times = {character_key: now}
                 self.agent_history = {
                     character_key: (
                         history
@@ -1194,10 +1486,14 @@ class LocalConversation:
             if not self.cancelled.is_set():
                 completed(output[:550], status)
         except ValueError as exc:
+            if voice_history:
+                self.agent_tasks = {character_key: {}}
             if not self.cancelled.is_set():
                 notify("assistant", {"text": str(exc), "phase": "final_answer"})
                 completed(str(exc)[:400], status)
         except Exception:
+            if voice_history:
+                self.agent_tasks = {character_key: {}}
             status = "failed"
             if not action_started and not self.cancelled.is_set():
                 output = (
@@ -1213,6 +1509,10 @@ class LocalConversation:
                 },
             )
         finally:
+            if voice_history and self.cancelled.is_set():
+                self.agent_tasks = {character_key: {}}
+                self.agent_task_times = {}
+                self.agent_history = {character_key: []}
             with self.lock:
                 self.busy = False
             notify(

@@ -94,6 +94,23 @@ class SurfaceTests(unittest.TestCase):
         s.tick()
         assert s.phase == "pi" and not s.authorized(token)
 
+    def test_receiver_request_diagnostics_include_additional_configured_casts(self):
+        s = Surfaces(Mock(), start=False)
+        s.settings = {
+            **s.settings,
+            "locations": [
+                *s.settings["locations"],
+                {"id": "extra", "adapter": "cast", "cast_host": "192.0.2.8"},
+            ],
+        }
+        with patch(
+            "okabebot.config.get_config", return_value={"spotify": {"cast_host": "192.0.2.7"}}
+        ):
+            s.observe("192.0.2.8", "/tv/")
+            s.observe("192.0.2.8", "/surfaces/state")
+            s.observe("192.0.2.9", "/surfaces/state")
+        self.assertEqual(s.tv_requests, {"page": 1, "state": 1})
+
     def test_failed_receiver_never_hides_pi(self):
         rpc = Mock()
         s = Surfaces(rpc, start=False)
@@ -154,12 +171,13 @@ class SurfaceTests(unittest.TestCase):
 
         cast = Mock(status=SimpleNamespace(app_id=APP_DASHCAST, session_id="owned"))
         surface = Surfaces(Mock(), cast_getter=lambda: cast, start=False)
+        cast.register_handler.side_effect = lambda _: setattr(cast.status, "session_id", "launched")
         with patch("pychromecast.controllers.BaseController.launch") as launch:
             surface.token = "scoped"
             surface._launch("http://example.invalid/tv/#scoped")
         cast.quit_app.assert_called_once_with(timeout=5)
         self.assertTrue(launch.call_args.kwargs["force_launch"])
-        self.assertEqual(surface.receiver_session, "owned")
+        self.assertEqual(surface.receiver_session, "launched")
 
     def test_return_never_quits_somebody_elses_app(self):
         from types import SimpleNamespace

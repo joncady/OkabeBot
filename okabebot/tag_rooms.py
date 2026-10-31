@@ -110,7 +110,9 @@ class TagRoomFollow:
                 "area": area,
             }
         target = targets[0]
-        if target.get("adapter") in ("browser", "mac", "alexa") and not target.get("available"):
+        if target.get("adapter") in ("browser", "mac", "alexa", "android") and not target.get(
+            "available"
+        ):
             return {"status": "room_screen_unavailable", "area": area}
         return {"status": "ready", "area": area, "location_id": target["id"]}
 

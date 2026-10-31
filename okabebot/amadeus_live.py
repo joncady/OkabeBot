@@ -19,7 +19,35 @@ from .amadeus_conversation import PreferenceConversation, FIELDS
 CONFIG = "conversation.live"
 STATE = "conversation.trial"
 BUDGET = "conversation.invitation_budget"
-FREQUENCY_DEFAULTS = {"max_per_day": 1, "min_gap_minutes": 120}
+FREQUENCY_DEFAULTS = {
+    "max_per_day": 1,
+    "min_gap_minutes": 120,
+    "topic_cooldown_hours": 24,
+    "chat_window_start": "00:00",
+    "chat_window_end": "00:00",
+}
+
+
+STOP_PHRASES = {
+    "stop",
+    "not now",
+    "skip",
+    "leave me alone",
+    "stop asking",
+    "don't ask again",
+    "thanks, that's all",
+    "that's all",
+    "i'm done",
+    "i am done",
+    "no more for now",
+}
+
+
+def is_stop(text):
+    value = " ".join(text.strip().casefold().replace("’", "'").split()).rstrip(".!?")
+    return value in STOP_PHRASES or bool(
+        re.fullmatch(r"(?:thanks[, ]+)?that(?:'s| is) all(?:[, ]+(?:thanks|thank you))?", value)
+    )
 
 
 def confirmation_answer(text):
@@ -35,7 +63,7 @@ def confirmation_answer(text):
         r"\b(but|except|instead|actually|rather|maybe|perhaps|unless|wait|however|only|if|not|never|don't|do not)\b",
         value,
     ):
-        if value.rstrip(".! ") in ("don't remember that", "do not remember that"):
+        if re.fullmatch(r"(?:no[, ]+)?(?:don't|do not) remember that[.! ]*", value):
             return False
         return None
     if re.match(r"^(?:yes|yeah|yep|sure|absolutely|please do|remember that)\b", value):
@@ -81,7 +109,17 @@ class ProactiveConversation:
                 self.clear_since = None
             return value
 
-    def configure(self, *, enabled, destination, max_per_day=None, min_gap_minutes=None):
+    def configure(
+        self,
+        *,
+        enabled,
+        destination,
+        max_per_day=None,
+        min_gap_minutes=None,
+        topic_cooldown_hours=None,
+        chat_window_start=None,
+        chat_window_end=None,
+    ):
         if (
             type(enabled) is not bool
             or not isinstance(destination, str)
@@ -91,9 +129,16 @@ class ProactiveConversation:
         for key, value, low, high in (
             ("max_per_day", max_per_day, 1, 6),
             ("min_gap_minutes", min_gap_minutes, 30, 720),
+            ("topic_cooldown_hours", topic_cooldown_hours, 0, 168),
         ):
             if value is not None and (type(value) is not int or not low <= value <= high):
                 raise ValueError("Choose a bounded proactive frequency")
+        for value in (chat_window_start, chat_window_end):
+            if value is not None and (
+                not isinstance(value, str)
+                or not re.fullmatch(r"(?:[01][0-9]|2[0-3]):[0-5][0-9]", value)
+            ):
+                raise ValueError("Use HH:MM chat-window times")
         with self.lock, self.store() as store, store.db:
             store.db.execute("BEGIN IMMEDIATE")
             setup = preference(store, SYSTEM, KEY, {})
@@ -112,6 +157,12 @@ class ProactiveConversation:
                 settings["max_per_day"] = max_per_day
             if min_gap_minutes is not None:
                 settings["min_gap_minutes"] = min_gap_minutes
+            if topic_cooldown_hours is not None:
+                settings["topic_cooldown_hours"] = topic_cooldown_hours
+            if chat_window_start is not None:
+                settings["chat_window_start"] = chat_window_start
+            if chat_window_end is not None:
+                settings["chat_window_end"] = chat_window_end
             state = preference(store, profile, self.state_key, {})
             day = self._day(setup)
             budget = self._budget(store, profile, state, day)
@@ -139,6 +190,15 @@ class ProactiveConversation:
                 records,
             )
             return settings
+
+    def chat_window_allowed(self, setup, cfg):
+        local = datetime.fromtimestamp(
+            self.clock(), ZoneInfo(setup.get("timezone", "UTC"))
+        ).strftime("%H:%M")
+        start, end = cfg.get("chat_window_start", "00:00"), cfg.get("chat_window_end", "00:00")
+        return start == end or (
+            start <= local < end if start < end else local >= start or local < end
+        )
 
     def _day(self, setup):
         return (
@@ -403,6 +463,16 @@ class ProactiveConversation:
         titles = [chore_label(item) for item in items[:3]]
         return "these chores are ready when you have a moment: " + ", ".join(titles)
 
+    def explanation(self):
+        from .amadeus_suggestions import Suggestions
+
+        return Suggestions(self.folder, self.clock).explanation()
+
+    def suggestion_feedback(self, data):
+        from .amadeus_suggestions import Suggestions
+
+        return Suggestions(self.folder, self.clock).feedback(data)
+
     def opening(self, offer, composer):
         """Generate framing only. Chore titles remain local, untrusted data slots."""
         if offer.get("kind") == "health":
@@ -439,11 +509,58 @@ class ProactiveConversation:
         if offer.get("kind") != "chores":
             with self.store() as s:
                 setup = preference(s, SYSTEM, KEY, {})
-                prefs = preference(s, setup.get("profile", SYSTEM), "context.preferences", {})
-            return composer(
-                "Start one optional conversation about an interest or hobby. I can answer with the button or skip it.",
-                {"preferences": prefs},
+                from .amadeus_conversation import opening_preferences
+
+                profile = setup.get("profile", SYSTEM)
+                cfg = {**FREQUENCY_DEFAULTS, **preference(s, profile, CONFIG, {})}
+                prefs, excluded = opening_preferences(
+                    s, profile, now=self.clock(), cooldown_hours=cfg["topic_cooldown_hours"]
+                )
+            if excluded and not prefs:
+                return {
+                    "reply": "",
+                    "memory": None,
+                }  # No useful fresh topic; don't spend an invitation.
+            from .amadeus_conversation import FIELDS
+
+            # A single known older field gives the opener a coherent topic and a
+            # truthful explanation; direct replies retain the full preference store.
+            topic = next(
+                (
+                    f
+                    for f in (
+                        "hobbies",
+                        "interests",
+                        "genres",
+                        "liked_titles",
+                        "food_drink",
+                        "personal_goals",
+                    )
+                    if (prefs.get(FIELDS[f], {}) if FIELDS[f] else prefs).get(f)
+                ),
+                None,
             )
+            selected = (
+                (
+                    {FIELDS[topic]: {topic: prefs[FIELDS[topic]][topic]}}
+                    if FIELDS[topic]
+                    else {topic: prefs[topic]}
+                )
+                if topic
+                else prefs
+            )
+            result = composer(
+                "Start one optional conversation about an interest or hobby. I can answer with the button or skip it. "
+                "Ask one specific, easy conversational question about an older known preference, with an optional brief interesting angle. "
+                "Do not assign a project, task, challenge or self-improvement activity. Do not ask permission to ask a question. "
+                "Do not presume spare time, mood, recent activity or that a quiet device means the user is available. "
+                "Do not ask them to restate an already known preference. "
+                "Do not revisit recent or declined categories: "
+                + (", ".join(excluded) or "none")
+                + ".",
+                {"preferences": selected},
+            )
+            return {**result, "topic_field": topic}
         fragment = self.chore_text(offer.get("chores", []))
         template = "A little household note: {chores}. You can scan the tag when done, or leave it for later."
         try:
@@ -528,8 +645,20 @@ class ProactiveConversation:
                 and preference(s, profile, CONFIG, {}) == cfg
             )
 
-    def delivered(self, offer, *, success):
+    def delivered(self, offer, *, success, opening=None):
         """Acknowledge only actual speech; failed attempts retain future reminders."""
+        if success:
+            from .amadeus_suggestions import Suggestions
+
+            with self.store() as store:
+                setup = preference(store, SYSTEM, KEY, {})
+                trial = preference(store, setup.get("profile", SYSTEM), self.state_key, {})
+            if trial.get("consumed") is True and trial.get("claimed_at"):
+                Suggestions(self.folder, self.clock).record(
+                    offer.get("kind") or "interest",
+                    claimed_at=trial["claimed_at"],
+                    topic=(opening or {}).get("topic_field"),
+                )
         if offer.get("kind") == "health" and success:
             from .amadeus_coaching import Coaching
 
@@ -691,6 +820,10 @@ class ProactiveConversation:
                     chore_offer or household_offer or health_offer or door_ready or checkin_offer
                 )
                 or destination != cfg.get("destination")
+                or (
+                    not (chore_offer or household_offer or health_offer)
+                    and not self.chat_window_allowed(setup, cfg)
+                )
                 or busy
                 or calendar_busy
                 or focus
@@ -715,14 +848,21 @@ class ProactiveConversation:
                 self.clear_since = now
             if now - self.clear_since < 120:
                 return None
+            feedback_pause = (
+                preference(s, profile, "conversation.feedback_pause", {}).get("until", 0) > now
+            )
             return (
                 chore_offer
                 or household_offer
                 or health_offer
                 or (
-                    dict(destination=cfg["destination"], day=state["day"])
-                    if door_ready
-                    else checkin_offer
+                    None
+                    if feedback_pause
+                    else (
+                        dict(destination=cfg["destination"], day=state["day"])
+                        if door_ready
+                        else checkin_offer
+                    )
                 )
             )
 
@@ -739,6 +879,14 @@ class ProactiveConversation:
             if not self.permitted(setup, cfg) or not self._budget_allowed(cfg, budget):
                 return False
             kind = offer.get("kind")
+            if (
+                kind in (None, "checkin")
+                and preference(store, profile, "conversation.feedback_pause", {}).get("until", 0)
+                > self.clock()
+            ):
+                return False
+            if kind in (None, "checkin") and not self.chat_window_allowed(setup, cfg):
+                return False
             if kind == "health":
                 if self._health_offer(store, profile, cfg, state, day) != offer:
                     return False
@@ -773,6 +921,7 @@ class ProactiveConversation:
                 pending=None,
                 claimed_at=now,
                 invitation_kind=kind or "interest",
+                task_state={},
             )
             budget.update(day=day, count=budget["count"] + 1, last_attempt_at=now)
             records = [
@@ -799,9 +948,14 @@ class ProactiveConversation:
                 or state.get("session_until", 0) <= self.clock()
                 or state.get("turns", 0) >= self.turn_limit
             ):
-                if state.get("pending") or state.get("last_reply"):
+                if state.get("pending") or state.get("last_reply") or state.get("task_state"):
                     state.update(
-                        pending=None, last_reply="", session_until=0, history=[], last_tools=[]
+                        pending=None,
+                        last_reply="",
+                        session_until=0,
+                        history=[],
+                        last_tools=[],
+                        task_state={},
                     )
                     s.remember(p, self.state_key, state)
                 return None
@@ -809,7 +963,12 @@ class ProactiveConversation:
 
             if state.get("invitation_kind") == "health" and not Health(s).session_allowed(p):
                 state.update(
-                    session_until=0, pending=None, last_reply="", history=[], last_tools=[]
+                    session_until=0,
+                    pending=None,
+                    last_reply="",
+                    history=[],
+                    last_tools=[],
+                    task_state={},
                 )
                 s.remember(p, self.state_key, state)
                 return None
@@ -836,7 +995,14 @@ class ProactiveConversation:
             setup = preference(s, SYSTEM, KEY, {})
             p = setup.get("profile", SYSTEM)
             state = preference(s, p, self.state_key, {})
-            state.update(session_until=0, pending=None, last_reply="", history=[], last_tools=[])
+            state.update(
+                session_until=0,
+                pending=None,
+                last_reply="",
+                history=[],
+                last_tools=[],
+                task_state={},
+            )
             s.remember(p, self.state_key, state)
 
     def resume_reply(self):
@@ -852,7 +1018,13 @@ class ProactiveConversation:
                 or self.clock() >= state.get("expires_at", 0)
             ):
                 raise ValueError("No recent invitation is available to resume")
-            state.update(session_until=self.clock() + 600, turns=0, pending=None, last_reply="")
+            state.update(
+                session_until=self.clock() + 600,
+                turns=0,
+                pending=None,
+                last_reply="",
+                task_state={},
+            )
             s.remember(p, self.state_key, state)
         return {
             "ready_for_reply": True,
@@ -860,21 +1032,69 @@ class ProactiveConversation:
             "reply_method": "push_to_talk",
         }
 
+    def _acknowledge_memory_turn(self, profile, text, reply):
+        with self.store() as s:
+            state = preference(s, profile, self.state_key, {})
+            history = state.get("history", []) + [
+                {"role": "user", "content": text.strip()},
+                {"role": "assistant", "content": reply},
+            ]
+            state.update(history=history[-8:], last_reply=reply, turns=state.get("turns", 0) + 1)
+            while state["history"] and len(json.dumps(state).encode()) > 3800:
+                state["history"] = state["history"][2:]
+            s.remember(profile, self.state_key, state)
+
+    def respond(self, text, generate, *, tool_turn=None, specs=None):
+        """Keep proactive continuity without reopening an expired/private session."""
+        expected = self.context()
+        if expected is None:
+            return None
+        if tool_turn is None:
+            return self.answer(text, generate)
+        from .amadeus_text import TextConversation
+
+        class Closed(Exception):
+            pass
+
+        def check():
+            current = self.context()
+            if current is None or any(
+                current.get(k) != expected.get(k)
+                for k in ("profile", "claimed_at", "session_until", "invitation_kind")
+            ):
+                raise Closed()
+
+        def guarded_generate(*a, **kw):
+            check()
+            result = generate(*a, **kw)
+            check()
+            return result
+
+        def guarded_tools(*a, **kw):
+            check()
+            result = tool_turn(*a, **kw)
+            check()
+            return result
+
+        chat = TextConversation(self.folder, state_key=self.state_key, clock=self.clock)
+        chat.turn_limit = self.turn_limit
+        try:
+            check()
+            return chat.send(
+                text, guarded_generate, tool_turn=guarded_tools, specs=specs, resume_only=True
+            )["reply"]
+        except Closed:
+            self.end()
+            return None
+
     def answer(self, text, generate):
         """User-initiated reply. Model proposes; only explicit confirmation writes taste."""
         with self.lock:
             context = self.context()
             if not context:
                 return None
-            lower = text.strip().lower().rstrip(".!?")
-            if lower in (
-                "stop",
-                "not now",
-                "skip",
-                "leave me alone",
-                "stop asking",
-                "don't ask again",
-            ):
+            lower = text.strip().lower().replace("’", "'").rstrip(".!?")
+            if is_stop(text):
                 self.end()
                 if lower in ("stop asking", "don't ask again"):
                     with self.store() as s:
@@ -894,11 +1114,23 @@ class ProactiveConversation:
                         confirmed=True,
                         operation="append",
                     )
-                self.end()
-                return "Remembered. You can change or forget that in Amadeus setup."
+                    state = preference(s, context["profile"], self.state_key, {})
+                    state.update(
+                        pending=None,
+                        memory_status={"field": pending["field"], "provenance": "user_confirmed"},
+                    )
+                    s.remember(context["profile"], self.state_key, state)
+                reply = "Got it. I'll keep that in mind."
+                self._acknowledge_memory_turn(context["profile"], text, reply)
+                return reply
             if pending and decision is False:
-                self.end()
-                return "No problem. I won't save it as a preference."
+                with self.store() as s:
+                    state = preference(s, context["profile"], self.state_key, {})
+                    state.update(pending=None, memory_status=None)
+                    s.remember(context["profile"], self.state_key, state)
+                reply = "No problem. I won't save that as a preference."
+                self._acknowledge_memory_turn(context["profile"], text, reply)
+                return reply
             result = generate(text, context)
             if context.get("invitation_kind") == "health" and not self.context():
                 return None  # A room/privacy change during generation discards the reply.
@@ -994,5 +1226,12 @@ class ProactiveConversation:
                     last_reply=reply,
                     memory_status=memory_status,
                 )
+                history = state.get("history", []) + [
+                    {"role": "user", "content": text.strip()},
+                    {"role": "assistant", "content": reply},
+                ]
+                state["history"] = history[-8:]
+                while state["history"] and len(json.dumps(state).encode()) > 3800:
+                    state["history"] = state["history"][2:]
                 s.remember(context["profile"], self.state_key, state)
             return reply

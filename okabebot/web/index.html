@@ -225,6 +225,21 @@
           <label>This dashboard is at <select id="amadeus-chat-location"><option value="">This browser (automatic)</option></select></label>
           <p id="amadeus-chat-location-status" class="muted"></p>
 </details>
+          <details class="subpanel" id="prompt-treatment-panel"><summary>Prompt treatments · conversation experiment</summary>
+            <p class="muted">Applies only to this Dev text lab. Experimental treatments use read-only tools and do not save new preferences. Voice, mobile and proactive conversations keep their current prompts. Applying a treatment starts a fresh chat.</p>
+            <form id="prompt-treatment-form">
+              <label>Treatment<select id="prompt-treatment-select"></select></label>
+              <button type="submit">Use selected treatment</button>
+              <button type="button" id="prompt-treatment-default">Restore production default</button>
+              <details><summary>Edit prompt text</summary>
+                <p class="muted">Output formats, read-only limits, consent and validation remain enforced by the application. Blank fields are not accepted. No worker restart is needed.</p>
+                <label>Conversation &amp; preference response<textarea id="prompt-treatment-preference" rows="8" maxlength="10000" spellcheck="false"></textarea></label>
+                <label>Reply after tools<textarea id="prompt-treatment-continuation" rows="6" maxlength="10000" spellcheck="false"></textarea></label>
+                <details><summary>Advanced · tool routing</summary><label>Tool selection<textarea id="prompt-treatment-routing" rows="10" maxlength="10000" spellcheck="false"></textarea></label></details>
+                <button type="button" id="prompt-treatment-save">Save edits as custom &amp; use</button>
+              </details>
+            </form><p id="prompt-treatment-status" role="status"></p>
+          </details>
           <div id="amadeus-text-messages" role="log" aria-live="polite"></div>
           <form id="amadeus-text-form">
             <label>Message <textarea id="amadeus-text-input" maxlength="1000" rows="3" required placeholder="Tell me about yourself, or share something you enjoy…"></textarea></label>

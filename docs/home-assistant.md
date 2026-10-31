@@ -10,6 +10,15 @@ The default is accessible only on the Mac. For a new installation, `OKABEBOT_HA_
 
 Docker's `unless-stopped` restart policy restarts the container when Docker starts. It does not itself start Docker after a Mac reboot. Stop cleanly with `docker stop -t 60 okabebot-home-assistant`. Back up `.local/home-assistant` while stopped before migrating to the Dell. Do not copy a live SQLite database.
 
+The start script creates or rejoins the private Docker network `okabebot-home`
+(`OKABEBOT_HA_NETWORK` can override the deployment name). HA and the MQTT broker
+must share this network for container-name DNS to work. Recreating HA on Docker's
+default bridge alone breaks broker lookup even when both containers are running.
+The script repairs missing membership for an existing HA container without
+recreating it or changing its published ports. Broker setup must use the same
+network. The installed network link was restored after verifying a DNS failure;
+MQTT reconnected and satellite entities became available again.
+
 ## Architecture and hosting
 
 Use `Tuya / Ring → Home Assistant → OkabeBot notifications` for device events. Start with the native [Alexa Devices setup](alexa.md) for Echo announcements and timer cards. An AWS-hosted skill is a separate path for exposing selected Home Assistant devices to Alexa. Linking a skill does not import all devices or announcements from other Alexa skills.
@@ -243,3 +252,27 @@ the main room player rather than independent playback targets. Adding HA Sonos
 does not change OkabeBot's existing audio route, group speakers, play a test,
 enable Amadeus observation or adjust volume. Verify readiness separately from
 physical playback. See [HA Sonos documentation](https://www.home-assistant.io/integrations/sonos/).
+
+
+## Private remote access with Tailscale Serve
+
+The installed Mac can serve Home Assistant separately from the companion origin:
+
+```sh
+tailscale serve --bg --https=8443 http://127.0.0.1:8123
+```
+
+Use `https://YOUR_MAC.YOUR_TAILNET.ts.net:8443/` in the owner browser or HA
+Companion external URL while connected to the same tailnet. Keep the existing
+LAN address as the internal URL. This is private Serve, not public Funnel, and
+HA sign-in remains required. Preserve any existing Serve listener on 443.
+
+For HA Container, enable `use_x_forwarded_for` in its active HTTP configuration and put only the
+actual Docker proxy gateway observed in HA's forwarded-header error in
+`trusted_proxies`; do not trust all networks. Recent HA versions migrate HTTP
+settings out of YAML: use the supported `http/config` and `http/config/configure`
+WebSocket API, verify access after its managed restart, then explicitly confirm
+with `http/config/promote`. Older YAML-based installations need configuration
+validation and restart after editing. The gateway value is installation-specific. Verify the
+frontend, auth endpoint and WebSocket connection through the private origin.
+Disable only this listener with `tailscale serve --https=8443 off` if needed.

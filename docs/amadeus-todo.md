@@ -283,11 +283,12 @@ before treating following as dependable unattended person localization.
 - Implemented: bounded selected-feed connection checks, Trakt device authorization
   and persisted rotating refresh credentials. Provider account consent, selected
   entities and real-account acceptance remain owner setup checkpoints (#16, #17).
-- Physical checks outstanding: automatic ultrasonic approach wave and new-screen
-  touch accuracy. Existing sensor API health does not establish those behaviors.
-- Source setup outstanding: Google Tasks OAuth,
-  selected ThinQ entities and optional Trakt/Mealie account configuration. Do not
-  enable unrelated feeds or infer completion from available adapter code.
+- Physical capability accepted: ultrasonic approach wave and new-screen touch.
+  Future hardware/OS changes require renewed acceptance; API health alone is insufficient.
+- Optional source setup remains owner-driven: Google Tasks/Mealie and additional
+  selected provider entities. Existing account connections do not authorize unrelated
+  feeds. Trakt authorization and interactive source selection are implemented;
+  account-specific choices and acceptance stay private.
 
 
 ## Collection/recording consolidation checkpoint
@@ -302,3 +303,25 @@ Remaining consolidation and raw recording/log budgets: GitHub #18. Provider-spec
 pagination/custom Trakt list coverage also remains part of #17. These are not
 claims of complete cross-provider history, automatic identity fusion or new capture
 permissions. Validation uses invented fixtures; private outputs are not public evidence.
+
+
+## Companion storage reliability follow-up
+
+- [ ] Preserve a full offline card backup, then validate a spare-card / supported
+  OS image as a controlled test for legacy MMC storage-path stalls. Keep the old
+  card as rollback; verify Voice Bonnet speaker/microphone/button, HDMI resolution,
+  touch, USB room sensing and SSH recovery before replacing the active setup.
+- [ ] Profile steady-state rendering and background services separately from boot
+  load; establish resource headroom without attributing every freeze to CPU use.
+
+## Reliability checkpoint follow-through
+
+- [x] Source: selected HA presence reports and bounded departure-query tool.
+- [x] Source: exact-session Cast restart reconciliation (advances #90).
+- [x] Source: private configuration collector and rollback-first recovery guide.
+- [ ] Supervised deployment/restart under owned Cast, then unrelated-app protection
+  acceptance before closing #90. Old orphan sessions without receipts need review.
+- [ ] Full offline card image, spare-card OS/audio compatibility and soak remain
+  physical checkpoints; preparation does not close the storage reliability work.
+- [ ] Continue separate conversational candidate evaluation; do not promote a broad
+  routing/model change based on a focused diagnostic run.

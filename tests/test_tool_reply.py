@@ -9,6 +9,68 @@ from okabebot.tool_reply import facts, acceptable
 
 
 class ReplyTests(unittest.TestCase):
+    def test_missing_home_sensor_explains_selected_coverage_without_inventing_value(self):
+        from okabebot.tool_reply import preserve_scope
+
+        result = {"queried_source": "home_devices", "items": []}
+        text = preserve_scope("It is 72 degrees.", "get_context_feed", result)
+        self.assertIn("sensor", text)
+        self.assertIn("selected", text)
+        self.assertNotIn("72", text)
+        stale = {"queried_source": "home_devices", "items": [{"fresh": False}]}
+        text = preserve_scope("It is 72 degrees now.", "get_context_feed", stale)
+        self.assertIn("older", text)
+        self.assertNotIn("72", text)
+
+    def test_calendar_scope_label_cannot_replace_empty_or_populated_answer(self):
+        from okabebot.local_conversation import acknowledgement
+
+        empty = {
+            "available": True,
+            "start_date": "2032-06-08",
+            "end_date": "2032-06-09",
+            "events": [],
+        }
+        for text in (
+            "Configured calendar feed.",
+            "Your connected calendar.",
+            "Calendar view for today.",
+            "Configured calendar feed, 2032-06-08 to 2032-06-09 (end exclusive). No events in this view; other calendars are not included.",
+        ):
+            reply, used = self.adapter(text).render_tool_reply(
+                "Calendar today?",
+                "get_calendar_agenda",
+                empty,
+                acknowledgement("get_calendar_agenda", empty),
+            )
+            self.assertFalse(used)
+            self.assertIn("don't see any events", reply)
+            self.assertNotIn("exclusive", reply)
+            self.assertNotIn("Configured", reply)
+        natural = "I don't see any events in the connected calendar today."
+        self.assertTrue(acceptable(natural, "get_calendar_agenda", empty, ""))
+        populated = {**empty, "events": [{"title": "Imaginary planning session", "start": "10 AM"}]}
+        self.assertFalse(
+            acceptable(
+                "Your connected calendar is available.", "get_calendar_agenda", populated, ""
+            )
+        )
+        self.assertTrue(
+            acceptable(
+                "Imaginary planning session is at 10 AM in the connected calendar.",
+                "get_calendar_agenda",
+                populated,
+                "10 AM",
+            )
+        )
+        self.assertIn(
+            "Imaginary planning session", acknowledgement("get_calendar_agenda", populated)
+        )
+        self.assertNotIn(
+            "don't see any events",
+            acknowledgement("get_calendar_agenda", {"available": False, "events": []}),
+        )
+
     def adapter(self, result):
         obj = LocalConversation.__new__(LocalConversation)
         obj.process = Mock()

@@ -52,3 +52,35 @@ class AudioBufferTests(unittest.TestCase):
         self.assertEqual(pcm, b"".join(packets))
         self.assertTrue(all(len(p) <= 48000 for p in packets))
         self.assertEqual(48000, len(packets[0]))
+
+    def test_short_first_packet_does_not_wait_for_next_generation_segment(self):
+        release = threading.Event()
+        stopped = threading.Event()
+
+        def source():
+            try:
+                yield b"ab" * 4
+                release.wait(2)
+                yield b"cd" * 12
+            finally:
+                stopped.set()
+
+        stream = buffered_chunks(source(), 16, first_chunk_bytes=4)
+        try:
+            self.assertEqual(next(stream), b"abab")
+            self.assertFalse(release.is_set())
+            release.set()
+            self.assertEqual(b"abab" + b"cd" * 12, b"".join(stream))
+            self.assertTrue(stopped.wait(1))
+        finally:
+            release.set()
+            stream.close()
+
+    def test_first_packet_policy_preserves_bytes_and_rejects_invalid_sizes(self):
+        pcm = b"ab" * 40
+        packets = list(buffered_chunks(iter([pcm]), 32, first_chunk_bytes=8))
+        self.assertEqual([8, 32, 32, 8], [len(p) for p in packets])
+        self.assertEqual(pcm, b"".join(packets))
+        for size in (0, 1, 3, 34, True):
+            with self.subTest(size=size), self.assertRaises(ValueError):
+                list(buffered_chunks(iter([pcm]), 32, first_chunk_bytes=size))

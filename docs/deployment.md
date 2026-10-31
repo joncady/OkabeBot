@@ -7,6 +7,45 @@ shows the connections. Keep both documents in sync when roles or hosting change.
 Private IPs, credentials, account IDs and token-bearing URLs belong in local
 configuration, not this inventory.
 
+## Personal Android and private HTTPS pilot (2026-10-30)
+
+The separate Firebase project has an Android registration and a privately signed
+pilot APK uploaded to App Distribution with only the owner invited. It remains on
+the no-cost plan. A dedicated sender uses a project custom role containing only
+`cloudmessaging.messages.create`; its service-account key is stored privately at
+`state_dir()/mobile/firebase-service-account.local.json`, mode 0600. The installed
+Mac environment includes the optional Firebase Admin SDK. An API dry-run using an
+invented invalid device token reached device-token validation. A later generic
+per-device push request was accepted by FCM; display on the physical phone remains
+a separate acceptance check.
+
+Tailscale is connected on the Mac with private HTTPS Serve enabled and public
+Funnel disabled. The new `dev.okabebot.mobile-proxy` user LaunchAgent runs the
+installed `okabebot.mobile_proxy` on **127.0.0.1:8772**, forwarding an explicit
+mobile/surface route allowlist to **127.0.0.1:8768**. Live HTTPS checks returned the
+companion page and denied the owner state route and unauthenticated mobile inbox.
+A separate private HTTPS Serve listener on **8443** now forwards to HA on
+**127.0.0.1:8123**. HA trusts only the observed Docker host gateway for forwarded
+headers; its ordinary account authentication remains required. Neither listener
+exposes arbitrary controller routes. The hostname belongs in private app/service configuration, not this file.
+
+The controller's Android registration, isolated preference/context sessions,
+bounded private voice replies, private mobile SQLite inbox and optional FCM worker
+are installed. An idle supervised controller restart preserved the warm voice
+worker, source choices and speaker settings; core/database, model, speech, Pi and
+configured HA readiness were checked afterward. No speech was played during this
+installation. The character was returned home before restart to avoid leaving an
+orphaned Cast page. Generic pushes do not transfer character ownership.
+
+Build, lint, synthetic authorization/retention regressions and fresh emulator
+startup passed. The Android endpoint is installed, paired and enrolled for
+notifications, with a dedicated Pocket Nook reservation. The updated APK includes
+the native audio-routing permission required by WebView's microphone path.
+Physical microphone and native buffered reply audio have been accepted. Native PiP
+and foreground/background notification acceptance remain separate checks. Buffered Android
+voice, manual APK updates and the lack of offline capture/share ingestion remain
+pilot limitations. See [Android setup and authority boundaries](android.md).
+
 ## Amadeus setup boundary (2026-10-27)
 
 [Amadeus](amadeus.md) now provides an owner-only setup page at `/amadeus/` on the
@@ -1933,3 +1972,343 @@ binding remains fail-closed when its feed is disabled or HA is disconnected. The
 MCP health retrieval schema and reply projection now match the registered feed.
 Hosting, ports, device state and installed configuration are unchanged by this
 source review fix; no live deployment or physical acceptance is claimed here.
+
+### Morning digest and weather presentation refresh
+
+The Mac controller's morning adapter can read fresh selected task, transit and
+meal-plan context through the existing private stable-item store. Owner section
+settings use `morning.digest`; no new collector, network route, port, credential
+or HA transport is added. One optional spoken highlight is revalidated before the
+existing destination audio route. Weather sprites are authored canvas pixels in
+the existing TV lab renderer, with no downloaded assets or external requests.
+README topology nodes/edges remain unchanged. Source checks and synthetic visual
+preview are distinct from installed-state and physical wake/audio acceptance.
+
+Installed Mac owner-API checks confirmed the new report-section controls,
+consented-context card selection and served weather-sprite asset. Controller,
+speech, Pi links and existing feeds recovered after the idle update. No report
+was presented or spoken as part of these checks; physical wake, rendering and
+listening acceptance remain separate.
+
+TV launch hardening in source waits for the warmup-page send acknowledgment
+before proceeding to dashboard handoff. An already-live matching morning
+receiver can bypass redundant wake/reload preparation. Request counters now
+include explicitly configured secondary Cast hosts rather than only the primary
+media receiver. The diagnostic counter and launch/replay hardening are installed on the Mac
+controller. Owner API checks confirmed service recovery and a fresh destination
+connection; physical output acceptance is separate. No new ports, devices or ownership routes are added.
+Controller-restart reconciliation remains tracked separately.
+
+### Android read-only conversation tools
+
+Android text and voice use the existing local conversation worker with a per-turn
+read-only tool menu and an execution allowlist. They can read connected household
+context without gaining owner authority or device-control operations. The private
+HTTPS proxy, pairing, consent, storage and Firebase routes are unchanged. Physical
+phone audio acceptance has been confirmed; read-tool deployment verification is
+recorded separately from source tests. Installed controller startup, speech readiness
+and existing feed connections were checked after installation. Source regressions
+cover the mobile read-only callback and action rejection; a phone lookup remains
+a separate user acceptance check.
+
+Android lifecycle source preserves the paired WebView across native tab changes
+and ordinary app backgrounding, with screen-off/close release and a bounded
+heartbeat for an already-arrived destination. No new hosting, port or permission
+is introduced. Private reply playback is isolated from unrelated audio-hub polling
+failures. Android physical lifecycle acceptance remains separate from regressions.
+
+Private mobile synthesis now participates in the existing shared speech lock used
+by Mac supervision. A busy local voice worker is not health-restarted during that
+generation. Hosting, audio targets, permissions and model selection are unchanged.
+
+Android native reply playback is a client capability, separate from synthesis
+on the Mac. Generated WAVs use the phone media output and saved companion gain,
+with explicit completion/failure events and private-cache cleanup. No server
+routing, hosting, source consent or device-volume default changes are required.
+
+Mobile voice diagnostics expose bounded in-memory stage durations only; this does
+not add a history store, cloud telemetry, new port or integration route. Server
+durations exclude phone capture, network roundtrip and native playback startup.
+
+Private HA remote access verification confirmed HTTPS frontend and auth responses,
+authenticated WebSocket access, and explicit promotion of the managed HTTP proxy
+configuration after restart. Existing private Serve 443 remains configured; public
+Funnel is disabled. Remote phone acceptance remains a user check.
+
+
+## Shared streaming audio checkpoint
+
+Source changes unify mono 24 kHz PCM delivery for native Android and the existing
+Mac/browser/Pi streaming paths. Android opts into incremental mobile replies only
+when its APK advertises the native PCM capability; older APKs retain the working
+WAV path. The shared relay adds bounded backpressure, session/consent/destination
+cancellation, sequence validation and playback-drain acknowledgment. A short first
+packet reduces avoidable producer buffering for Pi reply streams. Prepared Pi
+announcements, Beam overlays and Alexa conversational responses keep their current
+buffered adapters; no model/reference/volume changes are part of this checkpoint.
+
+TV's conservative full-buffer playback remains the default. Explicit startup
+metadata can opt a stream into incremental delivery, but no TV sound-quality
+acceptance is inferred from browser or emulator regressions. The shared streaming
+contract and platform exceptions are in [streaming audio](streaming-audio.md).
+
+Automatic source checks include Python and web regressions, signed Android build,
+unit tests, native silent-PCM emulator drain tests and Python release packaging.
+Installed state and physical acceptance are recorded below after installation;
+source changes alone do not establish platform playback quality.
+
+Installed checkpoint verification: the Mac package was installed while idle and
+only the controller child restarted. Core startup, speech readiness and the
+existing device/feed connections passed checks afterward. A synthetic isolated
+receiver exercised the installed incremental relay against the local voice worker
+and acknowledged ordered delivery; no speaker or household destination was used.
+Android 0.1.5 build 7 was privately distributed through the existing Firebase
+project. Phone installation/listening and refreshed Mac/Pi playback remain manual
+acceptance checks. The model worker and private reference manifest were unchanged.
+
+
+Proactive opener source now filters newly learned preference fields using private
+per-field recency metadata and a dashboard-editable cooldown. Legacy last-memory
+metadata supplies a conservative fallback. This changes opener-context selection,
+not collection consent, direct recall, destinations, ports, or health/chore gates.
+Source checks cover cooldown expiry/disable, preserved direct recall, skipped
+empty-context openers, and metadata deletion. Installed acceptance is recorded
+separately from these synthetic checks.
+
+The opener freshness change is installed on the Mac. Core startup, speech readiness
+and the private conversation API confirmed the default cooldown after installation.
+No unsolicited speech or physical-device test was initiated for this verification.
+
+## Proactive conversation feedback checkpoint
+
+Source adds a bounded private delivered-suggestion journal, paired Android
+explanation/feedback routes and local-time optional chat windows. Grounded
+watchlist recommendations reuse the existing Trakt adapter and permitted cached
+history. These are controller/model and paired-client responsibilities; no new
+host, port, provider credential or collection consent is introduced. The shared
+model worker validates dynamic tool schemas per request so read-only turns cannot
+poison later tool definitions. Private synthetic persona exercises use isolated
+state and fake read providers; they do not exercise household devices or prove
+physical speech/timing acceptance. Installation is verified separately below.
+
+Installed verification for this checkpoint: the idle Mac controller was restarted
+with the updated package and paired proxy. Core startup, speech readiness, Pi
+voice/display connectivity and configured feed connections passed read-only checks.
+Android 0.1.6 build 8 was privately distributed through the existing Firebase
+project. New explanation/feedback UI and recommendation listening still require
+phone acceptance; no household speech or volume test was initiated here. The
+hosting diagram remains unchanged.
+
+## Offline prompt evaluation capability
+
+Source provides a disposable local-model evaluation process, separate from the
+installed controller and its conversation state. A run imports only local-model
+settings, creates synthetic configuration/state, uses fixed turn clocks and
+closed-world provider results, and performs no hardware/provider calls or speech
+synthesis. It is not a resident service and adds no listener, device, credential,
+or integration route. Candidate prompt files, including an optional tool-free
+intent-classification stage, are offline source proposals. They are not evidence
+of an installed prompt or model change. Runtime outputs remain private/ignored;
+core fixtures and instructions are in [the evaluation guide](../evals/README.md).
+Run durations are diagnostics under shared Mac resource contention, not physical
+button-to-speaker benchmarks. The existing deployment diagram remains valid.
+
+
+## Owner text-lab prompt treatment capability
+
+The controller's owner-only `/amadeus/text/treatments` operation stores treatment
+selection/custom drafts in private Amadeus state. The existing local worker accepts
+request-scoped conversation/routing/continuation policy text for the owner text lab;
+other surfaces keep their normal policies. Non-default text experiments enforce
+read-only tools and suppress memory writes in application code. No new service,
+port, external provider or credential is introduced; the README topology remains
+unchanged. Source and installed activation must be verified separately. See
+[controls and limitations](conversation-agent.md#owner-prompt-treatments).
+
+Installed Mac activation was verified on 2026-10-30: the owner treatment operation
+returned all four presets, production default remained selected after a silent
+text-model smoke check, and the dashboard rendered the controls. Existing speaker
+volume was preserved; no hardware speech test or change to other surfaces' policies
+was performed. Subsequent prompt edits take effect per request without restart.
+
+
+## Upstairs USB developer-board observation
+
+A read-only check on 2026-10-30 found a USB STM32 CDC ACM serial device on the
+upstairs Pi with a persistent by-id path. It is consistent with the pictured
+Grove/Alfa kit, but generic USB descriptors do not uniquely identify board firmware
+or attached Grove sensors. The Pi has no power-throttling flags; no process is
+consuming the serial device, and its room-sensor port is unconfigured. No serial
+port was opened, firmware flashed, service restarted or peripheral claimed working.
+The README map now records the detected physical attachment separately from a
+configured collector. Sensor models and socket assignments are a manual prerequisite
+for safe firmware setup. A local USB JSON → existing satellite/HA path is proposed;
+cellular service is unnecessary and has not been configured.
+
+Follow-up photos and the owner's wiring confirmation identify the Twilio Alfa /
+Wio LTE Cat-NB-IoT v1.0 board with DHT11 on A6, Grove Button(P) on D20 and Grove
+Ultrasonic Ranger v2.0 on A4. A bounded serial read finds the original Breakout
+cellular demonstration firmware, not sensor JSON. USB-only replacement source is
+`firmware/wio_room_sensors`; it compiles with Seeed STM32F4 1.2.5 and the Seeed Grove
+DHT library. The reader accepts climate without a fabricated tilt contact and
+separately expiring button samples. Compilation alone was not treated as evidence
+of sensor accuracy; installed verification follows below. No cellular account or
+new automatic action is configured.
+
+Installed follow-up: the original flash was privately backed up, USB-only firmware
+was uploaded through STM32 DFU, and fresh JSON climate/button packets were read.
+The upstairs Pi now runs the tested reader with a persistent USB by-id binding;
+its older installed display service received only the minimal sensor RPC hook and
+configuration key. Unrelated renderer code was preserved. The separate HA satellite
+publisher now forwards validated optional readings under the existing satellite
+device. Temperature, humidity and released button state are available in HA;
+distance discovery exists but missing echoes remain unavailable. Hand-distance
+accuracy and a physical button transition require the separate manual check.
+The six-second local freshness gate and 45-second HA expiry apply; HA snapshots
+arrive on the existing 30-second telemetry interval, so brief button presses are
+not guaranteed HA events. No movement, wave, speech or Amadeus collection rule was
+enabled by this sensor setup.
+
+HA's container had lost membership in the shared private MQTT Docker network.
+The existing network link was restored, DNS and MQTT reconnection were verified,
+and prior satellite telemetry became available. The corrected start helper is
+installed and preserves or repairs that membership; it was syntax-checked without
+recreating HA. This does not introduce public ingress or change
+published ports. Firmware and service rollback copies remain in private state.
+
+## Conversation state/resolution source checkpoint
+
+Source now has bounded expiring query-task state, deterministic calendar and named
+speech-target binding, per-field notification PATCH updates, and separate operational
+routing/optional character-style prompt assembly. These are internal responsibilities
+of the existing Mac controller/model worker, not new hosts or listeners. Offline
+runs use synthetic private configuration, fake tool executors and injected target
+registries; they do not actuate devices or import household history. The checkpoint
+has not yet been promoted merely because its source exists. Installed acceptance
+must be recorded separately after verification.
+
+
+## Room-aware selected sensor retrieval
+
+The installed controller now enriches selected HA home-device and room-activity
+readings with assigned room metadata via a bounded metadata-only HA template read.
+No new host, listener or credentials are introduced; the existing HA feed route and
+dashboard selection remain authoritative. Retained-record and synthetic-executor
+search use literal keyword conjunction across room/measurement fields. Source
+fixtures are invented; private live readings and chat verification remain ignored.
+
+Deployment is scoped to feed schemas/providers, record retrieval, post-tool reply
+grounding and a room-temperature routing clarification. The broader experimental
+conversation-state architecture has not been promoted by this change. Existing
+controller/model processes were restarted while idle to load those scoped edits;
+speaker volume and location policy were preserved. README topology nodes/edges
+remain unchanged because hosting and integration responsibilities are unchanged.
+
+
+## Pooled SSH recovery hardening
+
+The installed controller now rate-limits repeated failed pooled SSH handshakes
+with a monotonic exponential cooldown from two to thirty seconds per endpoint.
+Success resets the cooldown. Only a later separate request may reconnect; failed
+physical operations are not replayed, and an uncertain operation on an existing
+tunnel retains its prior no-replay recovery behavior. Focused synthetic regressions
+cover throttling, reset, bounded delay and action non-replay. Hosting, credentials,
+verified host-key policy and README topology responsibilities are unchanged.
+
+A live diagnosis found the companion endpoint responsive to ICMP while new SSH
+connections stalled before a server greeting/authentication. Temporarily pausing
+automatic connection producers did not restore access. This does not establish
+an OS, memory, power or credential cause: those require device-side logs. The
+backoff is a controller-side mitigation, not a claim that the Pi is repaired.
+
+
+Follow-up recovery verification: an owner reboot restored SSH, display/voice
+connectivity and fresh numeric room-sensor records. Retained syslog evidence showed
+a kernel worker blocked in the SD-card detection / MMC host-claim path, followed
+by the logging service watchdog timing out. This is evidence of a storage-path
+stall, not proof of failed media or a specific driver defect. The endpoint runs
+legacy kernel 5.4.51+; current-boot power flags are clear, which does not establish
+previous-boot power health. Private logs and a configuration-only backup were
+preserved. A full offline card image, replacement-media test and supported OS/AIY
+compatibility validation remain planned, not performed.
+
+## Reliability checkpoint: source versus installed state
+
+The checkpoint source adds an opt-in `presence_history` HA feed and the read-only
+`get_presence_history` conversational tool. It reads only selected person/zone
+entities, with a bounded history window covering local today/yesterday. It stores
+stable occurrence IDs without coordinates or entity attributes, using generic person labels. Baseline
+snapshots, changes, zone counts and person reports remain distinct; unknown states
+break reported-away intervals. The owner's consent, pause/guest mode, retention,
+source revocation and private source picker remain authoritative. Existing installed
+latest-state collection is not evidence that this history feed is enabled.
+
+Cast source now records exact launch session receipts in private
+`state_dir()/cast-ownership.json` (0600). On startup with receipts it reports
+`reconciling`, holds the Pi away and retires only an exact configured Cast/session
+match. A different session/app is left alone. Unreachable or removed destinations
+remain an explicit recovery fault, rather than being silently declared home. Return
+still requires the existing Pi render acknowledgement. Fresh URLs and audio sessions
+are obtained on the next requested visit; expired tokens are not adopted. Manual
+follow holds, destination settings and volume are preserved. This cannot identify
+an orphan created before receipts were installed; do not stop an app by name alone.
+
+Conversation source also adds short constraint-removal follow-ups, bounded immediate
+notification pause/resume phrasing and guards that separate quoted message payloads
+from requested actions. These are source changes, not a production model/prompt
+promotion or proof of broad conversational accuracy.
+
+The [configuration collector and spare-card runbook](companion-recovery.md) prepare
+private read-only diagnostics and selected configuration backup. They do not perform
+an OS migration or full offline card image. Spare-card Voice Bonnet compatibility,
+restarts under an active owned Cast session and physical recovery remain acceptance
+checkpoints. Newly added reliability source has not been deployed merely by opening
+a PR. Existing installed-state sections above remain scoped to their stated checks.
+
+README topology was reviewed: these changes reuse the existing Mac controller,
+private store, HA read connection, SSH path and Cast adapters; no new host, listener
+or credential is introduced. Android/Tailscale/FCM and upstairs sensor responsibilities
+remain as shown in the maintained diagram.
+
+Calendar reply follow-up source rejects scope-only/technical-header answers and
+provides a natural empty-calendar fallback. This changes composition on the existing
+controller only; it adds no collection, route or inference worker. It has not been
+installed by updating the checkpoint PR; physical playback is a separate check.
+
+Installed calendar/audio follow-up: narrowly deployed the calendar reply validator,
+natural fallback and length-aware Qwen clause token budget. The controller child and
+voice worker were restarted while idle, with private rollback copies. Startup checks
+confirmed model, speech and both companion endpoints available. Silent invented-text
+synthesis exercised completed PCM after the budget adjustment; it did not play audio
+or establish physical phone listening acceptance. Volume, reference conditioning,
+source consent and other experimental conversation/recovery modules were preserved.
+The broader checkpoint remains source-only where noted above. README topology is
+unchanged: the same Mac controller and existing local speech worker own these paths.
+
+Installed shared-surface alert follow-up: companion assets now clear errors by the
+operation that recovered, updating the main notice, settings notice, setup error
+and status indicator consistently. Successful network polling does not dismiss an
+unresolved audio or permission failure. Only the two static companion JS files were
+updated, with rollback copies; no service restart, volume or device-state change.
+The Android inline document was fetched to verify updated assets and no-store
+responses. Already-open views need a reload/reopen; no APK update is required.
+Hosting, listeners and README topology remain unchanged.
+
+Installed Pi thinking-cue follow-up: the satellite renderer now adds a small animated
+pixel thought bubble for every character's thinking activity, above the shoulder
+and clear of the lower media/notification region. Only the scoped scene helper and
+its thinking-state composition call were installed, preserving other deployed Pi
+renderer differences. The display service was restarted while idle; the voice
+service and volume were unchanged. RPC activity and a digital preview verified the
+cue with no renderer error, then idle was restored. Physical button-turn visibility
+is a separate owner check. No hosting/transport or README topology changed.
+
+Android notification pilot acceptance now includes system-alert presentation,
+tap-to-open and retrieval of the private test note from the inbox. Enrolled-phone
+notification enablement is independent of pairing and OS permission; it must be
+explicitly enabled. The source APK toggle is now labelled `Enable notifications`,
+with separate no-sound explanation; that label ships with the next APK, not by
+changing server assets. Existing inbox entries persist under normal retention and
+are not evidence of duplicate sends. Widget and broader lifecycle coverage remain
+open. No notification bodies, participant records or device identifiers are recorded
+in this public inventory; hosting and README topology are unchanged.

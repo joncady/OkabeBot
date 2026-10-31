@@ -1,7 +1,26 @@
 """Limited paired-screen API, separate from dashboard/tool authority."""
 
 import json
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
+
+
+def android_page(folder):
+    """One trusted document avoids separate WebView script-resource load failures."""
+    page = (folder / "companion.html").read_text()
+    for name in (
+        "character-environments.js",
+        "lab-room.js",
+        "browser-audio.js",
+        "companion-ui.js",
+        "companion.js",
+    ):
+        import re
+
+        script = (folder / name).read_text()
+        script = re.sub(r"</script", r"<\\/script", script, flags=re.IGNORECASE)
+        pattern = r'<script src="/' + re.escape(name) + r'(?:\?[^\"]*)?"></script>'
+        page = re.sub(pattern, lambda _: "<script>" + script + "</script>", page)
+    return page
 
 
 def handle(handler, bridge, post=False):
@@ -56,7 +75,14 @@ def handle(handler, bridge, post=False):
             if name.endswith("css")
             else "application/javascript"
         )
-        handler.respond(200, (Path(__file__).parent / "web" / name).read_text(), kind)
+        folder = Path(__file__).parent / "web"
+        content = (
+            android_page(folder)
+            if path == "/companion/"
+            and parse_qs(urlsplit(handler.path).query).get("android") == ["1"]
+            else (folder / name).read_text()
+        )
+        handler.respond(200, content, kind)
         return True
     if not post or path not in (
         "/surfaces/register",
@@ -115,6 +141,8 @@ def handle(handler, bridge, post=False):
             )
         else:
             item = bridge.surfaces.registry.device(token)
+            if item["adapter"] == "android":
+                raise PermissionError("Android speech uses the tool-free mobile endpoint")
             if bridge.surfaces.phase != "tv" or bridge.surfaces.active_id != item["id"]:
                 raise PermissionError("Move the companion here before speaking")
             bridge.submit_screen_clip(data)

@@ -287,6 +287,7 @@ class Onboarding:
                 self.store.db.execute("DELETE FROM preferences")
                 # Feedback contains private conversation excerpts, not integration settings.
                 (self.folder / "text-feedback.json").unlink(missing_ok=True)
+                (self.folder / "prompt-treatments.json").unlink(missing_ok=True)
                 if self.store.db.execute(
                     "SELECT 1 FROM sqlite_master WHERE type='table' AND name='shadow_decisions'"
                 ).fetchone():
@@ -304,6 +305,17 @@ class Onboarding:
         with self.store.db:
             self.store.db.execute("BEGIN IMMEDIATE")
             self.store.forget(self.subject(), key=key)
+            if key == "context.preferences":
+                self.store.forget(self.subject(), key="conversation.preference_recency")
+                self.store.forget(self.subject(), key="conversation.last_memory")
+                self.store.remember(self.subject(), "conversation.suggestion_legacy_disabled", True)
+                for metadata in (
+                    "conversation.topic_recency",
+                    "conversation.topic_feedback",
+                    "conversation.suggestions",
+                    "conversation.feedback_pause",
+                ):
+                    self.store.forget(self.subject(), key=metadata)
             if (
                 key == "context.preferences"
                 and self.store.db.execute(

@@ -8,6 +8,7 @@ SETS = (
     "green-hill",
     "star-light",
     "mac-desk",
+    "pocket-nook",
 )
 
 
@@ -25,7 +26,12 @@ def dressing(selected):
     base = "#805440" if cafe else "#587568" if roof else "#38365b" if night else "#466570"
     rect(85, 294, 310, 20, base)
     rect(85, 290, 310, 5, "#cfaa88" if cafe else "#84b494")
-    if selected == "mac-desk":
+    if selected == "pocket-nook":
+        rect(95, 246, 45, 43, "#536779")
+        rect(100, 251, 35, 30, "#72a3a0")
+        rect(350, 266, 27, 23, "#bc805f")
+        rect(357, 261, 13, 5, "#d3b183")
+    elif selected == "mac-desk":
         rect(96, 253, 49, 31, "#293846")
         rect(100, 257, 41, 23, "#79c6c6")
         rect(115, 284, 10, 6, "#a9b1a3")

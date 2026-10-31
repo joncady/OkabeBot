@@ -265,7 +265,9 @@ def stream_speak(text, emotion, intensity, voice, metrics, output=None):
     face_pool = ThreadPoolExecutor(max_workers=1)
     face_future = None
     character = current_character()
-    stream = buffered_chunks(speech.pcm_chunks(text, emotion, selected), metrics=metrics)
+    stream = buffered_chunks(
+        speech.pcm_chunks(text, emotion, selected), metrics=metrics, first_chunk_bytes=9600
+    )
     try:
         for sequence, chunk in enumerate(stream):
             if stream_id is None:

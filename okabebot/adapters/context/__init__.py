@@ -32,6 +32,17 @@ FEEDS = {
     f.id: f
     for f in (
         Feed(
+            "presence_history",
+            "Presence history · selected people and zones",
+            "ha",
+            (("persons", "Person entities", "person"), ("zones", "Zone counts", "zone")),
+            ("id", "entity_key", "label", "state", "source_type", "observation", "reported_at"),
+            "Read selected HA presence reports in a bounded three-UTC-day window, without coordinates. Zone counts do not identify who left; unknown is not away. Departure reports are not proof of physical movement.",
+            interval=60,
+            freshness=180,
+            household=True,
+        ),
+        Feed(
             "tasks",
             "Tasks · Local To-do / Google Tasks",
             "ha",
@@ -76,7 +87,7 @@ FEEDS = {
                 ("switches", "Light-switch entities", "switch"),
                 ("players", "Speaker / media player entities", "media_player"),
             ),
-            ("id", "label", "state", "category"),
+            ("id", "label", "state", "category", "room"),
             "Read selected device states only; no track titles, brightness, volume or commands. Activity is not proof of occupancy or identity. Selected playing/unknown speaker states defer proactive check-ins.",
             interval=60,
             freshness=150,
@@ -100,6 +111,7 @@ FEEDS = {
                 "current_temperature",
                 "target_temperature",
                 "action",
+                "room",
             ),
             "Select existing HA devices for read-only state context. Door state does not identify a person or trigger arrival. No open/close or heating commands.",
             household=True,

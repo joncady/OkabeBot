@@ -46,7 +46,7 @@ class Registry:
 
     def register(self, secret, name, kind, supported_scenes=None):
         identity = self.identity(secret)
-        if kind not in ("browser", "mac", "alexa"):
+        if kind not in ("browser", "mac", "alexa", "android"):
             raise ValueError("Unknown surface kind")
         if not isinstance(name, str) or not 1 <= len(name.strip()) <= 40:
             raise ValueError("Use a short device name")
@@ -195,7 +195,7 @@ class Registry:
             if "audio_target" in values:
                 target = values["audio_target"]
                 allowed = {"default", "pi", "beam"}
-                if known[identity]["adapter"] in ("browser", "mac", "cast"):
+                if known[identity]["adapter"] in ("browser", "mac", "cast", "android"):
                     allowed.add("device")
                 if target not in allowed:
                     raise ValueError("Invalid audio destination")
@@ -297,13 +297,14 @@ class Registry:
             item["scene_selections"] = dict(data.get("scenes", {}).get(item["id"], {}))
             item["name"] = data.get("names", {}).get(item["id"], item["name"])
             item["audio_target"] = data.get("audio", {}).get(
-                item["id"], "device" if item["adapter"] in ("browser", "mac", "cast") else "default"
+                item["id"],
+                "device" if item["adapter"] in ("browser", "mac", "cast", "android") else "default",
             )
             item["audio_volume"] = data.get("audio_volumes", {}).get(
                 item["id"], 20 if item["adapter"] == "cast" else 50
             )
             item["position"] = layout[item["id"]]
-            if item["adapter"] in ("browser", "mac", "alexa"):
+            if item["adapter"] in ("browser", "mac", "alexa", "android"):
                 item["available"] = time.monotonic() - self.seen.get(item["id"], -1000) < 6
         return values
 

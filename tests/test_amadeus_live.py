@@ -70,6 +70,25 @@ class LiveTests(unittest.TestCase):
         self.attention()
         return self.live.check(**self.args)
 
+    def test_new_invitation_discards_expired_read_query_state(self):
+        from okabebot.amadeus_live import STATE
+
+        offer = self.ready()
+        with self.live.store() as store:
+            state = preference(store, "fiction", STATE, {})
+            state.update(
+                session_until=0,
+                task_state={
+                    "version": 1,
+                    "kind": "read",
+                    "tool": "get_watch_recommendations",
+                    "arguments": {"genre": "comedy"},
+                },
+            )
+            store.remember("fiction", STATE, state)
+        self.assertTrue(self.live.claim(offer))
+        self.assertEqual(self.live.context().get("task_state"), {})
+
     def test_first_door_and_restart_consume_before_speech(self):
         offer = self.ready()
         self.assertIsNotNone(offer)
@@ -137,7 +156,8 @@ class LiveTests(unittest.TestCase):
                 preference(s, "fiction", "context.preferences")["media"]["genres"], ["mystery"]
             )
         self.assertEqual(generate.call_count, 1)
-        self.assertIsNone(self.live.context())
+        self.assertIsNotNone(self.live.context())
+        self.assertIsNone(self.live.context()["pending"])
 
     def test_decline_stop_and_unsubstantiated_model_memory(self):
         self.live.claim(self.ready())
@@ -339,13 +359,14 @@ class LiveTests(unittest.TestCase):
         result = self.live.answer(
             "Absolutely, please keep that in mind for future suggestions.", generate
         )
-        self.assertIn("Remembered", result)
+        self.assertIn("keep that in mind", result)
         generate.assert_not_called()
         with self.live.store() as s:
             self.assertEqual(
                 preference(s, "fiction", "context.preferences"), {"hobbies": ["cello"]}
             )
-        self.assertIsNone(self.live.context())
+        self.assertIsNotNone(self.live.context())
+        self.assertIsNone(self.live.context()["pending"])
 
     def test_confirmation_phrases_do_not_accept_conditions_corrections_or_uncertainty(self):
         from okabebot.amadeus_live import confirmation_answer
@@ -405,3 +426,35 @@ class LiveTests(unittest.TestCase):
         self.assertFalse(self.live.interruptions()["respect_dnd"])
         with self.assertRaises(ValueError):
             self.live.interruptions({"respect_dnd": "false"})
+
+    def test_optional_chat_window_blocks_claims_without_spending_budget(self):
+        self.live.configure(
+            enabled=True, destination="desk", chat_window_start="20:00", chat_window_end="22:00"
+        )
+        self.assertIsNone(self.ready())
+        with self.live.store() as s:
+            setup = preference(s, SYSTEM, KEY)
+            budget = preference(s, "fiction", "conversation.invitation_budget")
+        self.assertEqual(budget["count"], 0)
+        self.assertFalse(self.live.claim({"destination": "desk", "day": self.live._day(setup)}))
+        self.now = datetime(2030, 1, 1, 20, tzinfo=timezone.utc).timestamp()
+        self.attention()
+        self.assertIsNone(self.live.check(**self.args))
+        self.now += 121
+        self.attention()
+        self.assertIsNotNone(self.live.check(**self.args))
+
+    def test_chat_window_supports_overnight_and_rejects_invalid_times(self):
+        for start, end, value in [
+            ("22:00", "06:00", True),
+            ("19:00", "23:00", False),
+            ("00:00", "00:00", True),
+        ]:
+            cfg = {"chat_window_start": start, "chat_window_end": end}
+            now = self.now
+            self.now = datetime(2030, 1, 1, 23, 30, tzinfo=timezone.utc).timestamp()
+            self.assertEqual(self.live.chat_window_allowed({"timezone": "UTC"}, cfg), value)
+            self.now = now
+        for bad in ("24:00", "9:00", "00:60", True):
+            with self.subTest(value=bad), self.assertRaises(ValueError):
+                self.live.configure(enabled=True, destination="desk", chat_window_start=bad)

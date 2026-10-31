@@ -1,5 +1,47 @@
 # Elegoo room-sensor prototype
 
+## Grove/Alfa USB satellite variant
+
+Prepared source: `firmware/wio_room_sensors/wio_room_sensors.ino`, for the Twilio
+Alfa / Wio LTE Cat-NB-IoT v1.0 (STM32F405). This is separate from the Uno sketch.
+Example wiring uses DHT11 on A6/PA6, Grove Button(P) on D20/PB4 and Grove
+Ultrasonic Ranger v2.0 on A4/PA4. Disconnect USB before changing Grove cables.
+The Grove ranger uses one bidirectional signal, not HC-SR04 trigger/echo wiring.
+The firmware enables switched Grove power, uses USB SerialUSB, and does not load
+the cellular/GNSS SDK. No SIM or cellular account is needed for this USB route.
+
+Use Seeed STM32F4 core 1.2.5 (`Seeeduino:Seeed_STM32F4:wioGpsM4`) from Seeed's
+[legacy board index](https://github.com/Seeed-Studio/Seeed_Platform/blob/master/package_legacy_seeeduino_boards_index.json)
+and the [Seeed Grove DHT library](https://github.com/Seeed-Studio/Grove_Temperature_And_Humidity_Sensor).
+The Adafruit library with the same `DHT.h` name is not compatible with this legacy
+core. Compile with `--clean --library /path/to/Grove_Temperature_And_Humidity_Sensor`
+to prevent stale headers from selecting the wrong API. Build success is not a
+physical acceptance test.
+
+The board's original cellular demo does not implement the sensor JSON protocol.
+Prepare and back up firmware before replacement. The vendor's
+[BOOT0/RST procedure](https://github.com/twilio/Breakout_Arduino_Library/blob/master/IDESETUP.md#flash-the-developer-board-with-sample-applications)
+enters STM32 DFU mode. Verify the target before flashing, preserve a private flash
+backup when readable, and do not disable read protection to obtain one.
+
+The prepared sketch sends distance and debounced button state every 200 ms and
+climate every 2.5 seconds. Echo waiting is bounded to 30 ms; invalid distance and
+climate readings are null. It does not fabricate an absent tilt sensor. Reader
+source accepts climate-only room packets and a separate `button` packet with a
+boolean `button_pressed`; each expires independently after six seconds. Parser
+regressions use invented packets. Sensor acquisition, HA discovery and physical
+button/near/far acceptance remain separate deployment checkpoints.
+
+The upstairs variant is now installed with a persistent USB binding and the
+minimal sensor RPC hook. Its existing HA telemetry publisher discovers only
+observed supported fields, and forwards climate, optional distance and button
+state without creating a fictitious tilt sensor. Null/stale values remain
+unavailable. Telemetry is sampled every 30 seconds: the button entity is a state
+snapshot, not a reliable short-press event stream or assigned action. Physical
+near/far and press/release checks remain distinct from software availability.
+
+## Uno wiring
+
 Prepared firmware: `firmware/room_sensors/room_sensors.ino`. It preserves the
 working HC-SR04 D12/D11 wiring and serial messages, adding ambient-light raw ADC,
 DHT11 temperature/humidity and a debounced tilt contact. This is a diagnostic

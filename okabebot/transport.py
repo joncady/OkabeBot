@@ -141,18 +141,34 @@ class Device:
 class PooledDevice(Device):
     """One tunnel per endpoint/process. Never replay a failed operation."""
 
-    def __init__(self, config):
+    def __init__(self, config, *, clock=time.monotonic):
         super().__init__(config)
         self._guard = threading.Lock()
         self._context = self._call = None
+        self._clock = clock
+        self._connect_failures = 0
+        self._connect_after = 0
 
     def rpc(self, data):
         if self.config["transport"] == "local":
             return http_rpc(self.config["port"], data)
         with self._guard:
             if self._call is None:
-                context = self.connect(timeout=65)
-                call = context.__enter__()
+                if self._clock() < self._connect_after:
+                    raise RuntimeError(
+                        "Device SSH is recovering; reconnect attempts are cooling down"
+                    )
+                try:
+                    context = self.connect(timeout=65)
+                    call = context.__enter__()
+                except Exception:
+                    # Waiting callers must not launch a fresh handshake storm.
+                    # Only a later, separate request may try again; no RPC replay.
+                    self._connect_failures = min(self._connect_failures + 1, 5)
+                    self._connect_after = self._clock() + min(30, 2**self._connect_failures)
+                    raise
+                self._connect_failures = 0
+                self._connect_after = 0
                 self._context, self._call = context, call
             call = self._call
         try:

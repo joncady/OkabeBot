@@ -194,6 +194,34 @@ class Briefing:
         finally:
             store.close()
 
+    def digest(self):
+        from .morning_digest import Digest
+        from contextlib import closing
+
+        with closing(self.morning.store()) as store:
+            return Digest(store).cards()
+
+    def highlight(self):
+        from .morning_digest import Digest
+        from contextlib import closing
+
+        with closing(self.morning.store()) as store:
+            return Digest(store).highlight()
+
+    def revalidate_digest(self, spoken):
+        """Drop a highlight if consent, source facts or selection changed during generation."""
+        if not getattr(self, "_spoken_digest", None):
+            return spoken
+        store = self.morning.store()
+        try:
+            profile = self.morning.preference(store, KEY, {}).get("profile")
+        finally:
+            store.close()
+        if profile != self._spoken_digest_profile or self._spoken_digest != self.highlight():
+            spoken = spoken.replace(self._spoken_digest_slot, "", 1)
+            self._spoken_digest = None
+        return re.sub(r"([.!?])(?:\s*[.!?])+", r"\1", spoken).strip()
+
     def _chores(self):
         from .chores import Chores
 
@@ -264,6 +292,7 @@ class Briefing:
                     "important": True,
                 }
             )
+        cards.extend(self.digest())
         if card := self.coaching():
             cards.append({k: v for k, v in card.items() if k != "topic"})
         due = self._chores().due(limit=3)
@@ -277,6 +306,19 @@ class Briefing:
                     "important": False,
                 }
             )
+        cards.sort(
+            key=lambda c: (
+                0
+                if c["kind"] == "weather"
+                else 1
+                if c.get("important")
+                else 2
+                if c["kind"] in ("calendar", "tasks", "chores") and c.get("spoken")
+                else 4
+                if c.get("body") == "No upcoming timed events in this feed"
+                else 3
+            )
+        )
         return dict(summary, cards=cards)
 
     def allowed(self, destination):
@@ -391,7 +433,18 @@ class Briefing:
                     slots["advice"] = "if you head out, take " + " and ".join(gear)
             else:
                 slots["weather"] = "the weather update is not available yet"
-        calendar = [c for c in cards if c["kind"] == "calendar"][:1]
+        self._spoken_digest = self.highlight()
+        store = self.morning.store()
+        try:
+            self._spoken_digest_profile = self.morning.preference(store, KEY, {}).get("profile")
+        finally:
+            store.close()
+        calendar = [
+            c
+            for c in cards
+            if c["kind"] == "calendar" and (c.get("spoken") or not self._spoken_digest)
+        ][:1]
+
         if calendar:
             values = []
             for card in calendar:
@@ -406,7 +459,17 @@ class Briefing:
                 else:
                     values.append("your calendar is waiting for a fresh update")
             slots["calendar"] = "; ".join(values)
-        important = [c["body"] for c in cards if c.get("important")]
+        if self._spoken_digest:
+            text = self._spoken_digest["spoken"]
+            if len(text) > 105:
+                text = {
+                    "transit": "There are current rail alerts for your selected lines; details are on screen",
+                    "tasks": "A task on your connected list is due; details are on screen",
+                    "meals": "Today's meal plan is on screen",
+                }[self._spoken_digest["kind"]]
+            self._spoken_digest_slot = text
+            slots["highlight"] = text
+        important = [c["body"] for c in cards if c.get("important") and c["kind"] == "status"]
         if important:
             slots["status"] = "; ".join(important)[:160]
         coach = self.coaching()
@@ -434,6 +497,9 @@ class Briefing:
             self._spoken_chore_refs = []
             self._spoken_chore_scope = []
             self._spoken_chore_slot = None
+        if len(fallback().format_map(slots)) > 360 and "highlight" in slots:
+            del slots["highlight"]
+            self._spoken_digest = None
         if len(fallback().format_map(slots)) > 360:
             raise ValueError("Briefing exceeds the short speech budget")
         template, generated = fallback(), False

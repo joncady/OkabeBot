@@ -15,7 +15,7 @@ const amadeusUI = (() => {
     $('health-form').reset();$('health-readings').replaceChildren();$('health-state').textContent='';$('household-form').reset();$('household-preview').textContent='';$('household-state').textContent='';
     $('amadeus-form').reset();$('memory-form').reset();
     $('sources').replaceChildren();$('topics').replaceChildren();$('memory-list').replaceChildren();
-    $('morning-voice-form').reset();$('morning-person').textContent='';$('morning-show-status').textContent='';$('morning-test-status').textContent='';$('morning-test-tv').disabled=true;$('morning-preview').textContent='';$('morning-status').textContent='';$('morning-form').reset();$('morning-destination').replaceChildren();
+    $('morning-digest-form').reset();$('morning-voice-form').reset();$('morning-person').textContent='';$('morning-show-status').textContent='';$('morning-test-status').textContent='';$('morning-test-tv').disabled=true;$('morning-preview').textContent='';$('morning-status').textContent='';$('morning-form').reset();$('morning-destination').replaceChildren();
     $('habits-preview').textContent='';$('habits-routines').replaceChildren();$('habits-state').textContent='';$('habits-enabled').checked=false;
     $('feed-list').replaceChildren();$('feed-context').textContent='';
     $('event-list').textContent='';$('household-list').textContent='';$('coaching-state').textContent='';
@@ -261,6 +261,7 @@ const amadeusUI = (() => {
   }
   async function morning() {
     const value=await api('morning');if(!value.config)return;
+    const digest=await api('morning-digest');if(digest.config)for(const key of ['tasks','transit','meals','spoken_highlight'])$('morning-digest-'+key).checked=digest.config[key]===true;
     const c=value.config;$('amadeus-morning').hidden=false;
     const voice=value.voice||{};$('morning-person').textContent=voice.resolved_name?`Greeting name: ${voice.resolved_name} · ${voice.name_source==='home_assistant'?'Home Assistant person':'spoken override'}`:'Link a Home Assistant person or set a spoken override.';$('morning-spoken').checked=!!voice.enabled;$('morning-name').value=voice.name||'';
     $('morning-coaching').checked=!!voice.coaching;$('morning-quiet-override').checked=!!voice.quiet_override;
@@ -288,6 +289,9 @@ const amadeusUI = (() => {
     $('conversation-enabled').checked=config.enabled===true;
     $('conversation-max-per-day').value=config.max_per_day??1;
     $('conversation-min-gap').value=config.min_gap_minutes??120;
+    $('conversation-topic-cooldown').value=config.topic_cooldown_hours??24;
+    $('conversation-window-start').value=config.chat_window_start??'00:00';
+    $('conversation-window-end').value=config.chat_window_end??'00:00';
     $('conversation-resume').disabled=config.enabled!==true;
   }
   const householdFields={
@@ -362,7 +366,7 @@ const amadeusUI = (() => {
   async function run(action) { try { await action(); } catch(error) { message(error.message); } }
   $('feeds-refresh').onclick=()=>run(feeds);
   $('conversation-resume').onclick=()=>run(async()=>{await api('conversation-resume',{});message('Reply resumed. Use the usual push-to-talk button; the invitation was not replayed.');});
-  $('conversation-form').onsubmit=event=>{event.preventDefault();run(async()=>{await api('conversation',{enabled:$('conversation-enabled').checked,destination:$('conversation-destination').value,max_per_day:Number($('conversation-max-per-day').value),min_gap_minutes:Number($('conversation-min-gap').value)});await conversation();message('Conversation choice saved.');});};
+  $('conversation-form').onsubmit=event=>{event.preventDefault();run(async()=>{await api('conversation',{enabled:$('conversation-enabled').checked,destination:$('conversation-destination').value,max_per_day:Number($('conversation-max-per-day').value),min_gap_minutes:Number($('conversation-min-gap').value),topic_cooldown_hours:Number($('conversation-topic-cooldown').value),chat_window_start:$('conversation-window-start').value,chat_window_end:$('conversation-window-end').value});await conversation();message('Conversation choice saved.');});};
   $('health-form').onsubmit=event=>{event.preventDefault();run(async()=>{
     await api('health',{enabled:$('health-enabled').checked,daily_steps:Number($('health-daily-steps').value),nudge_after:Number($('health-nudge-after').value),others_detected:$('health-others-detected').checked});await health();message('Private health choices saved. Observation and coaching consent remain separate.');
   });};
@@ -383,6 +387,10 @@ const amadeusUI = (() => {
     const result=await api('tv-prepare',{});
     $('morning-test-status').textContent=result.ready?(result.input_verified?'TV ready · Chromecast input confirmed.':'TV preparation complete · input status unavailable; configured fallback used.'):'TV not confirmed ready · character stays on its current screen.';
   });
+  $('morning-digest-form').onsubmit=event=>{event.preventDefault();run(async()=>{
+    const data={};for(const key of ['tasks','transit','meals','spoken_highlight'])data[key]=$('morning-digest-'+key).checked;
+    await api('morning-digest',data);await morning();message('Morning report sections saved; collection consent unchanged.');
+  });};
   $('morning-voice-form').onsubmit=event=>{event.preventDefault();run(async()=>{
     await api('morning-voice',{enabled:$('morning-spoken').checked,name:$('morning-name').value,coaching:$('morning-coaching').checked,quiet_override:$('morning-quiet-override').checked});await morning();message('Morning voice choices saved.');
   });};

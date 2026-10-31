@@ -29,6 +29,43 @@ FIELDS = {
 }
 
 
+RECENCY_KEY = "conversation.preference_recency"
+
+
+def opening_preferences(store, subject, *, now, cooldown_hours):
+    """Exclude newly learned fields from unsolicited openers, without forgetting them."""
+    prefs = json.loads(json.dumps(preference(store, subject, "context.preferences", {})))
+    recency = preference(store, subject, RECENCY_KEY, {})
+    # Older profiles only retain the last learned category; use that timestamp
+    # conservatively rather than pretending every old preference was just learned.
+    row = store.db.execute(
+        "SELECT value,updated_at FROM preferences WHERE subject=? AND key=?",
+        (subject, "conversation.last_memory"),
+    ).fetchone()
+    if row:
+        last = json.loads(row[0])
+        field = last.get("field")
+        if field in FIELDS and field not in recency:
+            recency = {**recency, field: row[1]}
+    for key in ("conversation.topic_recency", "conversation.topic_feedback"):
+        for field, value in preference(store, subject, key, {}).items():
+            at = value.get("at") if isinstance(value, dict) else value
+            if field in FIELDS and isinstance(at, (int, float)):
+                recency = {**recency, field: max(recency.get(field, 0), at)}
+    excluded = []
+    if cooldown_hours > 0:
+        for field, parent in FIELDS.items():
+            at = recency.get(field)
+            if isinstance(at, (int, float)) and 0 <= now - at < cooldown_hours * 3600:
+                target = prefs.get(parent, {}) if parent else prefs
+                if isinstance(target, dict) and field in target:
+                    target.pop(field)
+                    excluded.append(field)
+                if parent and not target:
+                    prefs.pop(parent, None)
+    return prefs, excluded
+
+
 class PreferenceConversation:
     def __init__(self, store):
         self.store = store
@@ -130,6 +167,10 @@ class PreferenceConversation:
         if len(json.dumps(prefs)) > 4000:
             raise ValueError("Preference store exceeds the bounded context budget")
         self.store.remember(subject, "context.preferences", prefs)
+        recent = preference(self.store, subject, RECENCY_KEY, {})
+        recent = {k: v for k, v in recent.items() if k in FIELDS}
+        recent[field] = self.store.clock()
+        self.store.remember(subject, RECENCY_KEY, recent)
         self.store.remember(
             subject, "conversation.last_memory", {"field": field, "provenance": provenance}
         )

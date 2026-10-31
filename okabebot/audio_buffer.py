@@ -5,10 +5,16 @@ import threading
 import time
 
 
-def buffered_chunks(source, prebuffer_bytes=48000, metrics=None):
-    """Generate ahead and combine PCM into one-second hardware packets."""
+def buffered_chunks(source, prebuffer_bytes=48000, metrics=None, *, first_chunk_bytes=None):
+    """Generate ahead with a short optional first packet and bounded later packets."""
     if type(prebuffer_bytes) is not int or not 1 <= prebuffer_bytes <= 48000:
         raise ValueError("PCM packet size must be 1..48000 bytes")
+    if first_chunk_bytes is not None and (
+        type(first_chunk_bytes) is not int
+        or not 2 <= first_chunk_bytes <= prebuffer_bytes
+        or first_chunk_bytes % 2
+    ):
+        raise ValueError("First PCM packet must be aligned and within the normal packet size")
     items = queue.Queue(maxsize=16)
     stopped = threading.Event()
     metrics = metrics if metrics is not None else {}
@@ -44,6 +50,7 @@ def buffered_chunks(source, prebuffer_bytes=48000, metrics=None):
     worker = threading.Thread(target=produce, daemon=True, name="speech-buffer")
     worker.start()
     pending = bytearray()
+    packet_size = first_chunk_bytes or prebuffer_bytes
     try:
         while True:
             chunk, error = items.get()
@@ -54,8 +61,10 @@ def buffered_chunks(source, prebuffer_bytes=48000, metrics=None):
                     yield bytes(pending)
                 return
             pending.extend(chunk)
-            while len(pending) >= prebuffer_bytes:
-                yield bytes(pending[:prebuffer_bytes])
-                del pending[:prebuffer_bytes]
+            while len(pending) >= packet_size:
+                packet = bytes(pending[:packet_size])
+                del pending[:packet_size]
+                packet_size = prebuffer_bytes
+                yield packet
     finally:
         stopped.set()

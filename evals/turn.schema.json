@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "split",
+    "category",
+    "input",
+    "expect"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]+$"
+    },
+    "split": {
+      "enum": [
+        "dev",
+        "holdout"
+      ]
+    },
+    "category": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "now"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "now": {
+          "type": "string"
+        },
+        "timezone": {
+          "type": "string"
+        },
+        "history": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": [
+              "role",
+              "content"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "role": {
+                "enum": [
+                  "user",
+                  "assistant"
+                ]
+              },
+              "content": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            }
+          }
+        },
+        "task_state": {
+          "type": "object"
+        },
+        "session": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "turns": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 30
+            },
+            "until_at": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "preferences": {
+          "type": "object"
+        },
+        "source_context": {
+          "type": "array"
+        },
+        "pending_memory": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "last_tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "read_only": {
+          "type": "boolean"
+        },
+        "current_location": {
+          "type": "string"
+        },
+        "tool_results": {
+          "type": "object"
+        },
+        "policy_enabled": {
+          "type": "boolean"
+        },
+        "character": {
+          "enum": [
+            "okabe",
+            "kurisu",
+            "sonic",
+            "pip"
+          ]
+        }
+      }
+    },
+    "expect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route"
+      ],
+      "properties": {
+        "route": {
+          "enum": [
+            "tools",
+            "conversation",
+            "clarify",
+            "refuse",
+            "control"
+          ]
+        },
+        "calls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "arguments"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "arguments": {
+                "type": "object"
+              },
+              "argument_mode": {
+                "enum": [
+                  "exact",
+                  "subset"
+                ]
+              }
+            }
+          }
+        },
+        "allowed_routes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allow_extra_reads": {
+          "type": "boolean"
+        },
+        "forbidden_tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "must_include_any": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "must_not_include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "semantic_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "memory": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "session_active": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
