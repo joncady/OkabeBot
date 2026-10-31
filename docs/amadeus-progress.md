@@ -689,3 +689,12 @@ separate from sensor truth and inference quality.
   limits remain; previously heard speech is never replayed automatically.
 - Limited: silent synthesis and isolated relay checks are not proof of physical
   listening quality. Platform playback acceptance and broader latency work remain.
+
+## Surface recovery alerts
+
+- Improved: connection, audio, setup and turn errors clear on relevant recovery;
+  the visible notice, settings text and indicator share one current error state.
+- Improved: successful unrelated polling cannot hide an unresolved permission or
+  playback fault. Synthetic UI regressions cover recovery and concurrent failures.
+- Limited: open views must reload updated static assets; physical screen acceptance
+  remains distinct from served-document and isolated browser checks.

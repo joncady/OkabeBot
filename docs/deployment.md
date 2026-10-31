@@ -2284,3 +2284,12 @@ or establish physical phone listening acceptance. Volume, reference conditioning
 source consent and other experimental conversation/recovery modules were preserved.
 The broader checkpoint remains source-only where noted above. README topology is
 unchanged: the same Mac controller and existing local speech worker own these paths.
+
+Installed shared-surface alert follow-up: companion assets now clear errors by the
+operation that recovered, updating the main notice, settings notice, setup error
+and status indicator consistently. Successful network polling does not dismiss an
+unresolved audio or permission failure. Only the two static companion JS files were
+updated, with rollback copies; no service restart, volume or device-state change.
+The Android inline document was fetched to verify updated assets and no-store
+responses. Already-open views need a reload/reopen; no APK update is required.
+Hosting, listeners and README topology remain unchanged.
