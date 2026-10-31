@@ -672,3 +672,11 @@ separate from sensor truth and inference quality.
   coverage, a repaired SD card or a broadly improved model. Physical recovery and
   spare-card compatibility still require supervised checks. Runtime evaluation
   outputs remain private; only invented fixtures and core improvements are public.
+
+## Calendar answer completeness
+
+- Improved: an agenda reply must convey returned events or an explicit empty result;
+  a source/scope label alone is rejected. Spoken fallbacks use ordinary language
+  and retain the limited connected-calendar and timed-event coverage boundaries.
+- Limited: this validates generated reply content, not physical playback completion.
+  Deployment and audio acceptance remain separate from source regression checks.

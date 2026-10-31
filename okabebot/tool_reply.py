@@ -19,8 +19,34 @@ SYSTEM = (
     "An NFC room cue locates a recent scan, not an identified person; a companion destination does not locate the user. "
     "Never turn that into 'someone watched then switched off the TV' or infer who came or left. "
     "Mention actual alerts if present; otherwise explain you only have state readings. Never say no alerts triggered just because none are listed. "
+    "For a calendar lookup, state the actual events or explicitly say no events were returned. A source label alone is not an answer. "
+    "Use ordinary dates, never API field names, configured-feed headings or exclusive-end explanations. "
     "Don't read out timestamps unless asked when. Return only the spoken reply."
 )
+
+
+def calendar_reference(result):
+    """Useful spoken fallback without turning one calendar into a complete agenda."""
+    if not result.get("available"):
+        return "I couldn't read a fresh calendar, so I can't confirm your events."
+    events = result.get("events", [])
+    if not events:
+        reply = "I don't see any events in the calendar I can access for those dates."
+    else:
+        entries = [
+            str(e.get("title", "Untitled event"))[:70]
+            + " at "
+            + str(e.get("start", "time unavailable"))[:35]
+            for e in events[:3]
+        ]
+        reply = "In the connected calendar: " + "; ".join(entries) + "."
+        if len(events) > 3:
+            reply += " There are more events in this view."
+    if not result.get("start_date"):
+        reply += (
+            " This view only includes upcoming timed events, not all-day or already-started events."
+        )
+    return reply
 
 
 def facts(name, result, reference):
@@ -251,6 +277,10 @@ def facts(name, result, reference):
 def preserve_scope(reply, name, result):
     if not isinstance(reply, str):
         return reply
+    if name == "get_calendar_agenda" and result.get("available") and not result.get("events"):
+        if not re.search(r"connected|calendar I can|feed|view", reply, re.I):
+            reply += " That's only the calendar I can access."
+        return reply
     if name == "get_proactive_explanation":
         suggestion = result.get("suggestion") if isinstance(result.get("suggestion"), dict) else {}
         reason = suggestion.get("reason")
@@ -414,14 +444,27 @@ def acceptable(reply, name, result, reference):
     ):
         return False
     if name == "get_calendar_agenda":
+        if re.search(r"^\s*Configured calendar feed\b|\(end exclusive\)", reply, re.I):
+            return False
         if not result.get("available") and not re.search(
             r"unavailable|stale|can't|cannot|couldn't", reply, re.I
         ):
             return False
-        if not result.get("events") and not re.search(
-            r"connected|feed|view|calendar I can", reply, re.I
-        ):
-            return False
+        if result.get("available"):
+            events = result.get("events", [])
+            if not events and not (
+                re.search(
+                    r"\b(no|none|nothing|not any|don't see|do not see|isn't|aren't)\b", reply, re.I
+                )
+                and re.search(r"\b(events?|appointments?|scheduled|calendar)\b", reply, re.I)
+            ):
+                return False
+            if events and not any(
+                str(e.get("title", ""))[:120].casefold() in reply.casefold()
+                for e in events
+                if e.get("title")
+            ):
+                return False
     if name == "get_companion_locations":
         names = [i.get("name", "") for i in result.get("locations", [])[:6]]
         if any(value and value.casefold() not in reply.casefold() for value in names):

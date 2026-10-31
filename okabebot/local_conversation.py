@@ -537,20 +537,9 @@ def acknowledgement(name, result):
             else "No media title is currently available."
         )
     if name == "get_calendar_agenda":
-        if not result.get("available"):
-            return "Calendar data is unavailable or stale."
-        events = result.get("events", [])
-        window = result.get("start_date", result.get("date", "requested dates")) + (
-            " to " + result["end_date"] + " (end exclusive)" if result.get("end_date") else ""
-        )
-        coverage = "Configured calendar feed, " + window + ". "
-        if not result.get("start_date"):
-            coverage += "Upcoming timed events only; excludes all-day and already-started events. "
-        return coverage + (
-            ("; ".join(str(e["start"]) + " " + e["title"] for e in events[:3]))[:350]
-            if events
-            else "No events in this view; other calendars are not included."
-        )
+        from .tool_reply import calendar_reference
+
+        return calendar_reference(result)
     if name == "get_focus_session":
         return "A focus timer is active." if result.get("active") else "No focus timer is active."
     if name in ("list_spotify_devices", "list_echo_speakers"):

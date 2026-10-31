@@ -2269,3 +2269,8 @@ README topology was reviewed: these changes reuse the existing Mac controller,
 private store, HA read connection, SSH path and Cast adapters; no new host, listener
 or credential is introduced. Android/Tailscale/FCM and upstairs sensor responsibilities
 remain as shown in the maintained diagram.
+
+Calendar reply follow-up source rejects scope-only/technical-header answers and
+provides a natural empty-calendar fallback. This changes composition on the existing
+controller only; it adds no collection, route or inference worker. It has not been
+installed by updating the checkpoint PR; physical playback is a separate check.
