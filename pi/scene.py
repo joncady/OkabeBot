@@ -112,6 +112,25 @@ def icon(source, size=32):
     return image.resize((size, size), Image.NEAREST)
 
 
+def thought_bubble(phase=0):
+    """Small pixel cue above the shoulder; no text or lower-screen overlay."""
+    out = []
+
+    def rect(box, color):
+        out.append(("rectangle", box, color, 1))
+
+    edge, fill, light = "#86aaa7", "#172b34", "#e7c877"
+    rect((316, 52, 320, 56), edge)
+    rect((324, 42, 330, 48), edge)
+    rect((336, 14, 376, 42), edge)
+    rect((332, 18, 380, 38), edge)
+    rect((336, 18, 376, 38), fill)
+    count = int(phase * 2) % 3 + 1
+    for index in range(count):
+        rect((342 + index * 10, 26, 346 + index * 10, 30), light)
+    return out
+
+
 def shapes(
     notification=None,
     gesture="idle",
@@ -176,6 +195,8 @@ def shapes(
         elif character.get("style") == "sonic":
             character["arms"] = False
     original = pip_face.shapes(**character)
+    if character.get("activity") == "thinking":
+        original.extend(thought_bubble(character.get("phase", 0)))
     if waving and character.get("style") == "sonic":
         wag = round(math.sin(character.get("phase", 0) * 8) * 8)
         original.extend(

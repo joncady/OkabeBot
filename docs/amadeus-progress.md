@@ -698,3 +698,12 @@ separate from sensor truth and inference quality.
   playback fault. Synthetic UI regressions cover recovery and concurrent failures.
 - Limited: open views must reload updated static assets; physical screen acceptance
   remains distinct from served-document and isolated browser checks.
+
+## Small-screen thinking visibility
+
+- Improved: an animated pixel thought cue makes the Pi's thinking state distinct
+  across all four characters, beyond the subtle eye/brow expression.
+- Improved: visual bounds avoid the lower media/card area; isolated character and
+  button-turn regressions cover composition and thinking-state submission.
+- Limited: rendered-preview verification is separate from owner acceptance during
+  a physical button conversation. No new capture or automatic speech was added.

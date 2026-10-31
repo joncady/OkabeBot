@@ -2293,3 +2293,12 @@ updated, with rollback copies; no service restart, volume or device-state change
 The Android inline document was fetched to verify updated assets and no-store
 responses. Already-open views need a reload/reopen; no APK update is required.
 Hosting, listeners and README topology remain unchanged.
+
+Installed Pi thinking-cue follow-up: the satellite renderer now adds a small animated
+pixel thought bubble for every character's thinking activity, above the shoulder
+and clear of the lower media/notification region. Only the scoped scene helper and
+its thinking-state composition call were installed, preserving other deployed Pi
+renderer differences. The display service was restarted while idle; the voice
+service and volume were unchanged. RPC activity and a digital preview verified the
+cue with no renderer error, then idle was restored. Physical button-turn visibility
+is a separate owner check. No hosting/transport or README topology changed.

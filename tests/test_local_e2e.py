@@ -122,6 +122,7 @@ class LocalEndToEndTests(unittest.TestCase):
                     bridge.handle_clip(clip)
                     self.assertTrue(done.wait(10), "Full local turn did not complete")
                     bridge.handle_clip(clip)
+                    bridge.show_activity.assert_any_call("thinking")
                     self.assertEqual(len(sandbox.calls), 1)
                     self.assertEqual(sandbox.volume, 5)
                     self.assertEqual(requests[0]["text"], "Speaker volume is now 5 percent.")

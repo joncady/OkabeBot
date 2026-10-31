@@ -23,6 +23,24 @@ class SceneWorldTests(unittest.TestCase):
     def assign(self, location, selected, character="okabe"):
         self.registry.update(location, {"scene_selections": {character: selected}}, self.places)
 
+    def test_thinking_has_a_distinct_animated_pixel_cue_for_every_character(self):
+        for style in ("okabe", "kurisu", "sonic", "pip"):
+            for environment in ("legacy", "pixel-lab"):
+                with self.subTest(style=style, environment=environment):
+                    thinking = scene.shapes(
+                        style=style, environment=environment, activity="thinking", phase=0.6
+                    )
+                    idle = scene.shapes(
+                        style=style, environment=environment, activity="idle", phase=0.6
+                    )
+                    for shape in scene.thought_bubble(0.6):
+                        self.assertIn(shape, thinking)
+                    self.assertNotIn(scene.thought_bubble(0.6)[0], idle)
+        self.assertNotEqual(scene.thought_bubble(0), scene.thought_bubble(0.6))
+        for _, box, _, _ in scene.thought_bubble(1.1):
+            self.assertGreaterEqual(min(box), 0)
+            self.assertLess(max(box[1::2]), 80)  # No media or notification overlap.
+
     def test_catalog_has_dedicated_desk_set_per_character_and_pi_supports_all(self):
         for choices in CATALOG["characters"].values():
             self.assertEqual(len(choices), 4)
