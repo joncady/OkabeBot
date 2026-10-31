@@ -94,9 +94,10 @@ list preparation; checkout remains a human action.
 
 ## Checkpoint and acceptance
 
-Source implementation only: controller, shared web assets and Pi bundle must be
-promoted together after review. No hosting, ports, audio targets or live collection
-settings change. Offline checks cover shared sampler parity, interruption priority,
+The scoped Pi display bundle is installed as recorded in the deployment inventory.
+Controller and shared web UI changes remain source-only for review; subsequent
+promotions must retain compatible character assets across consumers. No hosting,
+ports, audio targets or live collection settings change. Offline checks cover shared sampler parity, interruption priority,
 expired leases, draft revisions/retention and readable template boundaries. Physical
 Pi smoothness and prolonged idle personality still require owner review after install.
 

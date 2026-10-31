@@ -2326,8 +2326,9 @@ and motion settings. An isolated renewer sends content-free work stages over the
 existing display RPC; device-local expiry prevents stuck work after disconnects.
 Owner-only dashboard draft routes are not added to the mobile proxy allowlist.
 No retailer adapter, proactive preparation schedule or new collection is enabled.
-These changes are source-only; no live installation or physical verification is
-claimed by this checkpoint. Alexa dynamic work animation remains planned.
+The controller preparation/UI changes remain source-only; the scoped Pi display
+installation is recorded below. No full-controller promotion or physical acceptance
+is claimed by this checkpoint. Alexa dynamic work animation remains planned.
 
 ## Directory-owned character display update (2026-10-31)
 
