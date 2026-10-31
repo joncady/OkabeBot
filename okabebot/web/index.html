@@ -170,11 +170,11 @@
         <p class="hint">Quiet hours keep cards visible and silence all notification audio, including urgent alerts. Your button replies are unaffected.</p>
         <form id="source-rule-form" class="preference-form">
           <label>Source <select id="notification-source"><option>github</option><option>calendar</option><option>codex</option><option>system</option><option>reminder</option><option>arrival</option></select></label>
-          <label><input id="source-enabled" type="checkbox" checked /> Show cards</label>
+          <label><input id="source-enabled" type="checkbox" checked /> Enable this notification source</label>
           <label>Audio <select id="source-audio"><option value="default">Priority default</option><option value="silent">Silent</option><option value="chime">Chime</option><option value="speech">Read aloud</option></select></label>
           <button type="submit">Save source</button>
         </form>
-        <p class="hint">Explicitly silent events stay silent. Source changes apply to future deliveries.</p>
+        <p class="hint">Off suppresses new cards and sounds from this source. Amadeus context collection has separate source settings. Explicitly silent events stay silent.</p>
         <h3>Sender rules</h3>
         <p class="hint">Match the exact source and sender ID shown on a notification. Priority changes apply to new events; quiet hours and explicit silence still win.</p>
         <form id="sender-rule-form" class="preference-form">

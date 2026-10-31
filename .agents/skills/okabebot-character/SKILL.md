@@ -26,6 +26,9 @@ for anchored paper/computer work; Sonic/Pip retain their current simpler motion.
   pose grips a pencil whose nib touches desk-bound paper; a computer pose uses both
   hands on keys and looks toward the monitor. Fixtures should catch detached limbs,
   duplicate resting arms, moving furniture and invalid transition rectangles.
+- Own notification arm anchors in `avatar.json`; wrists must meet the moving card
+  throughout its entrance/exit. Keep facial clocks independent of presentation and
+  cover reduced motion, withdrawal and interrupted replacement.
 - Motion must yield to conversation, handoff, focus, notifications and media. Respect
   ambient/reduced-motion settings and short work leases. Decorative activity must not
   claim an order/action completed or invent real task progress.

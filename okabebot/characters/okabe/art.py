@@ -12,6 +12,7 @@ def shapes(
     palette=None,
     pose="rest",
     motion=None,
+    arms=True,
 ):
     palette = palette or {}
     bg = palette.get("background", "#101e25")
@@ -41,9 +42,9 @@ def shapes(
     working = pose in ("read", "write", "review", "computer")
     phone = pose in ("phone", "wave", "stretch")
     rect(35, 57, 80 if phone else 85, 72, seam)
-    if not working:
+    if not working and arms:
         rect(31, 62, 40, 73, coat)
-    if not phone and not working:
+    if not phone and not working and arms:
         rect(80, 62, 89, 73, coat)
     rect(38, 57, 80 if phone else 82, 73, coat)
     rect(51, 54, 69, 73, shirt)

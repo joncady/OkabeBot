@@ -26,6 +26,11 @@ import travel
 from gesture_policy import wave_allowed
 from device_config import load
 from display_power import keep_awake, Power
+
+try:
+    from okabebot.characters.presentation import Notice
+except ImportError:
+    from characters.presentation import Notice
 import focus_visual
 import math
 
@@ -67,6 +72,9 @@ class Display:
         self.travel_sign = None
         self.travel_photo = None
         self.notification = None
+        self.shown_notification = None
+        self.notification_progress = 0
+        self.notice = Notice()
         self.notification_until = 0
         self.card_photo = None
         self.focus = focus_visual.Focus()
@@ -194,6 +202,13 @@ class Display:
                 self.set_character({})
         self.notification = value
         self.notification_until = time.monotonic() + duration
+        self.notice.set(value)
+        return self.status()
+
+    def render_notification(self, value):
+        key = json.dumps([value, (self.character or {}).get("style")], sort_keys=True)
+        if key == getattr(self, "card_key", None):
+            return
         overlay = scene.card(value, style=(self.character or {}).get("style")).resize(
             (self.root.winfo_screenwidth(), self.root.winfo_screenheight()), Image.NEAREST
         )
@@ -205,6 +220,7 @@ class Display:
         if self.notification_item is not None:
             self.canvas.itemconfigure(self.notification_item, image=photo)
         self.card_photo = photo
+        self.card_key = key
         return self.status()
 
     def cache_crest(self, data):
@@ -260,7 +276,7 @@ class Display:
         now = time.monotonic()
         if (
             data["activity"] != "idle"
-            or self.notification
+            or getattr(self, "shown_notification", self.notification)
             or self.music.get("is_playing")
             or self.deploying
         ):
@@ -280,8 +296,21 @@ class Display:
                 from work_state import WorkState
             self.work_state = WorkState()
         work, motion_options = self.work_state.snapshot()
+        pose_key = (
+            data["style"],
+            data["activity"],
+            work.get("stage"),
+            bool(getattr(self, "shown_notification", self.notification)),
+            bool(self.music.get("is_playing") or self.music.get("video")),
+            getattr(getattr(self, "motion", None), "phase", "home"),
+        )
+        if pose_key != getattr(self, "pose_key", None):
+            self.pose_key, self.pose_started = pose_key, now
+        motion_options["pose_elapsed"] = max(0, now - self.pose_started)
         args = dict(
             work=work,
+            facial_seconds=now,
+            notification_progress=getattr(self, "notification_progress", 1),
             motion_options=motion_options,
             gesture="wave" if now < getattr(self, "wave_until", 0) else "idle",
             idle_seconds=max(0, now - self.idle_since),
@@ -302,7 +331,7 @@ class Display:
                 active,
                 self.character,
                 self.motion.phase,
-                self.notification,
+                getattr(self, "shown_notification", self.notification),
                 self.music,
                 self.deploying,
             )
@@ -347,7 +376,10 @@ class Display:
     def draw_content_assets(self, now, sx, sy):
         video = self.music.get("video") or {}
         active = reactions.active(
-            self.music, self.notification, self.character.get("activity", "idle"), self.deploying
+            self.music,
+            getattr(self, "shown_notification", self.notification),
+            self.character.get("activity", "idle"),
+            self.deploying,
         )
         reaction = video.get("reaction") or {}
         teams = reaction.get("participants", [])[:2] if active else []
@@ -414,7 +446,7 @@ class Display:
             status["active"],
             self.character,
             self.motion.phase,
-            self.notification,
+            getattr(self, "shown_notification", self.notification),
             self.music,
             self.deploying,
         )
@@ -581,6 +613,16 @@ class Display:
             self.music_preview_until = 0
         if self.notification and started >= self.notification_until:
             self.notification = None
+            if getattr(self, "notice", None) is not None:
+                self.notice.set(None, started)
+        if getattr(self, "notice", None) is not None:
+            reduced = getattr(getattr(self, "work_state", None), "motion", {}).get(
+                "reduced_motion", False
+            )
+            shown, progress = self.notice.sample(started, reduced)
+        else:
+            shown, progress = self.notification, 1 if self.notification else 0
+        self.shown_notification, self.notification_progress = shown, progress
         if self.character:
             sx, sy = self.root.winfo_screenwidth() / 480, self.root.winfo_screenheight() / 320
             phase, dx, dy = self.motion.sample(started)
@@ -599,7 +641,16 @@ class Display:
                     **{
                         k: v
                         for k, v in self.face_args().items()
-                        if k not in ("idle_seconds", "environment", "gesture")
+                        if k
+                        not in (
+                            "idle_seconds",
+                            "environment",
+                            "gesture",
+                            "work",
+                            "motion_options",
+                            "notification_progress",
+                            "facial_seconds",
+                        )
                     }
                 )
                 if phase == "away":
@@ -630,7 +681,7 @@ class Display:
                 self.canvas.itemconfigure(item, state="normal")
             self.draw_scene(
                 scene.shapes(
-                    notification=self.notification,
+                    notification=shown,
                     deploying=self.deploying,
                     music=self.music,
                     native_sprites=True,
@@ -642,7 +693,9 @@ class Display:
             self.draw_content_assets(started, sx, sy)
             if getattr(self, "focus", None) is not None:
                 self.draw_focus(sx, sy)
-            if self.notification and self.card_photo:
+            if shown:
+                self.render_notification(shown)
+            if shown and self.card_photo:
                 if self.media_panel:
                     self.media_panel.place_forget()
                     self.media_shown = False
@@ -651,6 +704,7 @@ class Display:
                 self.canvas.itemconfigure(
                     self.notification_item, image=self.card_photo, state="normal"
                 )
+                self.canvas.coords(self.notification_item, 0, round((1 - progress) * 140 * sy))
                 self.canvas.tag_raise(self.notification_item)
             else:
                 if self.notification_item:
@@ -775,7 +829,7 @@ class Display:
                         if not wave_allowed(
                             self.character,
                             self.motion.phase,
-                            self.notification,
+                            getattr(self, "shown_notification", self.notification),
                             self.music,
                             self.deploying,
                             data.get("allow_during_media", False),
@@ -794,7 +848,7 @@ class Display:
                         elif self.character:
                             buf = io.BytesIO()
                             image = scene.render(
-                                notification=self.notification,
+                                notification=getattr(self, "shown_notification", self.notification),
                                 deploying=self.deploying,
                                 music=self.music,
                                 **self.face_args(),
@@ -804,7 +858,7 @@ class Display:
                                 focus["active"],
                                 self.character,
                                 self.motion.phase,
-                                self.notification,
+                                getattr(self, "shown_notification", self.notification),
                                 self.music,
                                 self.deploying,
                             )

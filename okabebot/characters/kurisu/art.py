@@ -13,6 +13,7 @@ def shapes(
     show_emphasis=True,
     pose="rest",
     motion=None,
+    arms=True,
 ):
     palette = palette or {}
     out = [("rectangle", (0, 0, 480, 320), palette.get("background", "#101e25"), 1)]
@@ -44,9 +45,9 @@ def shapes(
     working = pose in ("read", "write", "review", "computer")
     phone = pose in ("phone", "wave", "stretch")
     rect(35, 60, 77 if phone else 85, 74, "#947461")
-    if not working:
+    if not working and arms:
         rect(32, 65, 43, 74, "#b5997a")
-    if not phone and not working:
+    if not phone and not working and arms:
         rect(77, 65, 88, 74, "#b5997a")
     rect(46, 54, 74, 74, "#f4eee4")
     rect(54, 47, 66, 56, shade)

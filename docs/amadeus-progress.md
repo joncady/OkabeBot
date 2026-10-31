@@ -734,3 +734,11 @@ separate from sensor truth and inference quality.
   task-directed gaze; display work intent still carries no private draft contents.
 - Limited: advanced work poses for other character rigs and dynamic APL equivalents
   remain separate backfill, rather than implied parity.
+
+## Ambient notification continuity
+
+- Improved: independent facial clocks, eased card presentation and attached
+  notification arm anchors, with explicit withdrawal and reduced-motion behavior.
+- Improved: notification-source controls explain the distinction from context feeds.
+- Planned: evidence-based pantry intake and uncertainty-aware stock, followed by
+  separately approved grocery handoff; see the declarative pantry design.

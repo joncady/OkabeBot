@@ -43,7 +43,8 @@ def icon(source, size=32):
     # never fetched on the Pi's render loop. Unknown/missing assets use pixel icons.
     from pathlib import Path
 
-    if str(source).isalnum():
+    source = str(source or "system")
+    if source.isalnum():
         path = Path(__file__).resolve().parent / "assets/app-logos" / (source + ".png")
         try:
             with Image.open(str(path)) as logo:
@@ -144,6 +145,8 @@ def shapes(
     selected_set = character.pop("environment", "legacy")
     actor = pip_face.get(character.get("style", "okabe"))
     rig = actor.definition["rig"]
+    notice_progress = min(1, max(0, character.pop("notification_progress", 1)))
+    facial_seconds = character.pop("facial_seconds", character.get("phase", idle_seconds))
     work = character.pop("work", {}) or {}
     motion_options = character.pop("motion_options", {}) or {}
     if character.get("activity", "idle") == "thinking" or (
@@ -170,9 +173,12 @@ def shapes(
             or motion_options.get("quiet")
         ),
         stage=work.get("stage", ""),
+        face_seconds=facial_seconds,
         reduced=motion_options.get("reduced_motion", False)
         or not motion_options.get("enabled", True),
     )
+    if work and "pose_elapsed" in motion_options:
+        moving["pose_weight"] *= min(1, max(0, motion_options["pose_elapsed"] / 0.5))
     character["motion"] = moving
     idle_action = moving["clip"] != "rest"
     idle_frame = idle_seconds % 48
@@ -185,7 +191,10 @@ def shapes(
             character["mouth"] = max(0, math.sin(idle_seconds * 8)) * 0.25
     if rig == "hedgehog":
         character["arms"] = not (
-            notification or gesture == "present" or idle_action and moving["pose"] == "phone"
+            (notification or gesture == "present")
+            and notice_progress > 0
+            or idle_action
+            and moving["pose"] == "phone"
         )
     if (
         music
@@ -215,6 +224,13 @@ def shapes(
             character["pose"] = "wave"
         elif rig == "hedgehog":
             character["arms"] = False
+    presenting = (notification or gesture == "present") and notice_progress > 0
+    presentation = actor.presentation()
+    if presenting and presentation.get("replace_arms"):
+        character["arms"] = False
+    if presenting and character.get("activity", "idle") == "idle":
+        moving["gaze_y"] = math.sin(math.pi * notice_progress)
+        moving["head_y"] = math.sin(math.pi * notice_progress) * 2
     original = pip_face.shapes(**character)
     if character.get("activity") == "thinking":
         original.extend(thought_bubble(character.get("phase", 0)))
@@ -325,10 +341,15 @@ def shapes(
                     ("ellipse", (315 + wag, 145, 327 + wag, 157), "#f5f4ed", 1),
                 ]
             )
-    if not notification and gesture != "present":
+    if not presenting:
         return original
-    sonic = rig == "hedgehog"
-    scale, offset_x, offset_y = (0.9, 24, -20) if sonic else (0.68, 77, 0)
+    p = notice_progress
+    scale = 1 + (presentation["scale"] - 1) * p
+    offset_x, offset_y = [v * p for v in presentation["offset"]]
+
+    def transform(point):
+        return (point[0] * scale + offset_x, point[1] * scale + offset_y)
+
     out = [original[0]]
     for kind, coords, fill, width in original[1:]:
         out.append(
@@ -341,23 +362,58 @@ def shapes(
                 max(1, width * scale),
             )
         )
-    # Keep shoulders attached to the torso. Bend at the elbow rather than
-    # compressing the old arm polygons when the notification edge moves upward.
     sleeve = actor.avatar()["palette"]["sleeve"]
-    if sonic:
-        left = (210, 165, 218, 177, 195, 186, 173, 191, 163, 183, 190, 175)
-    else:
-        left = (174, 164, 183, 176, 163, 185, 143, 191, 133, 181, 155, 173)
-    out.append(("polygon", left, sleeve, 1))
-    right = tuple(480 - v if i % 2 == 0 else v for i, v in enumerate(left))
-    out.append(("polygon", right, sleeve, 1))
+
+    def segment(start, end, half):
+        dx, dy = end[0] - start[0], end[1] - start[1]
+        length = max(1, math.hypot(dx, dy))
+        nx, ny = -dy / length * half, dx / length * half
+        out.append(
+            (
+                "polygon",
+                (
+                    start[0] + nx,
+                    start[1] + ny,
+                    start[0] - nx,
+                    start[1] - ny,
+                    end[0] - nx,
+                    end[1] - ny,
+                    end[0] + nx,
+                    end[1] + ny,
+                ),
+                sleeve,
+                1,
+            )
+        )
+
+    for side in (0, 1):
+        shoulder = transform(presentation["shoulders"][side])
+        rest_elbow = transform(presentation["elbows"][side])
+        target_elbow = (159 if side == 0 else 321, 178)
+        target_hand = (presentation["grips"][side] + 10, 191 + (1 - p) * 140)
+        elbow = tuple(a + (b - a) * p for a, b in zip(rest_elbow, target_elbow))
+        # Palms belong to the moving card; sleeves must meet that exact anchor.
+        hand = target_hand
+        segment(shoulder, elbow, 16 * scale)
+        segment(elbow, hand, 11 * scale)
+        out.append(
+            (
+                "rectangle",
+                (
+                    elbow[0] - 8 * scale,
+                    elbow[1] - 8 * scale,
+                    elbow[0] + 8 * scale,
+                    elbow[1] + 8 * scale,
+                ),
+                sleeve,
+                1,
+            )
+        )
     return out
 
 
 def grip_positions(style):
-    return (
-        (163, 297) if pip_face.get(style or "okabe").definition["rig"] == "hedgehog" else (133, 327)
-    )
+    return tuple(pip_face.get(style or "okabe").presentation()["grips"])
 
 
 def card(notification, font_path=None, style=None):
@@ -521,5 +577,6 @@ def render(
         if notification
         else music_card(music, character.get("phase", 0), font_path)
     )
-    image.paste(overlay, (0, 0), overlay)
+    shift = round((1 - character.get("notification_progress", 1)) * 140) if notification else 0
+    image.paste(overlay, (0, shift), overlay)
     return image

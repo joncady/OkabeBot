@@ -129,3 +129,24 @@ test('TV expression follows local buffer and playback clock instead of early ser
  audioState.buffering=false;audioState.presenter={activity:'speaking',start_at:123,envelope:[.2,.4]};
  screen.frame(200);assert.deepEqual(screen.renders.at(-1).state.presenter,audioState.presenter);
 });
+
+test('notification presentation survives fresh polls, withdraws private text and resets on disconnect',()=>{
+ const {Room}=require('../okabebot/web/lab-room.js'),room=new Room();
+ const item={source:'calendar',title:'Synthetic appointment',body:'Invented details'};
+ assert.equal(room.presentation({notification:item},1000).notification_progress,0);
+ const half=room.presentation({notification:{...item}},1250);assert.equal(half.notification_progress,.5);
+ assert.equal(room.presentation(half,1250),half); // Shared compact/avatar path samples once.
+ assert.equal(room.presentation({notification:item},1500).notification_progress,1);
+ const withdrawn=room.presentation({},1550);assert.equal(withdrawn.notification.body,'');
+ assert.ok(room.presentation({},1700).notification_progress<1);
+ assert.equal(room.presentation({},1900).notification,null);
+ room.presentation({notification:item},2000);room.clearPresentation();
+ assert.equal(room.presentation({},2001).notification,null);
+});
+test('reduced-motion notifications settle on the same frame without changing input',()=>{
+ const {Room}=require('../okabebot/web/lab-room.js'),room=new Room();
+ const state={notification:{title:'Synthetic'},motion:{reduced_motion:true}};
+ assert.equal(room.presentation(state,1000).notification_progress,1);
+ assert.equal(state.notification_progress,undefined);
+ assert.equal(room.presentation({motion:{reduced_motion:true}},1100).notification,null);
+});

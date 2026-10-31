@@ -53,6 +53,20 @@ class Character(ABC):
     def avatar(self):
         return self.read_json("avatar.json")
 
+    def presentation(self):
+        return self.avatar().get(
+            "notification",
+            dict(
+                scale=0.68,
+                offset=[77, 0],
+                grips=[133, 327],
+                shoulders=[[140, 244], [336, 244]],
+                elbows=[[140, 272], [336, 272]],
+                hands=[[140, 288], [336, 288]],
+                replace_arms=False,
+            ),
+        )
+
     def assets(self, emotion="neutral", palette=None):
         from . import motion_catalog
 

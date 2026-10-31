@@ -22,7 +22,9 @@ def track(points, at):
     return points[-1][1] if points else 0
 
 
-def sample(data, style, elapsed, activity="idle", blocked=False, stage="", reduced=False):
+def sample(
+    data, style, elapsed, activity="idle", blocked=False, stage="", reduced=False, face_seconds=None
+):
     result = dict(
         clip="rest",
         pose="rest",
@@ -35,12 +37,15 @@ def sample(data, style, elapsed, activity="idle", blocked=False, stage="", reduc
         foot=0,
         pose_weight=0,
     )
+    face_seconds = elapsed if face_seconds is None else face_seconds
+    blink_at = (face_seconds + len(style) * 0.37) % 7.3
+    result["blink"] = blink_at < 0.14 or (
+        int(face_seconds // 7.3) % 3 == 1 and 0.32 < blink_at < 0.44
+    )
     if reduced or blocked or activity != "idle" or not data:
         return result
     elapsed = max(0, elapsed)
     result["body_y"] = math.sin(elapsed * 1.15) * 0.6
-    blink_at = (elapsed + len(style) * 0.37) % 7.3
-    result["blink"] = blink_at < 0.14 or (int(elapsed // 7.3) % 3 == 1 and 0.32 < blink_at < 0.44)
     owned = data.get("definitions", {}).get(style, {})
     clips = owned.get("clips", data["clips"])
     clip = owned.get("work_stages", data.get("work_stages", {})).get(stage)

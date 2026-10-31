@@ -2349,3 +2349,18 @@ idle catalog. Grocery adapters/proactive preparation jobs remain planned. Physic
 elbow/gaze/pacing acceptance is separate from automatic service/render checks.
 
 README topology reviewed: existing display RPC, hosting roles and ports are unchanged.
+
+## Notification continuity — source update
+
+The source Pi renderer and web/compact surfaces now share entrance/exit semantics
+while facial clocks remain independent. Source enablement already controls future
+notification delivery and sound; its dashboard explanation is clearer. Persistent
+media presentation remains separate. These changes add no host, port, collection
+source or model worker. Pantry receipt/camera/provider work is a design only.
+The README topology was reviewed and is unchanged. The scoped Pi display revision is installed: satellite import/render preflight,
+service recovery and status checks passed with no reported animation error. A
+silent synthetic card was accepted through display RPC. The voice service was
+unchanged; no audio or volume settings were altered. Physical entrance/exit pacing
+still needs visual acceptance. Web/compact transition changes remain source-only,
+as does the clearer dashboard label; existing source-disable controls are available
+in the installed dashboard.

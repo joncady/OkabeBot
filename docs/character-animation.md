@@ -134,3 +134,17 @@ existing private manifest; a source refactor does not publish or replace them.
 New shared environment geometry remains a separate interface from selecting an
 existing character-owned scene. Dynamic APL animation and Sonic/Pip advanced work
 poses remain follow-ups. Use the repository `okabebot-character` skill for additions.
+
+## Notification presentation
+
+Blink and mouth-envelope timing are independent from card presentation. A shared
+entrance/exit clock eases the Pi's body and attached card grips; compact web surfaces
+unfold the card from the hands, while room notifications enter inside the mounted
+monitor. Repeated state polls do not restart an entrance. Replacements leave before
+the next card enters. Withdrawal clears private text immediately while empty
+geometry exits. Reduced motion settles in one frame; revoked/stale screens reset
+presentation state. Character-owned avatar data supplies notification arm anchors.
+
+Dashboard notification source enablement controls new event cards and their sounds,
+independently of Amadeus context collection. The persistent media strip is a separate
+presentation channel. Source-only web changes are not evidence of installation.

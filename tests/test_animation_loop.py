@@ -68,7 +68,15 @@ class AnimationLoopTests(unittest.TestCase):
                 travel_photo=object(),
                 canvas=Mock(),
                 draw_scene=Mock(),
-                face_args=lambda: {"style": style, "environment": environment, "idle_seconds": 40},
+                face_args=lambda: {
+                    "style": style,
+                    "environment": environment,
+                    "idle_seconds": 40,
+                    "work": {},
+                    "motion_options": {},
+                    "notification_progress": 0.5,
+                    "facial_seconds": 10,
+                },
             )
             for now, expected in ((0.6, "departing"), (2, "away")):
                 with patch("time.monotonic", return_value=now):
@@ -85,7 +93,7 @@ class AnimationLoopTests(unittest.TestCase):
         method = next(
             n
             for n in display.body
-            if isinstance(n, ast.FunctionDef) and n.name == "set_notification"
+            if isinstance(n, ast.FunctionDef) and n.name == "render_notification"
         )
         old, new = object(), object()
         scene = Mock()
@@ -94,6 +102,7 @@ class AnimationLoopTests(unittest.TestCase):
         )
         namespace = {
             "time": time,
+            "json": __import__("json"),
             "io": io,
             "base64": base64,
             "tk": Mock(PhotoImage=Mock(return_value=new)),
@@ -119,6 +128,6 @@ class AnimationLoopTests(unittest.TestCase):
             self.assertIs(kwargs["image"], new)
 
         fake.canvas.itemconfigure.side_effect = rebind
-        namespace["set_notification"](fake, {"notification": None})
+        namespace["render_notification"](fake, {"title": "Invented card", "source": "system"})
         fake.canvas.itemconfigure.assert_called_once()
         self.assertIs(fake.card_photo, new)

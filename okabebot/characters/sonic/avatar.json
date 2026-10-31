@@ -195,5 +195,47 @@
   },
   "workbench": false,
   "finger_wag": true,
-  "scan": false
+  "scan": false,
+  "notification": {
+    "scale": 0.9,
+    "offset": [
+      24,
+      -20
+    ],
+    "grips": [
+      163,
+      297
+    ],
+    "shoulders": [
+      [
+        200,
+        216
+      ],
+      [
+        288,
+        212
+      ]
+    ],
+    "elbows": [
+      [
+        200,
+        244
+      ],
+      [
+        288,
+        240
+      ]
+    ],
+    "hands": [
+      [
+        196,
+        264
+      ],
+      [
+        296,
+        260
+      ]
+    ],
+    "replace_arms": true
+  }
 }

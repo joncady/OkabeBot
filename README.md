@@ -932,3 +932,9 @@ passed. Controller/browser registry UI changes remain source-only in this checkp
 model workers, audio settings, hosting roles and the deployment map are unchanged.
 See the [deployment inventory](docs/deployment.md#directory-owned-character-display-update-2026-10-31)
 for the exact installed boundary and remaining physical acceptance.
+
+Notification presentation now has its own eased clock, independent of blinking and
+speech, with character-owned arm anchors and reduced-motion behavior. Dashboard
+notification preferences can disable event sources without disabling Amadeus feeds.
+The next grocery phase is scoped in the [pantry design](docs/pantry.md); receipt,
+camera inventory and retailer handoff are planned, not collecting data.
