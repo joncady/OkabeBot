@@ -680,3 +680,12 @@ separate from sensor truth and inference quality.
   and retain the limited connected-calendar and timed-event coverage boundaries.
 - Limited: this validates generated reply content, not physical playback completion.
   Deployment and audio acceptance remain separate from source regression checks.
+
+## Bounded numeric speech generation
+
+- Improved: speaker-only clause budgets account for text length as well as words;
+  one unpublished-clause retry has extra bounded headroom. Numeric expansions no
+  longer receive only a tiny word-count ceiling. EOS validation and total-duration
+  limits remain; previously heard speech is never replayed automatically.
+- Limited: silent synthesis and isolated relay checks are not proof of physical
+  listening quality. Platform playback acceptance and broader latency work remain.

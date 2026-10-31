@@ -184,10 +184,34 @@ class ReferenceManifestTests(unittest.TestCase):
         self.assertEqual(model.generate.call_args.kwargs["temperature"], 0.7)
         model.generate.side_effect = [
             [SimpleNamespace(token_count=75)],
-            [SimpleNamespace(token_count=75)],
+            [SimpleNamespace(token_count=113)],
         ]
         with self.assertRaises(ValueError):
             list(generate(model, "Stay curious.", {}))
+
+    def test_dense_numeric_clause_budget_uses_length_and_retry_has_headroom(self):
+        import runpy
+        from pathlib import Path
+        from types import SimpleNamespace
+
+        generate = runpy.run_path(str(Path(__file__).parents[1] / "scripts/qwen-voice-worker.py"))[
+            "speaker_generate"
+        ]
+        model = MagicMock()
+        clause = "2032-06-08 to 2032-06-09 (end exclusive)."
+        model.generate.side_effect = lambda **kw: [SimpleNamespace(token_count=100)]
+        self.assertEqual(len(list(generate(model, clause, {}))), 1)
+        self.assertGreater(model.generate.call_args.kwargs["max_tokens"], 100)
+        calls = []
+
+        def capped(**kw):
+            calls.append(kw["max_tokens"])
+            return [SimpleNamespace(token_count=kw["max_tokens"] if len(calls) == 1 else 100)]
+
+        model.generate.side_effect = capped
+        self.assertEqual(len(list(generate(model, clause, {}))), 1)
+        self.assertGreater(calls[1], calls[0])
+        self.assertLessEqual(max(calls), 450)
 
     def test_modes_are_explicit_legacy_compatible_and_model_ready(self):
         import runpy

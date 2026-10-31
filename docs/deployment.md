@@ -2274,3 +2274,13 @@ Calendar reply follow-up source rejects scope-only/technical-header answers and
 provides a natural empty-calendar fallback. This changes composition on the existing
 controller only; it adds no collection, route or inference worker. It has not been
 installed by updating the checkpoint PR; physical playback is a separate check.
+
+Installed calendar/audio follow-up: narrowly deployed the calendar reply validator,
+natural fallback and length-aware Qwen clause token budget. The controller child and
+voice worker were restarted while idle, with private rollback copies. Startup checks
+confirmed model, speech and both companion endpoints available. Silent invented-text
+synthesis exercised completed PCM after the budget adjustment; it did not play audio
+or establish physical phone listening acceptance. Volume, reference conditioning,
+source consent and other experimental conversation/recovery modules were preserved.
+The broader checkpoint remains source-only where noted above. README topology is
+unchanged: the same Mac controller and existing local speech worker own these paths.
