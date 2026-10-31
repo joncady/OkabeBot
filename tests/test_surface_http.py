@@ -61,6 +61,33 @@ class SurfaceHttpTests(unittest.TestCase):
             timeout=2,
         )
 
+    def test_prompt_treatment_configuration_requires_owner_token(self):
+        for token in ("publish-only-secret", "invented-paired-screen", ""):
+            with self.assertRaises(HTTPError) as caught:
+                self.request("/amadeus/text/treatments", token, {"selected": "native_candidate"})
+            self.assertEqual(caught.exception.code, 403)
+
+    def test_android_screen_cannot_enter_unrestricted_speech_path(self):
+        self.surface.registry.register("e" * 64, "Invented Android", "android")
+        item = self.surface.registry.device("e" * 64, approved=False)
+        self.surface.layout({"id": item["id"], "approved": True})
+        self.controller.submit_screen_clip = Mock()
+        with self.assertRaises(HTTPError) as caught:
+            self.request("/surfaces/voice", "e" * 64, {"clip_id": "invented", "wav_base64": ""})
+        self.assertEqual(caught.exception.code, 403)
+        self.controller.submit_screen_clip.assert_not_called()
+
+    def test_android_bootstrap_bundles_trusted_scripts_without_pairing_secrets(self):
+        with self.request("/companion/?android=1") as response:
+            html = response.read().decode()
+        self.assertIn("class BrowserAudio", html)
+        self.assertIn("class CompanionUI", html)
+        self.assertIn("window.AmadeusAndroid.deviceToken()", html)
+        self.assertNotIn('<script src="', html)
+        self.assertNotIn(self.controller.token, html)
+        with self.request("/companion/") as response:
+            self.assertIn(b'<script src="', response.read())
+
     def test_only_approved_mac_can_publish_display_signal(self):
         from okabebot.mac_screen import MacScreen
         import time

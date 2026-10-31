@@ -295,3 +295,39 @@ Temperature units follow morning settings. Jacket/umbrella cues are conditional
 on going out and the current reading; no forecast, hourly precipitation, severe
 weather warning or all-day temperature claim is inferred. Additional forecast
 inputs remain a separate source follow-up.
+
+
+## Room-assigned home sensor questions
+
+Select ambient temperature sensors under **Home devices → Related status /
+temperature sensors**. Selections remain editable in the dashboard. Home-device
+and room-activity records include HA's assigned area name when available, including
+the device's inherited area; friendly sensor names need not contain the room name.
+Only selected entities have their area metadata read. An unavailable area lookup
+preserves sensor readings without guessing their room. Room labels refresh with
+the ordinary feed poll; stable entity-derived identities are unchanged.
+
+Tool search combines literal keywords across fields, so a room name and measurement
+can match separate `room` and `label` values. Temperature questions use
+`get_context_feed(source="home_devices")`. A question without a time window uses
+the latest observed reading, not an invented historical measurement. Missing
+readings explain selection/room/reporting coverage. Stale observations cannot be
+asserted as current, and air temperature is distinct from floor, CPU and target
+setpoint values. Room metadata is also preserved for tool reply composition.
+
+### Selected presence reports
+
+`presence_history` is a separate opt-in source, disabled by default. Choose only
+relevant HA person entities and zone counts in Context feeds. The existing HA read
+connection needs Recorder history for these selected entities. Reads span at most
+three UTC calendar days so local yesterday is covered across timezones; the query
+tool returns only today, this morning, yesterday or the last 24 hours. No coordinates
+or entity attributes are retained. Source choice is editable from the dashboard.
+
+The tool distinguishes snapshots from reported changes and returns initial states,
+collection freshness and bounded person-away intervals. A zone count does not identify
+who left; unavailable/unknown is not away. A brief person-away report may be noisy.
+Missing history, a disabled Recorder entity, a partial result or a disconnected phone
+must not be converted into a physical departure time or a claim that nobody left.
+Results and source selections remain private and are removed with normal revocation,
+retention and forgetting. Collection remains separate from location-follow actions.

@@ -102,3 +102,164 @@ class AudioTests(unittest.TestCase):
         fresh = self.hub.command(self.device, {"op": "stream_start"})["stream_id"]
         self.assertNotEqual(identifier, fresh)
         self.assertEqual([e["kind"] for e in self.poll()["events"]], ["start"])
+
+    def test_acknowledged_events_are_pruned_but_unconsumed_pcm_is_retained(self):
+        self.poll()
+        identifier = self.hub.command(self.device, {"op": "stream_start"})["stream_id"]
+        self.hub.command(
+            self.device,
+            {
+                "op": "stream_chunk",
+                "stream_id": identifier,
+                "sequence": 0,
+                "pcm_base64": base64.b64encode(b"\0" * 4800).decode(),
+            },
+        )
+        events = self.poll()["events"]
+        self.assertEqual(self.poll()["events"], events)
+        self.assertEqual(
+            [e["kind"] for e in self.poll(after=events[0]["cursor"])["events"]], ["chunk"]
+        )
+        self.assertEqual(self.poll(after=events[-1]["cursor"])["events"], [])
+        self.assertEqual(self.hub.streams[identifier]["events"], [])
+
+    def test_stream_ttl_releases_transient_pcm_without_replay(self):
+        self.poll()
+        identifier = self.hub.command(self.device, {"op": "stream_start"})["stream_id"]
+        self.hub.streams[identifier]["created"] -= 91
+        self.assertEqual(self.poll()["events"], [])
+        self.assertNotIn(identifier, self.hub.streams)
+        with self.assertRaisesRegex(ValueError, "expired|Unknown"):
+            self.hub.command(self.device, {"op": "stream_end", "stream_id": identifier})
+
+    def test_queue_backpressure_waits_for_acknowledgment_without_dropping_pcm(self):
+        self.poll()
+        identifier = self.hub.command(self.device, {"op": "stream_start"})["stream_id"]
+        self.hub.command(
+            self.device,
+            {
+                "op": "stream_chunk",
+                "stream_id": identifier,
+                "sequence": 0,
+                "pcm_base64": base64.b64encode(b"\0" * 240000).decode(),
+            },
+        )
+        consumed = threading.Event()
+
+        def next_packet():
+            self.hub.command(
+                self.device,
+                {
+                    "op": "stream_chunk",
+                    "stream_id": identifier,
+                    "sequence": 1,
+                    "pcm_base64": base64.b64encode(b"\0" * 4800).decode(),
+                },
+            )
+            consumed.set()
+
+        worker = threading.Thread(target=next_packet)
+        worker.start()
+        self.assertFalse(consumed.wait(0.05))
+        events = self.poll()["events"]
+        self.assertEqual([e["kind"] for e in events], ["start", "chunk"])
+        self.poll(after=events[-1]["cursor"])
+        self.assertTrue(consumed.wait(1))
+        worker.join(1)
+        self.assertEqual(self.hub.streams[identifier]["sequence"], 2)
+
+    def test_default_start_preserves_tv_prebuffer_until_explicitly_overridden(self):
+        self.poll()
+        self.hub.command(self.device, {"op": "stream_start"})
+        default = self.poll()["events"][0]
+        self.assertNotIn("startup_buffer_ms", default)
+        self.assertEqual(default["sample_rate"], 24000)
+        self.hub.command(self.device, {"op": "stream_start", "startup_buffer_ms": 300})
+        starts = [e for e in self.poll()["events"] if e["kind"] == "start"]
+        self.assertEqual(starts[-1]["startup_buffer_ms"], 300)
+
+    def test_waiting_chunk_cannot_continue_after_receiver_session_replacement(self):
+        self.poll()
+        identifier = self.hub.command(self.device, {"op": "stream_start"})["stream_id"]
+        self.hub.command(
+            self.device,
+            {
+                "op": "stream_chunk",
+                "stream_id": identifier,
+                "sequence": 0,
+                "pcm_base64": base64.b64encode(b"\0" * 240000).decode(),
+            },
+        )
+        done = threading.Event()
+        errors = []
+
+        def append():
+            try:
+                self.hub.command(
+                    self.device,
+                    {
+                        "op": "stream_chunk",
+                        "stream_id": identifier,
+                        "sequence": 1,
+                        "pcm_base64": base64.b64encode(b"\0" * 4800).decode(),
+                    },
+                )
+            except ValueError as exc:
+                errors.append(str(exc))
+            finally:
+                done.set()
+
+        worker = threading.Thread(target=append)
+        worker.start()
+        self.assertFalse(done.wait(0.05))
+        self.session = "d" * 32
+        self.poll()
+        self.assertTrue(done.wait(1))
+        worker.join(1)
+        self.assertTrue(errors)
+        self.assertEqual(self.hub.streams[identifier]["sequence"], 1)
+        with self.assertRaises(ValueError):
+            self.hub.command(self.device, {"op": "stream_end", "stream_id": identifier})
+
+    def test_waiting_chunk_cannot_emit_after_stream_expiry_and_removal(self):
+        self.poll()
+        identifier = self.hub.command(self.device, {"op": "stream_start"})["stream_id"]
+        self.hub.command(
+            self.device,
+            {
+                "op": "stream_chunk",
+                "stream_id": identifier,
+                "sequence": 0,
+                "pcm_base64": base64.b64encode(b"\0" * 240000).decode(),
+            },
+        )
+        stream = self.hub.streams[identifier]
+        done = threading.Event()
+        errors = []
+
+        def append():
+            try:
+                self.hub.command(
+                    self.device,
+                    {
+                        "op": "stream_chunk",
+                        "stream_id": identifier,
+                        "sequence": 1,
+                        "pcm_base64": base64.b64encode(b"\0" * 4800).decode(),
+                    },
+                )
+            except ValueError as exc:
+                errors.append(str(exc))
+            finally:
+                done.set()
+
+        worker = threading.Thread(target=append)
+        worker.start()
+        self.assertFalse(done.wait(0.05))
+        stream["created"] -= 91
+        self.poll()
+        self.assertTrue(done.wait(1))
+        worker.join(1)
+        self.assertTrue(errors)
+        self.assertEqual(stream["sequence"], 1)
+        self.assertNotIn(identifier, self.hub.streams)

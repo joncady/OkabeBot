@@ -10,14 +10,16 @@ class FocusTimer:
         self.inbox = inbox
 
     def status(self):
+        now = time.time()
         with self.inbox.connect() as db:
             row = db.execute(
                 "SELECT id,due FROM notifications WHERE dedupe LIKE 'system:focus-%' AND status='pending' AND due>? ORDER BY created DESC LIMIT 1",
-                (time.time(),),
+                (now,),
             ).fetchone()
         return {
             "active": bool(row),
             "ends_at": row[1] if row else None,
+            "remaining_seconds": max(0, int(row[1] - now)) if row else 0,
             "id": row[0] if row else None,
         }
 

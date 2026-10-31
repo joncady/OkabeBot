@@ -68,7 +68,7 @@ function locationsUI(surface){
   button('Rename',()=>save(place.id,{name:name.value}));
   const state=document.createElement('span');state.textContent=!place.approved?'Awaiting approval':place.available?'Online':'Offline';row.append(state);
   if(!place.approved)button('Approve screen',()=>save(place.id,{approved:true}));
-  else{const missing=surface.scene_world_enabled&&!place.scene_selections?.[surface.character_style];button(missing?'Assign a set':surface.current_location===place.id?'Here':'Move here',()=>action('/surfaces/move',{location_id:place.id}),missing||!place.available||surface.current_location===place.id);if(['browser','mac','alexa'].includes(place.adapter))button('Revoke',()=>save(place.id,{approved:false}));}
+  else{const missing=surface.scene_world_enabled&&!place.scene_selections?.[surface.character_style];button(missing?'Assign a set':surface.current_location===place.id?'Here':'Move here',()=>action('/surfaces/move',{location_id:place.id}),missing||!place.available||surface.current_location===place.id);if(['browser','mac','alexa','android'].includes(place.adapter))button('Revoke',()=>save(place.id,{approved:false}));}
   if(surface.scene_catalog){
    const mode=document.createElement('select');mode.setAttribute('aria-label',`View for ${place.name}`);
    for(const [id,label] of Object.entries(surface.scene_catalog.presentations)){const o=document.createElement('option');o.value=id;o.textContent=label;o.selected=id===place.presentation;o.disabled=(place.adapter==='pi'&&id!=='companion')||(place.adapter==='alexa'&&id!=='room');mode.append(o);}
@@ -81,15 +81,19 @@ function locationsUI(surface){
    }character.onchange=setOptions;setOptions();sets.onchange=()=>save(place.id,{scene_selections:{[character.value]:sets.value||null}});row.append(sets);
   }
   const audio=document.createElement('select');audio.setAttribute('aria-label',`Audio destination for ${place.name}`);
-  const choices=[['default','Default speaker'],...(['browser','mac','cast'].includes(place.adapter)?[['device','This device / linked speaker']]:[]),['pi','Pi speaker'],['beam','Beam']];
+  const choices=[['default','Default speaker'],...(['browser','mac','cast','android'].includes(place.adapter)?[['device','This device / linked speaker']]:[]),['pi','Pi speaker'],['beam','Beam']];
   for(const [id,label] of choices){const option=document.createElement('option');option.value=id;option.textContent=label;option.disabled=id==='beam'&&!surface.beam_audio_available;option.selected=(place.audio_target||'default')===id;audio.append(option);}
   audio.onchange=()=>save(place.id,{audio_target:audio.value});row.append(audio);
+  if(place.adapter==='android'&&place.approved){
+    button('Test phone push',async()=>{try{await api('/mobile/test',{id:place.id});document.querySelector('#location-error').textContent='Quiet phone test queued; check the phone and its Inbox.';}catch(e){document.querySelector('#location-error').textContent=e.message;}});
+    button('Phone notifications',async()=>{try{const settings=await api('/mobile/settings'),phone=settings.devices.find(d=>d.id===place.id);if(!phone?.registered)throw Error('Enable notifications in the Android app first.');await api('/mobile/settings',{id:place.id,enabled:!phone.enabled});document.querySelector('#location-error').textContent=(phone.enabled?'Phone notifications paused.':'Phone notifications enabled.')+(settings.sender_configured?'':' Firebase sender credentials still need setup.');}catch(e){document.querySelector('#location-error').textContent=e.message;}});
+  }
   if(place.adapter==='cast'){
     const gain=document.createElement('input');gain.type='range';gain.min=0;gain.max=100;gain.value=place.audio_volume??20;gain.setAttribute('aria-label',`Voice volume for ${place.name}`);
     gain.onchange=()=>save(place.id,{audio_volume:Number(gain.value)});row.append(gain);
   }
 
-  if(["browser","mac","alexa"].includes(place.adapter))button("Forget",()=>save(place.id,{remove:true}));
+  if(["browser","mac","alexa","android"].includes(place.adapter))button("Forget",()=>save(place.id,{remove:true}));
   list.append(row);
  }
 }

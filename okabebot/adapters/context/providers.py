@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 import hashlib
 import json
+import re
 from . import LINE_ROUTES
 from ...spotify import env_value
 from urllib.parse import quote, urlencode, urlsplit
@@ -86,9 +87,84 @@ class HomeAssistant:
         value = self.call("services/todo/get_items?return_response", {"entity_id": entity})
         return value["service_response"][entity]["items"]
 
+    def areas(self, entities):
+        """Resolve only selected entity areas; metadata failure preserves readings."""
+        entities = sorted(set(entities))
+        if not entities:
+            return {}
+        if any(not re.fullmatch(r"[a-z_]+\.[a-z0-9_]+", e) for e in entities):
+            raise ValueError("Use selected HA entity IDs")
+        expression = ",".join(json.dumps(e) + ":area_name(" + json.dumps(e) + ")" for e in entities)
+        try:
+            result = self.call("template", {"template": "{{ {" + expression + "} | to_json }}"})
+        except Exception:
+            return {}
+        if not isinstance(result, dict):
+            return {}
+        return {
+            e: clean(result[e])
+            for e in entities
+            if isinstance(result.get(e), str) and clean(result[e])
+        }
+
     def read_feed(self, feed, cfg, now):
         items = []
-        if feed.id in ("tasks", "meals"):
+        if feed.id == "presence_history":
+            entities = cfg["persons"] + cfg["zones"]
+            if not entities:
+                return [], True
+            boundary = datetime.fromtimestamp(now, timezone.utc).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) - timedelta(days=2)
+            start = boundary.isoformat()
+            groups = self.call(
+                "history/period/"
+                + quote(start, safe="")
+                + "?"
+                + urlencode(
+                    {
+                        "filter_entity_id": ",".join(entities),
+                        "minimal_response": "",
+                        "no_attributes": "",
+                    }
+                )
+            )
+            if not isinstance(groups, list):
+                raise ValueError("Invalid presence history response")
+            for rows in groups:
+                if not isinstance(rows, list) or not rows:
+                    continue
+                entity = rows[0].get("entity_id")
+                if entity not in entities:
+                    continue
+                person = entity in cfg["persons"]
+                for index, row in enumerate(rows):
+                    if row.get("entity_id", entity) != entity:
+                        raise ValueError("Mixed presence source")
+                    at = stamp(row.get("last_changed") or row["last_updated"])
+                    if not boundary.timestamp() <= at <= now:
+                        continue
+                    raw = str(row.get("state", ""))
+                    state = (
+                        {"home": "home", "not_home": "away"}.get(raw, "unknown") if person else raw
+                    )
+                    if not person and not re.fullmatch(r"\d{1,5}|unknown|unavailable", raw):
+                        continue
+                    items.append(
+                        {
+                            "id": identity([entity, at, state]),
+                            "entity_key": identity(entity),
+                            "label": "Selected person"
+                            if person
+                            else clean(entity.split(".", 1)[1].replace("_", " ")),
+                            "state": state,
+                            "source_type": "person" if person else "zone",
+                            "observation": "snapshot" if index == 0 else "change",
+                            "reported_at": at,
+                        }
+                    )
+            return items, True
+        elif feed.id in ("tasks", "meals"):
             for entity in cfg.get("entities", []) + cfg.get("shopping", []):
                 label = clean(
                     self.call("states/" + quote(entity, safe=""))
@@ -180,6 +256,7 @@ class HomeAssistant:
                         }
                     )
         elif feed.id == "room_activity":
+            areas = self.areas([e for field, _, _ in feed.fields for e in cfg[field]])
             for field, _, category in feed.fields:
                 for entity in cfg[field]:
                     value = self.call("states/" + quote(entity, safe=""))
@@ -191,9 +268,11 @@ class HomeAssistant:
                             ),
                             "state": clean(value["state"]),
                             "category": category,
+                            **({"room": areas[entity]} if entity in areas else {}),
                         }
                     )
         elif feed.id == "home_devices":
+            areas = self.areas(cfg["covers"] + cfg["climates"] + cfg["sensors"])
             temperature_unit = None
             for field, category in (
                 ("covers", "cover"),
@@ -208,6 +287,7 @@ class HomeAssistant:
                         "label": clean(attrs.get("friendly_name", "Home device")),
                         "state": clean(value["state"]),
                         "category": category,
+                        **({"room": areas[entity]} if entity in areas else {}),
                     }
                     for key, attribute in (
                         ("unit", "unit_of_measurement"),

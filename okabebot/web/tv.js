@@ -72,7 +72,7 @@ function frame(now){
     else if(now-lastIdle>18000){lastIdle=now;const stops=['center','window','rest'];room.actor.go(stops[Math.floor(now/18000)%stops.length]);}
     position=room.actor.update(now);walking=room.actor.walking;
   }
-  const localPresenter=speaker?.presenter()||(speaker?.prebuffer&&speaker?.stream&&!speaker.stream.start_at?{activity:'thinking'}:null);
+  const localPresenter=speaker?.presenter()||(speaker?.buffering?.()?{activity:'thinking'}:null);
   const rendered=localPresenter?{...state,presenter:localPresenter}:state;
   try{room.render(ctx,{state:rendered,now,visible:visible&&ready,position,walking,focus:now<hintUntil?focus:null,opacity});}
   catch(e){visible=false;ready=false;text('connection','Room renderer unavailable. Returning to the other display.');}

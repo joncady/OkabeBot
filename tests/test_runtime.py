@@ -25,6 +25,22 @@ class RuntimeTests(unittest.TestCase):
                 runtime.speech_active(folder), "A stale lock file is not active speech"
             )
 
+    def test_private_synthesis_lock_is_visible_and_released_on_failure(self):
+        from okabebot.speech import synthesis_session
+
+        with (
+            tempfile.TemporaryDirectory() as folder,
+            patch("okabebot.speech.state_dir", return_value=Path(folder)),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "invented"):
+                with synthesis_session():
+                    self.assertTrue(runtime.speech_active(folder))
+                    with self.assertRaisesRegex(ValueError, "busy"):
+                        with synthesis_session():
+                            self.fail("Concurrent speech must not start")
+                    raise RuntimeError("invented failure")
+            self.assertFalse(runtime.speech_active(folder))
+
     def test_child_restart_backoff_and_owned_process_cleanup(self):
         with tempfile.TemporaryDirectory() as folder:
             child = runtime.Child("worker", ["python", "worker.py"], folder, Path(folder))

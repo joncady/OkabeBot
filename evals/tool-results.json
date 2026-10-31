@@ -1,0 +1,610 @@
+{
+  "get_companion_locations": {
+    "current_location": "desk",
+    "locations": [
+      {
+        "id": "desk",
+        "name": "Desk nook"
+      },
+      {
+        "id": "atrium",
+        "name": "Atrium TV"
+      }
+    ],
+    "room_cue": null
+  },
+  "move_companion": {
+    "accepted": true,
+    "location_id": {
+      "$argument": "location_id"
+    }
+  },
+  "control_spotify": {
+    "accepted": true,
+    "state": "submitted"
+  },
+  "get_calendar_agenda": {
+    "available": true,
+    "date": "2032-06-08",
+    "timezone": "UTC",
+    "events": [
+      {
+        "title": "Studio review",
+        "start": "2032-06-09T10:00:00Z",
+        "end": "2032-06-09T10:30:00Z"
+      }
+    ],
+    "scope": "Selected synthetic calendar only"
+  },
+  "get_current_media": {
+    "tv": {
+      "state": "PLAYING",
+      "app": "DemoVideo",
+      "title": "Architecture walk"
+    },
+    "music": {
+      "is_playing": false
+    }
+  },
+  "get_device_health": {
+    "device_health": {
+      "display": {
+        "available": true
+      },
+      "voice": {
+        "available": true
+      }
+    },
+    "speech_health": {
+      "available": true
+    },
+    "scope": "Synthetic observed connectivity only"
+  },
+  "get_focus_session": {
+    "active": true,
+    "ends_at": 1970330940.0,
+    "remaining_seconds": 540,
+    "id": "focus-demo"
+  },
+  "control_focus_session": [
+    {
+      "when": {
+        "action": "cancel"
+      },
+      "result": {
+        "active": false
+      }
+    },
+    {
+      "result": {
+        "active": true,
+        "minutes": {
+          "$argument": "minutes"
+        }
+      }
+    }
+  ],
+  "get_recent_notifications": {
+    "notifications": [
+      {
+        "id": "note-demo-7",
+        "source": "forge",
+        "title": "Build completed",
+        "sender_id": "bot-demo"
+      }
+    ],
+    "scope": "Recent bounded inbox only"
+  },
+  "get_chores": {
+    "items": [
+      {
+        "id": "chore-demo",
+        "title": "Change kitchen towel",
+        "due_at": 1970244000.0,
+        "enabled": true
+      }
+    ],
+    "scope": "Enabled synthetic chores"
+  },
+  "get_home_activity": {
+    "available": true,
+    "scope": "Connected synthetic observations only",
+    "summary": "Door sensor opened; one doorbell was recorded. This does not establish a delivery.",
+    "events": [
+      {
+        "kind": "doorbell",
+        "title": "Doorbell event"
+      }
+    ]
+  },
+  "get_proactive_explanation": {
+    "available": true,
+    "suggestion": {
+      "reason": "You enabled optional check-ins and an older saved interest was eligible. No mood or free time was inferred.",
+      "kind": "checkin",
+      "topic": "interests"
+    }
+  },
+  "get_personal_recommendation_context": {
+    "topic": "activities",
+    "preferences": {
+      "hobbies": [
+        "paper folding"
+      ],
+      "interests": [
+        "architecture"
+      ],
+      "food_drink": [
+        "savory soups"
+      ],
+      "personal_goals": [
+        "make time for reading"
+      ]
+    },
+    "missing": [
+      "Ingredient inventory, energy and current free time are unknown"
+    ],
+    "scope": "Explicit saved preferences, no health records or writes"
+  },
+  "get_watch_recommendations": {
+    "items": [
+      {
+        "id": "demo-movie",
+        "type": "movie",
+        "title": "The Clockwork Orchard",
+        "year": 2031,
+        "genres": [
+          "comedy"
+        ],
+        "runtime_minutes": 93,
+        "why_fit": [
+          "Saved on want-to-watch list",
+          "Runtime meets requested limit"
+        ]
+      },
+      {
+        "id": "demo-scifi",
+        "type": "movie",
+        "title": "The Quiet Satellite",
+        "year": 2030,
+        "genres": [
+          "science-fiction"
+        ],
+        "runtime_minutes": 97,
+        "why_fit": [
+          "Saved on want-to-watch list"
+        ]
+      },
+      {
+        "id": "demo-show",
+        "type": "show",
+        "title": "Pocket Observatory",
+        "year": 2031,
+        "genres": [
+          "comedy",
+          "science-fiction"
+        ],
+        "runtime_minutes": 24,
+        "why_fit": [
+          "Saved on want-to-watch list"
+        ]
+      }
+    ],
+    "history_coverage": "unknown",
+    "availability": "not_checked",
+    "scope": "One synthetic watchlist page; not guaranteed unwatched"
+  },
+  "get_context_feed": [
+    {
+      "when": {
+        "source": "calendar",
+        "view": "aggregates"
+      },
+      "result": {
+        "items": [
+          {
+            "fresh": true,
+            "value": {
+              "signal": "calendar updates",
+              "reports": 2,
+              "window_seconds": 3600
+            }
+          }
+        ],
+        "view": "aggregates",
+        "next_offset": null,
+        "scope": "Synthetic sampled intervals, not continuous observation"
+      }
+    },
+    {
+      "when": {
+        "source": "tasks"
+      },
+      "result": {
+        "items": [
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "Flour",
+              "list": "Market list",
+              "state": "needs_action"
+            }
+          }
+        ],
+        "next_offset": null,
+        "scope": "Selected synthetic tasks snapshot, not complete history",
+        "source_snapshot_complete": true,
+        "view": {
+          "$argument": "view",
+          "default": "current"
+        }
+      }
+    },
+    {
+      "when": {
+        "source": "device_activity"
+      },
+      "result": {
+        "items": [
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "Demo phone battery",
+              "state": "63",
+              "unit": "%",
+              "label": "Battery"
+            }
+          }
+        ],
+        "next_offset": null,
+        "scope": "Selected synthetic device_activity snapshot, not complete history",
+        "source_snapshot_complete": true,
+        "view": {
+          "$argument": "view",
+          "default": "current"
+        }
+      }
+    },
+    {
+      "when": {
+        "source": "home_devices"
+      },
+      "result": {
+        "items": [
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "Floor thermostat",
+              "current_temperature": 70,
+              "target_temperature": 71,
+              "unit": "F",
+              "state": "heating"
+            }
+          },
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "Garage door",
+              "signal": "garage",
+              "state": "closed"
+            }
+          }
+        ],
+        "next_offset": null,
+        "scope": "Selected synthetic home_devices snapshot, not complete history",
+        "source_snapshot_complete": true,
+        "view": {
+          "$argument": "view",
+          "default": "current"
+        }
+      }
+    },
+    {
+      "when": {
+        "source": "room_activity"
+      },
+      "result": {
+        "items": [
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "Study lamp",
+              "category": "light",
+              "state": "on"
+            }
+          },
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "Demo Sonos",
+              "category": "speaker",
+              "state": "paused"
+            }
+          }
+        ],
+        "next_offset": null,
+        "scope": "Selected synthetic room_activity snapshot, not complete history",
+        "source_snapshot_complete": true,
+        "view": {
+          "$argument": "view",
+          "default": "current"
+        }
+      }
+    },
+    {
+      "when": {
+        "source": "health"
+      },
+      "result": {
+        "items": [
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "Daily steps",
+              "metric": "steps",
+              "value": 4200,
+              "unit": "steps",
+              "sample_at": 1970330340.0
+            }
+          }
+        ],
+        "next_offset": null,
+        "scope": "Selected synthetic health snapshot, not complete history",
+        "source_snapshot_complete": true,
+        "view": {
+          "$argument": "view",
+          "default": "current"
+        }
+      }
+    },
+    {
+      "when": {
+        "source": "appliances"
+      },
+      "result": {
+        "items": [
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "Demo washer",
+              "state": "complete",
+              "label": "cycle"
+            }
+          },
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "Demo dryer",
+              "state": "running",
+              "label": "cycle"
+            }
+          }
+        ],
+        "next_offset": null,
+        "scope": "Selected synthetic appliances snapshot, not complete history",
+        "source_snapshot_complete": true,
+        "view": {
+          "$argument": "view",
+          "default": "current"
+        }
+      }
+    },
+    {
+      "when": {
+        "source": "meals"
+      },
+      "result": {
+        "items": [
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "Lentil soup",
+              "type": "recipe",
+              "state": "saved"
+            }
+          },
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "Planned soup dinner",
+              "type": "meal_plan",
+              "start": 1970334000.0
+            }
+          }
+        ],
+        "next_offset": null,
+        "scope": "Selected synthetic meals snapshot, not complete history",
+        "source_snapshot_complete": true,
+        "view": {
+          "$argument": "view",
+          "default": "current"
+        }
+      }
+    },
+    {
+      "when": {
+        "source": "transit"
+      },
+      "result": {
+        "items": [
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "Blue line testing delay",
+              "state": "active",
+              "summary": "Selected rail notice: service may take longer"
+            }
+          }
+        ],
+        "next_offset": null,
+        "scope": "Selected synthetic transit snapshot, not complete history",
+        "source_snapshot_complete": true,
+        "view": {
+          "$argument": "view",
+          "default": "current"
+        }
+      }
+    },
+    {
+      "when": {
+        "source": "watch_history"
+      },
+      "result": {
+        "items": [
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "The Glass Planet",
+              "type": "movie",
+              "state": "watched_date_unknown"
+            }
+          }
+        ],
+        "next_offset": null,
+        "scope": "Selected synthetic watch_history snapshot, not complete history",
+        "source_snapshot_complete": true,
+        "view": {
+          "$argument": "view",
+          "default": "current"
+        }
+      }
+    },
+    {
+      "when": {
+        "source": "calendar"
+      },
+      "result": {
+        "items": [
+          {
+            "fresh": true,
+            "historical": false,
+            "observed_at": 1970330370.0,
+            "value": {
+              "title": "Studio review",
+              "start_at": 1970416800.0,
+              "end_at": 1970418600.0
+            }
+          }
+        ],
+        "next_offset": null,
+        "scope": "Selected synthetic calendar snapshot, not complete history",
+        "source_snapshot_complete": true,
+        "view": {
+          "$argument": "view",
+          "default": "current"
+        }
+      }
+    }
+  ],
+  "set_speaker_volume": {
+    "percent": {
+      "$argument": "percent"
+    }
+  },
+  "snooze_notifications": {
+    "snoozed": true
+  },
+  "dismiss_notification": {
+    "dismissed": true
+  },
+  "set_notification_source": {
+    "saved": true
+  },
+  "set_sender_notification_rule": {
+    "saved": true
+  },
+  "list_spotify_devices": {
+    "devices": [
+      {
+        "id": "speaker-demo",
+        "name": "Demo speaker",
+        "type": "Speaker",
+        "is_restricted": false
+      }
+    ]
+  },
+  "create_reminder": {
+    "id": "reminder-demo-4",
+    "text": {
+      "$argument": "text"
+    },
+    "state": "scheduled"
+  },
+  "list_reminders": {
+    "reminders": [
+      {
+        "id": "reminder-demo-4",
+        "text": "check the dough"
+      }
+    ]
+  },
+  "cancel_reminder": {
+    "cancelled": true
+  },
+  "show_calendar_agenda": {
+    "queued": true
+  },
+  "list_echo_speakers": {
+    "speakers": [
+      {
+        "id": "echo-loft",
+        "name": "Echo Loft"
+      },
+      {
+        "id": "echo-desk",
+        "name": "Echo Desk"
+      }
+    ]
+  },
+  "speak_on_echo": {
+    "accepted": true
+  },
+  "get_bot_status": {
+    "connected": true
+  },
+  "press_bot": {
+    "outcome": "confirmed"
+  },
+  "get_presence_history": {
+    "available": true,
+    "period": "this_morning",
+    "timezone": "UTC",
+    "transitions": [
+      {
+        "at": "2032-06-08T08:15:00+00:00",
+        "state": "away",
+        "previous_state": "home",
+        "source_type": "person",
+        "observation": "change"
+      }
+    ],
+    "reported_away_intervals": [],
+    "scope": "Selected invented HA reports only; not proof of departure."
+  }
+}

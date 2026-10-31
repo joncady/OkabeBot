@@ -140,7 +140,7 @@ class AgentTests(unittest.TestCase):
     def test_unexecuted_claim_is_rejected_and_conversation_handoff_is_explicit(self):
         execute = Mock()
         obj = self.adapter(
-            [answer("Yes, there were transit notices today. Let me check.")], execute
+            [answer("Yes, there were transit notices today. Let me check.")] * 2, execute
         )
         result = obj.text_turn("Were there any notices?")
         execute.assert_not_called()
@@ -149,6 +149,49 @@ class AgentTests(unittest.TestCase):
         result = obj.text_turn("I enjoy pottery")
         self.assertTrue(result["conversation"])
         self.assertEqual(result["reply"], "")
+
+    def test_bare_prose_gets_one_protocol_repair_for_hobby_followup(self):
+        execute = Mock()
+        obj = self.adapter(
+            [answer("Focus on the silhouette."), answer('{"conversation":true}')], execute
+        )
+        history = [{"role": "assistant", "content": "Try drawing an invented bird."}]
+        result = obj.text_turn(
+            "I only have a pencil. How do I avoid feather detail?", history=history, read_only=True
+        )
+        self.assertTrue(result["conversation"])
+        self.assertEqual(result["reply"], "")
+        execute.assert_not_called()
+        requests = [json.loads(c.args[0]) for c in obj.process.stdin.write.call_args_list]
+        self.assertEqual(len(requests), 2)
+        self.assertTrue(requests[1]["protocol_repair"])
+        self.assertEqual(requests[0]["text"], requests[1]["text"])
+        self.assertEqual(requests[1]["history"], history)
+        self.assertEqual(requests[0]["tool_names"], requests[1]["tool_names"])
+        self.assertNotIn("set_speaker_volume", requests[1]["tool_names"])
+
+    def test_connected_fact_protocol_repair_still_requires_actual_read(self):
+        execute = Mock(return_value={"items": []})
+        obj = self.adapter(
+            [
+                answer("No train issues today."),
+                call("get_context_feed", source="transit"),
+                answer("The connected feed contains no notices; history is limited."),
+            ],
+            execute,
+        )
+        result = obj.text_turn("Are trains delayed?", read_only=True)
+        execute.assert_called_once_with("get_context_feed", {"source": "transit"})
+        self.assertNotIn("No train issues today", result["reply"])
+        self.assertEqual(result["tools"], ["get_context_feed"])
+
+    def test_invalid_protocol_repair_is_bounded_and_never_executes_action(self):
+        execute = Mock()
+        obj = self.adapter([answer('{"broken":'), answer("I switched it on.")], execute)
+        result = obj.text_turn("Talk about trains", read_only=True)
+        self.assertEqual(obj._read.call_count, 2)
+        execute.assert_not_called()
+        self.assertIn("haven't checked", result["reply"])
 
     def test_voice_uses_same_tool_loop(self):
         execute = Mock(return_value={"items": []})

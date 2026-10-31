@@ -46,10 +46,14 @@ class HomeDeviceTests(unittest.TestCase):
         self.assertEqual("20", projected["records"][0]["current_temperature"])
         self.assertTrue(
             all(
-                ("/api/states/" in url or url.endswith("/api/config")) and data is None
+                ("/api/states/" in url or url.endswith("/api/config"))
+                and data is None
+                or url.endswith("/api/template")
+                and set(data) == {"template"}
                 for url, data in calls
             )
         )
+
         from okabebot.home_activity import recap
 
         result = recap(self.path, clock=lambda: self.now + 1)
@@ -57,6 +61,59 @@ class HomeDeviceTests(unittest.TestCase):
         self.owner.control({"paused": True})
         self.assertEqual([], self.current())
         self.assertEqual([], recap(self.path, clock=lambda: self.now + 1)["observations"])
+
+    def test_selected_area_metadata_enables_cross_field_room_temperature_search(self):
+        def read(url, headers, data):
+            if url.endswith("/api/template"):
+                self.assertIn('area_name("sensor.pod_air")', data["template"])
+                self.assertNotIn("sensor.unselected", data["template"])
+                return {"sensor.pod_air": "Studio"}
+            return {
+                "state": "64",
+                "attributes": {"friendly_name": "Pod air temperature", "unit_of_measurement": "°F"},
+            }
+
+        provider = HomeAssistant(
+            read=read, connection={"url": "http://example.test", "token": "fake"}
+        )
+        self.feeds.reader = lambda feed, cfg, now: provider.read_feed(feed, cfg, now)
+        self.enable("home_devices", sensors=["sensor.pod_air"])
+        self.feeds.tick()
+        result = self.feeds.retrieve("home_devices", query="STUDIO temperature")
+        self.assertEqual(len(result["items"]), 1)
+        self.assertEqual(result["items"][0]["value"]["room"], "Studio")
+        from okabebot.tool_reply import facts
+
+        projected = facts("get_context_feed", result, "")
+        self.assertEqual(projected["records"][0]["room"], "Studio")
+        from okabebot.prompt_eval import FixtureExecutor
+
+        fake = FixtureExecutor({"get_context_feed": result})
+        replay = fake("get_context_feed", {"source": "home_devices", "query": "STUDIO temperature"})
+        self.assertEqual(replay["items"], result["items"])
+        self.assertEqual(self.feeds.retrieve("home_devices", query="Other Room")["items"], [])
+        self.assertEqual(self.feeds.retrieve("home_devices", query="% OR 1=1")["items"], [])
+        self.now += 1000
+        stale = self.feeds.retrieve("home_devices", query="studio temperature")
+        self.assertFalse(stale["items"][0]["fresh"])
+
+    def test_area_failure_does_not_drop_valid_temperature_or_guess_room(self):
+        def read(url, headers, data):
+            if url.endswith("/api/template"):
+                raise OSError("metadata unavailable")
+            return {
+                "state": "20",
+                "attributes": {"friendly_name": "Air", "unit_of_measurement": "°C"},
+            }
+
+        p = HomeAssistant(read=read, connection={"url": "http://example.test", "token": "fake"})
+        cfg = {**default(FEEDS["home_devices"]), "sensors": ["sensor.pod_air"]}
+        items, complete = p.read_feed(FEEDS["home_devices"], cfg, self.now)
+        self.assertTrue(complete)
+        self.assertEqual(items[0]["state"], "20")
+        self.assertNotIn("room", items[0])
+        with self.assertRaises(ValueError):
+            p.areas(["sensor.x') }} {{ states | list"])
 
     def test_climate_units_use_only_ha_temperature_configuration_when_missing(self):
         calls = []

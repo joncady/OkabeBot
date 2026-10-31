@@ -70,6 +70,7 @@ class CompanionUI {
   // Stored preferences are hints, never proof of current browser/OS permission.
   if(!this.complete)return;
   try{await this.speaker.enable();this.sound=true;}catch{} // Autoplay may need a fresh gesture.
+  if(window.AmadeusAndroid){this.microphone=window.AmadeusAndroid.microphoneGranted();this.render();return;}
   if(window.webkit?.messageHandlers?.companion){
    // Read-only OS status. Never open the mic simply to restore the setup UI.
    window.webkit.messageHandlers.companion.postMessage('permissions');this.render();return;
@@ -79,7 +80,7 @@ class CompanionUI {
  }
  notice(message){
   this.node('notice').textContent=message;this.node('settings-notice').textContent=message;
-  this.error=/disconnect|fail|unavailable|denied|permission|reconnect/i.test(message)?message:'';if(this.error)this.indicator('error',message);
+  this.error=/disconnect|fail|unavailable|denied|permission|reconnect|rejected|approve|expired|no clear speech/i.test(message)?message:'';this.node('notice').className=this.error?'surface-error':'sr-only';if(this.error)this.indicator('error',message);
  }
  indicator(state,label){
   const icons={ready:'check',moving:'link',thinking:'clock',listening:'mic',speaking:'sound',offline:'link',error:'warn',setup:'settings'};

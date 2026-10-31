@@ -161,6 +161,9 @@ class Bridge:
         )
         self.resources.callback(self.cast_surfaces.close)
         self.surfaces = Surfaces(scene.rpc, cast_resolver=self.cast_surfaces.get)
+        from .mobile import Mobile
+
+        self.mobile = Mobile(state_dir() / "mobile", self.surfaces.registry)
         from .tags import Tags
         from .chores import Chores
 
@@ -252,6 +255,7 @@ class Bridge:
         threading.Thread(target=self.amadeus_shadow.run, args=(self.closing,), daemon=True).start()
         threading.Thread(target=self.amadeus_feeds.run, args=(self.closing,), daemon=True).start()
         threading.Thread(target=self.tag_areas.run, args=(self.closing,), daemon=True).start()
+        threading.Thread(target=self.mobile.run, args=(self.closing,), daemon=True).start()
 
     @property
     def url(self):
@@ -489,17 +493,21 @@ class Bridge:
             if proactive is not None and hasattr(self.codex, "compose_preference"):
                 if proactive.context():
                     try:
-                        result = self.codex.text_turn(text)
-                        if result.get("conversation") is True:
-                            answer = proactive.answer(text, self.codex.compose_preference)
-                        else:
-                            proactive.end()
-                            answer = result["reply"]
+                        answer = proactive.respond(
+                            text,
+                            self.codex.compose_preference,
+                            tool_turn=self.codex.text_turn,
+                            specs=self.codex.specs,
+                        )
                         if answer is not None:
                             self.notify("assistant", {"text": answer, "phase": "final_answer"})
                             self.reply(answer, "completed")
                             self.notify("turn_completed", {"status": "completed", "error": None})
                             return True
+                        # An expired/private proactive session must not fall through
+                        # to a fresh unconstrained conversation with the same utterance.
+                        self.notify("turn_completed", {"status": "cancelled", "error": None})
+                        return True
                     except Exception:
                         proactive.end()
                         self.reply(
@@ -862,7 +870,7 @@ class Bridge:
                     self.notify("assistant", {"text": text, "phase": "final_answer"})
                     try:
                         character_tools.speak(text, "curious", purpose="proactive")
-                        self.proactive.delivered(offer, success=True)
+                        self.proactive.delivered(offer, success=True, opening=opening)
                     except Exception:
                         self.proactive.end()
                         raise
@@ -879,6 +887,7 @@ class Bridge:
                             and trial
                         ):
                             trial["last_reply"] = text
+                            trial["history"] = [{"role": "assistant", "content": text}]
                             store.remember(setup["profile"], STATE, trial)
                     timing.write("amadeus-conversation", {"state": "delivered"})
                 finally:
@@ -919,6 +928,13 @@ class Bridge:
             if item["priority"] == "low":
                 self.inbox.finish(item["id"])
                 return
+            if getattr(self, "mobile", None) is not None:
+                try:
+                    self.mobile.enqueue(item)
+                except Exception:
+                    self.notify(
+                        "error", {"message": "Phone inbox unavailable; home notification continues"}
+                    )
             self.active_notification = item
             self.notification_until = time.time() + 15
             scene.present(item, 30 if item["priority"] in ("important", "urgent") else 15)
@@ -1125,6 +1141,10 @@ def handler(bridge):
             )
 
         def do_GET(self):
+            from .mobile_http import handle as handle_mobile
+
+            if handle_mobile(self, bridge):
+                return
             from .chores_http import handle as handle_chores
 
             if handle_chores(self, bridge):
@@ -1213,6 +1233,10 @@ def handler(bridge):
                 self.respond(403, {"error": "Open the control URL printed by the bridge"})
 
         def do_POST(self):
+            from .mobile_http import handle as handle_mobile
+
+            if handle_mobile(self, bridge, post=True):
+                return
             from .chores_http import handle as handle_chores
 
             if handle_chores(self, bridge, post=True):

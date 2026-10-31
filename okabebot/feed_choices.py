@@ -34,6 +34,11 @@ def hints(identity, entity, state, device):
     def add(feed, key):
         fields.append(feed + "." + key)
 
+    if identity.startswith("person."):
+        add("presence_history", "persons")
+    if identity.startswith("zone."):
+        add("presence_history", "zones")
+
     if identity.startswith("sensor."):
         if unit.lower() in ("step", "steps") and "step" in text and "daily" in text:
             add("health", "daily_steps")

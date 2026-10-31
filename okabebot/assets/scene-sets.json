@@ -7,22 +7,26 @@
     "okabe": [
       "pixel-lab",
       "maid-cafe",
-      "mac-desk"
+      "mac-desk",
+      "pocket-nook"
     ],
     "kurisu": [
       "pixel-lab",
       "maid-cafe",
-      "mac-desk"
+      "mac-desk",
+      "pocket-nook"
     ],
     "pip": [
       "pip-workshop",
       "rooftop-garden",
-      "mac-desk"
+      "mac-desk",
+      "pocket-nook"
     ],
     "sonic": [
       "green-hill",
       "star-light",
-      "mac-desk"
+      "mac-desk",
+      "pocket-nook"
     ]
   },
   "sets": {
@@ -30,10 +34,10 @@
       "name": "Future Gadget Lab"
     },
     "maid-cafe": {
-      "name": "May Queen Café"
+      "name": "May Queen Caf\u00e9"
     },
     "pip-workshop": {
-      "name": "Pip’s Workshop"
+      "name": "Pip\u2019s Workshop"
     },
     "rooftop-garden": {
       "name": "Rooftop Garden"
@@ -46,6 +50,9 @@
     },
     "mac-desk": {
       "name": "Desktop Nook"
+    },
+    "pocket-nook": {
+      "name": "Pocket Nook"
     }
   }
 }

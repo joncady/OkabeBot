@@ -145,3 +145,16 @@ On Mac, the same section can keep the runtime awake on AC and open Docker after
 login. Install the normal controller login service first as described in README.
 These settings do not enable pre-login service or guarantee operation with a
 closed lid. Container restart policies remain separate from Docker startup.
+
+
+### SSH responds to ping but does not connect
+
+ICMP reachability does not establish SSH readiness. A timeout before the server
+banner occurs before credential authentication; do not rotate keys or bypass
+host-key verification to address it. Pooled controller endpoints back off failed
+handshakes for up to thirty seconds and never replay uncertain hardware actions.
+If one bounded direct SSH attempt also stalls after automatic producers are paused,
+use the device's local console to inspect `uptime`, `free -m`,
+`systemctl status ssh`, kernel logs and power flags. Preserve evidence before a
+reboot where practical. A sensor marked unavailable during transport failure must
+not be replaced by an invented current reading.

@@ -6,6 +6,7 @@ ha_config_dir="${OKABEBOT_HA_CONFIG_DIR:-$project_dir/.local/home-assistant}"
 ha_bind="${OKABEBOT_HA_BIND:-127.0.0.1}"
 sonos_bind="${OKABEBOT_HA_SONOS_BIND:-}"
 ha_image="${OKABEBOT_HA_IMAGE:-ghcr.io/home-assistant/home-assistant:2026.10.4}"
+ha_network="${OKABEBOT_HA_NETWORK:-okabebot-home}"
 mkdir -p "$ha_config_dir"
 chmod 700 "$ha_config_dir"
 ha_ports=(-p "127.0.0.1:8123:8123")
@@ -21,10 +22,18 @@ if address.version != 4 or not address.is_private or address.is_unspecified or a
 PYIP
   ha_ports+=(-p "$sonos_bind:1400:1400/tcp")
 fi
+if ! docker network inspect "$ha_network" >/dev/null 2>&1; then
+  docker network create "$ha_network" >/dev/null
+fi
 if docker container inspect okabebot-home-assistant >/dev/null 2>&1; then
   docker start okabebot-home-assistant
+  if ! docker inspect --format '{{json .NetworkSettings.Networks}}' okabebot-home-assistant |
+    python3 -c 'import json,sys; sys.exit(0 if sys.argv[1] in json.load(sys.stdin) else 1)' "$ha_network"; then
+    docker network connect "$ha_network" okabebot-home-assistant
+  fi
 else
   docker run -d --name okabebot-home-assistant \
+    --network "$ha_network" \
     --restart unless-stopped --stop-timeout 60 \
     -e TZ=America/Los_Angeles \
     -v "$ha_config_dir:/config" \

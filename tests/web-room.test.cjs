@@ -9,13 +9,13 @@ test('interrupted idle walk exits continuously without teleporting',()=>{
  const actor=new Actor();actor.go('window');actor.update(100);actor.update(150);const position=actor.position.slice(),exit=actor.transfer(false);
  assert.deepEqual(exit[0],position);assert.deepEqual(exit.at(-1),anchors.door);assert.ok(actor.walking);
 });
-async function browser(phase='tv',broken=false,audio=false){
- const calls=[],events={},nodes={};
+async function browser(phase='tv',broken=false,audio=false,audioState={}){
+ const calls=[],events={},nodes={},renders=[];let raf;
  function node(id){return nodes[id]||=( {textContent:'',classList:{toggle(){}},setAttribute(){},addEventListener(){},focus(){},getContext(){return {clearRect(){}};}} );}
- const state={phase,remote_controls:true,transition_id:'transfer',duration_seconds:2,visibility_lease_seconds:6,character:{style:'okabe',name:'Companion'},lab:{title:'Custom room'},return_location:{name:'Desk nook'},destination_name:'Den screen',server_time:1000};
+ const state={phase,remote_controls:true,transition_id:'transfer',duration_seconds:2,visibility_lease_seconds:6,character:{style:'okabe',name:'Companion'},lab:{title:'Custom room'},return_location:{name:'Desk nook'},destination_name:'Den screen',server_time:1000,presenter:{activity:'speaking',start_at:1}};
  const audioCalls=[];
- const context={...(audio?{BrowserAudio:class{setVolume(v){audioCalls.push(['volume',v]);}poll(){}async enable(){audioCalls.push(['enable']);if(audio==='blocked')await new Promise(()=>{});}close(){audioCalls.push(['close']);}presenter(){return null;}}}:{}),console,LabRoom:{Room:class{constructor(){this.actor={position:[8,4],transfer(){return [[1,1],[2,2]];}};}setAssets(){}render(){if(broken)throw Error("Broken renderer");}}},location:{hash:'#scoped',reload(){}},performance:{now:()=>100},Date,requestAnimationFrame(){},setTimeout(){},document:{getElementById:id=>node("#"+id),querySelector:selector=>node(selector),addEventListener:(event,fn)=>events[event]=fn},window:{addEventListener:(event,fn)=>events[event]=fn},fetch:async(path,options)=>{calls.push({path,data:options.body&&JSON.parse(options.body)});return{ok:true,json:async()=>path==='/surfaces/state'?state:{frames:[[]]}};}};
- vm.runInNewContext(fs.readFileSync('okabebot/web/tv.js','utf8'),context);await new Promise(setImmediate);return{calls,events,nodes,audioCalls};
+ const context={...(audio?{BrowserAudio:class{setVolume(v){audioCalls.push(['volume',v]);}poll(){}async enable(){audioCalls.push(['enable']);if(audio==='blocked')await new Promise(()=>{});}close(){audioCalls.push(['close']);}presenter(){return audioState.presenter||null;}buffering(){return Boolean(audioState.buffering);}}}:{}),console,LabRoom:{Room:class{constructor(){this.actor={position:[8,4],transfer(){return [[1,1],[2,2]];},go(){},update(){return [8,4];}};}setAssets(){}render(ctx,value){renders.push(value);if(broken)throw Error("Broken renderer");}}},location:{hash:'#scoped',reload(){}},performance:{now:()=>100},Date,requestAnimationFrame(fn){raf=fn;},setTimeout(){},document:{getElementById:id=>node("#"+id),querySelector:selector=>node(selector),addEventListener:(event,fn)=>events[event]=fn},window:{addEventListener:(event,fn)=>events[event]=fn},fetch:async(path,options)=>{calls.push({path,data:options.body&&JSON.parse(options.body)});return{ok:true,json:async()=>path==='/surfaces/state'?state:{frames:[[]]}};}};
+ vm.runInNewContext(fs.readFileSync('okabebot/web/tv.js','utf8'),context);await new Promise(setImmediate);return{calls,events,nodes,audioCalls,renders,frame:now=>raf(now)};
 }
 test('remote Enter keyCode and Back each request exactly one return',async()=>{
  const b=await browser();b.events.keydown({key:'Unidentified',keyCode:13,preventDefault(){},repeat:false});await new Promise(setImmediate);
@@ -121,4 +121,11 @@ test('weather sprites cover conditions with authored pixels and time-based preci
  frames.length=0;weatherSprite(c,'rainy',0,0,0);const a=JSON.stringify(frames);
  frames.length=0;weatherSprite(c,'rainy',0,0,250);assert.notEqual(JSON.stringify(frames),a);
  assert.equal(weatherSprite(c,'untrusted-not-a-condition',0,0,0),'exceptional');
+});
+
+test('TV expression follows local buffer and playback clock instead of early server speech',async()=>{
+ const audioState={buffering:true};const screen=await browser('tv',false,true,audioState);
+ screen.frame(150);assert.equal(screen.renders.at(-1).state.presenter.activity,'thinking');
+ audioState.buffering=false;audioState.presenter={activity:'speaking',start_at:123,envelope:[.2,.4]};
+ screen.frame(200);assert.deepEqual(screen.renders.at(-1).state.presenter,audioState.presenter);
 });

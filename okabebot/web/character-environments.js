@@ -16,6 +16,16 @@ function sunflower(c,x,y,t){
  rect(c,x-1+sway,y-31,7,7,'#b96b30');
 }
 function compact(c,now,opacity=1,set='green-hill'){
+ if(set==='pocket-nook'){
+  c.save();c.globalAlpha=opacity;
+  rect(c,59,226,56,46,'#536779');rect(c,64,231,46,34,'#264c64');
+  rect(c,69,248,12,17,'#457b87');rect(c,85,239,16,26,'#72a3a0');rect(c,64,260,46,5,'#b6d9bb');
+  rect(c,59,272,202,8,'#d3b183');rect(c,65,280,190,18,'#79647d');
+  rect(c,69,298,10,8,'#4a405a');rect(c,239,298,10,8,'#4a405a');
+  rect(c,224,249,27,23,'#bc805f');rect(c,231,244,13,5,'#d3b183');
+  rect(c,228,256,19,3,'#e1c69b');rect(c,236,256,3,9,'#e1c69b');
+  c.restore();return;
+ }
  if(set==='mac-desk'){
   c.save();c.globalAlpha=opacity;
   rect(c,60,275,200,7,'#b59473');rect(c,64,282,192,12,'#5c5160');

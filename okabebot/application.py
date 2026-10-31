@@ -14,6 +14,7 @@ class Application:
         "/runtime/policy",
         "/amadeus/text/location",
         "/amadeus/text/policy",
+        "/amadeus/text/treatments",
         "/amadeus/text",
         "/amadeus/text/reset",
         "/amadeus/text/feedback",
@@ -52,6 +53,9 @@ class Application:
         from .amadeus_text import TextConversation
 
         self.text_conversation = TextConversation(state_dir() / "amadeus")
+        from .prompt_treatments import Treatments
+
+        self.prompt_treatments = Treatments(self.text_conversation.folder)
 
     def execute(self, path, data):
         b = self.controller
@@ -71,6 +75,20 @@ class Application:
             return configure(state_dir(), data)
         if path.startswith("/amadeus/text"):
             chat = self.text_conversation
+            if path == "/amadeus/text/treatments":
+                with chat.lock:
+                    if data:
+                        from .amadeus_habits import preference
+                        from .amadeus_onboarding import SYSTEM, KEY
+
+                        with chat.store() as store, store.db:
+                            store.db.execute("BEGIN IMMEDIATE")
+                            if not preference(store, SYSTEM, KEY, {}).get("profile"):
+                                raise ValueError("Save Amadeus setup first")
+                            result = self.prompt_treatments.configure(data)
+                        chat.end()
+                        return result
+                    return self.prompt_treatments.snapshot()
             if path == "/amadeus/text/location":
                 from .chat_location import resolve
 
@@ -122,9 +140,30 @@ class Application:
             text = data["text"]
             if not isinstance(text, str) or not 1 <= len(text.strip()) <= 1000:
                 raise ValueError("Use a message of 1–1000 characters")
-            result = chat.send(
-                ground(text, place), generate, tool_turn=b.codex.text_turn, specs=b.codex.specs
-            )
+            # Pin one immutable treatment for this entire turn; never mutate worker globals.
+            with chat.lock:
+                treatments = getattr(self, "prompt_treatments", None)
+                receipt, prompts = treatments.active() if treatments else ({"id": "default"}, None)
+
+                def compose(message, context):
+                    if prompts is None:
+                        return generate(message, context)
+                    answer = generate(message, context, prompt_overrides=prompts)
+                    return {**answer, "memory": None}
+
+                def tools(message, **kwargs):
+                    if prompts is not None:
+                        kwargs.update(read_only=True, prompt_overrides=prompts)
+                    return b.codex.text_turn(message, **kwargs)
+
+                from .local_conversation import READ_TOOLS
+
+                specs = {
+                    k: v for k, v in b.codex.specs.items() if prompts is None or k in READ_TOOLS
+                }
+                result = chat.send(ground(text, place), compose, tool_turn=tools, specs=specs)
+                result["treatment"] = receipt
+                chat.record_treatment(receipt)
             result["location"] = {"id": place["id"], "name": place["name"]} if place else None
             return result
         if path == "/amadeus/shadow":

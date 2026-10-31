@@ -3,15 +3,16 @@
 import json
 import re
 
-from .amadeus_live import ProactiveConversation
+from .amadeus_live import ProactiveConversation, confirmation_answer, is_stop
 from .amadeus_habits import preference
 from .amadeus_onboarding import SYSTEM, KEY
 from .presence_control import read, write
+from .conversation_state import normalize_state, update_task_state
 
 
 class TextConversation(ProactiveConversation):
-    def __init__(self, folder, **kwargs):
-        super().__init__(folder, state_key="conversation.text", **kwargs)
+    def __init__(self, folder, state_key="conversation.text", **kwargs):
+        super().__init__(folder, state_key=state_key, **kwargs)
         self.turn_limit = 30
 
     @staticmethod
@@ -22,7 +23,7 @@ class TextConversation(ProactiveConversation):
             and setup.get("guest") is False
         )
 
-    def send(self, text, generate, tool_turn=None, specs=None):
+    def send(self, text, generate, tool_turn=None, specs=None, *, resume_only=False):
         if not isinstance(text, str) or not text.strip() or len(text) > 1000:
             raise ValueError("Enter a message of 1–1000 characters")
         with self.lock:
@@ -35,6 +36,8 @@ class TextConversation(ProactiveConversation):
                         "Enable preference conversations in private Amadeus setup first"
                     )
                 if not self.context():
+                    if resume_only:
+                        return {"reply": None, "closed": True, "tools": []}
                     s.remember(
                         profile,
                         self.state_key,
@@ -43,9 +46,11 @@ class TextConversation(ProactiveConversation):
                         ),
                     )
             current = self.context() or {}
+            task_state = normalize_state(current.get("task_state"))
             tool_text = text
             if (
-                current.get("last_tools") == ["get_calendar_agenda"]
+                task_state.get("kind") != "read"
+                and current.get("last_tools") == ["get_calendar_agenda"]
                 and re.match(r"\s*(what about|and|how about)\b", text, re.I)
                 and re.search(
                     r"\b(tomorrow|today|week|month|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
@@ -55,8 +60,29 @@ class TextConversation(ProactiveConversation):
             ):
                 tool_text = "What is on my calendar " + text
             result = None
-            if tool_turn:
-                result = tool_turn(tool_text.strip(), history=current.get("history", []))
+            control_reply = is_stop(text) or (
+                current.get("pending") and confirmation_answer(text) is not None
+            )
+            if tool_turn and not control_reply:
+                try:
+                    result = tool_turn(
+                        tool_text.strip(), history=current.get("history", []), task_state=task_state
+                    )
+                except Exception:
+                    # A failed turn must not leave old query slots active behind an action.
+                    with self.store() as store, store.db:
+                        store.db.execute("BEGIN IMMEDIATE")
+                        latest_setup = preference(store, SYSTEM, KEY, {})
+                        state = preference(store, profile, self.state_key, {})
+                        if (
+                            latest_setup.get("profile") == profile
+                            and state
+                            and state.get("session_until") == current.get("session_until")
+                            and state.get("claimed_at") == current.get("claimed_at")
+                        ):
+                            state.pop("task_state", None)
+                            store.remember(profile, self.state_key, state)
+                    raise
                 if result.get("conversation") is True:
                     result = None
             if result is not None:
@@ -68,6 +94,7 @@ class TextConversation(ProactiveConversation):
                         message,
                         {
                             **context,
+                            "task_state": task_state,
                             "capabilities": [
                                 {"name": name, "description": spec.get("description", "")}
                                 for name, spec in (specs or {}).items()
@@ -76,19 +103,25 @@ class TextConversation(ProactiveConversation):
                     )
 
                 reply = self.answer(text.strip(), conversation_generate)
+            if reply is None:
+                return {"reply": None, "closed": True, "tools": []}
             with self.store() as s:
                 state = preference(s, profile, self.state_key, {})
                 history = state.get("history", [])
-                history = (
-                    history
-                    + [
-                        {"role": "user", "content": text.strip()},
-                        {"role": "assistant", "content": reply},
-                    ]
-                )[-8:]
+                pair = [
+                    {"role": "user", "content": text.strip()},
+                    {"role": "assistant", "content": reply},
+                ]
+                # Proactive.answer now retains its own history; tool replies still need it here.
+                if history[-2:] != pair:
+                    history += pair
+                history = history[-8:]
                 while history and len(json.dumps(history).encode()) > 2200:
                     history = history[2:]
                 state.update(history=history, last_reply=reply)
+                state["task_state"] = update_task_state(
+                    task_state, user_text=text, calls=(result or {}).get("calls", []), reply=reply
+                )
                 if result is not None:
                     state["last_tools"] = result.get("tools", [])
                 if result is not None:
@@ -106,6 +139,16 @@ class TextConversation(ProactiveConversation):
                 "tools": (result or {}).get("tools", []),
                 "reply_composition": (result or {}).get("reply_composition"),
             }
+
+    def record_treatment(self, receipt):
+        with self.lock, self.store() as store:
+            setup = preference(store, SYSTEM, KEY, {})
+            profile = setup.get("profile")
+            if profile:
+                state = preference(store, profile, self.state_key, {})
+                if state.get("session_until", 0) > self.clock():
+                    state["prompt_treatment"] = receipt
+                    store.remember(profile, self.state_key, state)
 
     def feedback(self, data):
         if set(data) - {"rating", "note"} or data.get("rating") not in ("useful", "unhelpful"):
@@ -126,6 +169,7 @@ class TextConversation(ProactiveConversation):
                     at=self.clock(),
                     rating=data["rating"],
                     note=note,
+                    treatment=context.get("prompt_treatment"),
                     context=context.get("history", [])[-2:]
                     if context.get("session_until", 0) > self.clock()
                     else [],

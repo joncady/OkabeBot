@@ -128,11 +128,11 @@ test('Trakt list discovery is explicit, keeps saved selection, and adjusts the s
 
 test('proactive cadence defaults preserve legacy limits and owner can edit without changing destination',async()=>{
  const f=await fixture();assert.equal(f.nodes['conversation-max-per-day'].value,1);assert.equal(f.nodes['conversation-min-gap'].value,120);
- f.nodes['conversation-enabled'].checked=true;f.nodes['conversation-max-per-day'].value='3';f.nodes['conversation-min-gap'].value='150';
+ f.nodes['conversation-enabled'].checked=true;f.nodes['conversation-max-per-day'].value='3';f.nodes['conversation-min-gap'].value='150';f.nodes['conversation-topic-cooldown'].value='36';
  f.nodes['conversation-form'].onsubmit({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve));
  const request=f.requests.find(r=>r.url.endsWith('conversation')&&r.options.method==='POST');
- assert.deepEqual(JSON.parse(request.options.body),{enabled:true,destination:'screen-a',max_per_day:3,min_gap_minutes:150});
- assert.equal(f.nodes['conversation-max-per-day'].value,3);assert.equal(f.nodes['conversation-min-gap'].value,150);
+ assert.deepEqual(JSON.parse(request.options.body),{enabled:true,destination:'screen-a',max_per_day:3,min_gap_minutes:150,topic_cooldown_hours:36,chat_window_start:'00:00',chat_window_end:'00:00'});
+ assert.equal(f.nodes['conversation-max-per-day'].value,3);assert.equal(f.nodes['conversation-min-gap'].value,150);assert.equal(f.nodes['conversation-topic-cooldown'].value,36);
 });
 
 test('configured proactive cadence is shown and private form resets on owner logout',async()=>{

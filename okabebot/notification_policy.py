@@ -112,7 +112,15 @@ class NotificationPolicy:
                 raise ValueError("Unknown notification preference")
             candidate = deepcopy(self.settings)
             for key, value in changes.items():
-                if key in ("quiet_hours", "sources") and isinstance(value, dict):
+                if key == "sources" and isinstance(value, dict):
+                    for source, rule in value.items():
+                        if not isinstance(rule, dict):
+                            raise ValueError("Source changes must be field patches")
+                        current = candidate["sources"].get(
+                            source, {"enabled": True, "audio": "default"}
+                        )
+                        candidate["sources"][source] = {**current, **rule}
+                elif key == "quiet_hours" and isinstance(value, dict):
                     candidate[key].update(value)
                 else:
                     candidate[key] = value
@@ -144,11 +152,16 @@ class NotificationPolicy:
         value = self.sender_rule(item).get("priority", "default")
         return item["priority"] if value == "default" else value
 
-    def set_sender(self, source, sender_id, enabled=True, audio="default", priority="default"):
+    def set_sender(self, source, sender_id, enabled=None, audio=None, priority=None):
         with self.lock:
-            rule = dict(
-                source=source, sender_id=sender_id, enabled=enabled, audio=audio, priority=priority
-            )
+            current = self.sender_rule({"source": source, "sender_id": sender_id})
+            rule = {
+                "source": source,
+                "sender_id": sender_id,
+                "enabled": current.get("enabled", True) if enabled is None else enabled,
+                "audio": current.get("audio", "default") if audio is None else audio,
+                "priority": current.get("priority", "default") if priority is None else priority,
+            }
             rules = [
                 r
                 for r in self.settings["senders"]

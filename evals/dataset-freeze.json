@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "description": "Synthetic benchmark frozen after contract and source-envelope audit, before scored prompt tuning; exploratory pilot runs excluded.",
+  "dev_cases": 92,
+  "holdout_cases": 58,
+  "dataset_hash": "baee9ba81051c21820331568ff947dd59d2a56bdd0e6e07be8e46c8d5198b734",
+  "fixture_hash": "9159b392877cf4b56353bd12df547bf4a031eb72a9b437b8a852e05d9b88c409",
+  "notes": "Held-out inbox status audited against provider pending status before any held-out inference. No household or persona-trial inputs.",
+  "fixture_corrections": [
+    {
+      "description": "Movement emulator derives destination_name from the synthetic location catalog, matching the real acknowledgement contract. Cases and generator policies unchanged.",
+      "fixture_hash": "dac73d9810fad4c082421f4c54e783c70e6c87f61efdb95bcec2cbeab1fc791e"
+    }
+  ]
+}

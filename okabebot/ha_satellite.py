@@ -1,4 +1,4 @@
-"""Read-only MQTT Discovery for a separate SSH-connected BLE satellite."""
+"""Read-only MQTT Discovery for a separate SSH-connected sensor satellite."""
 
 import argparse
 import json
@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 
 from .service_runtime import stopping
+from .ha_companion import room_discovery
 
 # Fixed diagnostic code, not supplied by MQTT or Home Assistant callers.
 PROBE = """import json
@@ -18,10 +19,42 @@ for row in rows:
         signal=float(row.split()[3].rstrip('.'))
 t=Path('/sys/class/thermal/thermal_zone0/temp')
 u=Path('/proc/uptime')
-print(json.dumps({'connected':True,'wifi_signal':signal,
+result={'connected':True,'wifi_signal':signal,
  'temperature':float(t.read_text())/1000 if t.exists() else None,
- 'uptime':int(float(u.read_text().split()[0])) if u.exists() else None}))
+ 'uptime':int(float(u.read_text().split()[0])) if u.exists() else None}
+try:
+ from urllib.request import Request, ProxyHandler, build_opener
+ request=Request('http://127.0.0.1:8765/rpc',b'{"op":"room_sensors"}',
+  {'Content-Type':'application/json'})
+ with build_opener(ProxyHandler({})).open(request,timeout=2) as response:
+  raw=response.read(16385)
+ if len(raw)<=16384:
+  room=json.loads(raw)
+  if isinstance(room,dict) and room.get('connected') is True:
+   result['room_sensors']=room
+except Exception:
+ pass
+print(json.dumps(result))
 """
+
+
+def room_values(value):
+    """Project fresh optional readings; missing hardware is never false/zero."""
+    raw = value.get("room_sensors", {})
+    if not isinstance(raw, dict) or raw.get("connected") is not True:
+        raw = {}
+    result = {}
+    for key, low, high in [
+        ("distance_mm", 20, 4000),
+        ("temperature_c", 0, 50),
+        ("humidity_percent", 0, 100),
+    ]:
+        v = raw.get(key)
+        types = (int,) if key == "distance_mm" else (int, float)
+        result[key] = v if type(v) in types and low <= v <= high else None
+    v = raw.get("button_pressed")
+    result["button_pressed"] = v if type(v) is bool else None
+    return result
 
 
 def discovery(prefix, identity, name, area):
@@ -97,6 +130,7 @@ def run(stop):
                 client.publish(topic, json.dumps(config), qos=1, retain=True)
 
     client.on_connect = connected
+    discovered_room = set()
     client.max_queued_messages_set(16)
     client.reconnect_delay_set(min_delay=1, max_delay=60)
     client.connect_async(cfg["host"], cfg.get("port", 1883), 30)
@@ -115,6 +149,16 @@ def run(stop):
                     check=True,
                 )
                 value = json.loads(result.stdout)
+                room = room_values(value)
+                # Observe before advertising optional hardware. Re-publish to
+                # recover broker discovery state; null packets keep it unavailable.
+                discovered_room.update(k for k, v in room.items() if v is not None)
+                for topic, config in room_discovery(
+                    prefix, cfg["id"], cfg["name"], cfg["area"], fields=discovered_room
+                ):
+                    client.publish(topic, json.dumps(config), qos=1, retain=True)
+                value.pop("room_sensors", None)
+                value.update(room)
                 client.publish(prefix + "/state", json.dumps(value), qos=1, retain=False)
                 client.publish(prefix + "/availability", "online", qos=1, retain=True)
             except Exception:

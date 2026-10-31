@@ -123,7 +123,7 @@ class AmadeusHttpTests(unittest.TestCase):
         self.bridge.amadeus_feeds = Feeds(self.folder / "amadeus")
         self.request("/amadeus/api/settings", SETUP)
         initial = self.request("/amadeus/api/feeds")
-        self.assertEqual(len(initial["feeds"]), 9)
+        self.assertEqual(len(initial["feeds"]), 10)
         self.assertFalse(initial["delivery_enabled"])
         self.request(
             "/amadeus/api/feed-connection",

@@ -9,6 +9,19 @@ from okabebot.tool_reply import facts, acceptable
 
 
 class ReplyTests(unittest.TestCase):
+    def test_missing_home_sensor_explains_selected_coverage_without_inventing_value(self):
+        from okabebot.tool_reply import preserve_scope
+
+        result = {"queried_source": "home_devices", "items": []}
+        text = preserve_scope("It is 72 degrees.", "get_context_feed", result)
+        self.assertIn("sensor", text)
+        self.assertIn("selected", text)
+        self.assertNotIn("72", text)
+        stale = {"queried_source": "home_devices", "items": [{"fresh": False}]}
+        text = preserve_scope("It is 72 degrees now.", "get_context_feed", stale)
+        self.assertIn("older", text)
+        self.assertNotIn("72", text)
+
     def adapter(self, result):
         obj = LocalConversation.__new__(LocalConversation)
         obj.process = Mock()

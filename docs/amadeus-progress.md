@@ -536,3 +536,139 @@ race. Acknowledgment sequencing and live-receiver replay preservation now have
 isolated regressions, and diagnostic coverage includes secondary Cast targets.
 Restart ownership reconciliation remains an open reliability gap. No participant
 observations, report contents or personal measurements are published here.
+
+The personal Android pilot separates preference conversation and mobile delivery
+from home-control authority. Private HTTPS routes are allowlisted, paired devices
+have isolated inboxes, opaque pushes carry no personal content, and uncertain
+requests are not automatically replayed. Revocation, explicit delivery choices and
+token rotation have synthetic regressions. Buffered mobile voice and manual APK
+updates remain initial limitations; no personal conversations or outcomes are
+reported here.
+
+Mobile setup now includes a dedicated unique scene reservation option rather than
+requiring another screen to release its set. Android microphone initialization
+declares Chromium's audio-routing dependency, and buffered replies reuse the
+already enabled playback graph with lifecycle cancellation and shared gain.
+
+Android conversations can ground responses in existing read-only context tools.
+Per-turn tool filtering and execution checks preserve the separation from home
+actions; synthetic regressions cover allowed reads and rejected action proposals.
+
+Mobile lifecycle handling preserves an arrived companion and its player across
+navigation, releases on screen-off/close, and stops capture on focus loss. Private
+reply playback no longer depends on the background announcement poll succeeding.
+
+A mobile synthesis reliability fix makes private generation visible to supervision
+through the existing speech lock. Regressions cover mutual exclusion, supervisor
+visibility and lock release after failure.
+
+Native Android private-reply playback replaces WebView-only playback for generated
+voice, with explicit completion/failure signaling and temporary-file cleanup.
+Browser playback retains its existing graph. Physical audibility remains a
+separate acceptance check from emulator media completion.
+
+
+Shared incremental delivery removes the mobile whole-file wait without changing
+voice conditioning. Native Android and browser-family sinks use bounded queues,
+ordered PCM, explicit cancellation and actual playback completion; Pi replies can
+release a smaller first packet. Cross-review added protection against queued
+native starts after cancellation and startup-threshold stalls on older Android.
+TV, prepared announcements and URL-based speaker adapters retain conservative
+fallbacks. Source tests and physical acceptance remain distinct.
+
+
+Proactive opener selection can now withhold freshly learned preference categories
+without deleting them or limiting direct recall. A configurable cooldown and
+conservative legacy migration reduce immediate preference echoing; empty-context
+openers are skipped rather than consuming an invitation. Topic-level semantic
+novelty remains follow-up work; delivered-suggestion explanations and explicit
+feedback are covered by the subsequent checkpoint below.
+
+Optional conversation now supports explicit chat windows, delivered-suggestion
+explanations and ID-bound timing/topic feedback. Preference freshness also covers
+recently offered or declined categories. Read-tool handoffs retain bounded
+conversation continuity; confirmation and stop handling precede model routing,
+and privacy-invalid sessions cannot silently reopen through a tool handoff.
+Grounded watchlist selection uses available metadata and permitted cached watched
+history, with explicit incomplete-coverage and availability limits. Synthetic
+persona exercises remain private and do not establish real-world helpfulness.
+
+A bounded routing-protocol repair can recover a malformed model routing response
+without treating its prose as evidence or authorizing an action. It preserves the
+original request, history, read-only restrictions and overall deadline. Routing
+instructions distinguish discussion of a topic from a request for recommendations
+or connected status. Continued invalid output still fails closed.
+Routing now receives recent dialogue as quoted context in a current-request
+envelope, so a classifier turn does not continue prior free-text assistant turns.
+The spoken-reply length/content contract still rejects invalid output; it does
+not silently truncate away qualifications. Model content quality and natural
+multi-turn acceptance remain open engineering work.
+
+Offline prompt development now has versioned synthetic turn contracts, seeded
+context/history, provider fixtures and held-out evaluation. First routing decisions
+are distinguished from protected application outcomes, including wrong parameters
+to an otherwise correct action. Semantic judges are advisory and can be checked
+against explicit good/bad contrasts. An optional tool-free intent stage is isolated
+as an evaluation strategy; it does not alter installed routing. A read-only personal
+recommendation context capability retrieves explicit saved interests, food tastes
+and goals while preserving consent/privacy and unknown time/energy/inventory.
+
+
+Owner text-lab prompt treatments now separate editable conversational experiments
+from production speech and proactive policies. Private feedback can identify the
+exact effective treatment; experimental prompts cannot enable device actions or
+new preference writes. Applying or restoring a treatment begins a fresh context.
+Core prompt/schema validation and bounded private revision storage support iterative
+conversation development without publishing participant inputs or trial outcomes.
+
+
+A conversation source checkpoint now retains bounded read-query task context from
+validated receipts, supports constraint/date follow-ups, and clears context at its
+privacy/session boundary. Operational routing is separated from optional character
+style. Deterministic target/speech-act checks and field-preserving notification
+updates reduce reliance on model guesses for action parameters. Synthetic sequence
+replay uses actual prior replies/results instead of expected answers; independent
+case authoring and frozen validation remain separate from development tuning.
+
+
+## Optional USB satellite sensing
+
+USB room-sensor support now accommodates a Grove satellite with independent
+climate, button and distance freshness, without inventing missing sensor values.
+Read-only HA telemetry advertises observed supported fields; state snapshots do
+not imply reliable short-press events, identity or new proactive-action consent.
+Container startup now maintains the private HA/MQTT network needed for broker DNS.
+Physical sensor acceptance remains separate from software connection checks.
+
+
+## Room-aware sensor retrieval
+
+Selected HA sensor records can now retain assigned room metadata separately from
+friendly names, preserving stable identities. Literal multi-keyword retrieval and
+matching synthetic fixtures cover cross-field room/measurement searches. Reply
+grounding distinguishes missing coverage, stale observations and ambient versus
+floor/setpoint readings. The dashboard remains the owner control for sensor
+selection; no unselected-device collection is implied by area lookup.
+
+
+## Offline-endpoint retry isolation
+
+Failed pooled SSH handshakes now enter a bounded cooldown, reducing connection
+churn when a satellite is unresponsive. Successful recovery resets the delay;
+uncertain device operations remain non-replayed. Transport availability remains
+separate from sensor truth and inference quality.
+
+## Presence and recovery reliability checkpoint
+
+- Improved: opt-in selected presence history separates baseline snapshots, actual
+  reports, zone counts and unknown gaps; tool replies preserve attribution limits.
+- Improved: persisted exact Cast session receipts support explicit restart
+  reconciliation without adopting unrelated applications or bypassing render ACKs.
+- Improved: short query-constraint changes and immediate notification controls have
+  focused routing regressions; quoted speech does not become movement authority.
+- Improved: private configuration collection and a rollback-first spare-card plan
+  separate controller mitigations from physical storage repair.
+- Limited: new source does not establish installed acceptance, complete presence
+  coverage, a repaired SD card or a broadly improved model. Physical recovery and
+  spare-card compatibility still require supervised checks. Runtime evaluation
+  outputs remain private; only invented fixtures and core improvements are public.

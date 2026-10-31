@@ -82,3 +82,12 @@ test('Alexa screens expose only their artwork and Room presentation, with revoke
  const audio=row.children.find(n=>n['aria-label']==='Audio destination for Study Echo');
  assert.ok(audio.children.every(n=>n.value!=='device'));
 });
+
+test('Android destinations expose device audio and revocation without owner credentials',()=>{
+ const d=dashboard(true);d.state.locations.push({id:'pocket',name:'Pocket',adapter:'android',approved:true,available:true,position:[1,0],presentation:'companion',scene_selections:{}});d.context.locationsUI(d.state);
+ const row=d.nodes['#location-list'].children[2];
+ assert.ok(row.children.some(n=>n.textContent==='Revoke'));
+ assert.ok(row.children.some(n=>n.textContent==='Forget'));
+ assert.ok(row.children.some(n=>n.textContent==='Phone notifications'));
+ const audio=row.children.find(n=>n['aria-label']==='Audio destination for Pocket');assert.ok(audio.children.some(n=>n.value==='device'));
+});

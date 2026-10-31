@@ -31,7 +31,10 @@ def watchlist(folder, *, page=1, kind="movies", read=request_page):
             return {"items": [], "state": "context_changed"}
     path = "sync/watchlist" + ("/" + kind if kind != "all" else "")
     value = read(
-        "https://api.trakt.tv/" + path + "?" + urlencode({"limit": 20, "page": page}),
+        "https://api.trakt.tv/"
+        + path
+        + "?"
+        + urlencode({"limit": 20, "page": page, "extended": "full"}),
         {
             "Authorization": "Bearer " + connection["token"],
             "trakt-api-key": connection["client_id"],
@@ -50,9 +53,21 @@ def watchlist(folder, *, page=1, kind="movies", read=request_page):
         title = media.get("title")
         if type(ident) is not int or not isinstance(title, str) or not title.strip():
             raise ValueError("Invalid watchlist identity")
-        items.append(
-            {"id": str(ident), "type": media_type, "title": clean(title), "year": media.get("year")}
-        )
+        item = {
+            "id": str(ident),
+            "type": media_type,
+            "title": clean(title),
+            "year": media.get("year"),
+        }
+        # Extended embedded objects may be cached or incomplete. Missing metadata
+        # stays unknown; never synthesize a genre/runtime from a title.
+        genres = media.get("genres")
+        if isinstance(genres, list) and all(isinstance(g, str) for g in genres):
+            item["genres"] = [clean(g) for g in genres[:20] if g.strip()]
+        runtime = media.get("runtime")
+        if type(runtime) is int and 0 < runtime <= 1440:
+            item["runtime_minutes"] = runtime
+        items.append(item)
     with feeds.store() as store:
         if (
             preference(store, SYSTEM, KEY, {}) != setup

@@ -174,7 +174,16 @@ def handle(handler, bridge, *, post=False):
                 if (
                     not isinstance(data, dict)
                     or not {"enabled", "destination"} <= set(data)
-                    or set(data) - {"enabled", "destination", "max_per_day", "min_gap_minutes"}
+                    or set(data)
+                    - {
+                        "enabled",
+                        "destination",
+                        "max_per_day",
+                        "min_gap_minutes",
+                        "topic_cooldown_hours",
+                        "chat_window_start",
+                        "chat_window_end",
+                    }
                 ):
                     raise ValueError("Choose enabled, destination and bounded frequency")
                 places = bridge.surfaces.snapshot()["locations"]

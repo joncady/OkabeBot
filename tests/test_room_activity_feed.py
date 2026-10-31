@@ -44,7 +44,15 @@ class RoomActivityTests(unittest.TestCase):
         items = self.current()[0]["items"]
         self.assertEqual(3, len(items))
         self.assertTrue(all(set(i) == {"id", "label", "state", "category"} for i in items))
-        self.assertTrue(all("/api/states/" in url and data is None for url, data in calls))
+        self.assertTrue(
+            all(
+                "/api/states/" in url
+                and data is None
+                or url.endswith("/api/template")
+                and set(data) == {"template"}
+                for url, data in calls
+            )
+        )
         for value in ("idle", "paused", "unknown", "unavailable", "buffering"):
             self.now += 61
             state["value"] = value

@@ -73,7 +73,8 @@ class LocalToolTests(unittest.TestCase):
                 "id",
             )
 
-    def adapter(self, output):
+    @staticmethod
+    def adapter(output):
         obj = LocalConversation.__new__(LocalConversation)
         obj.process = Mock()
         obj.cancelled = threading.Event()
@@ -244,6 +245,40 @@ class SilentTextTurnTests(unittest.TestCase):
         obj.completed.assert_not_called()
         self.assertFalse(obj.busy)
 
+    def test_read_only_turn_limits_prompt_and_blocks_action_before_executor(self):
+        import json
+
+        for name in ("get_current_media", "set_speaker_volume", "control_spotify"):
+            with self.subTest(name=name):
+                obj = LocalConversation.__new__(LocalConversation)
+                obj.process = Mock()
+                obj.process.poll.return_value = None
+                obj.cancelled = threading.Event()
+                obj.lock = threading.RLock()
+                obj.busy, obj.closed = False, False
+                obj.notify, obj.completed = Mock(), Mock()
+                obj.specs, obj.policy = SPECS, POLICY
+                obj.executor = Mock(return_value={"tv": {"title": "Invented match"}})
+                obj._read = Mock(
+                    return_value={
+                        "text": "",
+                        "selection_s": 0.1,
+                        "tool_call": {
+                            "name": name,
+                            "arguments": {"percent": 5} if name == "set_speaker_volume" else {},
+                        },
+                    }
+                )
+                obj.text_turn("What is playing on TV?", read_only=True)
+                if name == "get_current_media":
+                    obj.executor.assert_called_once_with(name, {})
+                else:
+                    obj.executor.assert_not_called()
+                prompt = json.loads(obj.process.stdin.write.call_args_list[0].args[0])
+                self.assertEqual(prompt["tool_names"], ["get_current_media"])
+                self.assertNotIn("location_tool", prompt)
+                self.assertIn("set_speaker_volume", obj.specs)
+
 
 class FeedbackGroundingTests(unittest.TestCase):
     def test_where_are_you_routes_and_uses_actual_location(self):
@@ -279,3 +314,50 @@ class FeedbackGroundingTests(unittest.TestCase):
             result = obj.text_turn("Play Spotify on my phone")
         play.assert_not_called()
         self.assertIn("can't identify", result["reply"])
+
+
+class FixedCalendarClockTests(unittest.TestCase):
+    def test_application_date_normalization_uses_injected_timestamp(self):
+        import json
+        from datetime import datetime, timezone
+
+        obj = LocalToolTests.adapter("")
+        obj.clock = lambda: datetime(2032, 6, 8, 18, tzinfo=timezone.utc).timestamp()
+        obj.specs = {
+            "get_calendar_agenda": {
+                "name": "get_calendar_agenda",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "day": {"type": "string"},
+                        "start_date": {"type": "string"},
+                        "end_date": {"type": "string"},
+                    },
+                },
+            }
+        }
+        obj.agent_request = Mock(
+            side_effect=[
+                {
+                    "text": json.dumps(
+                        {"name": "get_calendar_agenda", "arguments": {"day": "tomorrow"}}
+                    ),
+                    "selection_s": 0,
+                },
+                {
+                    "text": "No events were returned in this selected calendar view.",
+                    "selection_s": 0,
+                },
+            ]
+        )
+        obj.executor = Mock(
+            return_value={"available": True, "events": [], "scope": "Selected calendar"}
+        )
+        with patch(
+            "okabebot.local_conversation.get_config",
+            return_value={"notifications": {"agenda_timezone": "UTC"}},
+        ):
+            obj._turn("Read my calendar tomorrow.")
+        obj.executor.assert_called_once_with(
+            "get_calendar_agenda", {"start_date": "2032-06-09", "end_date": "2032-06-10"}
+        )

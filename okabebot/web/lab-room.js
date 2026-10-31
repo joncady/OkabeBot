@@ -104,13 +104,13 @@ class Room{
     this.style=style;this.portraits=assets.frames.map(frame=>{const c=document.createElement('canvas');c.width=480;c.height=320;primitive(c.getContext('2d'),frame);return c;});
   }
   drawStatic(c){
-    const cafe=this.scene==='maid-cafe',workshop=this.scene==='pip-workshop',desk=this.scene==='mac-desk';
+    const cafe=this.scene==='maid-cafe',workshop=this.scene==='pip-workshop',desk=this.scene==='mac-desk',pocket=this.scene==='pocket-nook';
     c.fillStyle='#101b27';c.fillRect(0,0,W,H);
     // Ground and raised cutaway foundation.
     polygon(c,[iso(0,0,-.4),iso(14,0,-.4),iso(14,9,-.4),iso(0,9,-.4)],'#080f1b');
     polygon(c,[iso(0,0),iso(14,0),iso(14,9),iso(0,9)],'#3d555a','#101a25');
-    polygon(c,[iso(0,0),iso(14,0),iso(14,0,6.4),iso(0,0,6.4)],cafe?'#8b6660':desk?'#596371':workshop?'#365c60':'#263d4c','#0c1721');
-    polygon(c,[iso(0,0),iso(0,9),iso(0,9,6.4),iso(0,0,6.4)],cafe?'#775452':desk?'#3e4c60':workshop?'#294b50':'#1d303f','#0c1721');
+    polygon(c,[iso(0,0),iso(14,0),iso(14,0,6.4),iso(0,0,6.4)],pocket?'#776278':cafe?'#8b6660':desk?'#596371':workshop?'#365c60':'#263d4c','#0c1721');
+    polygon(c,[iso(0,0),iso(0,9),iso(0,9,6.4),iso(0,0,6.4)],pocket?'#514d68':cafe?'#775452':desk?'#3e4c60':workshop?'#294b50':'#1d303f','#0c1721');
     // Tile grid stays on the floor plane, never on top of furniture.
     for(let x=0;x<14;x++)for(let y=0;y<9;y++){
       polygon(c,[iso(x,y),iso(x+1,y),iso(x+1,y+1),iso(x,y+1)],cafe?((x+y)%2?'#a48c77':'#ddc8ab'):((x+y)%2?'#385156':'#3d575b'),'#31494e');
@@ -165,6 +165,13 @@ class Room{
     const title=iso(4.5,0,6.7);c.save();c.translate(...title);c.transform(1,.5,0,1,0,0);label(c,(s.environment?.name||s.lab?.title||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase(),0,0,10,'#a6c7be');c.restore();
   }
   furniture(c){
+    if(this.scene==='pocket-nook'){
+      box(c,1.6,.5,0,8.8,1.8,1.4,['#79647d','#514d68','#d3b183']);
+      box(c,1.6,.5,1.4,8.8,.3,1.1,['#79647d','#514d68','#ab91a1']);
+      box(c,10,4,0,1.8,1.1,1.3,['#bc805f','#87573f','#d3b183']);
+      const bag=iso(10.9,4.5,1.3);c.strokeStyle='#d3b183';c.lineWidth=4;c.strokeRect(bag[0]-7,bag[1]-10,14,10);
+      return;
+    }
     if(this.scene==='mac-desk'){
       box(c,1.4,.4,0,9,1.8,1.7,['#765f60','#514b58','#c7a780']);
       box(c,3,.8,1.7,3,.12,1.6,['#293a4e','#192b3d','#7995a5']);

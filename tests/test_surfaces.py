@@ -171,12 +171,13 @@ class SurfaceTests(unittest.TestCase):
 
         cast = Mock(status=SimpleNamespace(app_id=APP_DASHCAST, session_id="owned"))
         surface = Surfaces(Mock(), cast_getter=lambda: cast, start=False)
+        cast.register_handler.side_effect = lambda _: setattr(cast.status, "session_id", "launched")
         with patch("pychromecast.controllers.BaseController.launch") as launch:
             surface.token = "scoped"
             surface._launch("http://example.invalid/tv/#scoped")
         cast.quit_app.assert_called_once_with(timeout=5)
         self.assertTrue(launch.call_args.kwargs["force_launch"])
-        self.assertEqual(surface.receiver_session, "owned")
+        self.assertEqual(surface.receiver_session, "launched")
 
     def test_return_never_quits_somebody_elses_app(self):
         from types import SimpleNamespace

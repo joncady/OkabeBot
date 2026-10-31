@@ -7,6 +7,28 @@ from okabebot.camera_greeting import permitted
 
 
 class RoomTests(unittest.TestCase):
+    def test_grove_board_has_no_tilt_and_button_is_independently_fresh(self):
+        now = [0]
+        samples = Samples(clock=lambda: now[0])
+        samples.accept({"sensor": "room", "temperature_c": 20, "humidity_percent": 48})
+        samples.accept({"sensor": "button", "button_pressed": True})
+        self.assertEqual(samples.snapshot()["temperature_c"], 20)
+        self.assertIsNone(samples.snapshot()["tilt_closed"])
+        self.assertTrue(samples.snapshot()["button_pressed"])
+        now[0] = 7
+        samples.accept({"sensor": "room", "temperature_c": None, "humidity_percent": 49})
+        self.assertIsNone(samples.snapshot()["button_pressed"])
+        self.assertIsNone(samples.snapshot()["temperature_c"])
+        self.assertEqual(samples.snapshot()["humidity_percent"], 49)
+        for packet in [
+            {"sensor": "button", "button_pressed": 1},
+            {"sensor": "room"},
+            {"sensor": "room", "temperature_c": float("nan")},
+        ]:
+            samples.accept(packet)
+        self.assertIsNone(samples.snapshot()["button_pressed"])
+        self.assertEqual(samples.snapshot()["humidity_percent"], 49)
+
     def test_separate_freshness_null_echo_and_disconnect(self):
         now = [0]
         s = Samples(clock=lambda: now[0])

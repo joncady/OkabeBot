@@ -31,3 +31,9 @@ okabebot/assets/teams.json
 okabebot/assets/crests.json
 
 **/screen-power.json
+android/.gradle/
+android/local.properties
+android/app/google-services.json
+*.jks
+*.keystore
+firebase-service-account*.json

@@ -25,8 +25,9 @@ class SceneWorldTests(unittest.TestCase):
 
     def test_catalog_has_dedicated_desk_set_per_character_and_pi_supports_all(self):
         for choices in CATALOG["characters"].values():
-            self.assertEqual(len(choices), 3)
+            self.assertEqual(len(choices), 4)
             self.assertIn("mac-desk", choices)
+            self.assertIn("pocket-nook", choices)
             self.assertTrue(all(c in CATALOG["sets"] for c in choices))
         self.assertEqual(set(CATALOG["sets"]), set(scene.scene_sets.SETS))
 

@@ -1,6 +1,7 @@
 """Synthetic browser context; never assumes user's room from character position."""
 
 import unittest
+import threading
 from unittest.mock import Mock
 from okabebot.chat_location import ground, resolve
 
@@ -52,6 +53,7 @@ class LocationTests(unittest.TestCase):
             codex=SimpleNamespace(compose_preference=Mock(), text_turn=Mock(), specs={}),
         )
         app.text_conversation = Mock()
+        app.text_conversation.lock = threading.RLock()
         app.text_conversation.send.return_value = {"reply": "A grounded reply.", "tools": []}
         result = app.execute("/amadeus/text", {"surface_secret": "stale", "text": "Hello"})
         self.assertEqual(result["reply"], "A grounded reply.")

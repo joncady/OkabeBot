@@ -15,6 +15,26 @@ from functools import lru_cache
 
 from .config import get_config, state_dir
 
+from contextlib import contextmanager
+
+
+@contextmanager
+def synthesis_session():
+    """Serialize private synthesis and tell supervision not to interrupt a busy worker."""
+    import fcntl
+
+    folder = state_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    with (folder / "character-speech.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise ValueError(
+                "Voice worker is busy; try a new recording after speech finishes"
+            ) from None
+        yield
+
+
 PRESETS = ("warm", "calm", "robotic")
 RATES = {"neutral": 175, "happy": 182, "curious": 168, "concerned": 155, "excited": 192}
 

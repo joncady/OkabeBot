@@ -67,14 +67,18 @@ class DirectTransfer:
             if not self.source_departed:
                 self.owner.last_seen = now
         elif role == "target":
-            self.target_seen, self.target_ready = now, True
+            self.target_seen, self.target_ready = now, not self.target_cast
             if self.target_cast:
                 cast = self.owner.cast_for(self.target_id)
                 if cast:
                     from pychromecast.config import APP_DASHCAST
 
-                    if cast.status.app_id == APP_DASHCAST:
-                        self.target_session = cast.status.session_id
+                    if (
+                        self.target_session
+                        and cast.status.app_id == APP_DASHCAST
+                        and cast.status.session_id == self.target_session
+                    ):
+                        self.target_ready = True
                         self.target_active |= getattr(cast.status, "is_active_input", None) is True
         else:
             raise PermissionError("Unrelated receiver")

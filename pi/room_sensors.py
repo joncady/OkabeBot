@@ -1,4 +1,4 @@
-"""Python 3.7 USB Uno reader; bounded, volatile samples and reconnect handling."""
+"""Python 3.7 USB sensor reader; bounded volatile samples and reconnect handling."""
 
 import json
 import os
@@ -26,13 +26,22 @@ class Samples:
             clean = {"distance_mm": distance}
         elif kind == "room":
             for key, low, high in [("temperature_c", 0, 50), ("humidity_percent", 0, 100)]:
+                if key not in value:
+                    continue
                 v = value.get(key)
                 if v is not None and (type(v) not in (int, float) or not low <= v <= high):
                     return
                 clean[key] = v
-            if type(value.get("tilt_closed")) is not bool:
+            if "tilt_closed" in value:
+                if type(value["tilt_closed"]) is not bool:
+                    return
+                clean["tilt_closed"] = value["tilt_closed"]
+            if not clean:
                 return
-            clean["tilt_closed"] = value["tilt_closed"]
+        elif kind == "button":
+            if type(value.get("button_pressed")) is not bool:
+                return
+            clean["button_pressed"] = value["button_pressed"]
         else:
             return
         with self.lock:
@@ -45,6 +54,7 @@ class Samples:
             "temperature_c": None,
             "humidity_percent": None,
             "tilt_closed": None,
+            "button_pressed": None,
             "connected": False,
         }
         with self.lock:

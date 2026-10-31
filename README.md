@@ -14,6 +14,21 @@ Backlog scope lives in [repository issues](https://github.com/joncady/OkabeBot/i
 organized on the [roadmap Kanban board](https://github.com/users/joncady/projects/4).
 See [roadmap maintenance](docs/roadmap.md) for status and checkpoint rules.
 
+A [personal Android companion pilot](docs/android.md) adds native preference chat,
+a private notification inbox and the existing character destination/PiP view.
+Tailscale provides private HTTPS; Firebase carries generic push nudges and signed
+APK distribution. Phone conversations can query existing read-only context tools; device-control tools are excluded. Installation,
+sender credentials and physical acceptance are tracked separately in the inventory.
+The [shared streaming audio contract](docs/streaming-audio.md) covers incremental
+delivery, platform buffering, cancellation and buffered-only adapters.
+
+The current source checkpoint adds [selected presence history](docs/amadeus-feeds.md#selected-presence-reports),
+exact-session Cast restart reconciliation and [Pi recovery preparation](docs/companion-recovery.md).
+These reuse the existing hosting topology. New-install history collection is off;
+new recovery source and physical spare-card validation are distinguished from the
+installed deployment in the inventory. Experimental structured conversation state
+and routing are not automatically promoted by a source merge.
+
 The owner dashboard groups **Companion**, **Locations**, **Today** and **Settings**
 with compact, bookmarkable sections. Pairing, policy, transcripts and advanced
 Amadeus setup stay behind disclosures; pause/guest controls remain visible.
@@ -85,7 +100,7 @@ messages, not screenshots of private account activity.
 | Multiple Pis | Mac or Linux computer | SSH to a Pi | SSH to another Pi |
 | Hybrid | Mac, Linux computer, or capable Pi | Local or SSH | Local or SSH |
 
-Each device endpoint independently selects `local` or `ssh`. Both use the same loopback HTTP protocol. SSH connections use your existing verified host keys; no hardware service needs an exposed network port.
+Each device endpoint independently selects `local` or `ssh`. Both use the same loopback HTTP protocol. SSH connections use your existing verified host keys; no hardware service needs an exposed network port. Failed pooled SSH handshakes use bounded reconnect backoff; failed hardware operations are never replayed.
 
 The existing deployment uses a Mac controller and one legacy **Pi Zero W** satellite
 combining display, camera, Bluetooth, audio and button services. **The all-in-one ARM64 setup is an architectural option, not yet hardware-validated.** A Pi Zero cannot run this controller stack. The current MLX conversation and voice workers require Apple Silicon; Linux/Dell or an ARM64 Pi needs different inference workers or a supported remote backend. Selecting Codex uses the OpenAI service for conversation; selecting the deployed local Qwen backend does not.
@@ -106,8 +121,13 @@ also writes a single `Startup complete` message when core dependencies are ready
 
 ```mermaid
 flowchart TB
+    Android["Personal Android app: native PCM / WAV pilot"] -->|"Private HTTPS via Tailscale Serve; no public Funnel"| MobileProxy
+    FCM["Firebase: generic FCM nudges; private APK distribution"] --> Android
+    RemoteHA["Owner browser / HA Companion over Tailscale"] -->|"Private HTTPS Serve: 8443"| HA
     Tablet["Tablet or laptop browser"] -->|"Remembered-auth dashboard: 8768"| App
     subgraph Mac["Mac - active controller"]
+        MobileProxy["Route-limited mobile proxy: loopback 8772"] -->|"Paired surface/mobile capabilities: loopback 8768"| App
+        App -->|"Optional FCM sender: opaque event IDs only"| FCM
         Supervisor["Login LaunchAgent and runtime supervisor"] --> App["OkabeBot controller, readiness and shared actions"]
         Supervisor --> SleepGuard["Optional AC sleep guard; display may sleep"]
         DockerLogin["Optional Docker login LaunchAgent"] --> HA
@@ -125,7 +145,7 @@ flowchart TB
         HA["Home Assistant Container: 8123"] -->|"Scoped notifications, Alexa schedules and arrivals"| App
         App -->|"Bounded state and shared controls"| HAFacade["Companion MQTT facade: LaunchAgent"]
         HAFacade <-->|"Loopback 1883; authenticated private Docker network"| MQTT["Mosquitto Container"]
-        MQTT <--> HA
+        MQTT <-->|"Shared private Docker network"| HA
         MCP["Optional stdio MCP server"] --> App
         AlexaLocal["Opt-in private Alexa conversation adapter: Unix socket"] --> Chat
         AlexaLocal --> Speech
@@ -166,6 +186,7 @@ flowchart TB
     HASatellite["Read-only satellite telemetry: LaunchAgent"] -->|"MQTT Discovery"| MQTT
     HASatellite -->|"Verified SSH diagnostics"| UpstairsScan
     UpstairsScan["Second Pi - bounded BLE scanner preparation"] -->|"Target-only observations over verified SSH; comparison trial"| Proximity
+    UpstairsScan ---|"USB sensor JSON; satellite telemetry forwards readings"| GroveBoard["Alfa/Wio Grove board - climate, button and ultrasonic"]
     Proximity --> Places
     App <-->|"Verified SSH: scenes, camera and Bot tools"| Display
     HomePresence -->|"Fresh home and nearby-anchor gates"| Vision
@@ -853,3 +874,36 @@ a forecast. See [morning setup](docs/amadeus-feeds.md#morning-report-sections).
 TV wake preparation waits for its warmup navigation acknowledgment before
 handoff; morning replay can reuse an already-connected destination without
 relaunching it. Receiver request diagnostics cover additional configured TVs.
+
+Amadeus optional conversations support local-time chat windows, delivered-suggestion
+explanations and explicit timing/topic feedback in the Android app. Grounded
+watchlist recommendations use connected saved titles and report incomplete history
+or availability. See [conversation controls](docs/amadeus.md#optional-conversation-controls-and-explanations).
+These additions use the existing controller, local model and paired mobile routes;
+the deployment map's hosts, ports and integration edges are unchanged.
+
+Offline conversation development uses [prompt/tool evaluations](evals/README.md):
+versioned synthetic turn inputs, exact or explicitly scoped expected calls,
+closed-world provider fixtures, separate model/application scores and advisory
+semantic judging. Runs stay in ignored local state. The optional intent-gated
+strategy is an evaluation prototype, not a change to the installed controller.
+It uses the existing cached local model with no new resident service or topology
+edge; the deployment map remains unchanged.
+
+
+The Dev text lab supports [private prompt treatments](docs/conversation-agent.md#owner-prompt-treatments),
+including an editable conversational-style candidate and a full native-tool candidate.
+Non-default treatments are isolated to read-only text experiments with no new
+memory writes. Normal voice/mobile/proactive policies remain unchanged; the same
+controller and worker own these requests, with no new deployment-map edge.
+
+
+The next [conversation checkpoint](docs/conversation-agent.md#structured-turn-state-and-resolution)
+adds bounded task context from validated read receipts, deterministic temporal and
+named-target resolution, field-preserving notification updates and operational
+prompts separated from character style. This source capability is evaluated offline;
+installation/acceptance remains distinct in the deployment inventory.
+
+Selected HA home sensors support room-assigned temperature lookup without renaming
+entities; see [room-aware feed setup](docs/amadeus-feeds.md#room-assigned-home-sensor-questions)
+and the [labelled regression slice](evals/room-temperature.jsonl).
