@@ -2302,3 +2302,13 @@ renderer differences. The display service was restarted while idle; the voice
 service and volume were unchanged. RPC activity and a digital preview verified the
 cue with no renderer error, then idle was restored. Physical button-turn visibility
 is a separate owner check. No hosting/transport or README topology changed.
+
+Android notification pilot acceptance now includes system-alert presentation,
+tap-to-open and retrieval of the private test note from the inbox. Enrolled-phone
+notification enablement is independent of pairing and OS permission; it must be
+explicitly enabled. The source APK toggle is now labelled `Enable notifications`,
+with separate no-sound explanation; that label ships with the next APK, not by
+changing server assets. Existing inbox entries persist under normal retention and
+are not evidence of duplicate sends. Widget and broader lifecycle coverage remain
+open. No notification bodies, participant records or device identifiers are recorded
+in this public inventory; hosting and README topology are unchanged.

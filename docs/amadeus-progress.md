@@ -707,3 +707,10 @@ separate from sensor truth and inference quality.
   button-turn regressions cover composition and thinking-state submission.
 - Limited: rendered-preview verification is separate from owner acceptance during
   a physical button conversation. No new capture or automatic speech was added.
+
+## Clear notification opt-in
+
+- Improved: the native toggle describes enabling notifications, with quiet delivery
+  explained separately rather than using an ambiguous action label.
+- Capability: the Android pilot's alert-to-private-inbox path has physical acceptance;
+  this does not complete widget, background lifecycle or every source-policy check.

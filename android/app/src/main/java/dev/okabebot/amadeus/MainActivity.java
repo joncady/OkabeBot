@@ -110,7 +110,8 @@ public final class MainActivity extends Activity {
         EditText url = new EditText(this); url.setSingleLine(true); url.setTextColor(accent); url.setHintTextColor(Color.LTGRAY);
         url.setHint("https://your-mac.your-tailnet.ts.net"); url.setText(Client.prefs(this).getString("backend",""));
         url.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI); body.addView(url);
-        Switch notify = new Switch(this); notify.setText("Quiet Amadeus notifications"); notify.setTextColor(accent); notify.setChecked(Client.prefs(this).getBoolean("notifications",false)); body.addView(notify);
+        Switch notify = new Switch(this); notify.setText("Enable notifications"); notify.setTextColor(accent); notify.setChecked(Client.prefs(this).getBoolean("notifications",false)); body.addView(notify);
+        body.addView(text("Show notification alerts without sound. You can change sound in Android notification settings.",14));
         body.addView(button("Save & connect",()->{
             try {
                 String base = Endpoint.normalize(url.getText().toString());

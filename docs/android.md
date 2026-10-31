@@ -73,7 +73,7 @@ Never bundle this server credential in the APK or check it into the repository.
 The client configuration file is not a sender credential. New IAM/key grants
 require the owner's account authorization.
 
-The app's **Setup → Quiet Amadeus notifications** choice is independent of screen
+The app's **Setup → Enable notifications** choice (labelled **Quiet Amadeus notifications** in earlier APKs) is independent of screen
 approval and Android's notification permission. The owner can pause/resume its
 delivery through **Locations → Phone notifications**. Ordinary foreground/token
 refresh preserves an owner pause; an explicit phone setting change may update it.
