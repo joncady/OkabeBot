@@ -725,3 +725,12 @@ separate from sensor truth and inference quality.
   retaining a draft does not approve an external transaction.
 - Next: grounded grocery-list adapter, separate content-bound handoff approval and
   physical motion acceptance before installation.
+
+## Character-owned presentation interfaces
+
+- Improved: one directory owns a character's art, prompts, motion, avatar geometry,
+  voice defaults and scene choices through the common Character interface.
+- Improved: reference human rigs use anchored paper/keyboard interactions and
+  task-directed gaze; display work intent still carries no private draft contents.
+- Limited: advanced work poses for other character rigs and dynamic APL equivalents
+  remain separate backfill, rather than implied parity.

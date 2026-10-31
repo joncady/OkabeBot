@@ -229,7 +229,9 @@ class ConversationExchange:
         duration, character = result.get("audio_duration_ms", 0), result.get("character", "")
         if type(duration) is not int or not 0 <= duration <= 20000:
             raise ValueError("Invalid audio duration")
-        if character not in ("", "okabe", "kurisu", "sonic", "pip"):
+        from .characters import registry
+
+        if character and character not in registry():
             raise ValueError("Invalid reply character")
         try:
             bounded_call(

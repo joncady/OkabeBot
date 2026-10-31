@@ -37,9 +37,11 @@ class MotionTests(unittest.TestCase):
             for t in (0, 0.25, 2, 23, 24.8, 55, 89, 170)
             for stage in ("", "researching", "drafting", "awaiting_review")
         ]
-        script = "const {sampleMotion}=require('./okabebot/web/lab-room.js');const fs=require('fs');const d=JSON.parse(fs.readFileSync('okabebot/assets/character-motion.json'));process.stdout.write(JSON.stringify(JSON.parse(process.argv[1]).map(([s,t,stage])=>sampleMotion(d,s,t,'idle',false,stage))));"
+        script = "const {sampleMotion}=require('./okabebot/web/lab-room.js');const fs=require('fs');const d=JSON.parse(process.argv[2]);process.stdout.write(JSON.stringify(JSON.parse(process.argv[1]).map(([s,t,stage])=>sampleMotion(d,s,t,'idle',false,stage))));"
         result = json.loads(
-            subprocess.check_output([node, "-e", script, json.dumps(cases)], text=True)
+            subprocess.check_output(
+                [node, "-e", script, json.dumps(cases), json.dumps(catalog())], text=True
+            )
         )
         for case, browser in zip(cases, result):
             actual = sample(catalog(), case[0], case[1], stage=case[2])

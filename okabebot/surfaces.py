@@ -762,7 +762,9 @@ class Surfaces:
             )
             from .motion import catalog
 
-            result = dict(result, motion_catalog=catalog())
+            from .characters import get
+
+            result = dict(result, motion_catalog=catalog(), avatar=get(profile["style"]).avatar())
             self.assets[key] = result
             if len(self.assets) > 10:
                 self.assets.pop(next(iter(self.assets)))

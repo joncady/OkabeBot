@@ -2315,9 +2315,9 @@ in this public inventory; hosting and README topology are unchanged.
 
 ## Expressive work foundation — source checkpoint
 
-Readable prompt Markdown is bundled with the controller package. A shared authored
-motion catalog is served through existing surface assets and copied beside satellite
-Python files by `scripts/package-pi.py`. There are no new ports or hosting roles;
+Readable prompt Markdown is bundled with the controller package. Directory-owned character definitions assemble the motion catalog served through
+existing surface assets. `scripts/package-pi.py` copies the same character package
+beside satellite Python files. There are no new ports or hosting roles;
 the README deployment topology was reviewed and remains unchanged. Deploying this
 source requires coordinating controller/web assets and the complete Pi bundle.
 
@@ -2328,3 +2328,23 @@ Owner-only dashboard draft routes are not added to the mobile proxy allowlist.
 No retailer adapter, proactive preparation schedule or new collection is enabled.
 These changes are source-only; no live installation or physical verification is
 claimed by this checkpoint. Alexa dynamic work animation remains planned.
+
+## Directory-owned character display update (2026-10-31)
+
+The companion Pi's display subset is now installed: character interfaces and owned
+art/motion files, compatibility face facades, scene composition, leased work state
+and the display service's required focus helper. Python 3.7 import/render preflight
+passed on the satellite; its display service and RPC recovered, and automatic
+status reported no animation error after restoring the selected character. A local
+rollback copy of the prior display files remains on the Pi. The voice service was
+not restarted or replaced, and no audio/volume configuration was changed.
+
+This is a scoped Pi display installation. The controller's new dynamic character
+chooser, registry-backed portrait routes and private preparation dashboard remain
+source changes in the PR; the existing installed controller and model workers were
+not replaced. Advanced browser/desktop workbench rendering is also source-only.
+The Pi can show the new golden work poses through its leased work interface and
+idle catalog. Grocery adapters/proactive preparation jobs remain planned. Physical
+elbow/gaze/pacing acceptance is separate from automatic service/render checks.
+
+README topology reviewed: existing display RPC, hosting roles and ports are unchanged.

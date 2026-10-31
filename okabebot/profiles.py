@@ -1,41 +1,13 @@
 """Built-in characters and a persistent selection shared by controller and MCP."""
 
 import json
-from .prompts import prompt
 import tempfile
 from pathlib import Path
 from .config import get_config, state_dir
 
-PROFILES = {
-    "sonic": {
-        "name": "Sonic",
-        "style": "sonic",
-        "default_voice": "warm",
-        "welcome_persona": prompt("sonic-welcome-persona"),
-        "persona": prompt("sonic-persona"),
-    },
-    "okabe": {
-        "name": "Okabe",
-        "style": "okabe",
-        "default_voice": "calm",
-        "welcome_persona": prompt("okabe-welcome-persona"),
-        "persona": prompt("okabe-persona"),
-    },
-    "kurisu": {
-        "name": "Kurisu",
-        "style": "kurisu",
-        "default_voice": "warm",
-        "welcome_persona": prompt("kurisu-welcome-persona"),
-        "persona": prompt("kurisu-persona"),
-    },
-    "pip": {
-        "name": "Pip",
-        "style": "pip",
-        "default_voice": "warm",
-        "welcome_persona": prompt("pip-welcome-persona"),
-        "persona": prompt("pip-persona"),
-    },
-}
+from .characters import registry, get
+
+PROFILES = {key: value.profile() for key, value in registry().items()}
 
 
 def selection():
@@ -84,19 +56,13 @@ def current_character():
             guard + result["persona"] + " Humor is optional; no forced catchphrases."
         )
     else:
-        flavors = {
-            "okabe": "Warm with very occasional dry wit.",
-            "kurisu": "Thoughtful, direct and gently warm.",
-            "pip": "Friendly, curious and simple.",
-            "sonic": "Relaxed, friendly and concise.",
-        }
         result["persona"] = (
             guard
             + "You are "
             + result["name"]
             + ". Use natural everyday language. "
             + (
-                flavors.get(result["style"], "Be warm and direct.")
+                get(result["style"]).definition.get("subtle_style", "Be warm and direct.")
                 if tone == "subtle"
                 else "No roleplay, jokes or character theatrics."
             )
@@ -108,7 +74,7 @@ def current_character():
 
 def select_profile(name):
     if not isinstance(name, str) or (name not in PROFILES and name != "configured"):
-        raise ValueError("Choose configured, okabe, kurisu, pip, or sonic")
+        raise ValueError("Choose configured or a registered character: " + ", ".join(PROFILES))
     folder = state_dir()
     folder.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(mode="w", dir=folder, delete=False) as f:

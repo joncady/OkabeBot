@@ -918,3 +918,16 @@ scheduler or external checkout. [Runtime prompts](docs/prompt-authoring.md) now 
 in readable bundled Markdown files. These source changes have not been installed;
 the Current deployment map, hosting roles and ports remain unchanged. Satellite
 installation now uses the [complete Pi bundle](docs/devices.md#install-the-services).
+
+Character implementations now live under `okabebot/characters/<id>/`, each implementing
+[the shared Character interface](docs/character-animation.md#character-directory-contract)
+and owning its prompts, public art, motion, avatar, voice defaults and scene choices.
+Okabe/Kurisu are the reference workbench rigs: paper/pencil work, foreground monitor,
+two-handed typing and task-directed gaze. Advanced Sonic/Pip poses remain planned.
+Use the [character creation skill](.agents/skills/okabebot-character/SKILL.md) for additions.
+
+The companion Pi's scoped display bundle is installed and its service/render checks
+passed. Controller/browser registry UI changes remain source-only in this checkpoint;
+model workers, audio settings, hosting roles and the deployment map are unchanged.
+See the [deployment inventory](docs/deployment.md#directory-owned-character-display-update-2026-10-31)
+for the exact installed boundary and remaining physical acceptance.

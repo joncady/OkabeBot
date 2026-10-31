@@ -1,6 +1,7 @@
 """Local push-to-talk control page, Whisper transcription, and Codex bridge."""
 
 from .profiles import current_character, select_profile, selection, personality
+from .characters import registry as character_registry
 
 from contextlib import ExitStack
 import argparse
@@ -1066,6 +1067,10 @@ class Bridge:
                     dict(self.amadeus_feeds.health),
                     dict(self.github_queue.health) if self.github_queue else None,
                 ),
+                "characters": [
+                    {"id": key, "name": value.definition["name"], "portrait": "/" + key + ".png"}
+                    for key, value in character_registry().items()
+                ],
                 "presence": presence_status(state_dir()),
                 "screen_power": self.screen_power.snapshot(),
                 "runtime_policy": runtime_policy.settings(state_dir()),
@@ -1238,14 +1243,9 @@ def handler(bridge):
             ):
                 kind = "text/css" if self.path.endswith(".css") else "application/javascript"
                 self.respond(200, (Path(__file__).parent / "web" / self.path[1:]).read_text(), kind)
-            elif self.path in (
-                "/okabe.png",
-                "/kurisu.png",
-                "/pip.png",
-                "/sonic.png",
-                "/github.png",
-                "/calendar.png",
-            ):
+            elif self.path.endswith(".png") and self.path[1:-4] in character_registry():
+                self.respond(200, character_registry()[self.path[1:-4]].portrait(), "image/png")
+            elif self.path in ("/github.png", "/calendar.png"):
                 self.respond(
                     200, (Path(__file__).parent / "web" / self.path[1:]).read_bytes(), "image/png"
                 )

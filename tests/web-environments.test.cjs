@@ -18,7 +18,7 @@ test('outdoor sign keeps live notifications and the same movement anchors',()=>{
 
 test('every catalog set supports both presentations and unassigned screens stay empty',()=>{
  global.document={createElement:()=>({getContext:()=>canvas().c})};
- const catalog=require('../okabebot/assets/scene-sets.json');
+ const catalog=require('../scripts/character-catalog.cjs').scenes;
  for(const [style,sets] of Object.entries(catalog.characters))for(const set of sets){
   const {c,rectangles}=canvas();
   environments.compact(c,1000,1,set);assert.ok(rectangles.length>0);

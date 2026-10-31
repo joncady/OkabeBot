@@ -1,8 +1,10 @@
 # Readable prompts
 
-Runtime instructions live in `okabebot/prompts/*.md`: conversation, routing,
-continuation, memory, tool replies, worker modes, judge, evaluated treatment candidate
-and built-in character personas. Python owns request construction and typed schemas.
+Shared runtime instructions live in `okabebot/prompts/*.md`: conversation, routing,
+continuation, memory, tool replies, worker modes, judge and evaluated treatment
+candidate. Character personas and welcome styles live in
+`okabebot/characters/<id>/*.md` and load through the character interface. Python
+owns request construction and typed schemas.
 Historical frozen evaluation inputs remain in `evals/`; they are not silently rewritten.
 
 `from .prompts import prompt` loads a named bundled template and compacts static

@@ -13,9 +13,8 @@ uses state machines and layered animation; [Unreal's animation state machines](h
 organize transitions rather than letting every caller draw body parts. These are
 architectural references, not dependencies added to this application.
 
-Our implementation keeps the inexpensive pixel renderer. One declarative catalog
-(`okabebot/assets/character-motion.json`) describes clips, durations, poses and
-bounded keyframe channels. Python and JavaScript sample the same smoothstep tracks.
+Our implementation keeps the inexpensive pixel renderer. Each character owns a `motion.json` describing clips, durations, poses and
+bounded keyframe channels. The registry assembles those definitions into a catalog. Python and JavaScript sample the same smoothstep tracks.
 Surface adapters own actual limb geometry, pixel rounding and props. No generic
 sprite stretching or model-generated coordinates are used.
 
@@ -32,8 +31,11 @@ sprite stretching or model-generated coordinates are used.
 - Accessibility: owner dashboard controls ambient animation and reduced motion.
   These suppress the new decorative layer, not existing task/audio indicators.
 
-Head, gaze, body and hand channels have separate responsibilities. Human raised
-arms replace the resting sleeve; shoulder/elbow anchors remain connected. Pose
+Head, gaze, body and hand channels have separate responsibilities. Human task arms replace both resting sleeves; shoulder/elbow/wrist anchors remain
+connected. Okabe/Kurisu write on desk-bound paper with a gripped pencil or type
+with two hands behind a foreground monitor. Gaze follows pencil strokes, looks
+at the monitor and briefly drops toward the keyboard; furniture stays fixed.
+Sonic/Pip keep their earlier simple activity poses pending backfill. Pose
 entry/exit weights ease gestures. Sparse idle clips settle back to rest. Work clips
 loop while a real task lease exists. There is no invented completion percentage.
 Browser room, desktop and phone use the shared room renderer. Pi uses the same
@@ -97,3 +99,37 @@ promoted together after review. No hosting, ports, audio targets or live collect
 settings change. Offline checks cover shared sampler parity, interruption priority,
 expired leases, draft revisions/retention and readable template boundaries. Physical
 Pi smoothness and prolonged idle personality still require owner review after install.
+
+## Character directory contract
+
+`okabebot/characters/base.py` defines the `Character` interface. Each subdirectory
+exports a `CHARACTER` instance of its own subclass; package discovery builds the
+registry at process startup. Adding a character does not require another global
+profile list, renderer switch or copied prompt constant.
+
+```
+characters/<id>/
+  __init__.py          # Character subclass; implements shapes(**state)
+  art.py               # Pure Python 3.7 pixel primitives
+  character.json       # Identity, capabilities, scene choices, subtle style
+  avatar.json          # Browser body parts, head crop/eyes, rig palette
+  motion.json          # Owned idle playlist, work mapping, keyframes
+  voice.json           # Default preset and private reference-manifest key
+  persona.md
+  welcome-persona.md
+  portrait.png         # Public original character artwork
+```
+
+The common methods expose profile/prompt, motion, avatar, scene, voice, portrait,
+render and six-frame asset interfaces. Controller profiles, style validation,
+portrait serving, dashboard choices, satellite rendering and offline previews
+consume that registry. Existing `pi/*_face.py` imports are compatibility facades.
+The standalone Pi bundle carries this same package, not an independently maintained
+copy of character definitions. Restart consumers after changing bundled assets.
+
+Prompts/art/reference metadata move with their character. Actual private voice
+recordings and transcripts stay in ignored owner storage, selected through the
+existing private manifest; a source refactor does not publish or replace them.
+New shared environment geometry remains a separate interface from selecting an
+existing character-owned scene. Dynamic APL animation and Sonic/Pip advanced work
+poses remain follow-ups. Use the repository `okabebot-character` skill for additions.

@@ -1,0 +1,27 @@
+{
+  "id": "okabe",
+  "name": "Okabe",
+  "order": 1,
+  "subtle_style": "Warm with very occasional dry wit.",
+  "rig": "human",
+  "scenes": {
+    "pixel-lab": {
+      "name": "Future Gadget Lab"
+    },
+    "maid-cafe": {
+      "name": "May Queen Caf\u00e9"
+    },
+    "mac-desk": {
+      "name": "Desktop Nook"
+    },
+    "pocket-nook": {
+      "name": "Pocket Nook"
+    }
+  },
+  "default_scene": "pixel-lab",
+  "capabilities": [
+    "wave",
+    "phone",
+    "workbench"
+  ]
+}

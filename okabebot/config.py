@@ -241,7 +241,9 @@ def load(path):
         or len(settings["character"]["persona"]) > 2000
     ):
         raise ValueError("character.persona must be text up to 2000 characters")
-    if settings["character"]["style"] not in ("okabe", "kurisu", "pip", "sonic"):
+    from .characters import registry
+
+    if settings["character"]["style"] not in registry():
         raise ValueError("character.style must be okabe, kurisu, pip, or sonic")
     if settings["character"]["default_voice"] not in ("warm", "calm", "robotic"):
         raise ValueError("Unknown default_voice")

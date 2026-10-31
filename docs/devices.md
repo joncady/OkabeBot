@@ -25,7 +25,7 @@ For the Google AIY Voice Bonnet, working ALSA and AIY drivers are prerequisites;
 
 ## Install the services
 
-Build a satellite bundle (Python files plus the canonical motion catalog), then copy it to `/opt/okabebot/pi` on each participating Pi. The service user needs write access there for recordings and the Bot's deduplication database. A simple deployment from the checkout is:
+Build a satellite bundle (Python files plus the complete directory-owned character package), then copy it to `/opt/okabebot/pi` on each participating Pi. The service user needs write access there for recordings and the Bot's deduplication database. A simple deployment from the checkout is:
 
 ```sh
 python3 scripts/package-pi.py

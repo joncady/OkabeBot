@@ -142,13 +142,15 @@ def shapes(
     **character,
 ):
     selected_set = character.pop("environment", "legacy")
+    actor = pip_face.get(character.get("style", "okabe"))
+    rig = actor.definition["rig"]
     work = character.pop("work", {}) or {}
     motion_options = character.pop("motion_options", {}) or {}
     if character.get("activity", "idle") == "thinking" or (
         deploying and character.get("activity", "idle") == "idle"
     ):
         character.update(activity="thinking", emotion="curious", mouth=0)
-        if character.get("style", "okabe") == "kurisu":
+        if actor.supports("emphasis"):
             character["show_emphasis"] = False
     video = (music or {}).get("video") or {}
     watching = reactions.active(music, notification, character.get("activity", "idle"), deploying)
@@ -174,13 +176,14 @@ def shapes(
     character["motion"] = moving
     idle_action = moving["clip"] != "rest"
     idle_frame = idle_seconds % 48
-    if moving["pose"] in ("phone", "read", "write", "review", "stretch") and character.get(
-        "style", "okabe"
-    ) in ("okabe", "kurisu"):
+    if (
+        moving["pose"] in ("phone", "read", "write", "review", "stretch", "computer")
+        and rig == "human"
+    ):
         character["pose"] = moving["pose"]
         if moving["pose"] == "phone":
             character["mouth"] = max(0, math.sin(idle_seconds * 8)) * 0.25
-    if character.get("style") == "sonic":
+    if rig == "hedgehog":
         character["arms"] = not (
             notification or gesture == "present" or idle_action and moving["pose"] == "phone"
         )
@@ -194,7 +197,7 @@ def shapes(
     ):
         character["emotion"] = music.get("expression", "neutral")
     if (
-        character.get("style") == "kurisu"
+        actor.supports("emphasis")
         and music
         and music.get("is_playing")
         and not notification
@@ -203,28 +206,29 @@ def shapes(
         character["show_emphasis"] = False
     if watching:
         character["emotion"] = reactions.EMOTIONS.get(reaction.get("reaction"), "neutral")
-        if character.get("style") == "kurisu":
+        if actor.supports("emphasis"):
             character["show_emphasis"] = False
     waving = gesture == "wave" and not notification and character.get("activity", "idle") == "idle"
     if waving:
         character["emotion"] = "happy"
-        if character.get("style", "okabe") in ("okabe", "kurisu", "pip"):
+        if rig != "hedgehog":
             character["pose"] = "wave"
-        elif character.get("style") == "sonic":
+        elif rig == "hedgehog":
             character["arms"] = False
     original = pip_face.shapes(**character)
     if character.get("activity") == "thinking":
         original.extend(thought_bubble(character.get("phase", 0)))
-    dy = round(moving["body_y"])
+    dy = (
+        0
+        if actor.supports("workbench") and moving["pose"] in ("read", "write", "computer", "review")
+        else round(moving["body_y"])
+    )
     if dy:
         original = [original[0]] + [
             (kind, tuple(v + (dy if i % 2 else 0) for i, v in enumerate(coords)), fill, width)
             for kind, coords, fill, width in original[1:]
         ]
-    if moving["pose"] in ("read", "write", "review", "scan") and character.get("style") in (
-        "sonic",
-        "pip",
-    ):
+    if moving["pose"] in ("read", "write", "review", "scan") and rig != "human":
         # A robot scan panel / Sonic checklist sits at shoulder height, not over media.
         original.extend(
             [
@@ -234,7 +238,7 @@ def shapes(
         )
         for row in range(3):
             original.append(("rectangle", (320, 140 + row * 9, 342, 143 + row * 9), "#8e9e87", 1))
-    if waving and character.get("style") == "sonic":
+    if waving and rig == "hedgehog":
         wag = round(math.sin(character.get("phase", 0) * 8) * 8)
         original.extend(
             [
@@ -305,8 +309,7 @@ def shapes(
                 ]
             )
     if idle_action and moving["pose"] == "phone":
-        style = character.get("style", "okabe")
-        if style == "sonic":
+        if rig == "hedgehog":
             original.extend(
                 [
                     ("rectangle", (192, 216, 207, 259), "#edc59c", 1),
@@ -324,7 +327,7 @@ def shapes(
             )
     if not notification and gesture != "present":
         return original
-    sonic = character.get("style") == "sonic"
+    sonic = rig == "hedgehog"
     scale, offset_x, offset_y = (0.9, 24, -20) if sonic else (0.68, 77, 0)
     out = [original[0]]
     for kind, coords, fill, width in original[1:]:
@@ -340,9 +343,7 @@ def shapes(
         )
     # Keep shoulders attached to the torso. Bend at the elbow rather than
     # compressing the old arm polygons when the notification edge moves upward.
-    sleeve = {"okabe": "#e6e2d8", "kurisu": "#a88b72", "pip": "#accdc1"}.get(
-        character.get("style"), "#edc59c"
-    )
+    sleeve = actor.avatar()["palette"]["sleeve"]
     if sonic:
         left = (210, 165, 218, 177, 195, 186, 173, 191, 163, 183, 190, 175)
     else:
@@ -354,7 +355,9 @@ def shapes(
 
 
 def grip_positions(style):
-    return (163, 297) if style == "sonic" else (133, 327)
+    return (
+        (163, 297) if pip_face.get(style or "okabe").definition["rig"] == "hedgehog" else (133, 327)
+    )
 
 
 def card(notification, font_path=None, style=None):
@@ -395,9 +398,24 @@ def card(notification, font_path=None, style=None):
     for row, line in enumerate((first, fit(" ".join(words), body_font, 420))):
         d.text((27, 262 + row * 24), line, font=body_font, fill="#c7d5d8")
     for x in grip_positions(style):
-        d.rectangle((x, 183, x + 20, 200), fill="#f8f6e9" if style == "sonic" else "#ecc3a3")
-        d.line((x + 7, 191, x + 7, 197), fill="#939994" if style == "sonic" else "#aa7e69")
-        d.line((x + 13, 191, x + 13, 197), fill="#939994" if style == "sonic" else "#aa7e69")
+        d.rectangle(
+            (x, 183, x + 20, 200),
+            fill="#f8f6e9"
+            if pip_face.get(style or "okabe").definition["rig"] == "hedgehog"
+            else "#ecc3a3",
+        )
+        d.line(
+            (x + 7, 191, x + 7, 197),
+            fill="#939994"
+            if pip_face.get(style or "okabe").definition["rig"] == "hedgehog"
+            else "#aa7e69",
+        )
+        d.line(
+            (x + 13, 191, x + 13, 197),
+            fill="#939994"
+            if pip_face.get(style or "okabe").definition["rig"] == "hedgehog"
+            else "#aa7e69",
+        )
     return image
 
 

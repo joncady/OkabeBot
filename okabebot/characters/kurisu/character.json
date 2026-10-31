@@ -1,0 +1,28 @@
+{
+  "id": "kurisu",
+  "name": "Kurisu",
+  "order": 2,
+  "subtle_style": "Thoughtful, direct and gently warm.",
+  "rig": "human",
+  "scenes": {
+    "pixel-lab": {
+      "name": "Future Gadget Lab"
+    },
+    "maid-cafe": {
+      "name": "May Queen Caf\u00e9"
+    },
+    "mac-desk": {
+      "name": "Desktop Nook"
+    },
+    "pocket-nook": {
+      "name": "Pocket Nook"
+    }
+  },
+  "default_scene": "pixel-lab",
+  "capabilities": [
+    "wave",
+    "phone",
+    "workbench",
+    "emphasis"
+  ]
+}

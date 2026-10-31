@@ -12,7 +12,15 @@ def bundle(output):
     output.mkdir(parents=True, exist_ok=True)
     for path in (root / "pi").glob("*.py"):
         shutil.copy2(path, output / path.name)
-    shutil.copy2(root / "okabebot/assets/character-motion.json", output / "character-motion.json")
+    shutil.copytree(
+        root / "okabebot/characters",
+        output / "characters",
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+    )
+    old_catalog = output / "character-motion.json"
+    if old_catalog.exists():
+        old_catalog.unlink()
     return output
 
 

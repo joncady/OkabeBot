@@ -61,14 +61,24 @@ def local_characters():
     return _local_characters(path, info.st_ino, info.st_mtime_ns)
 
 
+def reference_key(identity=None):
+    """Resolve the character-owned private voice lookup without moving recordings."""
+    from .characters import get
+    from .profiles import current_character
+
+    identity = identity or current_character()["style"]
+    try:
+        return get(identity).voice()["reference_key"]
+    except ValueError:
+        return identity  # Preserve explicit unsupported-reference fallback behavior.
+
+
 def engine():
     backend = requested_engine()
     if backend != "local" or get_config()["speech"].get("local_fallback", "system") == "none":
         return backend
-    from .profiles import current_character
-
     try:
-        supported = current_character()["style"] in local_characters()
+        supported = reference_key() in local_characters()
     except Exception:
         # A genuinely unavailable worker is still an outage, never a reason to
         # silently change an otherwise configured character's voice.
@@ -227,13 +237,11 @@ def _receive(connection, length):
 
 def local_pcm_chunks(text, emotion, voice, *, character=None, deadline=None):
     """Private Unix socket: JSON request, length-prefixed mono PCM16 at 24 kHz."""
-    from .profiles import current_character
-
     request = {
         "text": text,
         "emotion": emotion,
         "voice": voice,
-        "character": character or current_character()["style"],
+        "character": reference_key(character),
     }
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
         import time
@@ -276,9 +284,7 @@ def health():
     if backend == "local":
         try:
             result = local_worker_status()
-            from .profiles import current_character
-
-            supported = current_character()["style"] in result.get("characters", [])
+            supported = reference_key() in result.get("characters", [])
             return {
                 "backend": backend,
                 "available": bool(result.get("ready") and supported),

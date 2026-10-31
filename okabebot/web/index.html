@@ -70,33 +70,7 @@
           <h2>Choose your companion</h2>
           <span class="muted">Same lab. New personality.</span>
         </div>
-        <div class="character-grid">
-          <button
-            class="character-card"
-            data-profile="okabe"
-            aria-pressed="false"
-          >
-            <img src="/okabe.png" alt="" /><strong>Okabe</strong
-            ><span>The curious scientist</span>
-          </button>
-          <button
-            class="character-card"
-            data-profile="kurisu"
-            aria-pressed="false"
-          >
-            <img src="/kurisu.png" alt="" /><strong>Kurisu</strong
-            ><span>A little healthy skepticism</span>
-          </button>
-          <button
-            class="character-card"
-            data-profile="pip"
-            aria-pressed="false"
-          >
-            <img src="/pip.png" alt="" /><strong>Pip</strong
-            ><span>Your friendly robot</span>
-          </button>
-          <button class="character-card" data-profile="sonic" aria-pressed="false"><img src="/sonic.png" alt="" /><strong>Sonic</strong><span>Ready for the next adventure</span></button>
-        </div>
+        <div class="character-grid" aria-live="polite"></div>
       <details class="subpanel"><summary>Personality &amp; replies</summary>        <label>Character flavor<select id="character-tone"><option value="plain">Plain</option><option value="subtle" selected>Subtle</option><option value="playful">Playful</option></select></label>
         <label><input id="natural-tool-replies" type="checkbox" checked> Natural tool replies</label><p class="hint">Adds a short local model pass to summarize tool results. Turn off for faster, fixed acknowledgements.</p>
 </details></section></div>

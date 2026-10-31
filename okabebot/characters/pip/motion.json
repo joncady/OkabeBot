@@ -1,36 +1,10 @@
 {
-  "version": 1,
-  "idle_cycle_seconds": 32,
-  "idle_start_seconds": 20,
-  "characters": {
-    "okabe": [
-      "glance",
-      "read",
-      "phone",
-      "stretch",
-      "write"
-    ],
-    "kurisu": [
-      "read",
-      "glance",
-      "phone",
-      "write",
-      "settle"
-    ],
-    "sonic": [
-      "foot-tap",
-      "glance",
-      "stretch",
-      "finger-wag",
-      "settle"
-    ],
-    "pip": [
-      "scan",
-      "settle",
-      "glance",
-      "scan"
-    ]
-  },
+  "idle": [
+    "scan",
+    "settle",
+    "glance",
+    "scan"
+  ],
   "work_stages": {
     "researching": "read",
     "comparing": "read",
@@ -220,104 +194,22 @@
             5.4,
             0
           ]
-        ]
-      }
-    },
-    "stretch": {
-      "duration": 4,
-      "pose": "stretch",
-      "tracks": {
-        "body_y": [
-          [
-            0,
-            0
-          ],
-          [
-            1,
-            -2
-          ],
-          [
-            2.7,
-            -2
-          ],
-          [
-            4,
-            0
-          ]
         ],
-        "head_y": [
+        "gaze": [
           [
             0,
             0
           ],
           [
-            1.2,
-            -1
-          ],
-          [
-            2.7,
-            -1
-          ],
-          [
-            4,
-            0
-          ]
-        ]
-      }
-    },
-    "foot-tap": {
-      "duration": 4,
-      "pose": "tap",
-      "tracks": {
-        "foot": [
-          [
-            0,
-            0
-          ],
-          [
-            0.5,
-            2
-          ],
-          [
-            1,
-            0
-          ],
-          [
-            1.5,
-            2
-          ],
-          [
-            2,
-            0
-          ],
-          [
-            2.5,
-            2
-          ],
-          [
-            3,
-            0
-          ],
-          [
-            4,
-            0
-          ]
-        ],
-        "head_x": [
-          [
-            0,
-            0
-          ],
-          [
-            1,
+            0.6,
             1
           ],
           [
-            3,
+            4.8,
             1
           ],
           [
-            4,
+            5.4,
             0
           ]
         ]
@@ -388,35 +280,6 @@
           ]
         ]
       }
-    },
-    "phone": {
-      "duration": 6,
-      "pose": "phone",
-      "tracks": {
-        "head_y": [
-          [
-            0,
-            0
-          ],
-          [
-            1,
-            1
-          ],
-          [
-            5,
-            1
-          ],
-          [
-            6,
-            0
-          ]
-        ]
-      }
-    },
-    "finger-wag": {
-      "duration": 5,
-      "pose": "phone",
-      "tracks": {}
     }
   }
 }

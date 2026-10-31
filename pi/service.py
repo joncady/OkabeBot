@@ -146,7 +146,7 @@ class Display:
             self.root.after_cancel(self.timer)
             self.timer = None
         style = data.get("style", (self.character or {}).get("style", "okabe"))
-        if style not in ("okabe", "kurisu", "pip", "sonic"):
+        if style not in pip_face.registry():
             raise ValueError("Unknown character style")
         palette = data.get("palette", {})
         if not isinstance(palette, dict) or any(
@@ -739,24 +739,9 @@ class Display:
                     elif op == "character_assets":
                         style = data.get("style", "okabe")
                         emotion = data.get("emotion", "neutral")
-                        if (
-                            style not in ("okabe", "kurisu", "pip", "sonic")
-                            or emotion not in pip_face.EMOTIONS
-                        ):
+                        if style not in pip_face.registry() or emotion not in pip_face.EMOTIONS:
                             raise ValueError("Unknown character asset")
-                        result = {
-                            "frames": [
-                                pip_face.shapes(
-                                    style=style,
-                                    emotion=emotion,
-                                    mouth=m,
-                                    phase=p,
-                                    palette=data.get("palette"),
-                                )
-                                for p in (1, 0)
-                                for m in (0, 0.5, 1)
-                            ]
-                        }
+                        result = pip_face.get(style).assets(emotion, data.get("palette"))
                     elif op == "deployments":
                         if type(data.get("active")) is not bool:
                             raise ValueError("active must be boolean")

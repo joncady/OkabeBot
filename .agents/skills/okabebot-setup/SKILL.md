@@ -90,3 +90,7 @@ use streaming account passwords. Adding HA integrations/OAuth remains distinct
 from enabling Amadeus observation. Verify one bounded read, current freshness,
 partial coverage, pause/guest/revoke behavior and source attribution before
 claiming a feed is connected. No provider connection implies nudge/speech consent.
+
+For new or revised characters, follow the repository
+[character creation skill](../okabebot-character/SKILL.md). Character-owned assets
+ship in the complete satellite bundle; do not copy only the legacy face facades.

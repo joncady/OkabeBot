@@ -74,7 +74,7 @@ test('Sonic avatar keeps sprite colors and a full quill/ear crop instead of huma
  const {Room}=require('../okabebot/web/lab-room.js'),rectangles=[],images=[];
  const target={fillRect(...xy){rectangles.push({color:this.fillStyle,xy});},drawImage(...args){images.push(args);}};
  const c=new Proxy(target,{get:(object,key)=>object[key]||(()=>{})});
- const room=new Room();room.portraits=Array(6).fill({});
+ const room=new Room();room.avatarSpec=require('../okabebot/characters/sonic/avatar.json');room.portraits=Array(6).fill({});
  room.avatar(c,[8,4],false,1000,{character:{style:'sonic'},presenter:{}});
  const colors=new Set(rectangles.map(r=>r.color));
  for(const color of ['#1765d1','#edc59c','#f5f4ed','#d93836'])assert.ok(colors.has(color));

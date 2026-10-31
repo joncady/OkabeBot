@@ -1,0 +1,26 @@
+{
+  "id": "pip",
+  "name": "Pip",
+  "order": 3,
+  "subtle_style": "Friendly, curious and simple.",
+  "rig": "robot",
+  "scenes": {
+    "pip-workshop": {
+      "name": "Pip\u2019s Workshop"
+    },
+    "rooftop-garden": {
+      "name": "Rooftop Garden"
+    },
+    "mac-desk": {
+      "name": "Desktop Nook"
+    },
+    "pocket-nook": {
+      "name": "Pocket Nook"
+    }
+  },
+  "default_scene": "pixel-lab",
+  "capabilities": [
+    "wave",
+    "phone"
+  ]
+}

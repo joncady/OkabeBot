@@ -1,0 +1,226 @@
+{
+  "body": [
+    {
+      "kind": "rectangle",
+      "box": [
+        -10,
+        -23,
+        7,
+        18
+      ],
+      "color": "#283a48",
+      "part": "left_leg"
+    },
+    {
+      "kind": "rectangle",
+      "box": [
+        4,
+        -23,
+        7,
+        18
+      ],
+      "color": "#283a48",
+      "part": "right_leg"
+    },
+    {
+      "kind": "rectangle",
+      "box": [
+        -12,
+        -6,
+        11,
+        6
+      ],
+      "color": "#101e29",
+      "part": "left_leg"
+    },
+    {
+      "kind": "rectangle",
+      "box": [
+        3,
+        -6,
+        12,
+        6
+      ],
+      "color": "#101e29",
+      "part": "right_leg"
+    },
+    {
+      "kind": "rectangle",
+      "box": [
+        -17,
+        -47,
+        34,
+        28
+      ],
+      "color": "#b19a7b",
+      "part": "torso"
+    },
+    {
+      "kind": "rectangle",
+      "box": [
+        -10,
+        -46,
+        20,
+        27
+      ],
+      "color": "#f1ede1",
+      "part": "torso"
+    },
+    {
+      "kind": "rectangle",
+      "box": [
+        -4,
+        -47,
+        8,
+        5
+      ],
+      "color": "#dfbca2",
+      "part": "torso"
+    },
+    {
+      "kind": "rectangle",
+      "box": [
+        -2,
+        -42,
+        4,
+        18
+      ],
+      "color": "#963644",
+      "part": "torso"
+    },
+    {
+      "kind": "rectangle",
+      "box": [
+        -3,
+        -26,
+        6,
+        4
+      ],
+      "color": "#963644",
+      "part": "torso"
+    },
+    {
+      "kind": "rectangle",
+      "box": [
+        -23,
+        -45,
+        7,
+        24
+      ],
+      "color": "#b19a7b",
+      "part": "left_arm"
+    },
+    {
+      "kind": "rectangle",
+      "box": [
+        16,
+        -45,
+        7,
+        24
+      ],
+      "color": "#b19a7b",
+      "part": "right_arm"
+    },
+    {
+      "kind": "rectangle",
+      "box": [
+        -23,
+        -23,
+        7,
+        7
+      ],
+      "color": "#dfbca2",
+      "part": "left_arm"
+    },
+    {
+      "kind": "rectangle",
+      "box": [
+        16,
+        -23,
+        7,
+        7
+      ],
+      "color": "#dfbca2",
+      "part": "right_arm"
+    }
+  ],
+  "head": {
+    "crop": [
+      132,
+      36,
+      220,
+      174
+    ],
+    "x": -30,
+    "y": -91,
+    "width": 60,
+    "height": 49,
+    "eyes": [
+      {
+        "white": [
+          192,
+          132,
+          32,
+          16
+        ],
+        "white_color": "#fff3e7",
+        "layers": [
+          {
+            "box": [
+              204,
+              132,
+              12,
+              12
+            ],
+            "color": "#526a94"
+          },
+          {
+            "box": [
+              208,
+              132,
+              4,
+              8
+            ],
+            "color": "#29364e"
+          }
+        ]
+      },
+      {
+        "white": [
+          260,
+          132,
+          32,
+          16
+        ],
+        "white_color": "#fff3e7",
+        "layers": [
+          {
+            "box": [
+              272,
+              132,
+              12,
+              12
+            ],
+            "color": "#526a94"
+          },
+          {
+            "box": [
+              276,
+              132,
+              4,
+              8
+            ],
+            "color": "#29364e"
+          }
+        ]
+      }
+    ]
+  },
+  "palette": {
+    "sleeve": "#b19a7b",
+    "skin": "#dfbca2"
+  },
+  "workbench": true,
+  "finger_wag": false,
+  "scan": false
+}

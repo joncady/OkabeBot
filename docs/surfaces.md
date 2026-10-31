@@ -202,7 +202,8 @@ Companion only. Browser, Mac and Cast renderers support both presentations.
 | Pip | Pip’s Workshop | Rooftop Garden |
 | Sonic | Green Hill | Star Light |
 
-The catalog is `okabebot/assets/scene-sets.json`. The controller owns assignments
+The catalog is assembled from `okabebot/characters/<id>/character.json` through
+`okabebot.scene_sets.CATALOG`. The controller owns assignments
 in its private `surface-devices.json`, not in a browser's local preferences.
 The dashboard location editor can choose a character independently of the active
 character. An occupied set is disabled there; the server also rejects duplicate
