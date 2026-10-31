@@ -25,13 +25,13 @@ class SceneWorldTests(unittest.TestCase):
 
     def test_thinking_has_a_distinct_animated_pixel_cue_for_every_character(self):
         for style in ("okabe", "kurisu", "sonic", "pip"):
-            for environment in ("legacy", "pixel-lab"):
-                with self.subTest(style=style, environment=environment):
+            for selected_set in ("legacy", "pixel-lab"):
+                with self.subTest(style=style, environment=selected_set):
                     thinking = scene.shapes(
-                        style=style, environment=environment, activity="thinking", phase=0.6
+                        style=style, environment=selected_set, activity="thinking", phase=0.6
                     )
                     idle = scene.shapes(
-                        style=style, environment=environment, activity="idle", phase=0.6
+                        style=style, environment=selected_set, activity="idle", phase=0.6
                     )
                     for shape in scene.thought_bubble(0.6):
                         self.assertIn(shape, thinking)
