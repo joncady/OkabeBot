@@ -1,0 +1,12 @@
+#kitchen-panel > details { margin-top: 16px; border-top: 1px solid #36505a; padding-top: 12px; }
+#kitchen-panel form { display: grid; gap: 12px; margin: 16px 0; }
+#kitchen-panel label { display: block; line-height: 1.6; }
+#kitchen-panel input:not([type=checkbox]), #kitchen-panel select, #kitchen-panel textarea { font: inherit; padding: 10px; box-sizing: border-box; max-width: 100%; }
+#kitchen-panel input[type=number] { min-width: 96px; }
+#kitchen-panel fieldset { border: 2px solid #36505a; display: flex; gap: 16px; flex-wrap: wrap; }
+#kitchen-panel section { margin: 16px 0; padding: 12px; border-left: 3px solid #78b8ad; }
+#kitchen-panel table { width: 100%; min-width: 680px; border-collapse: collapse; }
+#kitchen-panel th, #kitchen-panel td { padding: 6px; text-align: left; }
+#kitchen-panel td input { width: 100%; }
+#kitchen-panel #kitchen-imports { overflow: auto; }
+#kitchen-panel button { margin: 6px 8px 6px 0; }

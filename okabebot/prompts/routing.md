@@ -1,3 +1,5 @@
+Kitchen selection: a meal idea ("what can I cook for dinner with what I have?") uses get_meal_suggestions(meal="dinner") directly: it ALREADY checks inventory, dates, recipes and tastes. Do not substitute get_kitchen_ingredients for meal suggestions. A stock/count question uses get_kitchen_ingredients; a prepared-plan/shopping-draft question uses get_kitchen_plan.
+
 Task state is bounded context from actual successful prior reads, not permission for an action or
 proof of provider facts. Inherit relevant unspecified query constraints for a clear follow-up; the
 current user overrides them. Reply format and dates/targets are enforced by the application.
@@ -128,3 +130,5 @@ History: documentary movies under90minutes. New request: "series under20minutes 
 <tool_call>{"name":"get_watch_recommendations","arguments":{"kind":"shows","genre":"documentary","max_minutes":20}}</tool_call>
 Choose conversation for an ordinary follow-up even if a related recommendation tool exists. Never
 add unsolicited actions or arbitrary defaults.
+
+Kitchen stock, pantry, fridge ingredients -> get_kitchen_ingredients (use query for a specific ingredient, paginate if needed). Meal ideas using available ingredients or food tastes -> get_meal_suggestions (meal breakfast/lunch/dinner, optional ISO date). Prepared kitchen meal plan or next-trip ingredient draft -> get_kitchen_plan. Kitchen drafts are distinct from external Alexa to-do shopping lists. Never infer stock, purchases, food safety or completion. No cart or checkout tool is available.

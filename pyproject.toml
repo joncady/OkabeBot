@@ -12,6 +12,7 @@ license = "MIT"
 dependencies = ["mcp>=1.20,<2", "Pillow>=10,<13", "jsonschema>=4,<5"]
 
 [project.optional-dependencies]
+kitchen = ["playwright>=1.50,<2"]
 mobile = ["firebase-admin>=7,<8"]
 vision = ["opencv-python-headless>=4.10,<5"]
 home-assistant = ["paho-mqtt>=2,<3", "aiohttp>=3.10,<4"]
@@ -29,6 +30,7 @@ okabebot = "okabebot.bridge:main"
 okabebot-mcp = "okabebot.server:main"
 okabebot-model = "okabebot.setup:download_model"
 okabebot-doctor = "okabebot.doctor:main"
+okabebot-kitchen-browser = "okabebot.kitchen_browser:main"
 
 [tool.setuptools.packages.find]
 include = ["okabebot*"]

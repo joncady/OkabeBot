@@ -2364,3 +2364,29 @@ unchanged; no audio or volume settings were altered. Physical entrance/exit paci
 still needs visual acceptance. Web/compact transition changes remain source-only,
 as does the clearer dashboard label; existing source-disable controls are available
 in the installed dashboard.
+
+## Kitchen helper — source-only checkpoint
+
+The controller source adds a kitchen ledger in existing private Amadeus SQLite,
+owner-only `/kitchen` management routes, read-only conversational tools and a
+background daily index/planner. The same thread coordinates optional asynchronous
+Safeway browser work; no new service, listening port, public endpoint or HA publisher
+is introduced. Work stages use the existing leased character interface. New private
+browser cookies, if explicitly signed in later, live in the owned kitchen browser
+profile and are never exported with inventory. Metadata forgetting disables jobs;
+external account sessions need separate sign-out/removal.
+
+A local Tesseract development prerequisite was installed and an invented receipt
+was processed without cloud OCR. Native Apple Vision fallback failed on this
+machine; this is not evidence of universally supported native OCR. Ledger, reviewed
+imports, simulated browser approval/failure behavior, dashboard HTTP flow and tool
+selection were checked with synthetic data. A live retailer selector/account/cart
+trial and representative private data acceptance remain unverified. No retailer
+account, new data collection, active kitchen preferences or installed controller
+source was changed. Existing model/voice workers, devices and volume were preserved.
+
+The README Current deployment map was reviewed: hosting roles and edges remain
+unchanged because this is an uninstalled opt-in capability inside the existing
+controller. [Kitchen setup](pantry.md) documents prerequisites and the exact manual
+boundary. Full deployment requires the controller/web package together; the Pi
+needs no new firmware for kitchen logic.

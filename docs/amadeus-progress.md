@@ -742,3 +742,15 @@ separate from sensor truth and inference quality.
 - Improved: notification-source controls explain the distinction from context feeds.
 - Planned: evidence-based pantry intake and uncertainty-aware stock, followed by
   separately approved grocery handoff; see the declarative pantry design.
+
+## Kitchen preparation source checkpoint
+
+- Improved: reviewed imports, persistent indexed ingredients, explicit consumption
+  corrections, evidence deduplication and date-aware meal/shopping proposals.
+- Improved: configurable meal schedules, tastes/goals, NFC kitchen actions and
+  existing attention/privacy gates are connected to kitchen suggestions.
+- Improved: local OCR has a portable fallback; typed kitchen tools have labeled
+  evaluation coverage and bounded conversational facts.
+- Limited: retailer preparation is an opt-in browser contract with separate cart
+  approval, uncertain-outcome handling and manual checkout. Live retailer acceptance,
+  arbitrary object recognition and bidirectional pantry services remain follow-up.

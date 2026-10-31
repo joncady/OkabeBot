@@ -15,6 +15,7 @@ from .amadeus_onboarding import SYSTEM, KEY
 JOURNAL = "conversation.suggestions"
 TOPICS = "conversation.topic_feedback"
 REASONS = {
+    "kitchen": "Your enabled kitchen plan or date reminders were ready, and the existing attention and delivery gates allowed a note.",
     "checkin": "You enabled optional check-ins. Your connected context indicated a quiet window at home, with no active focus session or media playback.",
     "interest": "You enabled optional check-ins after door activity. Your connected context later indicated a quiet moment.",
     "chores": "One of your enabled chore reminders was due, and your delivery settings allowed a gentle reminder.",

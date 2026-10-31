@@ -423,6 +423,31 @@ class ProactiveConversation:
             ],
         }
 
+    def _kitchen_offer(self, store, profile, cfg, state, day):
+        from .kitchen import DEFAULTS
+        from .kitchen_planning import Planner
+
+        if state.get("session_until", 0) > self.clock():
+            return None
+        options = {**DEFAULTS, **preference(store, profile, "kitchen.settings", {})}
+        # Tables are created by the kitchen coordinator; no DDL in an existing transaction.
+        if not store.db.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='kitchen_records'"
+        ).fetchone():
+            return None
+        item = Planner(self.folder, clock=self.clock).pending(store, profile, options)
+        return (
+            dict(
+                kind="kitchen",
+                profile=profile,
+                destination=cfg.get("destination"),
+                day=day,
+                kitchen=item,
+            )
+            if item
+            else None
+        )
+
     def _household_offer(self, store, profile, cfg, state, day, *, update=False):
         from .household_nudges import HouseholdNudges
 
@@ -475,6 +500,34 @@ class ProactiveConversation:
 
     def opening(self, offer, composer):
         """Generate framing only. Chore titles remain local, untrusted data slots."""
+        if offer.get("kind") == "kitchen":
+            from .kitchen_planning import Planner
+
+            fragment = Planner.offer_text(offer["kitchen"])
+            template = "{kitchen}"
+            try:
+                result = composer(
+                    "Frame one optional kitchen suggestion in character. Use {kitchen} exactly once. Tone only: no invented stock, recipes, dates, actions or health claims; no memory proposal. Keep it gentle, brief and never shame or pressure the user.",
+                    {"preferences": {}, "capabilities": ["Framing only; no actions or memory"]},
+                )
+                value = result.get("reply") if isinstance(result, dict) else None
+                if (
+                    not isinstance(value, str)
+                    or result.get("memory") is not None
+                    or value.count("{kitchen}") != 1
+                    or any(c in value.replace("{kitchen}", "") for c in "{}<>")
+                    or len(value.replace("{kitchen}", fragment)) > 700
+                    or re.search(
+                        r"\b(lazy|shame|failure|you never|must do|should have)\b", value, re.I
+                    )
+                ):
+                    raise ValueError("Invalid kitchen framing")
+                template = value
+            except InterruptedError:
+                raise
+            except Exception:
+                pass
+            return {"reply": template.replace("{kitchen}", fragment), "memory": None}
         if offer.get("kind") == "health":
             return {"reply": offer["health"]["text"], "memory": None}
         if offer.get("kind") == "household":
@@ -590,6 +643,16 @@ class ProactiveConversation:
 
     def revalidate_chore_offer(self, offer):
         """Last factual/privacy gate after capture shutdown, before actual output."""
+        if offer.get("kind") == "kitchen":
+            with self.store() as s:
+                setup = preference(s, SYSTEM, KEY, {})
+                profile = setup.get("profile", SYSTEM)
+                cfg = preference(s, profile, CONFIG, {})
+                state = {**preference(s, profile, self.state_key, {}), "session_until": 0}
+                return (
+                    self.permitted(setup, cfg)
+                    and self._kitchen_offer(s, profile, cfg, state, self._day(setup)) == offer
+                )
         if offer.get("kind") == "health":
             with self.store() as s:
                 setup = preference(s, SYSTEM, KEY, {})
@@ -659,6 +722,25 @@ class ProactiveConversation:
                     claimed_at=trial["claimed_at"],
                     topic=(opening or {}).get("topic_field"),
                 )
+        if offer.get("kind") == "kitchen" and success:
+            if self.revalidate_chore_offer(offer):
+                with self.store() as s, s.db:
+                    setup = preference(s, SYSTEM, KEY, {})
+                    if setup.get("profile") == offer.get("profile"):
+                        receipt = preference(s, setup["profile"], "kitchen.delivered", {})
+                        slots = {
+                            k: v
+                            for k, v in receipt.get("slots", {}).items()
+                            if 0 <= self.clock() - v < 8 * 86400
+                        }
+                        if offer["kitchen"].get("slot"):
+                            slots[offer["kitchen"]["slot"]] = self.clock()
+                        if offer["kitchen"].get("due"):
+                            receipt["expiry_day"] = offer["kitchen"]["day"]
+                        s.remember(
+                            setup["profile"], "kitchen.delivered", {**receipt, "slots": slots}
+                        )
+            return
         if offer.get("kind") == "health" and success:
             from .amadeus_coaching import Coaching
 
@@ -799,6 +881,11 @@ class ProactiveConversation:
                 if self.permitted(setup, cfg)
                 else None
             )
+            kitchen_offer = (
+                self._kitchen_offer(s, profile, cfg, state, day)
+                if self.permitted(setup, cfg)
+                else None
+            )
             health_offer = (
                 self._health_offer(s, profile, cfg, state, day)
                 if self.permitted(setup, cfg)
@@ -817,11 +904,16 @@ class ProactiveConversation:
                 or not self.permitted(setup, cfg)
                 or not self._budget_allowed(cfg, budget)
                 or not (
-                    chore_offer or household_offer or health_offer or door_ready or checkin_offer
+                    chore_offer
+                    or household_offer
+                    or health_offer
+                    or kitchen_offer
+                    or door_ready
+                    or checkin_offer
                 )
                 or destination != cfg.get("destination")
                 or (
-                    not (chore_offer or household_offer or health_offer)
+                    not (chore_offer or household_offer or health_offer or kitchen_offer)
                     and not self.chat_window_allowed(setup, cfg)
                 )
                 or busy
@@ -855,6 +947,7 @@ class ProactiveConversation:
                 chore_offer
                 or household_offer
                 or health_offer
+                or kitchen_offer
                 or (
                     None
                     if feedback_pause
@@ -887,7 +980,10 @@ class ProactiveConversation:
                 return False
             if kind in (None, "checkin") and not self.chat_window_allowed(setup, cfg):
                 return False
-            if kind == "health":
+            if kind == "kitchen":
+                if self._kitchen_offer(store, profile, cfg, state, day) != offer:
+                    return False
+            elif kind == "health":
                 if self._health_offer(store, profile, cfg, state, day) != offer:
                     return False
             elif kind == "household":
@@ -910,7 +1006,7 @@ class ProactiveConversation:
             ):
                 return False
             now = self.clock()
-            if kind in ("chores", "checkin", "household", "health"):
+            if kind in ("chores", "checkin", "household", "health", "kitchen"):
                 state.update(
                     day=day, expires_at=now + 600, history=[], last_reply="", last_tools=[]
                 )
@@ -1145,7 +1241,7 @@ class ProactiveConversation:
             ):
                 raise ValueError("Invalid spoken reply")
             memory = result["memory"]
-            if context.get("invitation_kind") in ("chores", "household", "health"):
+            if context.get("invitation_kind") in ("chores", "household", "health", "kitchen"):
                 # Accepting/declining a reminder is neither task completion nor a
                 # statement of taste. Chore sessions never harvest preferences.
                 memory = None

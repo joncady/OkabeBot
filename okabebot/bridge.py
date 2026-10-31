@@ -168,6 +168,9 @@ class Bridge:
         from .preparations import Preparations
 
         self.preparations = Preparations(state_dir() / "amadeus")
+        from .kitchen_planning import Planner
+
+        self.kitchen = Planner(state_dir() / "amadeus")
         self.preparation_wake = threading.Event()
         from .tags import Tags
         from .chores import Chores
@@ -190,6 +193,7 @@ class Bridge:
             self.tag_room_follow.locations,
             lambda location: self.application.execute("/surfaces/move", {"location_id": location}),
             chores=self.chores,
+            kitchen=self.kitchen,
             areas=self.tag_areas.snapshot,
             room_follow=self.tag_room_follow,
         )
@@ -262,6 +266,9 @@ class Bridge:
         threading.Thread(target=self.tag_areas.run, args=(self.closing,), daemon=True).start()
         threading.Thread(target=self.mobile.run, args=(self.closing,), daemon=True).start()
         threading.Thread(target=self.poll_preparations, daemon=True).start()
+        from .kitchen_worker import poll as poll_kitchen
+
+        threading.Thread(target=poll_kitchen, args=(self,), daemon=True).start()
 
     @property
     def url(self):
@@ -381,6 +388,11 @@ class Bridge:
             self.screen_power.tick()
             self.closing.wait(5)
 
+    def presented_work(self):
+        work = self.preparations.presentation()
+        kitchen = getattr(self, "kitchen", None)
+        return work or (kitchen.presentation() if kitchen else {})
+
     def sync_preparations(self):
         self.preparation_wake.set()
 
@@ -389,7 +401,7 @@ class Bridge:
         while not self.closing.is_set():
             try:
                 self.preparations.prune()
-                work = self.preparations.presentation()
+                work = self.presented_work()
                 motion = self.preparations.motion_settings()
                 signature = (bool(work), work.get("stage"), str(motion))
                 if work or signature != previous or time.monotonic() >= renew_at:
@@ -1086,7 +1098,7 @@ class Bridge:
                 "music": dict(self.media_state.music),
                 "tv": dict(self.media_state.video),
                 "content_parse": dict(self.content_parse),
-                "work": self.preparations.presentation() if hasattr(self, "preparations") else {},
+                "work": self.presented_work() if hasattr(self, "preparations") else {},
                 "motion": self.preparations.motion_settings()
                 if hasattr(self, "preparations")
                 else {},
@@ -1178,6 +1190,10 @@ def handler(bridge):
 
             if handle_mobile(self, bridge):
                 return
+            from .kitchen_http import handle as handle_kitchen
+
+            if handle_kitchen(self, bridge, post=False):
+                return
             from .chores_http import handle as handle_chores
 
             if handle_chores(self, bridge):
@@ -1238,6 +1254,8 @@ def handler(bridge):
                 "/dashboard-navigation.js",
                 "/amadeus-text.js",
                 "/preparations.js",
+                "/kitchen.js",
+                "/kitchen.css",
                 "/locations.js",
                 "/dashboard-auth.js",
             ):
@@ -1270,6 +1288,10 @@ def handler(bridge):
             from .mobile_http import handle as handle_mobile
 
             if handle_mobile(self, bridge, post=True):
+                return
+            from .kitchen_http import handle as handle_kitchen
+
+            if handle_kitchen(self, bridge, post=True):
                 return
             from .chores_http import handle as handle_chores
 

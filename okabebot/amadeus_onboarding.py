@@ -233,6 +233,9 @@ class Onboarding:
 
         result = self.memory()
         result.update(export(self.store, self.subject()))
+        from .kitchen import export as kitchen_export
+
+        result["kitchen"] = kitchen_export(self.store, self.subject())
         rows = self.store.db.execute(
             "SELECT * FROM events WHERE subject=? AND expires_at>? ORDER BY observed_at,id",
             (self.subject(), self.store.clock()),
@@ -283,6 +286,9 @@ class Onboarding:
                 from .context_records import clear
 
                 clear(self.store.db)
+                from .kitchen import clear as clear_kitchen
+
+                clear_kitchen(self.store.db)
                 self.store.db.execute("DELETE FROM events")
                 self.store.db.execute("DELETE FROM preferences")
                 # Feedback contains private conversation excerpts, not integration settings.

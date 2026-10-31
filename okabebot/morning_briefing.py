@@ -293,6 +293,20 @@ class Briefing:
                 }
             )
         cards.extend(self.digest())
+        from .kitchen_planning import Planner
+
+        kitchen = Planner(
+            self.morning.folder, **({"clock": self.morning.clock} if self.morning.clock else {})
+        ).offer()
+        if kitchen:
+            cards.append(
+                {
+                    "kind": "kitchen",
+                    "title": "In the kitchen",
+                    "body": Planner.offer_text(kitchen),
+                    "important": False,
+                }
+            )
         if card := self.coaching():
             cards.append({k: v for k, v in card.items() if k != "topic"})
         due = self._chores().due(limit=3)

@@ -94,3 +94,16 @@ claiming a feed is connected. No provider connection implies nudge/speech consen
 For new or revised characters, follow the repository
 [character creation skill](../okabebot-character/SKILL.md). Character-owned assets
 ship in the complete satellite bundle; do not copy only the legacy face facades.
+
+## Kitchen helper
+
+Use [kitchen setup](../../../docs/pantry.md) for private staple/receipt imports,
+Mealie/Grocy export review, meal schedules and optional Safeway preparation. Start
+with reviewable candidates and explicit quantities/dates; do not infer physical
+stock from purchase, camera absence, planned meals or recommendations. All choices
+belong in the owner dashboard. Verify local OCR using an invented image before
+processing private receipts. Retailer login, store selection and live selector/cart
+acceptance are separate manual account checks; no checkout capability is exposed.
+Keep raw images transient, stock and trials private, read tools separate from owner
+cart approval, and installed/source state distinct. Never run a real cart test as a
+routine regression or after an uncertain browser result.

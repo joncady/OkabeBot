@@ -76,6 +76,32 @@ def facts(name, result, reference):
             topic=suggestion.get("topic"),
             feedback=suggestion.get("feedback"),
         )
+    elif name in ("get_kitchen_ingredients", "get_meal_suggestions", "get_kitchen_plan"):
+        value.update(
+            {
+                k: v
+                for k, v in result.items()
+                if k in ("state", "scope", "date", "meal", "page", "has_more")
+            }
+        )
+        value["ingredients"] = [
+            {k: r.get(k) for k in ("name", "quantity", "unit", "location", "best_by", "stale")}
+            for r in result.get("items", [])[:12]
+        ]
+        value["suggestions"] = [
+            {
+                k: r.get(k)
+                for k in ("name", "minutes", "missing", "use_soon", "taste_matches", "reason")
+            }
+            for r in result.get("suggestions", [])[:3]
+        ]
+        value["plans"] = result.get("plans", [])[:1]
+        value["shopping"] = result.get("shopping", [])[:1]
+        value["eating_out"] = result.get("eating_out", [])[:3]
+        value["coaching_goals"] = result.get("coaching_goals", [])[:4]
+        value["instruction"] = (
+            "Suggest naturally from the recorded evidence, including missing ingredients or stale uncertainty. No invented stock, safety guarantees, purchases or shame. Coaching goals are optional, not obligations."
+        )
     elif name == "get_chores":
         value["scope"] = result.get("scope")
         value["state"] = result.get("state")

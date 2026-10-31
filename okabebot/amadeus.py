@@ -196,6 +196,9 @@ class Store:
             from .context_records import clear
 
             clear(self.db, subject=subject)
+            from .kitchen import clear as clear_kitchen
+
+            clear_kitchen(self.db, subject)
             count = self.db.execute("DELETE FROM preferences WHERE subject=?", (subject,)).rowcount
             if self.db.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='context_exposures'"
