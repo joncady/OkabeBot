@@ -164,6 +164,10 @@ class Bridge:
         from .mobile import Mobile
 
         self.mobile = Mobile(state_dir() / "mobile", self.surfaces.registry)
+        from .preparations import Preparations
+
+        self.preparations = Preparations(state_dir() / "amadeus")
+        self.preparation_wake = threading.Event()
         from .tags import Tags
         from .chores import Chores
 
@@ -256,6 +260,7 @@ class Bridge:
         threading.Thread(target=self.amadeus_feeds.run, args=(self.closing,), daemon=True).start()
         threading.Thread(target=self.tag_areas.run, args=(self.closing,), daemon=True).start()
         threading.Thread(target=self.mobile.run, args=(self.closing,), daemon=True).start()
+        threading.Thread(target=self.poll_preparations, daemon=True).start()
 
     @property
     def url(self):
@@ -374,6 +379,25 @@ class Bridge:
         while not self.closing.is_set():
             self.screen_power.tick()
             self.closing.wait(5)
+
+    def sync_preparations(self):
+        self.preparation_wake.set()
+
+    def poll_preparations(self):
+        previous = None
+        while not self.closing.is_set():
+            try:
+                self.preparations.prune()
+                work = self.preparations.presentation()
+                motion = self.preparations.motion_settings()
+                signature = (bool(work), work.get("stage"), str(motion))
+                if work or signature != previous:
+                    scene.set_work(work, motion)
+                    previous = signature
+            except Exception:
+                pass  # Device-local expiry clears old work; never invent progress.
+            self.preparation_wake.wait(5)
+            self.preparation_wake.clear()
 
     def show_activity(self, activity):
         if self.face_activity == activity:
@@ -1057,6 +1081,10 @@ class Bridge:
                 "music": dict(self.media_state.music),
                 "tv": dict(self.media_state.video),
                 "content_parse": dict(self.content_parse),
+                "work": self.preparations.presentation() if hasattr(self, "preparations") else {},
+                "motion": self.preparations.motion_settings()
+                if hasattr(self, "preparations")
+                else {},
                 "content_preview": self.content_preview.music() is not None,
                 "music_mic": self.music_mic,
                 "music_meter": dict(self.music_meter),
@@ -1204,6 +1232,7 @@ def handler(bridge):
                 "/storage.js",
                 "/dashboard-navigation.js",
                 "/amadeus-text.js",
+                "/preparations.js",
                 "/locations.js",
                 "/dashboard-auth.js",
             ):
@@ -1227,6 +1256,11 @@ def handler(bridge):
                 )
             elif self.path == "/content/presets" and self.authorized():
                 self.respond(200, PRESETS)
+            elif self.path in ("/preparations", "/presentation/motion") and self.authorized():
+                try:
+                    self.respond(200, bridge.application.execute(self.path, None))
+                except (ValueError, PermissionError):
+                    self.respond(400, {"error": "Private preparation setup unavailable"})
             elif self.path == "/state" and self.authorized():
                 self.respond(200, bridge.snapshot())
             else:

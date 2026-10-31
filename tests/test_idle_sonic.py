@@ -1,7 +1,6 @@
 import unittest
 import time
-import math
-from pi import scene, pip_face
+from pi import scene, pip_face, animation
 from okabebot.profiles import PROFILES
 
 
@@ -12,40 +11,55 @@ class IdleTests(unittest.TestCase):
             ("kurisu", "#b5997a", 74),
         ):
             for phase in (1, 3):
-                bob = round(math.sin(phase * 1.7))
-                resting = scene.shapes(style=style, phase=phase)
-                phone = scene.shapes(style=style, phase=phase, idle_seconds=38)
+                data = animation.catalog()
+                seconds = next(
+                    t / 10
+                    for t in range(4000)
+                    if animation.sample(data, style, t / 10)["pose"] == "phone"
+                    and animation.sample(data, style, t / 10)["pose_weight"] == 1
+                )
+                bob = round(animation.sample(data, style, seconds)["body_y"])
+                resting = scene.shapes(style=style, phase=phase, motion_options={"enabled": False})
+                phone = scene.shapes(style=style, phase=phase, idle_seconds=seconds)
                 # No second arm remains below the raised elbow.
                 self.assertTrue(
                     any(
-                        fill == sleeve
-                        and coords[0] >= 308
-                        and coords[3] == (resting_bottom + bob) * 4 - 1
+                        fill == sleeve and coords[0] >= 308 and coords[3] == resting_bottom * 4 - 1
                         for kind, coords, fill, _ in resting
                         if kind == "rectangle"
                     )
                 )
                 self.assertFalse(
                     any(
-                        fill == sleeve and coords[0] >= 308 and coords[3] > (66 + bob) * 4 - 1
+                        fill == sleeve and coords[0] >= 308 and coords[3] > 66 * 4 - 1 + bob
                         for kind, coords, fill, _ in phone
                         if kind == "rectangle"
                     )
                 )
                 self.assertIn(
-                    ("rectangle", (312, (32 + bob) * 4, 335, (45 + bob) * 4 - 1), "#131a24", 1),
+                    ("rectangle", (312, 32 * 4 + bob, 335, 45 * 4 - 1 + bob), "#131a24", 1),
                     phone,
                 )
                 # The opposite resting sleeve remains in place.
                 self.assertEqual(
-                    [s for s in resting if s[2] == sleeve and s[1][0] < 140],
+                    [
+                        (k, tuple(v + (bob if i % 2 else 0) for i, v in enumerate(c)), f, w)
+                        for k, c, f, w in resting
+                        if f == sleeve and c[0] < 140
+                    ],
                     [s for s in phone if s[2] == sleeve and s[1][0] < 140],
                 )
 
     def test_idle_yields_to_activity_and_overlays(self):
         for style in ("kurisu", "okabe", "sonic"):
+            seconds = next(
+                t / 10
+                for t in range(4000)
+                if animation.sample(animation.catalog(), style, t / 10)["pose"] == "phone"
+                and animation.sample(animation.catalog(), style, t / 10)["pose_weight"] == 1
+            )
             self.assertNotEqual(
-                scene.shapes(style=style, phase=1, idle_seconds=38),
+                scene.shapes(style=style, phase=1, idle_seconds=seconds),
                 scene.shapes(style=style, phase=1, idle_seconds=0),
             )
             for kwargs in (
@@ -55,7 +69,7 @@ class IdleTests(unittest.TestCase):
                 {"deploying": True},
             ):
                 self.assertEqual(
-                    scene.shapes(style=style, phase=1, idle_seconds=38, **kwargs),
+                    scene.shapes(style=style, phase=1, idle_seconds=seconds, **kwargs),
                     scene.shapes(style=style, phase=1, idle_seconds=0, **kwargs),
                 )
 

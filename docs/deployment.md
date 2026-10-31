@@ -2312,3 +2312,19 @@ changing server assets. Existing inbox entries persist under normal retention an
 are not evidence of duplicate sends. Widget and broader lifecycle coverage remain
 open. No notification bodies, participant records or device identifiers are recorded
 in this public inventory; hosting and README topology are unchanged.
+
+## Expressive work foundation — source checkpoint
+
+Readable prompt Markdown is bundled with the controller package. A shared authored
+motion catalog is served through existing surface assets and copied beside satellite
+Python files by `scripts/package-pi.py`. There are no new ports or hosting roles;
+the README deployment topology was reviewed and remains unchanged. Deploying this
+source requires coordinating controller/web assets and the complete Pi bundle.
+
+The controller's private Amadeus preference store owns temporary preparation drafts
+and motion settings. An isolated renewer sends content-free work stages over the
+existing display RPC; device-local expiry prevents stuck work after disconnects.
+Owner-only dashboard draft routes are not added to the mobile proxy allowlist.
+No retailer adapter, proactive preparation schedule or new collection is enabled.
+These changes are source-only; no live installation or physical verification is
+claimed by this checkpoint. Alexa dynamic work animation remains planned.

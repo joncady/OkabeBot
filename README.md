@@ -907,3 +907,14 @@ installation/acceptance remains distinct in the deployment inventory.
 Selected HA home sensors support room-assigned temperature lookup without renaming
 entities; see [room-aware feed setup](docs/amadeus-feeds.md#room-assigned-home-sensor-questions)
 and the [labelled regression slice](evals/room-temperature.jsonl).
+
+## Expressive work checkpoint (source)
+
+[Shared idle/work motion](docs/character-animation.md) adds sparse character-specific
+activities and content-free leased work intent across the Pi and web room renderers.
+The Dev panel can prepare/review a private local shopping list and adjust ambient or
+reduced motion. This foundation does not connect a grocery provider, proactive job
+scheduler or external checkout. [Runtime prompts](docs/prompt-authoring.md) now live
+in readable bundled Markdown files. These source changes have not been installed;
+the Current deployment map, hosting roles and ports remain unchanged. Satellite
+installation now uses the [complete Pi bundle](docs/devices.md#install-the-services).

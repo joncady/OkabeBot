@@ -8,6 +8,9 @@ from .reminders import Reminders
 
 class Application:
     ROUTES = {
+        "/preparations",
+        "/preparations/update",
+        "/presentation/motion",
         "/storage/usage",
         "/storage/policy",
         "/screen/power",
@@ -59,6 +62,36 @@ class Application:
 
     def execute(self, path, data):
         b = self.controller
+        if path == "/presentation/motion":
+            result = b.preparations.motion_settings(data or None)
+            if data:
+                b.sync_preparations()
+            return result
+        if path == "/preparations":
+            if data:
+                raise ValueError("Read preparations without a payload")
+            return b.preparations.snapshot()
+        if path == "/preparations/update":
+            if not isinstance(data, dict):
+                raise ValueError("Choose a preparation operation")
+            action = data.get("action")
+            if action == "draft_list" and set(data) == {"action", "items"}:
+                from .preparations import lines
+
+                # Normalize before creating any job; this prepares only a local list.
+                items = lines(data["items"])
+                job = b.preparations.start()
+                result = b.preparations.change(job["id"], job["revision"], "ready", items=items)
+            elif action in ("save", "dismiss", "cancel") and set(data) == {
+                "action",
+                "id",
+                "revision",
+            }:
+                result = b.preparations.change(data["id"], data["revision"], action)
+            else:
+                raise ValueError("Choose a supported draft operation")
+            b.sync_preparations()
+            return result
         if path == "/storage/usage":
             if data:
                 raise ValueError("Read storage usage without filters")

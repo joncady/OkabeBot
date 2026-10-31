@@ -12,13 +12,26 @@ def shapes(
     palette=None,
     show_emphasis=True,
     pose="rest",
+    motion=None,
 ):
     palette = palette or {}
     out = [("rectangle", (0, 0, 480, 320), palette.get("background", "#101e25"), 1)]
-    bob = round(math.sin(phase * (5 if emotion == "excited" else 1.7)))
+    motion = motion or {}
+    bob = 0 if motion else round(math.sin(phase * (5 if emotion == "excited" else 1.7)))
+
+    head = True
 
     def rect(x, y, xx, yy, color):
-        out.append(("rectangle", (x * 4, (y + bob) * 4, xx * 4 - 1, (yy + bob) * 4 - 1), color, 1))
+        dx = round(motion.get("head_x", 0)) if head else 0
+        dy = round(motion.get("head_y", 0)) if head else 0
+        out.append(
+            (
+                "rectangle",
+                (x * 4 + dx, (y + bob) * 4 + dy, xx * 4 - 1 + dx, (yy + bob) * 4 - 1 + dy),
+                color,
+                1,
+            )
+        )
 
     hair, light, skin, shade = "#843e37", "#b75d46", "#f0cdb9", "#d2a38e"
     # Long auburn hair, white shirt, red tie, and a loose tan jacket.
@@ -27,7 +40,8 @@ def shapes(
     rect(77, 29, 86, 71, hair)
     rect(40, 35, 44, 65, light)
     rect(78, 34, 81, 67, light)
-    phone = pose in ("phone", "wave")
+    head = False
+    phone = pose in ("phone", "wave", "read", "write", "review", "stretch")
     rect(35, 60, 77 if phone else 85, 74, "#947461")
     rect(32, 65, 43, 74, "#b5997a")
     if not phone:
@@ -39,6 +53,7 @@ def shapes(
     rect(57, 62, 63, 73, "#7e293c")
     rect(47, 54, 54, 58, "#d2d2cf")
     rect(66, 54, 73, 58, "#d2d2cf")
+    head = True
     rect(44, 19, 76, 44, skin)
     rect(47, 42, 73, 48, skin)
     rect(52, 47, 68, 51, skin)
@@ -51,8 +66,12 @@ def shapes(
     if emotion == "excited" and show_emphasis:
         rect(83, 14, 85, 21, "#f2ca70")
         rect(83, 23, 85, 25, "#f2ca70")
-    blink = phase % 4.7 < 0.16
-    gaze = (1 if math.sin(phase * 0.8) > 0 else -1) if activity == "thinking" else 0
+    blink = motion.get("blink", phase % 4.7 < 0.16)
+    gaze = (
+        (1 if math.sin(phase * 0.8) > 0 else -1)
+        if activity == "thinking"
+        else round(motion.get("gaze", 0))
+    )
     for x in (48, 65):
         rect(x, 32, x + 8, 33, "#49303a")
         if not blink:
@@ -74,19 +93,45 @@ def shapes(
         rect(56, 44, 65, 45, "#985962")
         if emotion in ("happy", "excited"):
             rect(65, 43, 67, 44, "#985962")
+    head = False
     if phone:
+        weight = motion.get("pose_weight", 1)
+        shift = (
+            0
+            if pose == "wave"
+            else 20 - round(weight * (10 if pose in ("read", "write", "review") else 20))
+        )
         # The raised arm replaces its resting sleeve and shares the face/body transform.
         rect(76, 58, 82, 64, "#b5997a")
         rect(80, 61, 87, 66, "#b5997a")
-        rect(83, 44, 88, 64, "#b5997a")
-        rect(82, 44, 88, 48, "#947461")
-        rect(81, 38, 87, 45, skin)
+        rect(83, 44 + shift, 88, max(65, 45 + shift), "#b5997a")
+        rect(82, 44 + shift, 88, 48 + shift, "#947461")
+        rect(81, 38 + shift, 87, 45 + shift, skin)
         if pose == "wave":
             wag = round(math.sin(phase * 8) * 2)
             rect(81 + wag, 30, 88 + wag, 42, skin)
             for finger in range(3):
                 rect(81 + wag + finger * 2, 27 - finger % 2, 82 + wag + finger * 2, 33, skin)
+        elif pose in ("read", "write", "review"):
+            rect(78, 34 + shift, 89, 47 + shift, "#546b69")
+            rect(79, 35 + shift, 88, 46 + shift, "#eee2bd")
+            if pose == "read":
+                rect(83, 35 + shift, 84, 46 + shift, "#a68a69")
+            else:
+                for row in (37, 40, 43):
+                    rect(80, row + shift, 87, row + 1 + shift, "#a68a69")
+                rect(
+                    85 + round(motion.get("hand", 0)),
+                    36 + shift,
+                    86 + round(motion.get("hand", 0)),
+                    43 + shift,
+                    "#d4a75d",
+                )
+        elif pose == "stretch":
+            lift = max(0, round(-motion.get("body_y", 0)))
+            rect(82, 30 - lift, 88, 43, skin)
+            rect(83, 28 - lift, 87, 32, skin)
         else:
-            rect(78, 32, 84, 45, "#131a24")
-            rect(79, 34, 83, 42, "#52728a")
+            rect(78, 32 + shift, 84, 45 + shift, "#131a24")
+            rect(79, 34 + shift, 83, 42 + shift, "#52728a")
     return out

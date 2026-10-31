@@ -254,6 +254,12 @@
           </form>
           <a href="/amadeus/">Review or forget saved preferences ↗</a>
         </div>
+        <details class="panel" id="preparation-panel"><summary>Prepared work &amp; character motion</summary>
+          <p id="preparation-status" role="status"></p>
+          <form id="motion-form" class="preference-form"><label><input id="motion-enabled" type="checkbox" checked>Ambient character animations</label><label><input id="motion-reduced" type="checkbox">Reduced motion</label><button>Save motion settings</button></form>
+          <details><summary>Prepare a local shopping-list draft</summary><form id="preparation-form" class="preference-form"><label>Items, one per line (up to 15)<textarea id="preparation-items" rows="5" maxlength="1600" required></textarea></label><button>Prepare draft</button></form></details>
+          <button id="preparation-refresh" type="button">Refresh drafts</button><div id="preparation-list"></div>
+        </details>
         <details class="panel">
           <summary>Device, voice &amp; integration controls</summary>
           <label><input id="amadeus-shadow-enabled" type="checkbox"> Amadeus shadow trial (private log only)</label>
@@ -340,5 +346,5 @@
     <button id="dashboard-forget" class="small">Forget browser access</button></main>
     <footer>OKABEBOT <span>Make room for a little curiosity.</span></footer>
     <script src="/dashboard-auth.js"></script><script src="/dashboard-navigation.js"></script><script src="/locations.js"></script><script src="/app.js"></script><script src="/amadeus-text.js"></script><script src="/chores.js"></script><script src="/household-nudges.js"></script><script src="/health.js"></script><script src="/tags.js"></script><script src="/storage.js"></script>
-  </body>
+  <script src="/preparations.js"></script></body>
 </html>

@@ -85,3 +85,8 @@ def wave(*, allow_during_media=False):
 def set_focus(status):
     """Project only timer state; no speaker, animation pixels or completion action."""
     return rpc({"op": "focus", "active": status["active"], "ends_at": status["ends_at"]})
+
+
+def set_work(work, motion):
+    """Content-free, leased intent; the renderer owns all pixels and poses."""
+    return rpc({"op": "work", "work": work, "motion": motion})

@@ -273,7 +273,16 @@ class Display:
         if data["activity"] == "speaking" and elapsed >= len(data["envelope"]) / 20:
             data["activity"] = "idle"
             self.state["activity"] = "idle"
+        if not hasattr(self, "work_state"):
+            try:
+                from .work_state import WorkState
+            except ImportError:
+                from work_state import WorkState
+            self.work_state = WorkState()
+        work, motion_options = self.work_state.snapshot()
         args = dict(
+            work=work,
+            motion_options=motion_options,
             gesture="wave" if now < getattr(self, "wave_until", 0) else "idle",
             idle_seconds=max(0, now - self.idle_since),
             emotion=data["emotion"],
@@ -288,6 +297,7 @@ class Display:
         focus = getattr(self, "focus", None)
         if focus is not None:
             active = focus.status()["active"]
+            args["motion_options"]["quiet"] = active
             allowed = focus_visual.visible(
                 active,
                 self.character,
@@ -706,7 +716,16 @@ class Display:
                 data, reply = self.queue.get_nowait()
                 try:
                     op = data["op"]
-                    if op == "focus":
+                    if op == "work":
+                        if not hasattr(self, "work_state"):
+                            try:
+                                from .work_state import WorkState
+                            except ImportError:
+                                from work_state import WorkState
+                            self.work_state = WorkState()
+                        self.work_state.update(data)
+                        result = self.status()
+                    elif op == "focus":
                         result = self.focus.command(data)
                     elif op == "screen_power":
                         result = self.power.command(data)
@@ -862,6 +881,7 @@ def main():
                     "status",
                     "screen_power",
                     "focus",
+                    "work",
                     "preview",
                     "character",
                     "gesture",

@@ -714,3 +714,14 @@ separate from sensor truth and inference quality.
   explained separately rather than using an ambiguous action label.
 - Capability: the Android pilot's alert-to-private-inbox path has physical acceptance;
   this does not complete widget, background lifecycle or every source-policy check.
+
+## Expressive preparation foundation
+
+- Improved: readable runtime prompt templates, a shared pixel-motion vocabulary,
+  leased work presentation and private revisioned local draft review.
+- Improved: worker expiry, owner-setup changes, pause/guest visibility and temporary
+  draft retention have explicit behavior without exposing draft contents to displays.
+- Limited: grocery-provider handoff and proactive job generation are not connected;
+  retaining a draft does not approve an external transaction.
+- Next: grounded grocery-list adapter, separate content-bound handoff approval and
+  physical motion acceptance before installation.

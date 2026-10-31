@@ -8,12 +8,13 @@ from PIL import Image, ImageDraw, ImageFont
 
 try:
     from . import pip_face, reactions, layout
-    from . import scene_sets
+    from . import scene_sets, animation
 except ImportError:
     import layout
     import pip_face
     import reactions
     import scene_sets
+    import animation
 
 
 @lru_cache(maxsize=1)
@@ -141,6 +142,8 @@ def shapes(
     **character,
 ):
     selected_set = character.pop("environment", "legacy")
+    work = character.pop("work", {}) or {}
+    motion_options = character.pop("motion_options", {}) or {}
     if character.get("activity", "idle") == "thinking" or (
         deploying and character.get("activity", "idle") == "idle"
     ):
@@ -150,22 +153,37 @@ def shapes(
     video = (music or {}).get("video") or {}
     watching = reactions.active(music, notification, character.get("activity", "idle"), deploying)
     reaction = video.get("reaction") or {}
-    idle_frame = idle_seconds % 48
-    idle_action = (
-        gesture == "idle"
-        and idle_seconds >= 35
-        and 35 <= idle_frame < 43
-        and not notification
-        and not watching
-        and not deploying
-        and not (music and music.get("is_playing"))
-        and character.get("activity", "idle") == "idle"
+    moving = animation.sample(
+        animation.catalog(),
+        character.get("style", "okabe"),
+        work.get("elapsed_seconds", idle_seconds),
+        character.get("activity", "idle"),
+        blocked=bool(
+            notification
+            or watching
+            or deploying
+            or gesture != "idle"
+            or music
+            and music.get("is_playing")
+            or motion_options.get("quiet")
+        ),
+        stage=work.get("stage", ""),
+        reduced=motion_options.get("reduced_motion", False)
+        or not motion_options.get("enabled", True),
     )
-    if idle_action and character.get("style", "okabe") in ("okabe", "kurisu"):
-        character["mouth"] = max(0, math.sin(idle_frame * 8)) * 0.25
-        character["pose"] = "phone"
+    character["motion"] = moving
+    idle_action = moving["clip"] != "rest"
+    idle_frame = idle_seconds % 48
+    if moving["pose"] in ("phone", "read", "write", "review", "stretch") and character.get(
+        "style", "okabe"
+    ) in ("okabe", "kurisu"):
+        character["pose"] = moving["pose"]
+        if moving["pose"] == "phone":
+            character["mouth"] = max(0, math.sin(idle_seconds * 8)) * 0.25
     if character.get("style") == "sonic":
-        character["arms"] = not (notification or gesture == "present" or idle_action)
+        character["arms"] = not (
+            notification or gesture == "present" or idle_action and moving["pose"] == "phone"
+        )
     if (
         music
         and music.get("is_playing")
@@ -197,6 +215,25 @@ def shapes(
     original = pip_face.shapes(**character)
     if character.get("activity") == "thinking":
         original.extend(thought_bubble(character.get("phase", 0)))
+    dy = round(moving["body_y"])
+    if dy:
+        original = [original[0]] + [
+            (kind, tuple(v + (dy if i % 2 else 0) for i, v in enumerate(coords)), fill, width)
+            for kind, coords, fill, width in original[1:]
+        ]
+    if moving["pose"] in ("read", "write", "review", "scan") and character.get("style") in (
+        "sonic",
+        "pip",
+    ):
+        # A robot scan panel / Sonic checklist sits at shoulder height, not over media.
+        original.extend(
+            [
+                ("rectangle", (312, 130, 352, 174), "#546b69", 1),
+                ("rectangle", (316, 134, 348, 170), "#e8dbb2", 1),
+            ]
+        )
+        for row in range(3):
+            original.append(("rectangle", (320, 140 + row * 9, 342, 143 + row * 9), "#8e9e87", 1))
     if waving and character.get("style") == "sonic":
         wag = round(math.sin(character.get("phase", 0) * 8) * 8)
         original.extend(
@@ -267,7 +304,7 @@ def shapes(
                     ),
                 ]
             )
-    if idle_action:
+    if idle_action and moving["pose"] == "phone":
         style = character.get("style", "okabe")
         if style == "sonic":
             original.extend(

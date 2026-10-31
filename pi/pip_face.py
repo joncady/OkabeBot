@@ -8,8 +8,16 @@ ACTIVITIES = ("idle", "listening", "thinking", "speaking")
 
 
 def pip_shapes(
-    emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idle", palette=None, pose="rest"
+    emotion="neutral",
+    intensity=0.6,
+    mouth=0,
+    phase=0,
+    activity="idle",
+    palette=None,
+    pose="rest",
+    motion=None,
 ):
+    motion = motion or {}
     out = []
 
     def add(kind, coords, fill, width=1):
@@ -48,7 +56,7 @@ def pip_shapes(
         (137, 81, 343, 81, 358, 96, 358, 231, 343, 246, 137, 246, 122, 231, 122, 96),
         dark,
     )
-    blink = phase % 4.7 < 0.16
+    blink = motion.get("blink", phase % 4.7 < 0.16)
     for x in (184, 296):
         if blink:
             draw("line", (x - 21, 155, x + 21, 155), light, 6)
@@ -56,7 +64,9 @@ def pip_shapes(
             draw("line", (x - 21, 158, x - 13, 147, x, 143, x + 13, 147, x + 21, 158), light, 7)
         else:
             h = 21 + (6 * intensity if emotion == "excited" else 0)
-            gaze = 5 * math.sin(phase * 0.9) if activity == "thinking" else 0
+            gaze = (
+                5 * math.sin(phase * 0.9) if activity == "thinking" else motion.get("gaze", 0) * 5
+            )
             draw("ellipse", (x - 17 + gaze, 155 - h, x + 17 + gaze, 155 + h), light)
             draw("ellipse", (x - 7 + gaze, 141 - h, x + 1 + gaze, 149 - h), "#e3fff1")
     if emotion == "concerned":

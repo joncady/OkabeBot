@@ -2,12 +2,21 @@
 
 
 def shapes(
-    emotion="neutral", intensity=0.6, mouth=0, phase=0, activity="idle", palette=None, arms=True
+    emotion="neutral",
+    intensity=0.6,
+    mouth=0,
+    phase=0,
+    activity="idle",
+    palette=None,
+    arms=True,
+    motion=None,
 ):
+    motion = motion or {}
     out = [("rectangle", (0, 0, 480, 320), (palette or {}).get("background", "#101e25"), 1)]
 
     def rect(x, y, xx, yy, color):
-        out.append(("rectangle", (x * 4, y * 4, xx * 4 - 1, yy * 4 - 1), color, 1))
+        lift = -round(motion.get("foot", 0)) if y >= 71 and x >= 63 else 0
+        out.append(("rectangle", (x * 4, y * 4 + lift, xx * 4 - 1, yy * 4 - 1 + lift), color, 1))
 
     def poly(points, color):
         out.append(("polygon", tuple(v * 4 for v in points), color, 1))
@@ -50,8 +59,8 @@ def shapes(
     rect(48, 21, 52, 29, light)
     rect(47, 30, 62, 42, white)
     rect(61, 27, 75, 42, white)
-    gaze = -1 if activity == "thinking" else 0
-    if phase % 4.7 >= 0.16:
+    gaze = -1 if activity == "thinking" else round(motion.get("gaze", 0))
+    if not motion.get("blink", phase % 4.7 < 0.16):
         rect(56 + gaze, 32, 59 + gaze, 41, "#25883d")
         rect(68 + gaze, 30, 71 + gaze, 41, "#25883d")
         rect(58 + gaze, 33, 60 + gaze, 41, "#101a28")

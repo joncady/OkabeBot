@@ -29,7 +29,11 @@ class TreatmentTests(unittest.TestCase):
         self.assertIsNone(self.service.active()[1])
         preset = next(p for p in snapshot["presets"] if p["id"] == "native_candidate")
         self.assertEqual(
-            preset["prompts"], json.loads(Path("evals/prompts/candidate-3.json").read_text())
+            {k: " ".join(v.split()) for k, v in preset["prompts"].items()},
+            {
+                k: " ".join(v.split())
+                for k, v in json.loads(Path("evals/prompts/candidate-3.json").read_text()).items()
+            },
         )
         self.service.configure({"selected": "conversation_candidate"})
         receipt, prompts = self.service.active()
