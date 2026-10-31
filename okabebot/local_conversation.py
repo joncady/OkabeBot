@@ -19,6 +19,9 @@ from .profiles import current_character
 from . import locations
 
 READ_TOOLS = {
+    "get_kitchen_ingredients",
+    "get_meal_suggestions",
+    "get_kitchen_plan",
     "get_companion_locations",
     "get_current_media",
     "get_device_health",
@@ -370,6 +373,19 @@ def acknowledgement(name, result):
                 + ". That's a presence report, not proof of departure."
             )
         return "I don't have a reported person departure in this window. Zone counts and missing reports can't establish when you left."
+    if name == "get_kitchen_ingredients":
+        if result.get("state"):
+            return "Kitchen inventory is not enabled or private access is unavailable."
+        rows = result.get("items", [])
+        return ("Recorded ingredients: " + "; ".join(str(v["quantity"])+" "+v["unit"]+" "+v["name"]+(" (needs checking)" if v.get("stale") else "") for v in rows[:6]) + ".") if rows else "I do not have matching confirmed stock. That does not prove you are out."
+    if name == "get_meal_suggestions":
+        rows = result.get("suggestions", [])
+        if not rows:
+            return "I need confirmed ingredients and saved recipes before I can make a grounded meal suggestion."
+        first=rows[0]
+        return first["name"]+" is one option. "+("You would need "+", ".join(v["name"] for v in first["missing"])+"." if first["missing"] else "Its ingredients are recorded in your kitchen; check quantities and dates first.")
+    if name == "get_kitchen_plan":
+        return "Your proposed meal plan and next-trip shopping draft are ready to review; nothing has been ordered." if result.get("plans") else "There is no prepared kitchen plan available yet."
     if name == "get_personal_recommendation_context":
         if result.get("state"):
             return "Your private recommendation context isn't available right now."

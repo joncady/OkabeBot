@@ -15,10 +15,19 @@ def tag_id(value):
 
 class Tags:
     def __init__(
-        self, folder, locations, call, clock=time.time, chores=None, areas=None, room_follow=None
+        self,
+        folder,
+        locations,
+        call,
+        clock=time.time,
+        chores=None,
+        areas=None,
+        room_follow=None,
+        kitchen=None,
     ):
         self.folder, self.locations, self.call, self.clock = Path(folder), locations, call, clock
         self.chores = chores
+        self.kitchen = kitchen
         self.room_follow = room_follow
         self.areas = areas or (lambda: {"state": "not_connected", "tags": {}})
         self.lock = threading.RLock()
@@ -72,8 +81,11 @@ class Tags:
         if not isinstance(data, dict):
             raise ValueError("Choose a tag action")
         action = data.get("action", "call_companion")
+        kitchen_action = action in ("kitchen_used_up", "kitchen_reorder")
         expected = {"tag_id", "name", "enabled"} | (
-            {"chore_id"}
+            {"product_id", "quantity", "unit"}
+            if kitchen_action
+            else {"chore_id"}
             if action == "chore_reminder"
             else set()
             if action == "room_checkin"
@@ -81,12 +93,19 @@ class Tags:
         )
         optional = {"action", "room_follow", "room_minutes", "room_location_id"}
         if (
-            action not in ("call_companion", "chore_reminder", "room_checkin")
+            action
+            not in (
+                "call_companion",
+                "chore_reminder",
+                "room_checkin",
+                "kitchen_used_up",
+                "kitchen_reorder",
+            )
             or set(data) - optional != expected
         ):
             raise ValueError("Choose the fields for this tag action")
         follow = data.get("room_follow", action == "room_checkin")
-        if type(follow) is not bool or (action == "call_companion" and follow):
+        if type(follow) is not bool or ((action == "call_companion" or kitchen_action) and follow):
             raise ValueError("Use the room check-in action or enable room following on a chore")
         if action == "room_checkin" and not follow:
             raise ValueError("Room check-in requires room following")
@@ -115,6 +134,15 @@ class Tags:
             raise ValueError("Use a name of 1–80 characters")
         if type(data["enabled"]) is not bool:
             raise ValueError("Choose enabled or disabled")
+        if kitchen_action:
+            if self.kitchen is None:
+                raise ValueError("Kitchen unavailable")
+            from .kitchen import number, text
+
+            number(data["quantity"])
+            text(data["unit"], 30)
+            with self.kitchen.session(active=True, enabled=True) as (store, profile, cfg):
+                self.kitchen.get(store, profile, "product", data["product_id"])
         if action == "call_companion":
             if data["location_id"] not in {p["id"] for p in self.locations() if p.get("approved")}:
                 raise ValueError("Choose an approved destination")
@@ -147,6 +175,19 @@ class Tags:
         follow = mapping.get("room_follow", mapping.get("action") == "room_checkin")
         if follow and not scanned:
             return {"status": "real_scan_required"}
+        if mapping.get("action") in ("kitchen_used_up", "kitchen_reorder"):
+            if not scanned or self.kitchen is None:
+                return {"status": "real_scan_required"}
+            try:
+                return self.kitchen.tag(
+                    mapping["product_id"],
+                    mapping["action"],
+                    mapping["quantity"],
+                    mapping["unit"],
+                    request_id,
+                )
+            except (ValueError, PermissionError):
+                return {"status": "kitchen_unavailable_check_dashboard"}
         if mapping.get("action") == "room_checkin":
             return (
                 self.room_follow.scan(key, mapping)

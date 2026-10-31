@@ -938,3 +938,14 @@ speech, with character-owned arm anchors and reduced-motion behavior. Dashboard
 notification preferences can disable event sources without disabling Amadeus feeds.
 The next grocery phase is scoped in the [pantry design](docs/pantry.md); receipt,
 camera inventory and retailer handoff are planned, not collecting data.
+
+## Kitchen helper (source)
+
+The [kitchen helper](docs/pantry.md) adds reviewed pantry/receipt imports, a persistent
+private ingredient ledger, meal ranking, daily meal/shopping preparation and mapped
+NFC used-up/reorder actions. Weekday/weekend slots, dates, tastes, coaching and
+snooze are dashboard choices. Optional Safeway browser preparation requires private
+setup and a distinct exact-product approval before cart writes; checkout is manual.
+This source feature is disabled by default and not yet installed in the active
+controller. It stays within the existing controller/SQLite/presentation roles, so
+the Current deployment map is unchanged; see deployment inventory for its boundary.

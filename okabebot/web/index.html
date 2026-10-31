@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>OkabeBot · Companion</title>
     <link rel="stylesheet" href="/style.css" />
-  <link rel="stylesheet" href="/surface-theme.css"></head>
+  <link rel="stylesheet" href="/surface-theme.css"><link rel="stylesheet" href="/kitchen.css"></head>
   <body>
     <header>
       <div>
@@ -15,7 +15,7 @@
       <a id="home-assistant-portal" target="_blank" rel="noopener noreferrer" hidden>Home Assistant ↗</a><button id="dev-toggle" class="small" aria-pressed="false">Dev</button>
     </header>
     <nav class="dashboard-nav" aria-label="Lab sections">
-      <a href="#companion-dashboard">Companion</a><a href="#locations-dashboard">Locations</a><a href="#daily-tools">Today</a><a href="#notification-settings">Settings</a><a href="/amadeus/">Amadeus setup</a>
+      <a href="#companion-dashboard">Companion</a><a href="#locations-dashboard">Locations</a><a href="#daily-tools">Today</a><a href="#kitchen-panel">Kitchen</a><a href="#notification-settings">Settings</a><a href="/amadeus/">Amadeus setup</a>
     </nav>
     <main>
       <details class="panel readiness" id="readiness-panel">
@@ -188,6 +188,34 @@
       </details>
       <div id="approvals"></div>
       <details class="panel" id="health-panel" hidden><summary>Health · private wellbeing</summary><div id="health-summary"></div><a href="/amadeus/#amadeus-health">Edit goals, privacy and health sources ↗</a></details>
+<details class="panel" id="kitchen-panel"><summary>Kitchen helper</summary>
+<p id="kitchen-status" role="status"></p><button id="kitchen-refresh" type="button">Refresh kitchen</button>
+<details><summary>Kitchen preferences &amp; schedule</summary><form id="kitchen-settings">
+<label><input type="checkbox" id="kitchen-enabled"> Enable private kitchen inventory and planning</label>
+<label><input type="checkbox" id="kitchen-proactive"> Include gentle meal/date notes in check-ins and morning cards</label><p>Spoken check-ins also require Amadeus conversation consent and its existing attention gates.</p>
+<label><input type="checkbox" id="kitchen-allow_eating_out"> Allow suggestions from my saved eating-out choices</label>
+<label><input type="checkbox" id="kitchen-coaching"> Consider my explicit kitchen goals privately</label>
+<fieldset><legend>Weekday meals</legend><label><input type="checkbox" id="kitchen-weekdays-breakfast"> Breakfast</label><label><input type="checkbox" id="kitchen-weekdays-lunch"> Lunch</label><label><input type="checkbox" id="kitchen-weekdays-dinner"> Dinner</label></fieldset><fieldset><legend>Weekend meals</legend><label><input type="checkbox" id="kitchen-weekends-breakfast"> Breakfast</label><label><input type="checkbox" id="kitchen-weekends-lunch"> Lunch</label><label><input type="checkbox" id="kitchen-weekends-dinner"> Dinner</label></fieldset><label>Daily index hour (local)<input id="kitchen-daily_hour" type="number" min="0" max="23" required></label><label>Upcoming printed-date window (days)<input id="kitchen-expiry_days" type="number" min="0" max="30" required></label><label>Recheck inventory after (days)<input id="kitchen-stale_days" type="number" min="1" max="365" required></label><label>Plan ahead (days)<input id="kitchen-planning_days" type="number" min="1" max="14" required></label><label>Breakfast hour<input id="kitchen-time-breakfast" type="number" min="0" max="23" required></label><label>Lunch hour<input id="kitchen-time-lunch" type="number" min="0" max="23" required></label><label>Dinner hour<input id="kitchen-time-dinner" type="number" min="0" max="23" required></label><label>Suggest up to this many hours before a meal<input id="kitchen-suggest_before_hours" type="number" min="0" max="6" required></label><label>Time zone<input id="kitchen-timezone" placeholder="America/Los_Angeles" required></label><label>Favorite cuisines / recipe tags<textarea id="kitchen-tastes" rows="3" placeholder="One per line"></textarea></label><label>Ingredients or recipe tags to avoid (exact matches; verify allergens)<textarea id="kitchen-avoid" rows="3" placeholder="One per line"></textarea></label><label>Optional kitchen goals / matching recipe tags<textarea id="kitchen-goals" rows="3" placeholder="One per line"></textarea></label><label>Favorite eating-out options (no availability guarantee)<textarea id="kitchen-eating-out" rows="3" placeholder="One per line"></textarea></label><button>Save kitchen choices</button></form><label>Snooze kitchen notes<input id="kitchen-snooze-hours" type="number" min="0" max="720" value="24"> hours</label><button id="kitchen-snooze" type="button">Snooze (0 resumes)</button></details>
+<details><summary>Import pantry / grocery receipt</summary><p>Start with long-lasting ingredients, one per line; quantities are optional. Import CSV/JSON exports or a receipt photo. Photos use local Mac OCR and are not retained. Google Lens text can be pasted here. Review candidates before adding stock.</p>
+<form id="kitchen-import-form"><label>Import source<select id="kitchen-source"><option value="pantry-bootstrap">Initial pantry</option><option value="safeway-receipt">Safeway receipt</option><option value="grocy-export">Grocy export</option><option value="other-receipt">Other receipt</option></select></label>
+<label>Receipt / batch ID<input id="kitchen-receipt-id" placeholder="Generated if blank; reuse only for the same purchase"></label>
+<label>Format<select id="kitchen-format"><option value="text">Ingredient lines</option><option value="receipt">Receipt text / OCR</option><option value="csv">CSV (name,quantity,unit,location,best_by)</option><option value="json">JSON / Grocy stock export</option></select></label>
+<label><input id="kitchen-long-lasting" type="checkbox"> Long-lasting pantry staples</label>
+<label>Paste ingredients or digital receipt<textarea id="kitchen-input" rows="5" placeholder="2 count canned tomatoes&#10;500 g rice"></textarea></label>
+<label>Or choose a receipt photo / text / CSV / JSON file<input id="kitchen-file" type="file" accept="image/*,.txt,.csv,.json"></label>
+<button>Extract candidates for review</button></form><div id="kitchen-imports"></div></details>
+<details><summary>Confirmed ingredients</summary><label>Search ingredient<input id="kitchen-query" type="search"></label><label>Page<input id="kitchen-page" type="number" min="1" value="1"></label><button id="kitchen-search" type="button">Search stock</button><button id="kitchen-next" type="button">Next page</button><p id="kitchen-more"></p><div id="kitchen-lots"></div></details>
+<details><summary>Recipes &amp; Mealie import</summary><p>Import structured Mealie recipe JSON (food names, quantities and units), or add a recipe. Unit names must match inventory; no automatic mass/volume conversion. Tags let explicit tastes and goals affect ranking.</p>
+<button id="kitchen-recipe-starter" type="button">Add starter meal ideas</button><p>Starter ideas are ingredient combinations, not cooking/safety instructions. Review quantities for your portions.</p><label>Mealie recipe JSON<input id="kitchen-recipe-file" type="file" accept=".json"></label>
+<form id="kitchen-recipe-form"><label>Recipe name<input id="kitchen-recipe-name" required maxlength="120"></label><label>Ingredients<textarea id="kitchen-recipe-ingredients" rows="4" placeholder="2 count eggs&#10;100 g spinach" required></textarea></label><label>Recipe tags<textarea id="kitchen-recipe-tags" rows="2" placeholder="One tag per line"></textarea></label>
+<label><input id="kitchen-recipe-breakfast" type="checkbox" checked> Breakfast</label><label><input id="kitchen-recipe-lunch" type="checkbox" checked> Lunch</label><label><input id="kitchen-recipe-dinner" type="checkbox" checked> Dinner</label><button>Save recipe</button></form><div id="kitchen-recipes-list"></div></details>
+<details><summary>Meal plan &amp; next shopping trip</summary><button id="kitchen-plan-now" type="button">Prepare meal plan</button><button id="kitchen-index-now" type="button">Index kitchen now</button><div id="kitchen-plans"></div><div id="kitchen-shopping"></div></details>
+<details><summary>Safeway browser preparation (optional)</summary><p>Requires the optional Playwright worker, a private interactive login and verified site selectors. Searches prepare product candidates asynchronously. Exact cart additions need a separate 15-minute approval. No checkout, substitutions or blind retry after uncertain writes.</p>
+<form id="kitchen-browser-form"><label><input id="kitchen-browser-enabled" type="checkbox"> Enable configured Safeway worker</label>
+<label>Card selector / attribute<input id="kitchen-selector-card" maxlength="200"></label><label>Name selector / attribute<input id="kitchen-selector-name" maxlength="200"></label><label>Price selector / attribute<input id="kitchen-selector-price" maxlength="200"></label><label>Product Id Attribute selector / attribute<input id="kitchen-selector-product_id_attribute" maxlength="200"></label><label>Add selector / attribute<input id="kitchen-selector-add" maxlength="200"></label><label>Cart Count selector / attribute<input id="kitchen-selector-cart_count" maxlength="200"></label><label>Selected-store element selector<input id="kitchen-selector-store" maxlength="200"></label><label>Expected selected store text<input id="kitchen-selector-expected_store" maxlength="200"></label><button>Save browser contract</button></form><div id="kitchen-jobs"></div></details>
+<details><summary>Kitchen NFC actions</summary><p>Learn a tag, then map it to one ingredient. Reorder adds to a local draft only; Used up explicitly empties recorded lots for that ingredient.</p><button id="kitchen-tag-learn" type="button">Learn next tag</button><button id="kitchen-tag-latest" type="button">Use latest scan</button><form id="kitchen-tag-form"><label>Tag ID<input id="kitchen-tag-id" required></label><label>Label<input id="kitchen-tag-name" required maxlength="80"></label><label>Ingredient<select id="kitchen-tag-product" required></select></label><label>Action<select id="kitchen-tag-action"><option value="kitchen_reorder">Add to shopping draft</option><option value="kitchen_used_up">Mark ingredient used up</option></select></label><label>Reorder amount<input id="kitchen-tag-quantity" type="number" min="0.01" step="any" value="1" required></label><label>Unit<input id="kitchen-tag-unit" value="count" required></label><button>Save kitchen tag</button></form><div id="kitchen-tag-mappings"></div></details>
+<details><summary>Private kitchen data</summary><button id="kitchen-export" type="button">Download private kitchen export</button><button id="kitchen-erase" type="button">Delete kitchen data</button><p>Raw photos are not kept. Confirmed inventory is persistent; counts change only with reviewed imports or explicit corrections/consumption. Food dates are reminders, not safety assessments.</p></details></details>
+
       <section id="developer" hidden>
         <div class="panel">
           <h2>Amadeus text lab</h2>
@@ -320,5 +348,5 @@
     <button id="dashboard-forget" class="small">Forget browser access</button></main>
     <footer>OKABEBOT <span>Make room for a little curiosity.</span></footer>
     <script src="/dashboard-auth.js"></script><script src="/dashboard-navigation.js"></script><script src="/locations.js"></script><script src="/app.js"></script><script src="/amadeus-text.js"></script><script src="/chores.js"></script><script src="/household-nudges.js"></script><script src="/health.js"></script><script src="/tags.js"></script><script src="/storage.js"></script>
-  <script src="/preparations.js"></script></body>
+  <script src="/preparations.js"></script><script src="/kitchen.js"></script></body>
 </html>

@@ -1,0 +1,9 @@
+[
+ {"name":"Oats with banana","meals":["breakfast"],"tags":["quick","fruit"],"minutes":10,"ingredients":[{"name":"oats","quantity":60,"unit":"g"},{"name":"banana","quantity":1,"unit":"count"}]},
+ {"name":"Yogurt and berries","meals":["breakfast"],"tags":["quick","fruit"],"minutes":5,"ingredients":[{"name":"yogurt","quantity":150,"unit":"g"},{"name":"berries","quantity":100,"unit":"g"}]},
+ {"name":"Eggs and spinach","meals":["breakfast","lunch"],"tags":["quick","vegetables"],"minutes":15,"ingredients":[{"name":"eggs","quantity":2,"unit":"count"},{"name":"spinach","quantity":60,"unit":"g"}]},
+ {"name":"Beans and rice bowl","meals":["lunch","dinner"],"tags":["vegetarian","pantry"],"minutes":25,"ingredients":[{"name":"beans","quantity":1,"unit":"can"},{"name":"rice","quantity":75,"unit":"g"},{"name":"tomatoes","quantity":100,"unit":"g"}]},
+ {"name":"Tomato pasta","meals":["lunch","dinner"],"tags":["vegetarian","pantry"],"minutes":20,"ingredients":[{"name":"pasta","quantity":100,"unit":"g"},{"name":"canned tomatoes","quantity":1,"unit":"can"}]},
+ {"name":"Chicken and broccoli rice","meals":["dinner"],"tags":["vegetables"],"minutes":30,"ingredients":[{"name":"chicken","quantity":150,"unit":"g"},{"name":"broccoli","quantity":150,"unit":"g"},{"name":"rice","quantity":75,"unit":"g"}]},
+ {"name":"Tofu vegetable bowl","meals":["lunch","dinner"],"tags":["vegetarian","vegetables"],"minutes":25,"ingredients":[{"name":"tofu","quantity":150,"unit":"g"},{"name":"broccoli","quantity":150,"unit":"g"},{"name":"rice","quantity":75,"unit":"g"}]}
+]
